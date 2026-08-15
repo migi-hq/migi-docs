@@ -67,7 +67,12 @@ migi github/           ← Claude Code 的 project folder 選這層
    收過錢的訂單根本刪不掉，執行時直接拋 23503。
    → 修這種函式時心態要是**逐行重新審視**，不是「修錯字」。
    每一個對 schema 或約束的假設都要當場查證（硬規則 3），不能因為原作者寫了註解就採信。
-8. **PowerShell 讀檔一律 `Select-String -Path`，不要用 `Get-Content`。**
+8. **給使用者的指令一律用 PowerShell 語法，不要用 `&&`。**
+   右側 Terminal 是 Windows PowerShell 5.1，`&&` 會直接噴
+   `'&&' 語彙基元不是有效的陳述式分隔符號`，整行不執行。
+   要串接就分兩行，或用 `;`（不管前一個成敗）／`if ($?) { }`（前一個成功才做）。
+   2026-08-15 因此給了一行跑不動的 push 指令，使用者以為推成功了，實際遠端是空的。
+9. **PowerShell 讀檔一律 `Select-String -Path`，不要用 `Get-Content`。**
    專案所有 .md 是 UTF-8 無 BOM，而 PowerShell 5.1 的 `Get-Content` 預設用 ANSI（Big5）讀，
    中文會全變亂碼；`Get-Content | Select-String` 也一樣壞（管線進去前就毀了）。
    非用 `Get-Content` 不可時要加 `-Encoding UTF8`。
