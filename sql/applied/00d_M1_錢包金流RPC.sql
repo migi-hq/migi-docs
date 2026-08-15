@@ -1,3 +1,5 @@
+-- 【M1・已執行】錢包金流核心：儲值、扣點、退款沖正、收桌結算。共用 _charge_core（鎖錢包→查冪等→驗餘額→寫流水→更新快取）。
+-- ⚠️ 其中 charge_matched_tx / charge_private_tx 已於 2026-08 封存（純點數模式廢除），見 07 號檔案。
 -- ============================================================
 -- MIGI M1 — 錢包 RPC 函式（PostgreSQL / Supabase）
 -- 部署：Supabase Dashboard → SQL Editor → 貼上執行
