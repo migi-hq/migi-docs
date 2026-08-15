@@ -123,6 +123,12 @@ migi github/           ← Claude Code 的 project folder 選這層
   索引與待辦 ×7→2、基石規範 ×2、開桌結帳流程 ×2、`01-資料庫` ×4→2。
   分工定案：`db-現況快照.md` 是事實層，`資料模型設計說明.md` 與 `RPC職責與設計.md` 是設計意圖層。
   進行中待辦只寫在本檔，`docs/00-進度與索引/待辦與未定案.md` 只放未排程與未拍板的，兩邊不重複
+- **取消開桌**（2026-08-15）：`void_session_tx` + POS 標題列按鈕與確認彈窗。
+  開桌設定按下去就建 session 並被 `uq_sessions_open_table` 鎖住那張桌，
+  開錯桌原本只能等 pg_cron 空桌回收，最久 40 分鐘（30 分門檻 + 10 分排程）。
+  安全設計：**有任何在座玩家就拒絕**（回 `has_players`）——
+  在現行流程裡玩家紀錄只在結帳後產生，代表已收過錢，那是退款問題要走收桌結算。
+  驗證通過：版本數 1 / DEFINER / 煙霧測試 `not_found`
 - **座位卡稱號落地**（2026-08-15）：`get_session_tx` 的 players 補回傳 `members.title`
   （`CREATE OR REPLACE`，簽名未變故不需 DROP），`TablePage.jsx` 的 `title: null` 改吃真值。
   驗證通過：版本數 1、定義已含 title、實測取得「測試01 / 新手上路」。
