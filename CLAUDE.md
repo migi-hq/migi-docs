@@ -123,6 +123,10 @@ migi github/           ← Claude Code 的 project folder 選這層
   索引與待辦 ×7→2、基石規範 ×2、開桌結帳流程 ×2、`01-資料庫` ×4→2。
   分工定案：`db-現況快照.md` 是事實層，`資料模型設計說明.md` 與 `RPC職責與設計.md` 是設計意圖層。
   進行中待辦只寫在本檔，`docs/00-進度與索引/待辦與未定案.md` 只放未排程與未拍板的，兩邊不重複
+- **座位卡稱號落地**（2026-08-15）：`get_session_tx` 的 players 補回傳 `members.title`
+  （`CREATE OR REPLACE`，簽名未變故不需 DROP），`TablePage.jsx` 的 `title: null` 改吃真值。
+  驗證通過：版本數 1、定義已含 title、實測取得「測試01 / 新手上路」。
+  `SeatPage` 的稱號膠囊與選人清單同時生效 —— 那段實作寫好很久，一直沒資料可顯示
 - `list_tables_tx` 人數修正：原本用 `sp.status <> 'left'` 判斷在座，
   但 status 沒有 'left' 這個值，條件恆為真、離座者被算進去（2026-08-14）
 - **POS M2 開收桌全流程完成並實機驗證通過**（2026-08-14～15，共 20 個 commit，`e91fafd`）：
@@ -176,12 +180,13 @@ migi github/           ← Claude Code 的 project folder 選這層
    產兩段式流水號，前綴表寫 `SER-` 但資料庫實際用 `SVC-`；又取「貨號尾端數字最大值 +1」，
    掃到 `SVC-TBL-P24` 會得 24 → 產出 `SER-025`。
    其餘上線前必做見 `docs/08-決策與踩坑/決策紀錄.md` 第十六節（附驗證狀態）。
-9. **座位卡的「稱號」永遠不會顯示** —— `SeatPage.jsx` 有稱號膠囊的完整實作，
-    但 `TablePage.jsx` 組 players 時 `title` 寫死 null，因為 `get_session_tx` 沒回傳這欄。
-    `members.title` 本來就有資料，RPC 多回一個欄位即可（已決定要做）。
-    連帶：那個膠囊寫死 `#B8860B`（CSS 具名色 `darkgoldenrod`），是全 POS 唯一的寫死色碼。
-    **等稱號真的顯示出來、看得到實際效果之後，再定一個「深金字」token 取代它**
-    （`--gold #E8B89B` 是淺金，當文字看不清；見 `docs/04-設計系統/設計Token規範.md`「已知缺口」）。
+9. **座位卡稱號的「深金字」token 未定** —— 稱號本身已經會顯示了（2026-08-15 完成），
+    但那個膠囊的文字色寫死 `#B8860B`（CSS 具名色 `darkgoldenrod`），
+    是**全 POS 唯一的寫死色碼**。
+    `--gold #E8B89B` 是淺金、定義為邊框與點綴，當文字看不清；
+    `--milktea-ink #7A5C42` 又失去金色質感。
+    **等在實機上看過實際效果之後，定一個「深金字」token 收進三端**
+    （見 `docs/04-設計系統/設計Token規範.md`「已知缺口：深金字」）。
 
 ### PENDING
 - 店員登入未做，`staffId` 一律傳 null，`App.jsx` 還有 `const STAFF = "小美"` 寫死
