@@ -1,0 +1,21 @@
+# ─────────────────────────────────────────────────────────
+# 三個程式 repo 各自獨立版控，不可納入本 repo
+# 它們在 GitHub 上是 migi-hq/migi-pos、migi-web、migi-admin
+# ─────────────────────────────────────────────────────────
+/migi-pos/
+/migi-web/
+/migi-admin/
+
+# Claude Code 的本機設定（含個人權限選擇，不共用）
+/.claude/settings.local.json
+
+# 作業系統與編輯器雜物
+Thumbs.db
+desktop.ini
+.DS_Store
+*.swp
+*~
+
+# 暫存
+/tmp/
+*.tmp

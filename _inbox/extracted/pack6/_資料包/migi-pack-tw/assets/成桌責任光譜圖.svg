@@ -1,0 +1,99 @@
+<svg viewBox="0 0 1240 720" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,'PingFang TC','Microsoft JhengHei',sans-serif">
+  <defs>
+    <linearGradient id="spec" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#E8D5C4"/>
+      <stop offset="0.33" stop-color="#F0C9B8"/>
+      <stop offset="0.66" stop-color="#F4B6C4"/>
+      <stop offset="1" stop-color="#C2607A"/>
+    </linearGradient>
+    <filter id="sh" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="6" stdDeviation="12" flood-color="#1A1518" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+
+  <rect width="1240" height="720" fill="#1A1518"/>
+
+  <!-- 頁首 -->
+  <circle cx="60" cy="56" r="20" fill="#C2607A"/>
+  <text x="92" y="50" fill="#C9899C" font-size="13" font-weight="600" letter-spacing="2">護城河 · 核心模型</text>
+  <text x="92" y="78" fill="#FFFFFF" font-size="30" font-weight="700">成桌責任光譜</text>
+  <text x="372" y="78" fill="#C9899C" font-size="22" font-weight="400">從「自己湊」到「MIGI 幫你湊」</text>
+
+  <!-- 光譜帶 -->
+  <text x="60" y="128" fill="#FFFFFF" font-size="15" font-weight="600">客人自己負責成桌</text>
+  <text x="1180" y="128" fill="#F4B6C4" font-size="15" font-weight="600" text-anchor="end">MIGI 負責成桌</text>
+  <rect x="60" y="140" width="1120" height="12" rx="6" fill="url(#spec)"/>
+  <polygon points="600,160 640,160 620,176" fill="#C9899C"/>
+
+  <!-- 四張卡 -->
+  <!-- 卡1 自帶整團 -->
+  <g filter="url(#sh)">
+    <rect x="60" y="196" width="262" height="300" rx="16" fill="#FFFFFF"/>
+    <rect x="60" y="196" width="262" height="46" rx="16" fill="#EFE0D4"/>
+    <rect x="60" y="226" width="262" height="16" fill="#EFE0D4"/>
+  </g>
+  <text x="80" y="225" fill="#2E2B2C" font-size="16" font-weight="700">① 自帶整團</text>
+  <text x="80" y="276" fill="#9B9591" font-size="13">跟朋友約好直接來</text>
+  <line x1="80" y1="292" x2="302" y2="292" stroke="#F0EEED"/>
+  <text x="80" y="320" fill="#9B9591" font-size="12">成桌責任</text><text x="302" y="320" fill="#2E2B2C" font-size="14" font-weight="700" text-anchor="end">客人 100%</text>
+  <text x="80" y="356" fill="#9B9591" font-size="12">計費</text><text x="302" y="356" fill="#2E2B2C" font-size="14" font-weight="700" text-anchor="end">包桌</text>
+  <text x="80" y="392" fill="#9B9591" font-size="12">關係</text><text x="302" y="392" fill="#2E2B2C" font-size="14" font-weight="700" text-anchor="end">鞏固已有關係</text>
+  <text x="80" y="428" fill="#9B9591" font-size="12">MIGI 角色</text><text x="302" y="428" fill="#2E2B2C" font-size="14" font-weight="700" text-anchor="end">場地</text>
+
+  <!-- 卡2 外部揪團 -->
+  <g filter="url(#sh)">
+    <rect x="338" y="196" width="262" height="300" rx="16" fill="#FFFFFF"/>
+    <rect x="338" y="196" width="262" height="46" rx="16" fill="#EFD9CE"/>
+    <rect x="338" y="226" width="262" height="16" fill="#EFD9CE"/>
+  </g>
+  <text x="358" y="225" fill="#2E2B2C" font-size="16" font-weight="700">② 外部揪團</text>
+  <text x="358" y="276" fill="#9B9591" font-size="13">LINE / IG 找人補咖</text>
+  <line x1="358" y1="292" x2="580" y2="292" stroke="#F0EEED"/>
+  <text x="358" y="320" fill="#9B9591" font-size="12">成桌責任</text><text x="580" y="320" fill="#2E2B2C" font-size="14" font-weight="700" text-anchor="end">客人主導</text>
+  <text x="358" y="356" fill="#9B9591" font-size="12">計費</text><text x="580" y="356" fill="#2E2B2C" font-size="14" font-weight="700" text-anchor="end">包桌</text>
+  <text x="358" y="392" fill="#9B9591" font-size="12">關係</text><text x="580" y="392" fill="#2E2B2C" font-size="14" font-weight="700" text-anchor="end">已有關係＋收編</text>
+  <text x="358" y="428" fill="#9B9591" font-size="12">MIGI 角色</text><text x="580" y="428" fill="#2E2B2C" font-size="14" font-weight="700" text-anchor="end">收編者</text>
+
+  <!-- 卡3 系統配桌 -->
+  <g filter="url(#sh)">
+    <rect x="616" y="196" width="262" height="300" rx="16" fill="#FFFFFF"/>
+    <rect x="616" y="196" width="262" height="46" rx="16" fill="#F7D6DF"/>
+    <rect x="616" y="226" width="262" height="16" fill="#F7D6DF"/>
+  </g>
+  <text x="636" y="225" fill="#2E2B2C" font-size="16" font-weight="700">③ 系統配桌</text>
+  <text x="636" y="276" fill="#9B9591" font-size="13">演算法媒合陌生人</text>
+  <line x1="636" y1="292" x2="858" y2="292" stroke="#F0EEED"/>
+  <text x="636" y="320" fill="#9B9591" font-size="12">成桌責任</text><text x="858" y="320" fill="#C2607A" font-size="14" font-weight="700" text-anchor="end">MIGI 主導</text>
+  <text x="636" y="356" fill="#9B9591" font-size="12">計費</text><text x="858" y="356" fill="#2E2B2C" font-size="14" font-weight="700" text-anchor="end">配桌</text>
+  <text x="636" y="392" fill="#9B9591" font-size="12">關係</text><text x="858" y="392" fill="#C2607A" font-size="14" font-weight="700" text-anchor="end">創造新關係</text>
+  <text x="636" y="428" fill="#9B9591" font-size="12">MIGI 角色</text><text x="858" y="428" fill="#2E2B2C" font-size="14" font-weight="700" text-anchor="end">媒人(自動)</text>
+
+  <!-- 卡4 店員配桌 -->
+  <g filter="url(#sh)">
+    <rect x="894" y="196" width="286" height="300" rx="16" fill="#FFFFFF"/>
+    <rect x="894" y="196" width="286" height="46" rx="16" fill="#C2607A"/>
+    <rect x="894" y="226" width="286" height="16" fill="#C2607A"/>
+  </g>
+  <text x="914" y="225" fill="#FFFFFF" font-size="16" font-weight="700">④ 店員配桌</text>
+  <text x="914" y="276" fill="#9B9591" font-size="13">店員撮合 · 人情溫度</text>
+  <line x1="914" y1="292" x2="1160" y2="292" stroke="#F0EEED"/>
+  <text x="914" y="320" fill="#9B9591" font-size="12">成桌責任</text><text x="1160" y="320" fill="#C2607A" font-size="14" font-weight="700" text-anchor="end">MIGI 100%</text>
+  <text x="914" y="356" fill="#9B9591" font-size="12">計費</text><text x="1160" y="356" fill="#2E2B2C" font-size="14" font-weight="700" text-anchor="end">配桌</text>
+  <text x="914" y="392" fill="#9B9591" font-size="12">關係</text><text x="1160" y="392" fill="#C2607A" font-size="14" font-weight="700" text-anchor="end">創造新關係</text>
+  <text x="914" y="428" fill="#9B9591" font-size="12">MIGI 角色</text><text x="1160" y="428" fill="#2E2B2C" font-size="14" font-weight="700" text-anchor="end">媒人(人工)</text>
+
+  <!-- 兩端註解 -->
+  <rect x="60" y="524" width="540" height="80" rx="12" fill="#F3E9E1" opacity="0.95"/>
+  <text x="80" y="552" fill="#A8763E" font-size="14" font-weight="700">左端 ＝ 基本盤</text>
+  <text x="80" y="576" fill="#6E6965" font-size="12.5">自帶／外部揪團,客人自己湊,MIGI 賺包桌費。穩定好預測,</text>
+  <text x="80" y="594" fill="#6E6965" font-size="12.5">是招團冷啟動的對象,但可被取代。</text>
+
+  <rect x="640" y="524" width="540" height="80" rx="12" fill="#FBE3E9" opacity="0.95"/>
+  <text x="660" y="552" fill="#C2607A" font-size="14" font-weight="700">右端 ＝ 護城河</text>
+  <text x="660" y="576" fill="#6E6965" font-size="12.5">系統／店員配桌,MIGI 無中生有創造陌生人牌咖關係,</text>
+  <text x="660" y="594" fill="#6E6965" font-size="12.5">長在平台上,離開就散。越往右越不可取代。</text>
+
+  <!-- 底部關鍵戰略 -->
+  <text x="620" y="656" fill="#C9899C" font-size="15" font-weight="600" text-anchor="middle">關鍵戰略:把「配桌」從湊人升級成「媒合」(段位／積分／風格合拍)</text>
+  <text x="620" y="682" fill="#F4B6C4" font-size="15" font-weight="700" text-anchor="middle">→ 提高陌生人打完互加牌咖的機率 → 這是「人鎖人」護城河的引擎</text>
+</svg>

@@ -1,0 +1,1073 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=1280"><title>現有介面預覽（Sidebar + 桌況 + 開桌 + 桌工作區）</title>
+<style>
+:root{--peach:#FAD6DC;--sakura:#FFE7EE;--rose:#C2607A;--ink:#2E2B2C;--gray1:#7A7572;--gray2:#9A9491;--gray3:#B4AEA9;--milk:#EFE3DA;--card:#F8F7F6;--white:#FFFFFF;--line:#ECEAE9;--idle:#F2F0EE}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;color:var(--ink);background:#e9e6e3}
+.tag{position:fixed;top:8px;right:8px;background:var(--ink);color:#fff;font-size:11px;padding:5px 12px;border-radius:99px;z-index:99;opacity:.85}
+.app{height:100vh;max-width:1280px;margin:0 auto;background:var(--card);display:flex;overflow:hidden;position:relative}
+.bear{border-radius:50%;background:#FFFFFF;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.bear svg{width:100%;height:100%}
+
+/* Sidebar */
+.sidebar{width:168px;flex-shrink:0;background:#fff;display:flex;flex-direction:column;padding:20px 14px;border-right:1px solid var(--line);overflow:hidden;transition:width .22s cubic-bezier(.4,0,.2,1),padding .22s,opacity .16s}
+.sidebar.hide{width:0;padding-left:0;padding-right:0;opacity:0;border-right:none}
+.logo{font-size:21px;font-weight:800;letter-spacing:2px;padding:0 10px 30px}
+.navgrp{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.navgrp:first-of-type{margin-top:4px;padding-top:0;border-top:none}
+.navitem{padding:9px 12px;border-radius:9px;cursor:pointer;font-size:16px;font-weight:500;margin-bottom:1px}
+.navitem.on{font-weight:600;background:var(--peach)}
+.navitem:hover:not(.on){background:#F7F5F3}
+.sidefoot{margin-top:auto;padding-top:12px;border-top:1px solid #F0EEEC;font-size:15px;color:var(--gray1)}
+.sidefoot b{color:var(--ink)}
+.sidefoot .logout{font-size:14px;color:var(--rose);cursor:pointer;margin-top:4px}
+
+/* Board */
+.board{flex:1;display:none;flex-direction:column;overflow:hidden}
+.board.on{display:flex}
+.topbar{background:#fff;border-bottom:1px solid var(--line);flex-shrink:0;padding:12px 24px 0}
+.topbar-row{display:flex;justify-content:space-between;align-items:center;padding-bottom:13px}
+.topbar-title{font-size:22px;font-weight:900}
+.pill{border-radius:99px;padding:5px 12px;font-size:13px;font-weight:500}
+.pill.peach{background:var(--peach)}
+.pill.idle{background:var(--idle);color:var(--gray1)}
+.body{flex:1;overflow:auto;padding:20px 24px 40px}
+.arealabel{font-size:15px;font-weight:700;color:var(--gray1);margin-bottom:10px}
+.arealabel span{font-weight:400;color:var(--gray2)}
+.grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:22px}
+.tcard{border-radius:14px;padding:14px 16px;min-height:104px;display:flex;flex-direction:column;cursor:pointer}
+.tcard.use{background:var(--peach)}
+.tcard.idle{background:#fff;border:1.5px solid var(--line)}
+.tcard.off{background:var(--idle);opacity:.75}
+.tcard .hd{display:flex;justify-content:space-between;align-items:flex-start}
+.tcard .no{font-size:26px;font-weight:800;letter-spacing:1px}
+.tcard .st{background:rgba(255,255,255,.6);border-radius:99px;padding:3px 11px;font-size:13px;font-weight:500}
+.tcard.idle .st{background:var(--idle);color:var(--gray1)}
+.tcard.off .st{background:#E4E0DD;color:var(--gray1)}
+.tcard .people{font-size:15px;margin-top:8px;font-weight:500}
+.tcard .dur{font-size:13px;margin-top:3px;color:var(--gray1)}
+.tcard .opennote{font-size:13px;margin-top:8px;color:var(--gray1)}
+.tcard button{margin-top:auto;background:var(--ink);color:#fff;border:none;border-radius:99px;padding:8px 0;font-size:14px;font-weight:700;cursor:pointer}
+
+/* Open Checkout (三欄) */
+.checkout{flex:1;display:none;flex-direction:column;overflow:hidden}
+.checkout.on{display:flex}
+.ck-top{background:#fff;border-bottom:1px solid var(--line);flex-shrink:0;padding:0 24px}
+/* ===== 開桌前置 ===== */
+.setup{flex:1;display:none;flex-direction:column;overflow:hidden}
+.setup.on{display:flex}
+.setup-body{flex:1;overflow-y:auto;padding:24px 22px 40px}
+.setup-inner{max-width:700px;margin:0 auto}
+.setup-inner h2{font-size:18px;margin:0 0 4px}
+.setup-inner .lead{font-size:13px;color:var(--gray1);margin:0 0 18px}
+.grp{padding:15px 0 0}
+.grp>p{margin:0 0 9px;font-size:15px;font-weight:700}
+.grp>p span{font-weight:400;font-size:12px;color:var(--gray1);margin-left:6px}
+.schip{display:inline-block;border:1.5px solid var(--line);background:#fff;border-radius:11px;padding:11px 17px;margin:0 8px 8px 0;cursor:pointer;font-size:13.5px;font-weight:600;transition:.12s}
+.schip:hover{border-color:var(--gray3)}
+.schip.on{border-color:var(--rose);background:#FFF6F8;font-weight:800}
+.sopt{border:1.5px solid var(--line);border-radius:13px;padding:15px;cursor:pointer;background:#fff;transition:.12s}
+.sopt:hover{border-color:var(--gray3)}
+.sopt.on{border-color:var(--rose);background:#FFF6F8}
+.sopt b{display:block;font-size:15px}
+.sopt span{display:block;font-size:12px;color:var(--gray1);margin-top:4px}
+.sg2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.snote{background:var(--card);border-radius:12px;padding:13px 15px;font-size:12.5px;color:var(--gray1);line-height:1.7;margin-top:14px}
+.snote b{color:var(--ink)}
+.setup-foot{border-top:1px solid var(--line);padding:14px 22px;background:#fff;flex-shrink:0}
+.setup-foot button{width:100%;max-width:700px;margin:0 auto;display:block;background:var(--ink);color:#fff;border:none;border-radius:99px;padding:15px;font-size:15px;font-weight:700;cursor:pointer}
+.setup-foot button:disabled{opacity:.3;cursor:not-allowed}
+.toplogo{font-size:22px;font-weight:900;letter-spacing:.08em;color:var(--ink);padding-right:14px;margin-right:10px;border-right:1px solid var(--line)}
+.backbtn{font-size:14px;font-weight:700;color:var(--gray1);cursor:pointer;white-space:nowrap;transition:.15s}
+.backbtn:hover{color:var(--rose)}
+.ck-titlebar{display:flex;align-items:center;gap:10px;height:72px}
+.ck-titlebar .no{font-size:22px;font-weight:900;letter-spacing:.05em;margin-right:8px}
+.ck-titlebar .m{font-size:13px;color:var(--gray1);font-weight:500}
+.ck-titlebar .stat{background:var(--peach);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:500;margin-left:auto}
+.ck-body{flex:1;display:flex;min-height:0}
+.seatcol{width:216px;flex-shrink:0;border-right:1px solid var(--line);background:var(--card);display:flex;flex-direction:column;gap:9px;padding:12px 10px;overflow-y:auto}
+.seatcard{display:flex;align-items:center;gap:8px;padding:13px 10px;background:#fff;border:1.5px solid var(--line);border-radius:12px;cursor:pointer;position:relative}
+.seatcard.cur{border:2px solid var(--rose);padding:12.5px 10.5px}
+.seatcard.empty{border:1.5px dashed #DED9D5;color:var(--gray2)}
+.seatcard.empty:hover{border-color:var(--rose);background:#FFFBFC}
+.seatcard .addic{width:40px;height:40px;border-radius:50%;background:var(--idle);color:var(--gray1);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;flex-shrink:0}
+.seatcard .nm{font-size:15px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.seatcard .bal{font-size:12px;font-weight:700;color:var(--gray1);margin-top:3px}
+.seatcard .badge{margin-left:auto;font-size:10.5px;font-weight:800;padding:5px 9px;border-radius:99px;white-space:nowrap;flex-shrink:0}
+.seatcard .badge.unpaid{background:var(--rose);color:#fff}
+.seatcard .badge.paid{background:var(--idle);color:var(--gray2)}
+.seatcard .badge.proxy{background:var(--peach);color:var(--ink)}
+.seatcard .rm{position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;background:#fff;border:1.5px solid var(--line);color:var(--gray1);display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer}
+
+.midcol{flex:1;display:flex;flex-direction:column;min-width:0}
+.mid-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--gray3)}
+.mid-empty b{font-size:17px;color:var(--gray1)}
+.mid-title{padding:16px 22px 0;font-size:18px;font-weight:800}
+.mid-cats{display:flex;gap:8px;padding:12px 22px 0;flex-wrap:wrap}
+.mid-cat{border:1.5px solid #E8E4E1;border-radius:99px;padding:6px 15px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:#8A857F}
+.mid-cat.on{border-color:var(--peach);background:var(--peach);color:var(--ink)}
+.mid-items{flex:1;overflow-y:auto;padding:14px 22px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-content:start}
+.item{position:relative;border:1.5px solid var(--line);background:#fff;border-radius:14px;padding:13px;cursor:pointer;min-height:78px}
+.item.has{border-color:var(--rose);background:#FFF6F8}
+.item .qty{position:absolute;top:10px;right:10px;min-width:26px;height:26px;border-radius:99px;background:var(--rose);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;padding:0 8px}
+.item .plus{position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;background:var(--idle);color:var(--gray1);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700}
+.item .nm{font-size:13px;font-weight:700;padding-right:30px}
+.item .pr{font-size:14px;font-weight:800;margin-top:6px}
+
+.rcol{width:420px;flex-shrink:0;border-left:1px solid var(--line);background:#fff;display:flex;flex-direction:column;overflow-y:auto}
+.pbar{padding:14px 18px;background:var(--peach);display:flex;align-items:center;gap:11px}
+.pbar>div:not(.bear){min-width:0;flex:1}
+.pbar .nm{font-size:17px;font-weight:800;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pbar .lv{font-size:11px;font-weight:700;padding:3px 11px;border-radius:99px;background:rgba(255,255,255,.62)}
+/* 座位卡上的「付整桌」切換鈕：預設各自付，點了才由這位付全額、其餘歸零 */
+.wholebtn{position:absolute;bottom:-6px;right:-5px;border:1.5px solid var(--line);background:#fff;border-radius:99px;padding:3px 9px;font-size:10px;font-weight:800;color:var(--gray1);cursor:pointer;transition:.12s;white-space:nowrap;z-index:2}
+.wholebtn:hover{border-color:var(--rose);color:var(--rose)}
+.wholebtn.on{background:var(--rose);border-color:var(--rose);color:#fff}
+.balbox{display:flex;align-items:center;margin:12px 18px 4px;background:var(--card);border-radius:14px;padding:11px 13px}
+.balbox .lb{font-size:13px;font-weight:600}
+.balbox .v{font-size:20px;font-weight:700;margin-left:10px}
+.balbox button:last-child{margin-left:auto;background:var(--ink);color:#fff;border:none;border-radius:99px;padding:7px 15px;font-size:11px;font-weight:700;cursor:pointer}
+.mtitle{padding:12px 18px 8px;font-size:18px;font-weight:800}
+.feefix{padding:6px 18px 0;flex-shrink:0}
+.payfor-wrap{padding:8px 18px 0;flex-shrink:0}
+.lines{flex:1 0 auto;padding:0 18px;min-height:0}
+.qtylock{font-size:14px;font-weight:800;color:var(--gray2);min-width:56px;text-align:center}
+.lines .empty{color:var(--gray3);font-size:13px;text-align:center;padding:20px 0}
+.lineitem{display:flex;align-items:center;gap:8px;padding:9px 0}
+.lineitem .nm{font-size:15.5px;font-weight:700}
+.lineitem .unit{font-size:12px;color:var(--gray2);margin-top:2px}
+.stepbtn{width:26px;height:26px;border-radius:50%;border:none;background:transparent;color:var(--gray1);font-size:18px;font-weight:700;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:.12s;font-family:'Segoe UI',Arial,sans-serif;padding:0}
+.stepbtn:hover{background:var(--idle);color:var(--ink)}
+.payfor-btn .caret{position:absolute;right:13px;top:50%;transform:translateY(-50%);font-size:17px;line-height:1;transition:transform .18s;display:inline-block}
+.payfor-btn .caret.open{transform:translateY(-50%) rotate(90deg)}
+/* 代付按鈕與展開列表為同一組：都用粉色實框，展開時無縫相連 */
+.payfor-btn{position:relative;width:100%;margin:0 0 8px;border:1.5px dashed #E3C9D2;background:#fff;color:var(--rose);border-radius:10px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;transition:.12s;text-align:center}
+.payfor-btn:hover{border-color:var(--rose)}
+.payfor-btn.open{}
+.payfor-list{border:1.5px solid #F0E0E5;border-radius:10px;padding:4px;margin:0 0 12px;background:#FFFBFC}
+.payfor-item{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:13.5px;transition:.12s}
+.payfor-item:hover{background:#fff}
+.payfor-item .ck{width:19px;height:19px;border-radius:50%;border:1.5px solid var(--gray3);display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;flex-shrink:0}
+.payfor-item.on .ck{background:var(--rose);border-color:var(--rose)}
+.payfor-item .nm{font-weight:700}
+.payfor-item .v{margin-left:auto;font-size:12px;color:var(--rose);font-weight:700;font-family:'Segoe UI',sans-serif}
+.payfor-item.off{opacity:.45;cursor:not-allowed}
+.payfor-item.off .v{color:var(--gray2)}
+.couponbtn{width:100%;margin:0 0 12px;border:1.5px dashed #E3C9D2;background:transparent;color:var(--rose);border-radius:10px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;transition:.12s}
+.couponbtn:hover{border-color:var(--rose)}
+.couponbtn.on{border-style:solid;border-color:var(--rose);background:var(--rose);color:#fff}
+.checkoutbar{padding:14px 18px 14px;flex-shrink:0;border-top:1px solid var(--line)}
+.row{display:flex;align-items:center;font-size:14.5px;color:var(--gray1);font-weight:600;padding:6px 0}
+.row .v{margin-left:auto;font-weight:800;font-size:15.5px;color:var(--ink);font-family:'Segoe UI',sans-serif}
+.row .v.minus{color:var(--rose)}
+.payable{display:flex;align-items:center;margin:10px 0 6px}
+.payable .lb{font-size:15px;font-weight:800}
+.payable .v{margin-left:auto;font-size:20px;font-weight:800}
+.ptrow{display:flex;align-items:center;padding:6px 0;min-height:32px}
+.ptrow .lb{font-size:14.5px;color:var(--gray1);font-weight:600}
+.ptval{margin-left:auto;font-size:16px;font-weight:800;color:var(--rose);cursor:pointer;border-bottom:1.5px dashed var(--rose);font-family:'Segoe UI',sans-serif}
+.ptval.off{color:var(--gray2);border-bottom-color:var(--gray3)}
+.topup-sep{border-top:1px solid var(--line);margin:8px 0 6px}
+.fullpt{border:none;background:var(--peach);color:var(--ink);border-radius:99px;padding:5px 12px;font-size:11.5px;font-weight:800;cursor:pointer}
+.ptinline{width:86px;border:1.5px solid var(--rose);border-radius:8px;padding:5px 8px;font-size:16px;font-weight:800;text-align:right;font-family:'Segoe UI',sans-serif;color:var(--rose);outline:none}
+.rmtopup{margin-left:8px;color:var(--rose);font-size:11px;cursor:pointer;font-weight:700}
+.rmtopup:hover{text-decoration:underline}
+.due{display:flex;align-items:center;margin:10px 0 10px}
+.due .lb{font-size:16px;font-weight:800;color:var(--ink)}
+.due .v{margin-left:auto;font-size:34px;font-weight:900;letter-spacing:-.5px;color:var(--ink);font-family:'Segoe UI',sans-serif}
+.cashfield{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.cashfield label{font-size:14px;color:var(--gray1);width:70px;flex-shrink:0;font-weight:600}
+.cashfield input{flex:1;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;font-size:17px;text-align:right;font-weight:800;font-family:'Segoe UI',sans-serif}
+.changerow{display:flex;justify-content:space-between;align-items:center;padding:6px 0 10px;font-size:14px;color:var(--gray1);font-weight:600}
+.changerow b{font-size:19px;color:var(--rose);font-weight:900;font-family:'Segoe UI',sans-serif}
+.quickcash{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+.quickcash button{flex:1;min-width:52px;border:1.5px solid var(--line);background:#fff;border-radius:9px;padding:8px 4px;font-size:13px;font-weight:700;color:var(--ink);cursor:pointer}
+.quickcash button:hover{border-color:var(--rose)}
+.paywayrow{display:flex;gap:7px;margin-bottom:10px}
+.payway{flex:1;text-align:center;border:1.5px solid #ECEAE9;border-radius:10px;padding:9px 4px;font-size:13px;font-weight:700;cursor:pointer;background:#fff}
+.payway.sel{border-color:var(--ink);background:var(--ink);color:#fff}
+.paybtn{width:100%;background:var(--ink);color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer}
+.paybtn:disabled{background:var(--gray3);cursor:not-allowed}
+.footbar{background:#fff;border-top:1px solid var(--line);padding:12px 24px;display:flex;align-items:center;flex-shrink:0}
+.footbar .info{font-size:15px;color:var(--gray1)}
+.footbar .info2{font-size:14px;color:var(--gray2);margin-left:14px}
+.footbar button{margin-left:auto;background:var(--ink);color:#fff;border:none;border-radius:99px;padding:12px 28px;font-size:16px;font-weight:500;cursor:pointer}
+.footbar button:disabled{opacity:.35;cursor:not-allowed}
+
+/* Table workarea (playing) */
+.tabbar{display:inline-flex;gap:3px;margin-top:10px;margin-bottom:12px;background:var(--idle);border-radius:10px;padding:3px}
+.tabitem{padding:8px 26px;font-size:14px;font-weight:700;border-radius:8px;cursor:pointer;color:var(--gray1)}
+.tabitem.on{color:var(--ink);background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+
+/* Modal */
+.modal-mask{position:absolute;inset:0;background:rgba(46,43,44,.4);display:none;align-items:center;justify-content:center;z-index:60}
+.modal-mask.on{display:flex}
+.modal{width:480px;max-width:92%;max-height:86%;background:#fff;border-radius:20px;padding:22px 24px;overflow:auto;position:relative}
+.modal .x{position:absolute;top:18px;right:20px;width:30px;height:30px;border-radius:50%;background:var(--idle);color:var(--gray1);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.modal h3{font-size:18px;font-weight:800;margin:0 0 14px}
+.searchbox{display:flex;align-items:center;border:1.5px solid #E0DCD8;border-radius:12px;padding:10px 13px;margin-bottom:12px}
+.searchbox input{flex:1;border:none;outline:none;font-size:15px;font-weight:600}
+.mrow{display:flex;align-items:center;gap:11px;padding:12px 10px;border-radius:12px;cursor:pointer}
+.mrow>div:nth-child(2){min-width:0;flex:1}
+.mrow:hover{background:#FBFAF9}
+.mrow .nm{font-size:15px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mrow .sub{font-size:12px;color:var(--gray2);margin-top:2px}
+.mrow .bal{margin-left:auto;font-size:13px;font-weight:800}
+
+.toast{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 22px;border-radius:99px;font-size:16px;font-weight:500;z-index:70;white-space:nowrap;display:none}
+
+/* ===== 收據：三段分區（品項／結算／收款），用分隔線＋字級＋顏色分層 ===== */
+.receipt-badge{display:flex;align-items:center;justify-content:center;gap:10px;padding:24px 18px 22px;font-size:18px;font-weight:900;color:var(--ink)}
+.receipt-badge .ck{width:26px;height:26px;border-radius:50%;background:var(--rose);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;flex-shrink:0}
+
+.rsec{padding:0 18px}
+.rsec + .rsec{border-top:1px solid var(--line);margin-top:12px;padding-top:12px}
+.paidby-note{background:var(--card);border-radius:12px;padding:16px;font-size:13.5px;color:var(--gray1);line-height:1.8;text-align:center}
+.paidby-note b{color:var(--ink);font-weight:800}
+.paidby-note span{font-size:12px;color:var(--gray2)}
+.rsec-lbl{font-size:11px;font-weight:800;color:var(--gray2);letter-spacing:.05em;margin-bottom:8px}
+
+/* 第一區：買了什麼——品名深色、金額墨色，最重 */
+.receipt-item{display:flex;align-items:flex-start;padding:7px 0;font-size:14.5px;font-weight:700;color:var(--ink)}
+.receipt-item .qty{color:var(--gray2);font-weight:500;margin-left:5px;font-size:13px}
+.receipt-item .v{margin-left:auto;font-family:'Segoe UI',sans-serif;font-weight:800}
+
+/* 第二區：怎麼算的——標籤灰、折抵紅、實付最大 */
+.receipt-row{display:flex;align-items:center;font-size:13.5px;color:var(--gray1);font-weight:500;padding:5px 0}
+.receipt-row .v{margin-left:auto;font-weight:700;font-size:14px;color:var(--gray1);font-family:'Segoe UI',sans-serif}
+.receipt-row .v.minus{color:var(--rose);font-weight:800}
+.receipt-total{display:flex;align-items:baseline;margin:12px 0 2px}
+.receipt-total .lb{font-size:15px;font-weight:800;color:var(--ink)}
+.receipt-total .v{margin-left:auto;font-size:30px;font-weight:900;letter-spacing:-.5px;color:var(--ink);font-family:'Segoe UI',sans-serif}
+
+/* 第三區：怎麼付的——全灰次要，只有找零用玫瑰色強調 */
+.receipt-change{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13.5px;color:var(--gray1);font-weight:500}
+.receipt-change b{font-size:14px;color:var(--gray1);font-weight:700;font-family:'Segoe UI',sans-serif}
+.rdivide{border-top:1px dashed var(--line);margin:8px 0 6px}
+.receipt-change.hl{padding-top:2px}
+.receipt-change.hl span{color:var(--ink);font-weight:700}
+.receipt-change.hl b{font-size:20px;color:var(--rose);font-weight:900}
+.addon-btn{width:calc(100% - 36px);margin:14px 18px;background:var(--ink);color:#fff;border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:700;cursor:pointer}
+
+/* 儲值加入購物車後的區塊 */
+.topup-block{margin:0 18px 4px;border:1.5px dashed var(--rose);border-radius:12px;padding:11px 13px;background:#FFFBFC}
+.topup-block .lbl{font-size:11px;font-weight:700;color:var(--rose);margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.topup-block .row{display:flex;justify-content:space-between;font-size:14px;font-weight:700;align-items:center}
+.topup-block .row .rm{font-size:12px;color:var(--gray2);cursor:pointer;font-weight:400;margin-left:8px}
+.subtotal-lbl{padding:4px 18px 2px;font-size:11px;color:var(--gray2);font-weight:700}
+
+.topup-note{font-size:12px;color:var(--gray1);margin:-4px 0 16px;line-height:1.6}
+.topup-balbox{background:var(--card);border-radius:12px;padding:12px 15px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.topup-balbox .lb{font-size:13px;font-weight:600;color:var(--ink)}
+.topup-balbox .v{font-size:19px;font-weight:800;color:var(--ink)}
+.topup-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:18px}
+.topup-opt{border:1.5px solid var(--line);border-radius:13px;padding:13px 0;text-align:center;cursor:pointer}
+.topup-opt.sel{border-color:var(--rose);background:#FFF6F8}
+.topup-opt .num{font-size:17px;font-weight:800;color:var(--ink)}
+.topup-opt.sel .num{color:var(--ink)}
+.topup-opt .bonus{font-size:10px;color:var(--rose);margin-top:3px}
+.topup-opt.custom .num{color:var(--gray2)}
+.topup-opt.custom.sel .num{color:var(--ink)}
+.topup-section-lbl{font-size:12.5px;color:var(--gray1);margin:4px 0 9px}
+.topup-way{display:flex;justify-content:space-between;align-items:center;border:1.5px solid var(--line);border-radius:12px;padding:13px 15px;cursor:pointer;margin-bottom:9px}
+.topup-way.sel{border:2px solid var(--ink);padding:12.5px 14.5px}
+.topup-way .nm{font-size:14px;font-weight:600;color:var(--ink)}
+.topup-way .sub{font-size:11px;color:var(--gray1);margin-top:2px}
+.topup-way .dot{font-size:14px;color:var(--gray2)}
+.topup-way.sel .dot{color:var(--ink)}
+.topup-custom-mask{position:fixed;inset:0;background:rgba(46,43,44,.45);display:none;align-items:center;justify-content:center;z-index:80;padding:24px}
+.topup-custom-mask.on{display:flex}
+.topup-custom-card{background:#fff;border-radius:20px;width:100%;max-width:300px;padding:22px 20px}
+.topup-custom-card .ttl{margin:0 0 4px;font-size:15px;font-weight:700}
+.topup-custom-card .sub{margin:0 0 14px;font-size:12px;color:var(--gray2)}
+.topup-custom-card input{width:100%;font-size:18px;font-weight:700;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;background:var(--card);text-align:center;box-sizing:border-box}
+.topup-custom-btns{display:flex;gap:9px;margin-top:15px}
+.topup-custom-btns button{flex:1;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer}
+
+.topup-flash{background:var(--peach);border-radius:12px;padding:12px 16px;margin:12px 18px 4px;display:flex;align-items:center;gap:10px;animation:flashIn .25s ease-out}
+@keyframes flashIn{0%{opacity:0;transform:translateY(-6px)}100%{opacity:1;transform:translateY(0)}}
+.topup-flash .ck{width:24px;height:24px;border-radius:50%;background:var(--rose);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.topup-flash .txt{font-size:13px;font-weight:700}
+.topup-flash .txt span{font-weight:400;color:var(--gray1);display:block;font-size:11px;margin-top:1px}
+</style></head><body>
+<span class="tag">現有介面忠實預覽（Sidebar → 桌況 → 開桌三欄 → 帶桌後桌工作區）</span>
+<div class="app" id="app">
+
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="logo">MIGI</div>
+  <div class="navgrp"><div class="navitem on" id="nav-board">即時桌況</div><div class="navitem" id="nav-queue">配桌列表</div></div>
+  <div class="navgrp"><div class="navitem">點餐出餐</div><div class="navitem">券核銷</div><div class="navitem">預約</div></div>
+  <div class="navgrp"><div class="navitem">庫存</div><div class="navitem">報表</div><div class="navitem">交班日結</div></div>
+  <div class="sidefoot">店員：<b>小美</b><div class="logout">交班登出 ›</div></div>
+</div>
+
+<!-- Board -->
+<div class="board on" id="board">
+  <div class="topbar">
+    <div class="topbar-row">
+      <div class="topbar-title">即時桌況 <span style="font-size:16px;font-weight:400;color:var(--gray1)"> · MIGI 高雄自由店</span></div>
+      <div style="display:flex;gap:8px"><span class="pill peach" id="statUse">使用 0/14</span><span class="pill idle" id="statIdle">空桌 14</span></div>
+    </div>
+  </div>
+  <div class="body" id="boardBody"></div>
+</div>
+
+<!-- 開桌前置 -->
+<div class="setup" id="setup">
+  <div class="ck-top">
+    <div class="ck-titlebar"><span class="toplogo">MIGI</span><span class="no" id="setupNo"></span><span class="m">開桌設定</span><span class="backbtn" style="margin-left:auto" onclick="backToBoard()">‹ 回到即時桌況</span></div>
+  </div>
+  <div class="setup-body"><div class="setup-inner">
+    <h2>這桌怎麼開</h2>
+    <p class="lead">選好之後進入結帳頁，逐一為客人收費</p>
+
+    <div class="grp"><p>模式</p>
+      <div class="sg2">
+        <div class="sopt" id="so-match" onclick="sPick('mode','matched')"><b>配桌</b><span>店家湊人 · 按將數收費</span></div>
+        <div class="sopt" id="so-priv" onclick="sPick('mode','private')"><b>包桌</b><span>客人自己揪團 · 按時段收費</span></div>
+      </div>
+    </div>
+
+    <div class="grp" id="sg-rounds" style="display:none"><p>打幾將</p><div id="sc-rounds"></div></div>
+    <div class="grp" id="sg-min" style="display:none"><p>預估時段</p><div id="sc-min"></div></div>
+
+    <div class="grp"><p>遊戲規則</p><div id="sc-kind"></div></div>
+    <div class="grp"><p>花牌</p><div id="sc-flower"></div></div>
+    <div class="grp"><p>想打多少積分</p><div id="sc-stake"></div></div>
+
+    <div class="snote" id="snote" style="display:none"></div>
+  </div></div>
+  <div class="setup-foot"><button id="setupNext" disabled onclick="setupDone()">開桌，開始收費</button></div>
+</div>
+
+<!-- Checkout (開桌 stage=open) -->
+<div class="checkout" id="checkout">
+  <div class="ck-top">
+    <div class="ck-titlebar"><span class="toplogo">MIGI</span><span class="no" id="ckNo"></span><span class="m">開桌結帳</span><span class="backbtn" style="margin-left:auto" onclick="backToBoard()">‹ 回到即時桌況</span></div>
+  </div>
+  <div class="ck-body">
+    <div class="seatcol" id="seatcol"></div>
+    <div class="midcol" id="midcol"></div>
+    <div class="rcol" id="rcol" style="display:none"></div>
+  </div>
+  <div class="footbar">
+    <span class="info">已結帳 <b id="paidCount">0</b> / 4 人</span>
+    <span class="info2" id="doneNote">尚缺 4 人</span>
+    <button id="carryBtn" disabled onclick="doCarry()">帶桌 →</button>
+  </div>
+</div>
+
+<!-- Playing workarea -->
+<div class="checkout" id="playing" style="display:none">
+  <div class="ck-top">
+    <div class="ck-titlebar"><span class="toplogo">MIGI</span><span class="no" id="pNo"></span><span class="m">桌工作區</span><span class="backbtn" style="margin-left:auto" onclick="backToBoard()">‹ 回到即時桌況</span></div>
+    <div class="tabbar"><div class="tabitem on" id="tab-consume" onclick="setTab('consume')">消費</div><div class="tabitem" id="tab-seat" onclick="setTab('seat')">座位</div></div>
+  </div>
+  <div class="ck-body" id="playingBody" style="align-items:center;justify-content:center;color:var(--gray2)">座位 TAB（demo，沿用你的 SeatPage 版面）</div>
+  <div class="footbar"><span class="info">使用中 · <span id="pCount">4</span> 人在桌</span>
+    <button onclick="doSettle()">收桌結算</button></div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="modal-mask" id="topupModal"><div class="modal">
+  <span class="x" onclick="closeTopup()">✕</span>
+  <h3>為 <span id="topupName"></span> 儲值點數</h3>
+  <div class="topup-note">選擇金額後將加入本次消費明細，一起結帳</div>
+  <div class="topup-grid" id="topupGrid"></div>
+  <button class="paybtn" id="doTopupBtn" disabled onclick="confirmTopup()">請選擇儲值金額</button>
+</div></div>
+
+<div class="topup-custom-mask" id="topupCustomMask">
+  <div class="topup-custom-card">
+    <p class="ttl">自訂儲值金額</p>
+    <p class="sub">輸入想儲值的金額</p>
+    <input id="topupCustomVal" inputmode="numeric" placeholder="例如 700" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+    <div class="topup-custom-btns">
+      <button style="background:var(--idle);color:var(--gray1)" onclick="closeCustom()">取消</button>
+      <button style="background:var(--ink);color:#fff" onclick="applyCustom()">確定</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- 加入客人 modal -->
+<div class="modal-mask" id="addModal">
+  <div class="modal">
+    <span class="x" onclick="closeAdd()">✕</span>
+    <h3>加入客人</h3>
+    <div class="searchbox"><input placeholder="搜尋姓名或手機末四碼" oninput="filterMembers(this.value)" id="msearch"></div>
+    <div id="memberList"></div>
+  </div>
+</div>
+
+<script>
+var BEAR = '<svg preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" viewBox="97 88 1058 1058"><path fill="#fcf1e8" d="M747.5 153q4 1.1 8 2.1a324 324 0 0 1 38.3 12.2q10.7 3.8 21 8.7 4.6 2.3 9.4 4.3A439 439 0 0 1 950.5 264q8 7.1 15.4 14.8l5 5A279 279 0 0 1 987 301l2.6 3a441 441 0 0 1 54.9 80.7c11 20.2 20.8 41 28 62.9q1.5 4.7 3.5 9.3a392 392 0 0 1 23.7 94.4c16.3 103.7-4.5 209-83.4 347q-5 7-10.3 13.7l-2.1 2.8a507 507 0 0 1-30.4 35c-8 9-16.7 17-25.5 25.2l-2.8 2.6a297 297 0 0 1-19.6 16.1l-6.4 5.2a415 415 0 0 1-66.4 42.6l-7.6 4.1A443 443 0 0 1 759 1080a431 431 0 0 1-83 16.1l-2.7.3q-23.4 2.2-46.9 2H615a275 275 0 0 1-46.7-3.3 625 625 0 0 1-39.3-6l-2.2-.4c-70.1-13.2-137.6-46.2-193.8-89.6l-1.9-1.4a325 325 0 0 1-26-22c-12-10.5-24-21.4-34.4-33.6q-3.1-3.6-6.4-7.1-7.8-8.7-14.8-18l-4.9-6.2A456 456 0 0 1 202 845l-1.3-2.4a439 439 0 0 1-31-72.1C140.5 684.4 139.5 590 161 502l1.3-5.5A439 439 0 0 1 190 417l1.5-3.2a413 413 0 0 1 48.2-82.1l5.7-7.6A413 413 0 0 1 286 278l10.8-10.9 1.5-1.5c49.2-49.5 117.1-86.7 183.6-107l4.3-1.3A464 464 0 0 1 590 138l2.1-.2c51.6-4 105.6 1.1 155.4 15.2"/><path fill="#f8c7c5" d="M747.5 153q4 1.1 8 2.1a324 324 0 0 1 38.3 12.2q10.7 3.8 21 8.7 4.6 2.3 9.4 4.3A439 439 0 0 1 950.5 264q8 7.1 15.4 14.8l5 5A279 279 0 0 1 987 301l2.6 3a441 441 0 0 1 54.9 80.7c11 20.2 20.8 41 28 62.9q1.5 4.7 3.5 9.3a392 392 0 0 1 23.7 94.4c16.3 103.7-4.5 209-83.4 347q-5 7-10.3 13.7l-2.1 2.8a507 507 0 0 1-30.4 35c-8 9-16.7 17-25.5 25.2l-2.8 2.6a297 297 0 0 1-19.6 16.1l-6.4 5.2a381 381 0 0 1-33.7 24l-2.5 1.5-2.3 1.4-2 1.3c-1.7.9-1.7.9-3.7.9q-1.3-6-1.5-12.1A299 299 0 0 0 852 920l-.8-1.9a255 255 0 0 0-48.6-76.3q-4.4-4.8-8.6-9.8l2-.9c19.4-8.2 19.4-8.2 38-18.1l2.2-1.3q17.5-10.3 32.8-23.7l1.7-1.4c30.7-26.8 48.3-60.2 57.3-99.6l.5-2.3C932 670 931.4 655 931 640v-2.4c-.8-32.9-12.5-65-26-94.6q4.8-5.7 9.8-11c19.8-22.3 29-51.8 27.4-81.2l-.2-2.8-.1-2.3c-1.7-25.5-16.3-50.2-34.4-67.6a118 118 0 0 0-45-24.7l-2.6-.8A101 101 0 0 0 766 380l-2.2 2a72 72 0 0 0-11.8 15l-4.6-1.3-2.5-.8c-2.9-.9-2.9-.9-6-2.3q-7.7-3.1-15.8-5l-3.4-1-13.8-3.8q-13.5-3.4-27-5.5l-3.8-.6a309 309 0 0 0-101.1.3l-3.6.6c-24 4.2-46.7 10.7-69.4 19.4l-3 1-1.8-2.5A109 109 0 0 0 467 367l-2.4-1.5a103 103 0 0 0-76.5-12.7 110.2 110.2 0 0 0-78.8 134.6c2.1 7.5 5.3 14.6 8.7 21.6l1.4 3a86 86 0 0 0 22.5 28.1c3 2.6 3 2.6 3.4 5.6l-4.9 11.1c-2.6 6-4.4 12-6.4 18.2l-1.5 4.3Q330 587 328 595l-.8 3c-12.7 49.6-8 101.4 17.8 146a190 190 0 0 0 56 58.3c9.1 6.4 18.8 11.8 28.8 17l3.3 1.7q11.1 5.7 22.9 9.9c0 3 0 3-2.3 5.3l-3.1 2.7a119 119 0 0 0-15.6 17l-2.4 3a250 250 0 0 0-37.6 69l-1 2.5q-4.2 11.6-7 23.4l-.5 2a353 353 0 0 0-9.5 51.1l-.3 2.6-1.7 17.4a45 45 0 0 1-9.5-4.8l-2.6-1.7-2.7-1.9-2.8-1.9A466 466 0 0 1 333 999l-1.9-1.4a325 325 0 0 1-26-22c-12-10.5-24-21.4-34.4-33.6q-3.1-3.6-6.4-7.1-7.8-8.7-14.8-18l-4.9-6.2A456 456 0 0 1 202 845l-1.3-2.4a439 439 0 0 1-31-72.1C140.5 684.4 139.5 590 161 502l1.3-5.5A439 439 0 0 1 190 417l1.5-3.2a413 413 0 0 1 48.2-82.1l5.7-7.6A413 413 0 0 1 286 278l10.8-10.9 1.5-1.5c49.2-49.5 117.1-86.7 183.6-107l4.3-1.3A464 464 0 0 1 590 138l2.1-.2c51.6-4 105.6 1.1 155.4 15.2"/><path fill="#f6d7ca" d="M406.3 403.6h2.7c14.8.4 25.8 6 37 15.4 3 3.5 3 3.5 3 6q-3.4 2.5-7 4.8a244 244 0 0 0-53.3 47.3l-2.3 2.8-9 11.7q-3.2 4.5-7.4 8.4a55 55 0 0 1-16.4-39c0-10 .4-18 5.4-27l1.6-3q11.4-19.4 33-26.4c4.2-1 8.3-1 12.6-1M840.3 403.7h2.6c13.2 0 25.5 5.2 35.1 14.1a64 64 0 0 1 16 29.6c4.4 17-1.9 32-10 46.6l-3 4c-4-1.3-4.9-3.3-7.4-6.6A243 243 0 0 0 827 443l-2.3-1.8C813 432.3 813 432.3 801 424c.7-5 4.2-7 8-10a52 52 0 0 1 31.3-10.3"/><path fill="#5a3f34" d="M651 647c3.6 2.8 5.7 5.3 6.6 9.8.3 6.4-.6 10.6-4.8 15.5L651 674l-1.6 1.7c-4.7 4.4-10.8 8.3-17.4 8.3.3 9.3.3 9.3 5 17 4.6 4 8.2 5.7 14.3 6.3 4.5-.4 8-1.7 11.7-4.3l2-3c3.1-.4 5.1-.5 7.9 1.1 1.8 3 1.8 4.5 1.1 7.9-5 5.9-10.8 9.6-18.5 10.3-11.8.4-18.5-2-27-10L627 708a37 37 0 0 0-7.8 5c-8.6 6.3-15.5 6.9-26.2 6a26 26 0 0 1-14-9c-1.1-3.7-1.1-3.7-1-7 1-2 1-2 3-3 3.3-.4 5.2-.6 7.9 1.4 1.1 1.6 1.1 1.6 1.1 3.6 4.6 2.4 9 2.8 14 2 6.3-2.2 11.7-5.1 15-11q1-6 1-12l-2.4-.1c-7.8-2-14.6-7.7-19.6-13.9a21 21 0 0 1-3-15c2.5-6.5 8-9 14-11.8a51 51 0 0 1 42 3.8"/><path fill="#5c4035" d="M744.2 598.7A26 26 0 0 1 756 612c.9 7.2.9 13.5-3.6 19.4-3.7 4.1-7.6 7.3-13.2 8-6.7 0-10.8-.2-16.2-4.4-5-5-7.3-9.2-7.4-16.2 0-6.3 1.1-10.2 5.4-14.8l1.7-1.8c6-5.5 13.9-6 21.5-3.5"/><path fill="#5c4136" d="M526 599.7c4.8 3 9.2 7.9 11 13.3.7 7 .7 12.6-3.5 18.3-4 4.6-8.3 8.3-14.6 9-6.5.2-10.5-1.3-15.5-5.5-5.8-6.7-7.1-11-6.8-19.8.9-6.8 5.6-10.3 10.5-14.6 5.4-4 13-3 18.9-.7"/><path fill="#62493e" d="M587 700c1.9 2 1.9 2 3 4l-9-1-1 7c-2-2-2-2-2.3-4.4.3-2.6.3-2.6 1.4-4.4 2.8-1.8 4.7-1.7 7.9-1.2"/><path fill="#61473d" d="M595 655h2l.1 2.1.3 2.8.2 2.7c.2 2.6.2 2.6 2.4 4.4-.4 2.1-.4 2.1-1 4a24 24 0 0 1-4-16"/><path fill="#f1e9e2" d="M656 666h1c.4 2.1.4 2.1 0 5a46 46 0 0 1-6 6l-3-1 1.5-1.7 2-2.2 1.9-2.2c1.7-1.8 1.7-1.8 2.6-3.9"/><path fill="#6a5145" d="m520 598 2 2-2 .2-2.8.2-2.7.3c-2.6.2-2.6.2-5.5 1.3l-2-2c4.5-2.3 8-2.3 13-2"/><path fill="#63493f" d="M662 707c-2.5 2.5-3.7 2.4-7.1 2.6l-2.8.3-2.1.1-1-2 4.3-1 2.3-.7c2.5-.3 4 0 6.4.7"/><path fill="#6e5348" d="m732 598-1 3c-3.6 1.7-3.6 1.7-7 3v-3c2.9-2.1 4.4-3 8-3"/></svg>';
+function bearHtml(size){ return '<div class="bear" style="width:'+size+'px;height:'+size+'px">'+BEAR+'</div>'; }
+
+/* ===== 桌況假資料（demo：正式版由 list_tables_tx 取得） ===== */
+var TABLES = [
+  {label:'A1',area:'A',status:'idle'},{label:'A2',area:'A',status:'use',players:4,started:Date.now()-92*60000},
+  {label:'A3',area:'A',status:'idle'},{label:'A4',area:'A',status:'idle'},{label:'A5',area:'A',status:'idle'},
+  {label:'B1',area:'B',status:'use',players:3,started:Date.now()-135*60000},{label:'B2',area:'B',status:'idle'},
+  {label:'B3',area:'B',status:'idle'},{label:'B4',area:'B',status:'idle'},{label:'B5',area:'B',status:'idle'},
+  {label:'C1',area:'C',status:'off',note:'🔧 維修中'},{label:'C2',area:'C',status:'idle'},
+  {label:'C3',area:'C',status:'idle'},{label:'C4',area:'C',status:'idle'},
+];
+
+function durOf(ts){
+  var ms=Date.now()-ts, m=Math.floor(ms/60000);
+  return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+}
+
+function renderBoard(){
+  var areas={}; TABLES.forEach(function(t){ (areas[t.area]=areas[t.area]||[]).push(t); });
+  var html='';
+  Object.keys(areas).sort().forEach(function(a){
+    var list=areas[a];
+    html+='<div class="arealabel">'+a+' 區 <span>'+list.length+' 桌</span></div><div class="grid5">';
+    list.forEach(function(t){
+      if(t.status==='use'){
+        html+='<div class="tcard use" onclick="enterTable(\''+t.label+'\')"><div class="hd"><span class="no">'+t.label+'</span><span class="st">使用中</span></div>'
+          +'<div class="people">'+t.players+' 人</div><div class="dur">'+durOf(t.started)+'</div></div>';
+      } else if(t.status==='idle'){
+        html+='<div class="tcard idle"><div class="hd"><span class="no">'+t.label+'</span><span class="st">空桌</span></div>'
+          +'<button onclick="event.stopPropagation();openTable(\''+t.label+'\')">＋ 開桌</button></div>';
+      } else {
+        html+='<div class="tcard off"><div class="hd"><span class="no" style="color:var(--gray2)">'+t.label+'</span><span class="st">停用</span></div>'
+          +'<div class="opennote">'+(t.note||'暫停使用')+'</div></div>';
+      }
+    });
+    html+='</div>';
+  });
+  document.getElementById('boardBody').innerHTML=html;
+  var use=TABLES.filter(t=>t.status==='use').length, idle=TABLES.filter(t=>t.status==='idle').length;
+  document.getElementById('statUse').textContent='使用 '+use+'/'+TABLES.length;
+  document.getElementById('statIdle').textContent='空桌 '+idle;
+}
+
+/* ===== 開桌結帳（沿用 OpenCheckoutPage 的商品/會員/券資料）===== */
+var CATALOG = {
+  檯費:[],   // 動態：依開桌模式決定顯示配桌或包桌檯費，見 feeCatalog()
+  聯名商品:[{name:"教練熊牌尺",kind:"goods",price:200},{name:"MIGI 熊玩偶",kind:"goods",price:450}],
+  飲料:[{name:"經典奶茶",kind:"fnb",price:60},{name:"美式咖啡",kind:"fnb",price:70}],
+  點心:[{name:"水餃（10 顆／份）",kind:"fnb",price:80},{name:"厚片",kind:"fnb",price:60}],
+};
+var CATS=["檯費","飲料","點心","聯名商品"];
+var MEMBERS=[
+  {id:"p1",nick:"王大明陳志豪林美美張三李",tier:"提拉米蘇",rate:0.9,bal:1050,phone:"8891"},
+  {id:"p2",nick:"阿強",tier:"焦糖布丁",rate:0.95,bal:900,phone:"2043"},
+  {id:"p3",nick:"美美",tier:"珍珠奶茶",rate:1,bal:80,phone:"7756"},
+  {id:"p4",nick:"志豪",tier:"珍珠奶茶",rate:1,bal:0,phone:"3312"},
+];
+var COUPONS={
+  p1:[{id:"c1",name:"免費奶茶券",scope:"fnb",free:true}],
+  p2:[{id:"c2",name:"檯費折抵券",scope:"fee",amt:50},{id:"c3",name:"生日禮金",scope:"any",amt:100}],
+  p3:[{id:"c4",name:"免費奶茶券",scope:"fnb",free:true}],
+};
+var tierLabel=function(r){return r===0.95?"95折":r===0.9?"9折":"";};
+
+var seats=[null,null,null,null];
+var curId=null, mCat="檯費", drawer=-1;
+var curTableLabel='';
+
+function setSidebar(show){
+  // 結帳與桌工作區是「任務狀態」：店員正在跟客人收錢，導覽選項用不到且可能誤觸，
+  // 收起來也讓座位/商品/結帳三欄各自更寬。桌況看板是「導覽狀態」，才需要 Sidebar。
+  document.querySelector('.sidebar').classList.toggle('hide', !show);
+}
+/* ===== 開桌前置 ===== */
+var PRIV={120:400,300:600,1440:800};
+var tableStarted=false;   // 是否已帶桌開打（決定新加入者算不算中途）
+var payFor={};            // 代付關係 { 代付人id: [被代付人id...] }；不分包桌配桌皆適用
+var payForOpen=false;     // 代付勾選面板是否展開
+function togglePayForPanel(){ payForOpen=!payForOpen; renderRight(); }
+// 單人份檯費金額（代付時每多一人就加這個數）
+function unitFee(){
+  if(sSt.mode==='private') return privEach();
+  if(tableStarted) return 100;
+  return sSt.rounds===3 ? 150 : 100;
+}
+function payerOf(id){     // 某人是否被他人代付，回傳代付人 id（代付人自己不算）
+  for(var k in payFor){
+    if(k===id) continue;                            // 自己代付自己不成立
+    var arr=payFor[k];
+    if(Array.isArray(arr) && arr.indexOf(id)>=0) return k;
+  }
+  return null;
+}
+var sSt={mode:null,rounds:null,min:null,count:null,pay:null,kind:'台麻',flower:'無花',stake:'10/10'};
+
+function openTable(label){
+  curTableLabel=label; tableStarted=false;
+  sSt={mode:null,rounds:null,min:null,count:null,pay:null,kind:'台麻',flower:'無花',stake:'10/10'};
+  setSidebar(false);
+  document.getElementById('board').classList.remove('on');
+  document.getElementById('setup').classList.add('on');
+  document.getElementById('setupNo').textContent=label;
+  document.querySelectorAll('#so-match,#so-priv').forEach(function(e){e.classList.remove('on')});
+  ['sg-rounds','sg-min'].forEach(function(id){document.getElementById(id).style.display='none'});
+  sRender();
+}
+function sChips(id,opts,key){
+  document.getElementById(id).innerHTML = opts.map(function(o){
+    var v=o.v!==undefined?o.v:o, lb=o.lb||o;
+    var arg = typeof v==='number' ? v : "'"+v+"'";
+    return '<span class="schip'+(sSt[key]===v?' on':'')+'" onclick="sPick(\''+key+'\','+arg+')">'+lb+'</span>';
+  }).join('');
+}
+function sPick(k,v){
+  sSt[k]=v;
+  if(k==='mode'){
+    // 切換模式時清掉另一種模式的設定，避免殘留值造成金額誤算
+    if(v==='matched'){ sSt.min=null; } else { sSt.rounds=null; }
+    document.getElementById('so-match').classList.toggle('on',v==='matched');
+    document.getElementById('so-priv').classList.toggle('on',v==='private');
+    document.getElementById('sg-rounds').style.display=v==='matched'?'block':'none';
+    document.getElementById('sg-min').style.display=v==='private'?'block':'none';
+  }
+  sRender();
+}
+function sRender(){
+  sChips('sc-rounds',[{v:3,lb:'3 將 · 每人 $150'},{v:2,lb:'2 將 · 每人 $100'}],'rounds');
+  sChips('sc-min',[{v:120,lb:'2 小時內 · $400'},{v:300,lb:'2–5 小時 · $600'},{v:1440,lb:'5 小時以上 · $800'}],'min');
+  sChips('sc-kind',['台麻','美麻'],'kind');
+  sChips('sc-flower',['無花','有花'],'flower');
+  sChips('sc-stake',['純娛樂','10/10','30/10','50/20','100/20','200/50','300/100'],'stake');
+
+  var el=document.getElementById('snote');
+  if(sSt.mode==='private'&&sSt.min){
+    el.style.display='block';
+    el.innerHTML = '整桌 <b>$'+PRIV[sSt.min]+'</b>　<span style="color:var(--gray2)">人數與付款方式在結帳頁決定</span>';
+  } else el.style.display='none';
+
+  var ok = sSt.mode==='matched' ? !!sSt.rounds : !!sSt.min;
+  document.getElementById('setupNext').disabled=!ok;
+}
+function setupDone(){
+  seats=[null,null,null,null];
+  payFor={};
+  curId=null; mCat="飲料";
+  document.getElementById('setup').classList.remove('on');
+  document.getElementById('checkout').classList.add('on');
+  document.getElementById('ckNo').textContent=curTableLabel;
+  document.querySelector('#checkout .ck-titlebar .m').textContent =
+    (sSt.mode==='matched'
+      ? '配桌 · '+sSt.rounds+'將'
+      : '包桌 · '+({120:'2小時內',300:'2-5小時',1440:'5小時以上'}[sSt.min]))
+    + ' · ' + sSt.kind + ' · ' + sSt.flower + ' · ' + sSt.stake;
+  renderCheckout();
+}
+function backToBoard(){
+  setSidebar(true);
+  document.getElementById('board').classList.add('on');
+  document.getElementById('setup').classList.remove('on');
+  document.getElementById('checkout').classList.remove('on');
+  document.getElementById('playing').style.display='none';
+  renderBoard();
+}
+function enterTable(label){ toast(label+'（demo）點擊進入桌工作區—已在使用中'); }
+
+function cur(){ return seats.find(function(s){return s&&s.id===curId;}); }
+function catalogItem(name){
+  for(var c in CATALOG){ var it=CATALOG[c].find(x=>x.name===name); if(it) return it; }
+  // 檯費分類是依開桌模式動態產生的（不在 CATALOG 常數裡），要另外查
+  var fee = feeCatalog().find(function(x){ return x.name===name; });
+  if(fee) return fee;
+  // 儲值品項是動態組出的名稱「會員儲值 · $500（+50贈）」，直接從名稱解析金額，
+  // 不必另外維護對照表，跟其他商品共用同一套 lineItems 邏輯
+  // 包桌檯費金額是動態的（依付款方式與實際人數），不寫在名稱裡
+  if(name==='包桌檯費 · 整桌') return { price: PRIV[sSt.min], kind:'fee' };
+  if(name==='包桌檯費 · 分攤') return { price: privEach(), kind:'fee' };
+  var pm = name.match(/包桌檯費 · .*\$(\d+)/);
+  if(pm) return { price: parseInt(pm[1],10), kind:'fee' };
+  var m = name.match(/會員儲值 · \$(\d+)/);
+  if(m){
+    var paid = parseInt(m[1],10);
+    var bm = name.match(/（\+(\d+)贈）/);
+    var bonus = bm ? parseInt(bm[1],10) : 0;
+    // price = 客人實付；credit = 實際入帳點數（含贈點），兩者不同
+    return { price: paid, kind: 'topup', credit: paid+bonus, bonus: bonus };
+  }
+  return {price:0,kind:'goods'};
+}
+function lineItems(p){ return Object.keys(p.cart).map(function(n){ return Object.assign({name:n,qty:p.cart[n]},catalogItem(n)); }); }
+function goodsTotal(p){ return lineItems(p).reduce((s,it)=>s+it.price*it.qty,0); }
+function kindSum(p,k){ return lineItems(p).filter(it=>it.kind===k).reduce((s,it)=>s+it.price*it.qty,0); }
+function couponCut(p){
+  var feeR=kindSum(p,'fee'), fnbR=kindSum(p,'fnb'), goodsR=kindSum(p,'goods'), cut=0;
+  (p.used||[]).forEach(function(cid){
+    var c=(COUPONS[p.id]||[]).find(x=>x.id===cid); if(!c) return;
+    var cap=c.scope==='fee'?feeR:c.scope==='fnb'?fnbR:feeR+fnbR+goodsR; if(cap<=0) return;
+    var amt=c.free?cap:Math.min(c.amt,cap); cut+=amt;
+    if(c.scope==='fee') feeR-=amt; else if(c.scope==='fnb') fnbR-=amt;
+  });
+  return cut;
+}
+// 儲值是「買點數」，不能被會員折扣打折、也不能用點數折抵（用點買點是循環的）
+function topupSum(p){ return kindSum(p,'topup'); }
+// 可折抵的消費金額（排除儲值）
+function discountable(p){ return goodsTotal(p)-topupSum(p); }
+function afterCoupon(p){ return Math.max(0,discountable(p)-couponCut(p)); }
+function tierCut(p){ return Math.round(afterCoupon(p)*(1-p.rate)); }
+// 消費部分應付（已扣券與會員折扣）
+function consumePayable(p){ return Math.max(0,afterCoupon(p)-tierCut(p)); }
+// 全部應付 = 消費（折扣後）+ 儲值（原價）
+function payable(p){ return consumePayable(p)+topupSum(p); }
+
+var payWay='現金', ptManual=null, ptEditing=false;   // ptManual=null 代表全折（預設）
+
+function renderCheckout(){
+  renderSeatcol(); renderMid(); renderRight();
+  var seated=seats.filter(Boolean);
+  var paidCount=seated.filter(s=>s.paid).length;
+  document.getElementById('paidCount').textContent=paidCount;
+  var allDone = seated.length===4 && seated.every(s=>s.paid);
+  document.getElementById('doneNote').textContent = allDone?'可開桌':(seated.length<4?'尚缺 '+(4-seated.length)+' 人':'尚有未結帳');
+  document.getElementById('carryBtn').disabled=!allDone;
+}
+// 某座位目前應付金額（供座位卡顯示狀態用）
+function seatDue(i){
+  var s=seats[i]; if(!s) return 0;
+  var saved={cart:s.cart,used:s.used,rate:s.rate,id:s.id,bal:s.bal};
+  return payable(saved);
+}
+function renderSeatcol(){
+  var col=document.getElementById('seatcol'); col.innerHTML='';
+  seats.forEach(function(s,i){
+    var d=document.createElement('div');
+    if(!s){
+      d.className='seatcard empty'; d.onclick=function(){openAdd(i);};
+      d.innerHTML='<div class="addic">＋</div><div class="nm" style="color:var(--gray2)">加入客人</div>';
+    } else {
+      d.className='seatcard'+(s.id===curId?' cur':'');
+      d.onclick=function(){curId=s.id; payForOpen=false; renderCheckout();};
+      var rm = !s.paid ? '<span class="rm" onclick="event.stopPropagation();removeSeat('+i+')">✕</span>' : '';
+      var byId = payerOf(s.id);
+      var byWho = byId ? (seats.find(function(x){return x&&x.id===byId})||{}).nick : null;
+      d.innerHTML=rm+bearHtml(40)
+        +'<div style="min-width:0"><div class="nm">'+s.nick+'</div>'
+        +'<div class="bal">'+s.bal+' 點</div>'
+        +'</div>'
+        +'<div class="badge '+(s.paid?'paid':(byWho?'proxy':'unpaid'))+'">'
+          +(s.paid?'已結帳':(byWho?'代付中':'未結帳'))+'</div>';
+    }
+    col.appendChild(d);
+  });
+}
+function removeSeat(i){
+  var was=seats[i]; seats[i]=null;
+  if(was){
+    delete payFor[was.id];                                   // 他代付別人的關係
+    for(var k in payFor){                                    // 別人代付他的關係
+      var j=payFor[k].indexOf(was.id);
+      if(j>=0){ payFor[k].splice(j,1); if(!payFor[k].length) delete payFor[k]; }
+    }
+  }
+  syncFees(); if(was&&was.id===curId){ var rest=seats.filter(Boolean); curId=rest.length?rest[0].id:null; } renderCheckout(); }
+function openAdd(i){ drawer=i; document.getElementById('addModal').classList.add('on'); filterMembers(''); }
+function closeAdd(){ drawer=-1; document.getElementById('addModal').classList.remove('on'); }
+function filterMembers(q){
+  var list=document.getElementById('memberList'); list.innerHTML='';
+  MEMBERS.filter(function(m){return !q||m.nick.indexOf(q)>=0||m.phone.indexOf(q)>=0;}).forEach(function(m){
+    var seated=seats.some(s=>s&&s.id===m.id);
+    var row=document.createElement('div'); row.className='mrow';
+    row.style.opacity=seated?.4:1; row.style.cursor=seated?'not-allowed':'pointer';
+    row.innerHTML=bearHtml(40)+'<div><div class="nm">'+m.nick+'</div><div class="sub">'+m.tier+' · 手機 '+m.phone+'</div></div><div class="bal">'+(seated?'已入座':m.bal+' 點')+'</div>';
+    if(!seated) row.onclick=function(){addMember(m);};
+    list.appendChild(row);
+  });
+}
+function privSeated(){ return seats.filter(function(s){return s}).length; }
+// 包桌每人應付：整桌價 ÷ 實際入座人數（人數變動時所有人重算，故加滿人前不開放結帳）
+function privEach(){
+  var total = PRIV[sSt.min];
+  if(!total) return 0;          // 時段未設定時不要算出 NaN（NaN>0 為 false 會靜默變成「免收」）
+  var n = privSeated() || 1;
+  return Math.ceil(total / n);
+}
+// 單人份檯費的品名（不含代付倍數）
+function feeNameOf(idx){
+  var s = seats[idx];
+  if(s && payerOf(s.id)) return null;   // 被他人代付者，自己這張單沒有檯費
+  if(sSt.mode==='private') return '包桌檯費 · 分攤';
+  // 配桌：判斷依據是「桌子有沒有開始打」，不是「有沒有人先入座」。
+  // 四個人一起報到時應該都收開桌價；只有帶桌之後才來的（換手、補位）才算中途加入。
+  if(tableStarted) return '配桌檯費 · 中途加入';
+  return sSt.rounds===3 ? '配桌檯費 · 3 將' : '配桌檯費 · 2 將';
+}
+function addMember(m){
+  var next=seats.slice(); var idx=drawer;
+  next[idx]=Object.assign({},m,{cart:{},used:[],paid:false});
+  seats=next;
+  syncFees();
+  curId=m.id; payForOpen=false; closeAdd(); renderCheckout();
+}
+// 依目前設定重建每個座位的檯費品項（包桌人數變動時所有人金額都會變）
+function syncFees(){
+  seats.forEach(function(s,i){
+    if(!s || s.paid) return;   // 已結帳者不動，避免改到已收的金額
+    // 清掉舊的檯費品項再依現況重建（品名含「檯費」二字者皆屬之，如「配桌檯費 · 3 將」）
+    Object.keys(s.cart).forEach(function(n){ if(n.indexOf('檯費')>=0) delete s.cart[n]; });
+    var fn = feeNameOf(i);
+    if(fn){
+      // 代付者的檯費份數 = 自己 1 份 + 代付人數
+      var extra = (payFor[s.id]||[]).length;
+      s.cart[fn] = 1 + extra;
+    }
+  });
+}
+// 切換「我幫某人付」
+function togglePayFor(payerId, targetId){
+  if(payerId===targetId) return;                    // 不能代付自己
+  if(!payFor[payerId]) payFor[payerId]=[];
+  var arr=payFor[payerId];
+  var i=arr.indexOf(targetId);
+  if(i>=0){
+    arr.splice(i,1);
+  } else {
+    var other=payerOf(targetId);
+    if(other && other!==payerId) return;            // 已被他人代付，不可重複指定
+    arr.push(targetId);
+  }
+  if(!arr.length) delete payFor[payerId];
+  syncFees(); renderCheckout();
+}
+// 檯費分類的品項依開桌模式決定：配桌顯示將數價、包桌顯示當前分攤價
+function renderMid(){
+  var mid=document.getElementById('midcol'); var p=cur();
+  if(!p){ mid.innerHTML='<div class="mid-empty"><b>尚未加入客人</b><div style="font-size:13px">點左側 ＋ 加入客人開始開桌</div></div>'; return; }
+  var catsHtml=CATS.map(c=>'<span class="mid-cat'+(mCat===c?' on':'')+'" onclick="setCat(\''+c+'\')">'+c+'</span>').join('');
+  var list = mCat==='檯費' ? feeCatalog() : CATALOG[mCat];
+  var itemsHtml=list.map(function(it){
+    var qn=p.cart[it.name]||0;
+    return '<div class="item'+(qn>0?' has':'')+'" onclick="addItem(\''+it.name+'\')">'+(qn>0?'<div class="qty">'+qn+'</div>':'<div class="plus">＋</div>')
+      +'<div class="nm">'+it.name+'</div><div class="pr">'+it.price+' 點</div></div>';
+  }).join('');
+  mid.innerHTML='<div class="mid-title">檯費 / 商品加購</div><div class="mid-cats">'+catsHtml+'</div><div class="mid-items">'+itemsHtml+'</div>';
+}
+// 檯費分類的品項依開桌模式決定：配桌顯示將數價、包桌顯示當前分攤價
+function feeCatalog(){
+  if(sSt.mode==='private'){
+    var arr=[];
+    arr.push({name:'包桌檯費 · 分攤',kind:'fee',price:privEach()});
+    arr.push({name:'當日暢打 · 不限將數',kind:'fee',price:300});
+    return arr;
+  }
+  return [
+    {name:'配桌檯費 · 3 將',kind:'fee',price:150},
+    {name:'配桌檯費 · 2 將',kind:'fee',price:100},
+    {name:'配桌檯費 · 中途加入',kind:'fee',price:100},
+    {name:'當日暢打 · 不限將數',kind:'fee',price:300}
+  ];
+}
+function setCat(c){ mCat=c; renderMid(); }
+function addItem(name){ var p=cur(); p.cart[name]=(p.cart[name]||0)+1; renderMid(); renderRight(); }
+function setQty(name,q){ var p=cur(); if(q<=0) delete p.cart[name]; else p.cart[name]=q; renderMid(); renderRight(); }
+
+
+function renderReceipt(box, p){
+  var r = p.lastReceipt;
+
+  // ── 第一區：買了什麼 ──
+  var itemsHtml = r.items.map(function(it){
+    return '<div class="receipt-item"><span>'+it.name
+      + (it.qty>1?'<span class="qty">×'+it.qty+'</span>':'')
+      + '</span><span class="v">$'+(it.price*it.qty)+'</span></div>';
+  }).join('');
+
+  // ── 第二區：折扣後要付多少 ──
+  // 只放「真的減少金額」的項目（優惠券、會員折扣）；
+  // 點數不是折扣而是付款方式，移到第三區與現金並列，避免同一筆錢出現兩次
+  var gross = r.items.reduce(function(a,it){ return a+it.price*it.qty; },0);
+  var discRows = '';
+  if(r.couponCut>0) discRows += '<div class="receipt-row"><span>優惠券折抵</span><span class="v minus">-$'+r.couponCut+'</span></div>';
+  if(r.tierCut>0)   discRows += '<div class="receipt-row"><span>會員折扣</span><span class="v minus">-$'+r.tierCut+'</span></div>';
+  var payable = (r.grandTotal!=null?r.grandTotal:r.payable);
+  var calcSec = (discRows
+      ? '<div class="receipt-row"><span>小計</span><span class="v">$'+gross+'</span></div>' + discRows
+      : '')
+    + '<div class="receipt-total"><span class="lb">應付金額</span><span class="v">$'+payable+'</span></div>';
+
+  // ── 第三區：用什麼付清（各項相加＝應付金額，可直接驗算）──
+  var payRows = '';
+  if(r.ptUse>0)  payRows += '<div class="receipt-change"><span>點數</span><b>'+r.ptUse+'</b></div>';
+  if(r.cashDue>0) payRows += '<div class="receipt-change"><span>'+r.way+'</span><b>$'+r.cashDue+'</b></div>';
+  // 現金找零屬於「實際收授」，與付款組成分開呈現
+  var cashDetail = '';
+  if(r.cashDue>0 && r.way==='現金' && r.change>0){
+    var recv = r.cashDue + r.change;
+    cashDetail = '<div class="rdivide"></div>'
+      + '<div class="receipt-change"><span>實收現金</span><b>$'+recv+'</b></div>'
+      + '<div class="receipt-change hl"><span>找零</span><b>$'+r.change+'</b></div>';
+  }
+
+  box.innerHTML =
+    '<div class="pbar">'+bearHtml(42)+'<div><div class="nm">'+p.nick+'</div><span class="lv">會員：'+p.tier+'</span></div></div>'
+    + '<div class="receipt-badge"><span class="ck">✓</span>已完成收費</div>'
+    + '<div class="rsec"><div class="rsec-lbl">消費明細</div>'+itemsHtml+'</div>'
+    + '<div class="rsec">'+calcSec+'</div>'
+    + (payRows ? '<div class="rsec"><div class="rsec-lbl">收款方式</div>'+payRows+cashDetail+'</div>' : '')
+    + '<button class="addon-btn" onclick="startAddon(\''+p.id+'\')">＋ 加購新項目</button>';
+}
+function startAddon(id){
+  var s = seats.find(function(x){return x&&x.id===id;});
+  s.paid = false;
+  renderCheckout();
+}
+
+
+var topupTargetId=null, topupAmt=0, topupBonus=0, topupCustom=false;
+// 贈點級距：快捷選項與自訂金額共用同一套規則，3000 以上一律 300
+function bonusOf(amt){
+  if(amt>=3000) return 300;
+  if(amt>=2000) return 150;
+  if(amt>=1000) return 50;
+  return 0;
+}
+// 由公式產生，避免陣列與公式各存一份、日後只改一邊
+var TOPUPS=[150,500,1000,2000,3000].map(function(a){ return [a, bonusOf(a)]; });
+function openTopup(id){
+  topupTargetId=id; topupAmt=0; topupBonus=0; topupCustom=false;
+  var m=MEMBERS.find(x=>x.id===id);
+  document.getElementById('topupName').textContent=m.nick;
+  renderTopupGrid();
+  document.getElementById('doTopupBtn').disabled=true;
+  document.getElementById('doTopupBtn').textContent='請選擇儲值金額';
+  document.getElementById('topupModal').classList.add('on');
+}
+function renderTopupGrid(){
+  var html = TOPUPS.map(function(t,i){
+    var sel = !topupCustom && topupAmt===t[0];
+    return '<div class="topup-opt'+(sel?' sel':'')+'" onclick="pickTopup('+i+')"><div class="num">'+t[0].toLocaleString()+'</div>'+(t[1]?'<div class="bonus">+'+t[1]+' 贈點</div>':'<div class="bonus">&nbsp;</div>')+'</div>';
+  }).join('');
+  // 自訂格：未選自訂時顯示「自訂」，選了之後顯示實際金額（比照 App 版行為）
+  html += '<div class="topup-opt custom'+(topupCustom?' sel':'')+'" onclick="openCustom()"><div class="num">'+(topupCustom?topupAmt.toLocaleString():'自訂')+'</div><div class="bonus">'+(topupCustom?'修改':'&nbsp;')+'</div></div>';
+  document.getElementById('topupGrid').innerHTML = html;
+}
+function pickTopup(i){
+  var t=TOPUPS[i];
+  topupAmt=t[0]; topupBonus=t[1]; topupCustom=false;
+  renderTopupGrid(); checkTopupReady();
+}
+function openCustom(){
+  document.getElementById('topupCustomVal').value = topupCustom ? String(topupAmt) : '';
+  document.getElementById('topupCustomMask').classList.add('on');
+}
+function closeCustom(){ document.getElementById('topupCustomMask').classList.remove('on'); }
+function closeTopup(){ document.getElementById('topupModal').classList.remove('on'); }
+function applyCustom(){
+  var n=parseInt(document.getElementById('topupCustomVal').value,10);
+  if(n>0){ topupAmt=n; topupBonus=0; topupCustom=true; renderTopupGrid(); checkTopupReady(); }
+  closeCustom();
+}
+function checkTopupReady(){
+  var btn=document.getElementById('doTopupBtn');
+  if(topupAmt<=0){ btn.disabled=true; btn.textContent='請選擇儲值金額'; return; }
+  btn.disabled=false; btn.textContent='加入本次結帳';
+}
+
+function confirmTopup(){
+  var seat = seats.find(function(x){ return x && x.id===topupTargetId; });
+  if(seat){
+    var label = '會員儲值 · $'+topupAmt+(topupBonus?'（+'+topupBonus+'贈）':'');
+    seat.cart[label] = (seat.cart[label]||0) + 1;   // 併入同一份購物車，跟商品一樣的一行
+  }
+  closeTopup();
+  renderRight();
+}
+function renderRight(){
+  var box=document.getElementById('rcol'); var p=cur();
+  if(!p){ box.style.display='none'; return; }
+  box.style.display='flex'; box.style.flexDirection='column';
+  if(p.paid && p.lastReceipt){ renderReceipt(box,p); return; }
+  if(p.paid && p.paidBy){
+    // 被他人代付且已結帳：沒有自己的收據，顯示由誰支付
+    box.innerHTML =
+      '<div class="pbar">'+bearHtml(42)+'<div><div class="nm">'+p.nick+'</div><span class="lv">會員：'+p.tier+'</span></div></div>'
+      + '<div class="receipt-badge"><span class="ck">✓</span>已完成收費</div>'
+      + '<div class="rsec"><div class="paidby-note">此位檯費已由 <b>'+p.paidBy+'</b> 代付<br><span>費用含在對方的帳單中，無須另外收款</span></div></div>';
+    return;
+  }
+
+  // 儲值就是購物車裡的一行品項，跟其他商品共用同一套計算，不特別區分
+  var items=lineItems(p), gt=goodsTotal(p), cc=couponCut(p), tc=tierCut(p), pay=payable(p);
+  var cp=consumePayable(p);   // 消費部分（可用點數折抵的上限，不含儲值）
+  var ptMax=Math.min(p.bal,cp);
+  // ptManual===null 代表「全折」（預設行為），跟原始 POS 模組一致
+  var ptUse = (ptManual===null) ? ptMax : Math.max(0,Math.min(ptManual,ptMax));
+  var cashDue = pay-ptUse;
+  var myCoupons=COUPONS[p.id]||[];
+
+  var feeItems  = items.filter(function(it){ return it.kind!=='topup' && it.name.indexOf('檯費')>=0; });
+  var goodsItems= items.filter(function(it){ return it.kind!=='topup' && it.name.indexOf('檯費')<0; });
+  var shopItems = items.filter(function(it){ return it.kind!=='topup'; });
+  var topupItems = items.filter(function(it){ return it.kind==='topup'; });
+  // 檯費份數一律由系統決定（自己 1 份＋代付人數），不開放手動增減，
+  // 避免出現「改成 3 份卻沒指定幫誰付」的不一致狀態
+  var feeLocked = true;
+  function itemRow(it, locked){
+    var sub='';
+    if(it.name==='包桌檯費 · 分攤'){
+      sub = '<div style="font-size:11px;color:var(--gray2);margin-top:2px">整桌 $'+PRIV[sSt.min]+' ÷ '+privSeated()+' 位</div>';
+    }
+    var qtyHtml = locked
+      ? '<div class="qtylock">×'+it.qty+'</div>'
+      : '<div style="display:flex;align-items:center;gap:6px"><button class="stepbtn" onclick="setQty(\''+it.name+'\','+(it.qty-1)+')">-</button><span style="font-weight:800;min-width:18px;text-align:center">'+it.qty+'</span><button class="stepbtn" onclick="setQty(\''+it.name+'\','+(it.qty+1)+')">+</button></div>';
+    return '<div class="lineitem"><div style="flex:1"><div class="nm">'+it.name+'</div>'+sub+'</div>'
+      + qtyHtml
+      + '<div style="width:60px;text-align:right;font-weight:800;font-family:\'Segoe UI\',sans-serif">$'+(it.price*it.qty)+'</div></div>';
+  }
+  var feeHtml   = feeItems.map(function(it){ return itemRow(it, feeLocked); }).join('');
+  var goodsHtml = goodsItems.map(function(it){ return itemRow(it, false); }).join('');
+
+  var couponHtml = (myCoupons.length>0 && cc===0) ? '<button class="couponbtn" onclick="openCoupon()">使用優惠券</button>' : '';
+  // 代付：不分包桌配桌皆可，勾選要幫誰付；被代付者的檯費併入這張單
+  var others = seats.filter(function(x){ return x && x.id!==p.id && !x.paid; });
+  var myPayFor = payFor[p.id]||[];
+  var wholeHtml = '';
+  if(others.length && !payerOf(p.id)){
+    var listHtml = payForOpen ? '<div class="payfor-list">' + others.map(function(o){
+        var on = myPayFor.indexOf(o.id)>=0;
+        var lockedBy = payerOf(o.id);
+        var disabled = lockedBy && lockedBy!==p.id;
+        return '<div class="payfor-item'+(on?' on':'')+(disabled?' off':'')+'" '
+          + (disabled?'':'onclick="togglePayFor(\''+p.id+'\',\''+o.id+'\')"')+'>'
+          + '<span class="ck">'+(on?'✓':'')+'</span>'
+          + '<span class="nm">'+o.nick+'</span>'
+          + '<span class="v">'+(disabled?'已由他人代付':'+$'+unitFee())+'</span></div>';
+      }).join('') + '</div>' : '';
+    wholeHtml = '<button class="payfor-btn'+(payForOpen?' open':'')+'" onclick="togglePayForPanel()">'
+      + '<span>代付其他人' + (myPayFor.length ? '（'+myPayFor.length+'）' : '') + '</span>'
+      + '<span class="caret'+(payForOpen?' open':'')+'">›</span>'
+      + '</button>' + listHtml;
+  }
+
+
+  box.innerHTML =
+    '<div class="pbar">'+bearHtml(42)+'<div><div class="nm">'+p.nick+'</div><span class="lv">會員：'+p.tier+'</span></div></div>'
+    +'<div class="balbox"><span class="lb">目前餘額</span><span class="v">'+p.bal+' 點</span>'
+      + '<button onclick="openTopup(\''+p.id+'\')">儲值</button></div>'
+    +(feeHtml ? '<div class="feefix">'+feeHtml+'</div>' : '')
+    +(wholeHtml ? '<div class="payfor-wrap">'+wholeHtml+'</div>' : '')
+    +'<div class="lines">'+(goodsHtml || (feeHtml?'':'<div class="empty">請從左側選擇檯費或商品</div>'))+'</div>'
+    +(items.length>0 ? '<div class="checkoutbar">'
+      +couponHtml
+      // 小計
+      +'<div class="row"><span>小計</span><span class="v">$'+discountable(p)+'</span></div>'
+      // 折扣區：會員折扣／優惠券折抵／點數折抵，三行一起夾在小計與尚需支付之間
+      +(tc>0?'<div class="row"><span>會員折扣<span style="display:inline-block;margin-left:7px;font-size:10.5px;font-weight:800;color:var(--ink);background:var(--peach);border-radius:99px;padding:2px 8px">'+tierLabel(p.rate)+'</span></span><span class="v minus">-$'+tc+'</span></div>':'')
+      +(cc>0?'<div class="row"><span>優惠券折抵<span style="color:var(--rose);font-weight:700;font-size:11px;margin-left:7px;cursor:pointer" onclick="openCoupon()">更換</span></span><span class="v minus">-$'+cc+'</span></div>':'')
+      +(p.bal>0 && cp>0
+          ? '<div class="ptrow"><span class="lb">點數折抵</span>'
+            + '<span style="margin-left:auto;display:flex;align-items:center;gap:9px">'
+            + ((ptUse < ptMax && !ptEditing) ? '<button class="fullpt" onclick="setPtFull()">全折</button>' : '')
+            + (ptEditing
+                ? '<input id="ptInlineInput" type="number" value="'+ptUse+'" max="'+ptMax+'" oninput="onPtInput(this.value,'+ptMax+')" onblur="endPtEdit()" class="ptinline">'
+                : '<span class="ptval'+(ptUse===0?' off':'')+'" onclick="startPtEdit()">'+(ptUse>0?'-'+ptUse:'0')+' 點</span>')
+            + '</span></div>'
+          : '')
+      // 儲值列在點數折抵下方：位置本身就說明它不受上面的折扣影響
+      +(topupItems.length ? '<div class="topup-sep"></div>' : '')
+      +topupItems.map(function(it){
+          var pts = it.price*it.qty;
+          var credit=(it.credit||it.price)*it.qty, paid=it.price*it.qty;
+          return '<div class="row"><span>會員儲值 '+credit+' 點<span class="rmtopup" onclick="setQty(\''+it.name+'\',0)">移除</span></span><span class="v">$'+paid+'</span></div>';
+        }).join('')
+      +'<div class="due"><span class="lb">尚需支付</span><span class="v">$'+cashDue+'</span></div>'
+      +(cashDue>0?'<div class="paywayrow">'+['現金','信用卡','LINE Pay'].map(function(w){return '<span class="payway'+(payWay===w?' sel':'')+'" onclick="setPayWay(\''+w+'\')">'+w+'</span>';}).join('')+'</div>':'')
+      +(cashDue>0 && payWay==='現金' ? (function(){
+          var recv = window._cashRecv!=null?window._cashRecv:0;
+          var quicks=[100,200,500,1000];
+          var quickHtml='<div class="quickcash">'+quicks.map(function(q){return '<button onclick="setQuickCash('+q+','+cashDue+')">'+q+'</button>';}).join('')
+            +'<button onclick="setQuickCash('+cashDue+','+cashDue+')">剛好</button></div>';
+          return '<div class="cashfield"><label>實收現金</label><input type="number" id="cashRecvInput" placeholder="0" value="'+(recv||'')+'" oninput="onCashRecvInput(this.value,'+cashDue+')"></div>'
+            + quickHtml
+            + '<div class="changerow"><span>找零</span><b id="changeVal">$'+Math.max(0,recv-cashDue)+'</b></div>';
+        })() : '')
+      +'<button class="paybtn" id="payBtn" '+((cashDue>0&&payWay==='現金'&&(window._cashRecv==null?0:window._cashRecv)<cashDue)?'disabled':'')+' onclick="doPay()">'+(cashDue===0?'確認結帳 · 扣 '+ptUse+' 點':'確認結帳 · 扣 '+ptUse+' ＋ 收 $'+cashDue)+'</button>'
+      +'</div>' : '');
+}
+function setPayWay(w){ payWay=w; window._cashRecv=null; renderRight(); }
+function onCashRecvInput(v,due){ window._cashRecv=Math.max(0,parseInt(v)||0); var chg=Math.max(0,window._cashRecv-due); document.getElementById('changeVal').textContent='$'+chg; document.getElementById('payBtn').disabled = window._cashRecv<due; }
+function setQuickCash(amt,due){ window._cashRecv=amt; document.getElementById('cashRecvInput').value=amt; var chg=Math.max(0,amt-due); document.getElementById('changeVal').textContent='$'+chg; document.getElementById('payBtn').disabled = amt<due; }
+function setPtFull(){ ptManual=null; renderRight(); }
+function startPtEdit(){ ptEditing=true; renderRight(); setTimeout(function(){
+  var el=document.getElementById('ptInlineInput'); if(el){ el.focus(); el.select(); } },30); }
+function onPtInput(v,max){ var n=parseInt(v,10); if(isNaN(n)||n<0) n=0; if(n>max) n=max; ptManual=n; }
+function endPtEdit(){ ptEditing=false; renderRight(); }
+
+function openCoupon(){
+  var p=cur(); var myCoupons=COUPONS[p.id]||[];
+  var sel=(p.used||[]).slice();
+  var mask=document.createElement('div'); mask.className='modal-mask on';
+  mask.innerHTML='<div class="modal"><h3>選擇優惠券</h3><div id="clist"></div><button class="paybtn" id="applyC" style="margin-top:6px">套用</button></div>';
+  document.body.appendChild(mask);
+  function draw(){
+    var noneOn = sel.length===0;
+    var html = '<div style="display:flex;align-items:center;gap:11px;padding:13px 12px;border:1.5px solid '+(noneOn?'var(--rose)':'var(--line)')+';background:'+(noneOn?'#FFF6F8':'#fff')+';border-radius:12px;margin-bottom:8px;cursor:pointer" onclick="chooseNoCoupon()"><div style="width:22px;height:22px;border-radius:50%;background:'+(noneOn?'var(--rose)':'transparent')+';border:'+(noneOn?'none':'1.5px solid var(--gray3)')+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800">'+(noneOn?'✓':'')+'</div><div style="font-weight:800;font-size:15px;color:var(--gray1)">不使用優惠券</div></div>';
+    html += myCoupons.map(function(c){
+      var on=sel.includes(c.id);
+      return '<div style="display:flex;align-items:center;gap:11px;padding:13px 12px;border:1.5px solid '+(on?'var(--rose)':'var(--line)')+';background:'+(on?'#FFF6F8':'#fff')+';border-radius:12px;margin-bottom:8px;cursor:pointer" onclick="toggleC(\''+c.id+'\')"><div style="width:22px;height:22px;border-radius:50%;background:'+(on?'var(--rose)':'transparent')+';border:'+(on?'none':'1.5px solid var(--gray3)')+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800">'+(on?'✓':'')+'</div><div><div style="font-weight:800;font-size:15px">'+c.name+'</div><div style="font-size:12px;color:var(--gray2);margin-top:2px">'+(c.free?'整項免費':'折抵 '+c.amt+' 點')+' · '+(c.scope==='fee'?'限檯費':c.scope==='fnb'?'限餐飲':'全品項')+'</div></div></div>';
+    }).join('');
+    document.getElementById('clist').innerHTML = html;
+  }
+  window.toggleC=function(id){ sel=sel.includes(id)?sel.filter(x=>x!==id):[id]; draw(); };  // 單選：券之間互斥
+  window.chooseNoCoupon=function(){ sel=[]; draw(); };
+  draw();
+  document.getElementById('applyC').onclick=function(){ p.used=sel; mask.remove(); renderRight(); };
+  mask.onclick=function(e){ if(e.target===mask) mask.remove(); };
+}
+function doPay(){
+  var p=cur(); var items=lineItems(p);
+  if(items.length===0) return;
+  var pay=payable(p);
+  // 點數上限必須跟畫面顯示的一致：只能折抵「消費部分」，不含儲值
+  var ptMax=Math.min(p.bal, consumePayable(p));
+  var ptUse=(ptManual===null) ? ptMax : Math.max(0,Math.min(ptManual,ptMax));
+  var cashDue = pay-ptUse;
+  if(cashDue>0 && payWay==='現金'){
+    var recv = window._cashRecv!=null ? window._cashRecv : 0;
+    if(recv<cashDue){ toast('請輸入實收金額'); return; }
+  }
+  var change = (cashDue>0 && payWay==='現金') ? Math.max(0,(window._cashRecv!=null?window._cashRecv:0)-cashDue) : 0;
+  // 購物車裡若有「儲值」這行，付款完成的同時要把對應金額加回會員餘額
+  // （買一筆 500 元的儲值品項，等同這 500 變成他的可用點數）
+  var topupCredit = items.filter(function(it){return it.kind==='topup';})
+    .reduce(function(sum,it){ return sum + (it.credit||it.price)*it.qty; }, 0);
+  var s=seats.find(x=>x&&x.id===p.id);
+  s.lastReceipt={items:items,payable:pay,couponCut:couponCut(p),tierCut:tierCut(p),
+    ptUse:ptUse,cashDue:cashDue,way:payWay,change:change};
+  s.paid=true;
+  s.bal = s.bal - ptUse + topupCredit;
+  s.cart={}; s.used=[];
+  // 被此人代付的座位一併標記已結帳——他們的檯費已含在這張單裡，不需要再單獨收款
+  (payFor[p.id]||[]).forEach(function(id){
+    var t=seats.find(function(x){ return x && x.id===id; });
+    if(t){ t.paid=true; t.paidBy=p.nick; t.cart={}; t.used=[]; }
+  });
+  ptManual=null; ptEditing=false; window._cashRecv=null; payWay='現金';
+  renderCheckout();
+}
+function doCarry(){
+  tableStarted=true;   // 帶桌後再加入的人才算中途加入
+  setSidebar(false);
+  document.getElementById('checkout').classList.remove('on');
+  document.getElementById('playing').style.display='flex';
+  document.getElementById('pNo').textContent=curTableLabel;
+  document.getElementById('pCount').textContent=seats.filter(Boolean).length;
+  toast(curTableLabel+' 已帶桌 → 排東南西北');
+}
+function setTab(t){
+  document.getElementById('tab-consume').classList.toggle('on',t==='consume');
+  document.getElementById('tab-seat').classList.toggle('on',t==='seat');
+  document.getElementById('playingBody').textContent = t==='consume' ? '消費 TAB（沿用開桌結帳版面，加購商品用）' : '座位 TAB（demo，沿用你的 SeatPage 版面）';
+}
+function doSettle(){ toast(curTableLabel+' 收桌結算（demo）'); }
+
+function toast(msg){
+  var t=document.getElementById('toast'); t.textContent=msg; t.style.display='block';
+  clearTimeout(window._tt); window._tt=setTimeout(()=>t.style.display='none',2200);
+}
+
+renderBoard();
+</script>
+</body></html>

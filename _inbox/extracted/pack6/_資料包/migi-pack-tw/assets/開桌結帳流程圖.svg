@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 900" width="1280" height="900" font-family="'Microsoft JhengHei','Noto Sans TC',sans-serif">
+  <rect width="1280" height="900" fill="#1A1518"/>
+  <circle cx="68" cy="52" r="22" fill="#C9899C"/>
+  <text x="104" y="46" font-size="13" font-weight="700" fill="#C9899C" letter-spacing="2">營運流程 · MIGI CIS</text>
+  <text x="40" y="92" font-size="30" font-weight="700" fill="#FFFFFF">開桌結帳流程</text>
+  <text x="40" y="118" font-size="13" fill="#C9A9B4">櫃台報到 · 雙軌開桌 · 全程點數 · 一氣呵成(關卡只在報到,之後全自動)</text>
+
+  <defs>
+    <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L9,5 L0,10 z" fill="#C2607A"/>
+    </marker>
+  </defs>
+
+  <!-- ===== 唯一人工關卡:櫃台報到 ===== -->
+  <rect x="40" y="146" width="1200" height="210" rx="16" fill="#FFFFFF"/>
+  <rect x="40" y="146" width="1200" height="40" rx="16" fill="#FAD6DC"/>
+  <rect x="40" y="170" width="1200" height="16" fill="#FAD6DC"/>
+  <text x="64" y="173" font-size="15" font-weight="700" fill="#2E2B2C">① 櫃台報到(唯一人工關卡)— 店員 POS 操作</text>
+
+  <!-- 報到三步 -->
+  <rect x="64" y="204" width="360" height="130" rx="12" fill="#FBDEE4"/>
+  <text x="84" y="230" font-size="13" font-weight="700" fill="#2E2B2C">客人陸續到店 → 開一桌(T3)</text>
+  <text x="84" y="256" font-size="11" fill="#7A3A48">每來一人,店員逐一:</text>
+  <text x="84" y="280" font-size="11" fill="#5A5556">· 確認身分(雙軌)</text>
+  <text x="84" y="302" font-size="11" fill="#5A5556">· 扣點(配桌150/人·包桌依時段)</text>
+
+  <!-- 身分雙軌 -->
+  <rect x="448" y="204" width="360" height="130" rx="12" fill="#F8F7F6"/>
+  <text x="468" y="230" font-size="12" font-weight="700" fill="#2E2B2C">身分識別 · 雙軌</text>
+  <text x="468" y="258" font-size="11" fill="#5A5556">熟手機 → 出示 LIFF 會員碼,店員掃</text>
+  <text x="468" y="282" font-size="11" fill="#5A5556">長輩 → 報手機號,POS 查</text>
+  <text x="468" y="306" font-size="10.5" fill="#9A7E62">不用手機者 → 店員代開(手機+姓名)</text>
+
+  <!-- 金流鐵則 -->
+  <rect x="832" y="204" width="384" height="130" rx="12" fill="#FFF4F4"/>
+  <text x="852" y="230" font-size="12" font-weight="700" fill="#C2607A">金流鐵則 ⭐</text>
+  <text x="852" y="258" font-size="11" fill="#7A3A48">現金/刷卡/LINE Pay → 一律先轉點數</text>
+  <text x="852" y="282" font-size="11" fill="#7A3A48">消費一律扣點,桌面不見現金</text>
+  <text x="852" y="306" font-size="10.5" fill="#9A9491">長輩付現也先轉點(店員代操作)</text>
+
+  <line x1="640" y1="356" x2="640" y2="392" stroke="#C2607A" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="660" y="380" font-size="11" font-weight="700" fill="#C2607A">觸發桌子啟動</text>
+
+  <!-- ===== 雙軌開桌 ===== -->
+  <rect x="40" y="396" width="1200" height="150" rx="16" fill="#FFFFFF"/>
+  <text x="64" y="428" font-size="15" font-weight="700" fill="#2E2B2C">② 雙軌開桌(系統處理標準 · 店員處理例外)</text>
+
+  <rect x="64" y="446" width="560" height="84" rx="12" fill="#FAD6DC"/>
+  <text x="84" y="472" font-size="13" font-weight="700" fill="#2E2B2C">軌道一 · 滿四人自動開(標準 80%)</text>
+  <text x="84" y="496" font-size="11" fill="#7A3A48">四人都報到扣點 → 系統判定滿四 → 桌子自動啟動</text>
+  <text x="84" y="518" font-size="10.5" fill="#7A3A48">配桌扣四人各150 · 包桌扣整桌</text>
+
+  <rect x="648" y="446" width="568" height="84" rx="12" fill="#F0EFEE"/>
+  <text x="668" y="472" font-size="13" font-weight="700" fill="#2E2B2C">軌道二 · 店員手動開(例外 20%)</text>
+  <text x="668" y="496" font-size="11" fill="#5A5556">店員按「開桌」鍵,人數自行判斷:三人先打/等補位/代打/通融</text>
+  <text x="668" y="518" font-size="10.5" fill="#5A5556">配桌扣在場幾人(中途補到加入時扣100)· 包桌扣整桌</text>
+
+  <line x1="640" y1="546" x2="640" y2="582" stroke="#C2607A" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- ===== 桌子啟動(電控) ===== -->
+  <rect x="340" y="586" width="600" height="60" rx="14" fill="#2E2B2C"/>
+  <text x="640" y="612" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">③ 桌子自動啟動(電控連動)</text>
+  <text x="640" y="632" font-size="10" fill="#C9A9B4" text-anchor="middle">扣點完成才啟動(進場嚴格)· 第一階段店員放行、第二階段電控自動</text>
+
+  <line x1="640" y1="646" x2="640" y2="682" stroke="#C2607A" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- ===== 全自動後段 ===== -->
+  <rect x="40" y="686" width="1200" height="120" rx="16" fill="#FFFFFF"/>
+  <text x="64" y="716" font-size="15" font-weight="700" fill="#2E2B2C">④ 之後全自動(客人坐下什麼都不用管)</text>
+
+  <rect x="64" y="732" width="360" height="58" rx="12" fill="#F8F7F6"/>
+  <text x="84" y="757" font-size="12" font-weight="700" fill="#2E2B2C">打牌 → 鏡頭自動掃牌譜</text>
+  <text x="84" y="777" font-size="10.5" fill="#7A7572">每手記錄,自動算成績</text>
+
+  <rect x="448" y="732" width="360" height="58" rx="12" fill="#F8F7F6"/>
+  <text x="468" y="757" font-size="12" font-weight="700" fill="#2E2B2C">超時 → 前10分提醒</text>
+  <text x="468" y="777" font-size="10.5" fill="#7A7572">續→補扣升階 · 不續→收桌(不偷扣)</text>
+
+  <rect x="832" y="732" width="384" height="58" rx="12" fill="#FBDEE4"/>
+  <text x="852" y="757" font-size="12" font-weight="700" fill="#2E2B2C">收桌 → 三項自動更新</text>
+  <text x="852" y="777" font-size="10.5" fill="#7A3A48">消費分級 · 段位Elo · 店員業績歸因</text>
+
+  <text x="640" y="846" font-size="12" font-style="italic" fill="#9A8088" text-anchor="middle">一氣呵成:關卡只在櫃台報到(店員把關+撮合),客人坐下後開桌、掃牌、扣點、升段全自動。</text>
+  <text x="640" y="872" font-size="11" font-style="italic" fill="#7A6068" text-anchor="middle">系統處理標準、人處理例外 · 點數不足則先儲值 · 全程點數桌面不見現金</text>
+</svg>

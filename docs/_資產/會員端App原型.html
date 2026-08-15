@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MIGI 會員端 App 互動預覽</title>
+<style>
+  :root{--font-sans:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif}
+  *{box-sizing:border-box}
+  body{margin:0;background:#EFEDEB;font-family:var(--font-sans);display:flex;flex-direction:column;align-items:center;padding:24px 12px;min-height:100vh}
+  .seglabel{display:flex;gap:8px;justify-content:center;margin-bottom:16px}
+  .fseg{border:0.5px solid #C9C5C2;border-radius:999px;padding:6px 15px;font-size:13px;cursor:pointer;background:#FFF;color:#7A7572}
+  .fseg.on{background:#FAD6DC;border-color:#F0C4CE;color:#2E2B2C;font-weight:500}
+  #iapp{--xs:11px;--s:12px;--m:13px;--l:14px;--xl:17px;--h:34px;width:330px;background:#FFFFFF;border:0.5px solid #E0DEDC;border-radius:34px;overflow:hidden}
+  #iapp.lg{--xs:13px;--s:14px;--m:15px;--l:16px;--xl:19px;--h:38px}
+  #iapp p{margin:0}
+  .it{flex:1;text-align:center;border-radius:999px;padding:8px 0;font-size:10px;color:#9A9491;cursor:pointer}
+  .it.on{background:#FAD6DC;color:#2E2B2C;font-weight:500}
+  .ic{background:#FFFFFF;border:0.5px solid #ECEAE9;border-radius:14px;padding:10px 12px}
+  .irow{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:0.5px solid #F2F0EE}
+  .itile{border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:500;color:#2E2B2C;width:28px;height:28px;font-size:var(--s);flex:0 0 28px}
+  .ichip{background:#F0EFEE;border-radius:999px;padding:5px 13px;font-size:var(--s);color:#5A5556;cursor:pointer;display:inline-block;margin:0 4px 6px 0}
+  .ichip.on{background:#FAD6DC;color:#2E2B2C;font-weight:500}
+  .ibtn{border:none;border-radius:999px;cursor:pointer;font-weight:500;font-family:var(--font-sans)}
+  @keyframes pop{0%{transform:scale(0.6);opacity:0}60%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+  @keyframes spin{100%{transform:rotate(1440deg)}}
+  .toast{position:absolute;left:50%;bottom:78px;transform:translateX(-50%);background:#2E2B2C;color:#FFF;font-size:12px;padding:9px 18px;border-radius:999px;z-index:9;animation:pop .3s;white-space:nowrap}
+  .note{margin-top:18px;font-size:12px;color:#9A9491;text-align:center;max-width:330px;line-height:1.6}
+</style>
+</head>
+<body>
+
+<div class="seglabel">
+  <button id="iz0" class="fseg on" onclick="_iz(0)">標準字級</button>
+  <button id="iz1" class="fseg" onclick="_iz(1)">舒適字級</button>
+</div>
+
+<div id="iapp">
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 24px 0">
+    <span style="font-size:var(--xs);font-weight:500;color:#2E2B2C">9:41</span>
+    <span style="width:14px;height:8px;border:1px solid #2E2B2C;border-radius:2px;display:inline-block;position:relative"><span style="position:absolute;inset:1px;right:4px;background:#2E2B2C;border-radius:1px"></span></span>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px 4px">
+    <span style="font-size:18px;font-weight:500;color:#2E2B2C;letter-spacing:2px">MIGI</span>
+    <div style="width:34px;height:34px;border-radius:50%;background:#FAD6DC;display:flex;align-items:center;justify-content:center;position:relative"><span style="position:absolute;top:-3px;left:2px;width:9px;height:9px;border-radius:50%;background:#FAD6DC"></span><span style="position:absolute;top:-3px;right:2px;width:9px;height:9px;border-radius:50%;background:#FAD6DC"></span><span style="font-size:var(--s);font-weight:500;color:#2E2B2C">婷</span></div>
+  </div>
+  <div id="ibody" style="min-height:452px;max-height:472px;overflow-y:auto;position:relative"></div>
+  <div style="display:flex;gap:4px;border-top:0.5px solid #EFEDEC;margin-top:2px;padding:10px 10px 12px">
+    <span id="it0" class="it on" onclick="_go(0)">錢包</span>
+    <span id="it1" class="it" onclick="_go(1)">配桌</span>
+    <span id="it2" class="it" onclick="_go(2)">成績</span>
+    <span id="it3" class="it" onclick="_go(3)">牌咖</span>
+    <span id="it4" class="it" onclick="_go(4)">小熊</span>
+  </div>
+</div>
+
+<p class="note">MIGI 會員端 App 互動原型 · 五頁可切換 · 試試:配桌→候補→成桌(小熊養成+20)、餵小熊升級、每日簽到拿扭蛋券、抽扭蛋、揪牌咖。資料為示意,重整歸零。</p>
+
+<script>
+var St={points:12800,bearLv:12,bearXp:72,checkDays:6,checkedToday:false,gachaTickets:2,matchState:'idle',bearTab:'nurture',gachaCost:50,coupons:[{n:'檯費 9 折',k:'檯費',e:'🀄'},{n:'免費經典奶茶',k:'餐飲',e:'🧋'},{n:'派車折抵 100',k:'派車',e:'🚗'}],
+  tasks:{play:{cur:2,max:3,done:false},buddy:{done:false}},feedLog:[]};
+var deco='<span style="position:absolute;right:-8px;bottom:-14px;width:56px;height:72px;border-radius:13px;background:#FFFFFF;opacity:0.16;transform:rotate(14deg)"></span>';
+function f(n){return n.toLocaleString();}
+function B(){return document.getElementById('ibody');}
+function bearSVG(sz){return '<svg viewBox="0 0 120 120" width="'+sz+'" height="'+sz+'"><ellipse cx="34" cy="30" rx="15" ry="15" fill="#C9A07A"/><ellipse cx="86" cy="30" rx="15" ry="15" fill="#C9A07A"/><ellipse cx="34" cy="30" rx="8" ry="8" fill="#E8CBB0"/><ellipse cx="86" cy="30" rx="8" ry="8" fill="#E8CBB0"/><ellipse cx="60" cy="62" rx="40" ry="38" fill="#D8B392"/><ellipse cx="60" cy="74" rx="22" ry="19" fill="#EAD3B8"/><circle cx="47" cy="54" r="4.5" fill="#3A2D22"/><circle cx="73" cy="54" r="4.5" fill="#3A2D22"/><circle cx="48.5" cy="52.5" r="1.4" fill="#FFF"/><circle cx="74.5" cy="52.5" r="1.4" fill="#FFF"/><ellipse cx="60" cy="66" rx="5" ry="3.5" fill="#3A2D22"/><path d="M60 69 Q60 74 55 75 M60 69 Q60 74 65 75" stroke="#3A2D22" stroke-width="1.6" fill="none" stroke-linecap="round"/><ellipse cx="40" cy="64" rx="5" ry="3.5" fill="#F4B8C4" opacity="0.7"/><ellipse cx="80" cy="64" rx="5" ry="3.5" fill="#F4B8C4" opacity="0.7"/><path d="M30 18 Q44 6 56 16 L52 24 Q44 17 36 24 Z" fill="#C2607A"/><circle cx="43" cy="14" r="4" fill="#FAD6DC"/></svg>';}
+function toast(msg){var old=document.getElementById('itoast');if(old)old.remove();var t=document.createElement('div');t.id='itoast';t.className='toast';t.textContent=msg;document.getElementById('iapp').appendChild(t);setTimeout(function(){if(t)t.remove();},1700);}
+function addXp(a,reason){St.bearXp+=a;St.feedLog.unshift(reason+' +'+a);while(St.bearXp>=100){St.bearXp-=100;St.bearLv++;toast('小熊升級! Lv.'+St.bearLv+' 🎉');}if(St.feedLog.length>3)St.feedLog.pop();}
+
+var pages={};
+pages[0]=function(){return '<div style="padding:0 20px"><div style="background:#FAD6DC;border-radius:22px;padding:17px 18px 15px;position:relative;overflow:hidden">'+deco+'<div style="display:flex;justify-content:space-between;align-items:center"><p style="font-size:var(--s);color:#5A5556">我的點數</p><span style="background:rgba(255,255,255,0.7);border-radius:999px;padding:3px 10px;font-size:10px;font-weight:500;color:#2E2B2C">焦糖布丁 · 金牌熊 II</span></div><p style="margin-top:6px;font-size:var(--h);font-weight:500;color:#2E2B2C">'+f(St.points)+'<span style="font-size:var(--l);font-weight:400;margin-left:4px;color:#5A5556">點</span></p><div style="display:flex;gap:8px;margin-top:13px"><button onclick="_topup()" class="ibtn" style="flex:1;background:#2E2B2C;padding:10px 0;font-size:var(--m);color:#FFF">儲值</button><button class="ibtn" style="flex:1;background:rgba(255,255,255,0.75);padding:10px 0;font-size:var(--m);color:#2E2B2C">明細</button></div></div></div>'+
+  '<div style="padding:12px 20px 0"><div onclick="_coupons()" style="display:flex;justify-content:space-between;align-items:center;border:0.5px solid #ECEAE9;border-radius:14px;padding:11px 14px;cursor:pointer"><div style="display:flex;align-items:center;gap:10px"><span style="width:28px;height:28px;border-radius:7px;background:#FFE7EE;display:flex;align-items:center;justify-content:center;font-size:14px">券</span><div><p style="font-size:var(--m);color:#2E2B2C">我的優惠券</p><p style="font-size:var(--xs);color:#7A7572">'+St.coupons.length+' 張可用 · 結帳時自動帶出</p></div></div><span style="font-size:var(--s);color:#C2607A">查看 ›</span></div></div>'+
+  '<div style="padding:14px 20px 0"><div onclick="_go(1)" style="display:flex;justify-content:space-between;align-items:center;border:0.5px solid #F0CDD7;border-radius:14px;padding:11px 14px;background:#FFF7F9;cursor:pointer"><div style="display:flex;align-items:center;gap:8px"><span style="width:6px;height:6px;border-radius:50%;background:#C2607A"></span><p style="font-size:var(--s);color:#2E2B2C">現在有 2 桌三缺一</p></div><span style="font-size:var(--s);font-weight:500;color:#C2607A">去配桌 ›</span></div></div>'+
+  '<div style="padding:16px 20px 6px;display:flex;justify-content:space-between;align-items:baseline"><p style="font-size:var(--l);font-weight:500;color:#2E2B2C">最近消費</p><span style="font-size:var(--s);color:#C2607A">全部</span></div>'+
+  '<div style="padding:0 20px 16px"><div class="irow"><span class="itile" style="background:#FAD6DC;width:30px;height:38px;font-size:var(--l)">桌</span><div style="flex:1"><p style="font-size:var(--m);color:#2E2B2C">桌時費 · 50/20</p><p style="font-size:var(--xs);color:#7A7572">今天 14:20 · 2.5 小時</p></div><span style="font-size:var(--m);font-weight:500;color:#2E2B2C">−750</span></div><div class="irow" style="border-bottom:none"><span class="itile" style="background:#EFE3DA;width:30px;height:38px;font-size:var(--l)">茶</span><div style="flex:1"><p style="font-size:var(--m);color:#2E2B2C">經典奶茶 ×2</p><p style="font-size:var(--xs);color:#7A7572">今天 15:02</p></div><span style="font-size:var(--m);font-weight:500;color:#2E2B2C">−160</span></div></div>';};
+
+pages[1]=function(){var q=St.matchState;var sc;
+  if(q==='idle')sc='<p style="font-size:var(--m);font-weight:500;color:#2E2B2C">尚未排隊</p><p style="margin-top:5px;font-size:var(--xs);color:#7A7572">選好條件按上面的按鈕</p>';
+  else if(q==='queuing')sc='<p style="font-size:var(--m);font-weight:500;color:#C2607A">候補中 · 前面 2 組</p><p style="margin-top:5px;font-size:var(--xs);color:#7A7572">湊齊會用 LINE 通知妳 ♡</p>';
+  else sc='<p style="font-size:var(--m);font-weight:500;color:#5DBD8A">配桌成功! T3 · 50/20</p><p style="margin-top:5px;font-size:var(--xs);color:#7A7572">雅琪、美美、小琳同桌 · 養成 +20</p>';
+  var bt=q==='idle'?'幫我配桌':q==='queuing'?'模擬湊齊':'去打牌';
+  return '<div style="padding:0 20px"><div style="background:#FAD6DC;border-radius:22px;padding:15px 18px;position:relative;overflow:hidden">'+deco+'<p style="font-size:var(--xl);font-weight:500;color:#2E2B2C">我要配桌</p><p style="margin-top:2px;font-size:var(--xs);color:#5A5556">依段位、積分與時間幫妳湊一桌</p></div></div>'+
+  '<div style="padding:14px 20px 0"><p style="font-size:var(--s);color:#7A7572;margin-bottom:8px">牌型</p><div><span class="ichip on" onclick="_sel(this)">台 16 張</span><span class="ichip" onclick="_sel(this)">三人麻將</span></div></div>'+
+  '<div style="padding:6px 20px 0"><p style="font-size:var(--s);color:#7A7572;margin-bottom:8px">想打多大</p><div><span class="ichip" onclick="_sel(this)">純娛樂</span><span class="ichip" onclick="_sel(this)">10/10</span><span class="ichip on" onclick="_sel(this)">50/20</span><span class="ichip" onclick="_sel(this)">100/50</span><span class="ichip" onclick="_sel(this)">300/100</span></div></div>'+
+  '<div style="padding:6px 20px 0"><p style="font-size:var(--s);color:#7A7572;margin-bottom:8px">我可以打到</p><div><span class="ichip" onclick="_sel(this)">17:00</span><span class="ichip on" onclick="_sel(this)">17:30</span><span class="ichip" onclick="_sel(this)">18:00</span></div></div>'+
+  '<div style="padding:13px 20px 0"><button onclick="_match()" class="ibtn" style="width:100%;background:'+(q==='matched'?'#5DBD8A':'#2E2B2C')+';padding:12px 0;font-size:var(--l);color:#FFF">'+bt+'</button></div>'+
+  '<div style="padding:12px 20px 16px"><div class="ic" style="padding:12px 14px">'+sc+'</div></div>';};
+
+pages[2]=function(){return '<div style="padding:0 20px"><div style="background:#FAD6DC;border-radius:22px;padding:15px 18px;position:relative;overflow:hidden">'+deco+'<div style="display:flex;align-items:center;gap:12px"><div style="width:46px;height:46px;border-radius:50%;background:#FFF;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:0 0 46px"><span style="font-size:var(--xs);font-weight:500;color:#2E2B2C;line-height:1.1">金牌熊</span><span style="font-size:10px;color:#7A7572">II</span></div><div style="flex:1"><p style="font-size:var(--m);font-weight:500;color:#2E2B2C">距離白金熊還差 180 分</p><div style="height:8px;background:rgba(255,255,255,0.6);border-radius:999px;margin-top:7px"><div style="width:64%;height:8px;background:#C2607A;border-radius:999px"></div></div></div></div></div></div>'+
+  '<div style="padding:14px 20px 0"><div style="background:#FFF7F9;border:0.5px solid #F0CDD7;border-radius:14px;padding:11px 13px;display:flex;gap:9px;align-items:flex-start"><span style="flex:0 0 24px;width:24px;height:24px;border-radius:7px;background:#FAD6DC;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:#A4566A">AI</span><div style="flex:1"><p style="font-size:var(--xs);font-weight:500;color:#A4566A">今日洞察</p><p style="margin-top:2px;font-size:var(--xs);color:#7A7572;line-height:1.5">妳今天放槍偏多,局末多留意安全牌;在 50/20 級距勝率最高,是妳的主場 ♡</p></div></div></div>'+
+  '<div style="padding:14px 20px 0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px"><div class="ic"><p style="font-size:var(--xs);color:#7A7572">和牌率</p><p style="font-size:20px;font-weight:500;color:#2E2B2C">23.4%</p></div><div class="ic"><p style="font-size:var(--xs);color:#7A7572">放槍率</p><p style="font-size:20px;font-weight:500;color:#2E2B2C">11.2%</p></div><div class="ic"><p style="font-size:var(--xs);color:#7A7572">平均順位</p><p style="font-size:20px;font-weight:500;color:#2E2B2C">2.4</p></div><div class="ic"><p style="font-size:var(--xs);color:#7A7572">全國排名</p><p style="font-size:20px;font-weight:500;color:#2E2B2C">#128</p></div></div>'+
+  '<div style="padding:14px 20px 6px"><p style="font-size:var(--m);font-weight:500;color:#2E2B2C">各積分級距勝率(本月)</p></div>'+
+  '<div style="padding:0 20px 16px"><div class="irow" style="padding:7px 0"><span style="font-size:var(--s);color:#2E2B2C;flex:0 0 54px">50/20</span><div style="flex:1;height:6px;background:#F0EFEE;border-radius:999px"><div style="width:58%;height:6px;background:#C2607A;border-radius:999px"></div></div><span style="font-size:var(--xs);color:#7A7572;flex:0 0 54px;text-align:right">58%·12場</span></div><div class="irow" style="padding:7px 0"><span style="font-size:var(--s);color:#2E2B2C;flex:0 0 54px">30/10</span><div style="flex:1;height:6px;background:#F0EFEE;border-radius:999px"><div style="width:44%;height:6px;background:#C2607A;border-radius:999px"></div></div><span style="font-size:var(--xs);color:#7A7572;flex:0 0 54px;text-align:right">44%·8場</span></div><div class="irow" style="padding:7px 0;border-bottom:none"><span style="font-size:var(--s);color:#2E2B2C;flex:0 0 54px">純娛樂</span><div style="flex:1;height:6px;background:#F0EFEE;border-radius:999px"><div style="width:67%;height:6px;background:#C2607A;border-radius:999px"></div></div><span style="font-size:var(--xs);color:#7A7572;flex:0 0 54px;text-align:right">67%·5場</span></div></div>';};
+
+pages[3]=function(){var bd=[['琪','雅琪','金牌熊','#FAD6DC','#A4566A',true,'同桌 9 次'],['美','美美','銀牌熊','#EFE3DA','#7A6253',true,'最佳牌咖'],['琳','小琳','金牌熊','#F0EFEE','#5A5556',false,'上次 6/10']];
+  var rows=bd.map(function(b,i){return '<div class="irow"'+(i===2?' style="border-bottom:none"':'')+'><div style="width:34px;height:34px;border-radius:50%;background:'+b[3]+';display:flex;align-items:center;justify-content:center;font-size:var(--s);font-weight:500;color:'+b[4]+';flex:0 0 34px;position:relative">'+b[0]+(b[5]?'<span style="position:absolute;bottom:0;right:0;width:9px;height:9px;border-radius:50%;background:#5DBD8A;border:1.5px solid #FFF"></span>':'')+'</div><div style="flex:1"><p style="font-size:var(--m);color:#2E2B2C">'+b[1]+' <span style="font-size:9px;color:#C2607A;background:#FBEAF0;padding:1px 5px;border-radius:3px">'+b[2]+'</span></p><p style="font-size:var(--xs);color:#7A7572">'+b[6]+'</p></div>'+(b[5]?'<button onclick="_invite(&#39;'+b[1]+'&#39;)" class="ibtn" style="background:#FAD6DC;padding:5px 14px;font-size:var(--xs);color:#2E2B2C">揪她</button>':'<span style="font-size:var(--xs);color:#B5B0AC">離線</span>')+'</div>';}).join('');
+  return '<div style="padding:0 20px"><div style="background:#FAD6DC;border-radius:22px;padding:15px 18px;position:relative;overflow:hidden">'+deco+'<p style="font-size:var(--xl);font-weight:500;color:#2E2B2C">我的牌咖</p><p style="margin-top:2px;font-size:var(--xs);color:#5A5556">一起打過、聊得來的人 · 開局互相揪</p></div></div>'+
+  '<div style="padding:14px 20px 0;display:flex;gap:8px"><div class="ic" style="flex:1;text-align:center"><p style="font-size:22px;font-weight:500;color:#2E2B2C">12</p><p style="font-size:var(--xs);color:#7A7572">牌咖</p></div><div class="ic" style="flex:1;text-align:center"><p style="font-size:22px;font-weight:500;color:#C2607A">2</p><p style="font-size:var(--xs);color:#7A7572">在線上</p></div><div class="ic" style="flex:1;text-align:center"><p style="font-size:22px;font-weight:500;color:#2E2B2C">48</p><p style="font-size:var(--xs);color:#7A7572">同桌次數</p></div></div>'+
+  '<div style="padding:14px 20px 6px"><p style="font-size:var(--m);font-weight:500;color:#2E2B2C">現在在店裡 · 揪一咖</p></div>'+
+  '<div style="padding:0 20px 16px">'+rows+'</div>';};
+
+pages[4]=function(){
+  if(St.bearTab===undefined)St.bearTab='nurture';
+  var subtabs='<div style="padding:10px 20px 0;display:flex;gap:8px">'+
+    '<button onclick="St.bearTab=&#39;nurture&#39;;_go(4)" class="ibtn" style="flex:1;padding:8px 0;font-size:var(--s);background:'+(St.bearTab==='nurture'?'#FAD6DC':'#F0EFEE')+';color:'+(St.bearTab==='nurture'?'#2E2B2C':'#7A7572')+'">每日養成</button>'+
+    '<button onclick="St.bearTab=&#39;collect&#39;;_go(4)" class="ibtn" style="flex:1;padding:8px 0;font-size:var(--s);background:'+(St.bearTab==='collect'?'#FAD6DC':'#F0EFEE')+';color:'+(St.bearTab==='collect'?'#2E2B2C':'#7A7572')+'">收藏成就</button>'+
+  '</div>';
+
+  if(St.bearTab==='collect'){
+    var ach=[['🏆','首勝',1],['🔥','連勝5',1],['🎯','放槍<10%',1],['🐻','大師熊',0],['👑','雀神熊',0],['🌸','櫻花季',0]];
+    var ah=ach.map(function(a){return '<div style="flex:0 0 calc(25% - 6px);text-align:center"><div style="width:100%;aspect-ratio:1;background:'+(a[2]?'#FAD6DC':'#F0EFEE')+';border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;'+(a[2]?'':'opacity:0.4')+'">'+a[0]+'</div><p style="margin-top:4px;font-size:9px;color:'+(a[2]?'#7A7572':'#B5B0AC')+'">'+a[1]+'</p></div>';}).join('');
+    return subtabs+
+      '<div style="padding:14px 20px 6px"><div onclick="_gacha()" style="cursor:pointer;background:#FAD6DC;border-radius:18px;padding:16px;position:relative;overflow:hidden">'+deco+'<div style="display:flex;align-items:center;gap:12px"><div style="font-size:34px">🥚</div><div style="flex:1"><p style="font-size:var(--l);font-weight:500;color:#2E2B2C">小熊扭蛋</p><p style="margin-top:2px;font-size:var(--xs);color:#5A5556">妳有 '+St.gachaTickets+' 張券 · 點我抽 ♡</p></div></div></div></div>'+
+      '<div style="padding:14px 20px 6px;display:flex;justify-content:space-between;align-items:baseline"><p style="font-size:var(--m);font-weight:500;color:#2E2B2C">我的成就</p><span style="font-size:var(--xs);color:#C2607A">12 / 30</span></div>'+
+      '<div style="padding:0 20px;display:flex;flex-wrap:wrap;gap:8px">'+ah+'</div>'+
+      '<div style="padding:16px 20px 6px"><p style="font-size:var(--m);font-weight:500;color:#2E2B2C">名人堂俱樂部</p></div>'+
+      '<div style="padding:0 20px"><div onclick="_hall()" class="irow" style="cursor:pointer"><span class="itile" style="background:#FAD6DC">堂</span><div style="flex:1"><p style="font-size:var(--s);color:#2E2B2C">歷代雀神熊</p><p style="font-size:var(--xs);color:#7A7572">妳目前全國排第 128</p></div><span style="font-size:var(--xs);color:#C2607A">看 ›</span></div></div>'+
+      '<div style="padding:16px 20px 6px"><p style="font-size:var(--m);font-weight:500;color:#2E2B2C">推薦揪團</p></div>'+
+      '<div style="padding:0 20px 16px"><div onclick="_refer()" class="irow" style="cursor:pointer;border-bottom:none"><span class="itile" style="background:#F0EFEE">薦</span><div style="flex:1"><p style="font-size:var(--s);color:#2E2B2C">我的推薦碼 MIGI-婷</p><p style="font-size:var(--xs);color:#7A7572">已推薦 3 人 · 2 人成常客</p></div><span style="font-size:var(--xs);color:#C2607A">分享 ›</span></div></div>';
+  }
+
+  // nurture(每日養成)
+  var ft=St.feedLog.length?St.feedLog.join(' · '):'打牌 +20 · 點餐 +10 · 揪人 +30';
+  return subtabs+
+  '<div style="padding:12px 20px 0"><div style="background:#FAD6DC;border-radius:22px;padding:16px;position:relative;overflow:hidden;text-align:center"><span style="position:absolute;top:14px;right:16px;font-size:var(--m);font-weight:500;color:#A4566A">Lv.'+St.bearLv+'</span><div id="bearArt" style="display:flex;justify-content:center">'+bearSVG(82)+'</div><div style="height:8px;background:rgba(255,255,255,0.6);border-radius:999px;margin-top:10px"><div id="xpbar" style="width:'+St.bearXp+'%;height:8px;background:#C2607A;border-radius:999px;transition:width .5s"></div></div><p style="margin-top:7px;font-size:var(--xs);color:#A4566A">'+ft+'</p><button onclick="_feed()" class="ibtn" style="margin-top:10px;background:#2E2B2C;padding:8px 20px;font-size:var(--s);color:#FFF">餵小熊一口（模擬打牌 +20）</button></div></div>'+
+  '<div style="padding:14px 20px 0"><div style="display:flex;align-items:center;justify-content:space-between;background:#FFF7F9;border:0.5px solid #F0CDD7;border-radius:14px;padding:12px 14px"><div><p style="font-size:var(--m);font-weight:500;color:#2E2B2C">每日簽到 · 連續 '+St.checkDays+' 天</p><p style="margin-top:2px;font-size:var(--xs);color:#7A7572">'+(St.checkedToday?'明天再來簽 ♡':'簽到拿小熊扭蛋券 ×1')+'</p></div><button onclick="_checkin()" class="ibtn" style="background:'+(St.checkedToday?'#EDD5DC':'#C2607A')+';padding:8px 16px;font-size:var(--s);color:'+(St.checkedToday?'#A4566A':'#FFF')+'">'+(St.checkedToday?'已簽到':'簽到')+'</button></div></div>'+
+  '<div style="padding:14px 20px 6px"><div class="irow" style="border:0.5px solid #F0CDD7;border-radius:14px;padding:11px 13px;background:#FFF;border-bottom:1px solid #F0CDD7"><span class="itile" style="background:#FFE7EE">限</span><div style="flex:1"><p style="font-size:var(--s);font-weight:500;color:#2E2B2C">限時活動 · 櫻花季雙倍養成</p><p style="font-size:var(--xs);color:#C2607A">剩 2 天 · 打牌養成 ×2</p></div></div></div>'+
+  '<div style="padding:14px 20px 6px"><p style="font-size:var(--m);font-weight:500;color:#2E2B2C">本週任務</p></div>'+
+  '<div style="padding:0 20px 16px"><div class="irow" style="padding:8px 0"><span class="itile" style="background:'+(St.tasks.play.done?'#FAD6DC':'#F0EFEE')+'">'+(St.tasks.play.done?'✓':'牌')+'</span><div style="flex:1"><p style="font-size:var(--s);color:#2E2B2C">打 3 場麻將</p></div><span style="font-size:var(--xs);color:'+(St.tasks.play.done?'#5DBD8A':'#7A7572')+'">'+St.tasks.play.cur+'/'+St.tasks.play.max+'</span></div><div class="irow" style="padding:8px 0;border-bottom:none"><span class="itile" style="background:'+(St.tasks.buddy.done?'#FAD6DC':'#F0EFEE')+'">'+(St.tasks.buddy.done?'✓':'咖')+'</span><div style="flex:1"><p style="font-size:var(--s);color:#2E2B2C">揪一個牌咖同桌</p></div><span style="font-size:var(--xs);color:'+(St.tasks.buddy.done?'#5DBD8A':'#C2607A')+'">'+(St.tasks.buddy.done?'完成':'+30 養成')+'</span></div></div>';};
+
+var cur=0;
+function _go(i){cur=i;B().innerHTML=pages[i]();for(var k=0;k<5;k++)document.getElementById('it'+k).className='it'+(k==i?' on':'');}
+function _iz(lg){document.getElementById('iapp').className=lg?'lg':'';document.getElementById('iz0').className='fseg'+(lg?'':' on');document.getElementById('iz1').className='fseg'+(lg?' on':'');}
+function _sel(el){var ch=el.parentNode.children;for(var i=0;i<ch.length;i++)ch[i].classList.remove('on');el.classList.add('on');}
+function _topup(){St.points+=5000;toast('儲值 +5,000 點 ♡');_go(0);}
+function _match(){if(St.matchState==='idle'){St.matchState='queuing';toast('開始配桌,候補中…');_go(1);}else if(St.matchState==='queuing'){St.matchState='matched';addXp(20,'配桌');St.tasks.play.cur=Math.min(St.tasks.play.max,St.tasks.play.cur+1);if(St.tasks.play.cur>=St.tasks.play.max)St.tasks.play.done=true;toast('配桌成功! 養成 +20');_go(1);}else{toast('祝妳打牌順利 ♡');}}
+function _invite(name){St.tasks.buddy.done=true;addXp(30,'揪人');toast('已揪 '+name+'! 養成 +30');}
+function _feed(){addXp(20,'打牌');var bar=document.getElementById('xpbar');var art=document.getElementById('bearArt');if(bar)bar.style.width=St.bearXp+'%';if(art){art.style.animation='none';void art.offsetWidth;art.style.animation='pop .4s';}_go(4);}
+function _checkin(){if(St.checkedToday){toast('今天簽過囉 ♡');return;}St.checkedToday=true;St.checkDays++;St.gachaTickets++;toast('簽到成功! 連續 '+St.checkDays+' 天,得扭蛋券 ×1');_go(4);}
+function _gacha(){
+  var ov=document.createElement('div');ov.id='gachaOv';
+  ov.style.cssText='position:absolute;inset:0;background:#FCE9EF;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:30;padding:24px';
+  ov.innerHTML=
+    '<button onclick="document.getElementById(&#39;gachaOv&#39;).remove()" style="position:absolute;top:16px;right:18px;background:none;border:none;font-size:24px;color:#A4566A;cursor:pointer">×</button>'+
+    '<p style="font-size:17px;font-weight:600;color:#2E2B2C">扭蛋摸彩</p>'+
+    '<div id="gachaCircle" style="margin-top:20px;width:150px;height:150px;border-radius:50%;background:#FAD6DC;display:flex;align-items:center;justify-content:center"><div style="width:88px;height:88px;border-radius:50%;background:#FCE9EF;display:flex;align-items:center;justify-content:center"><div style="width:46px;height:46px;border-radius:50%;background:#FAD6DC"></div></div></div>'+
+    '<div style="margin-top:22px;width:100%;max-width:230px;display:flex;flex-direction:column;gap:9px">'+
+      '<button onclick="_pull(&#39;points&#39;)" class="ibtn" style="background:#2E2B2C;color:#FFF;padding:13px;font-size:14px">轉一顆 · '+St.gachaCost+' 點</button>'+
+      '<button onclick="_pull(&#39;ticket&#39;)" class="ibtn" style="background:'+(St.gachaTickets>0?'#FAD6DC':'#EDEAE8')+';color:'+(St.gachaTickets>0?'#2E2B2C':'#B5B0AC')+';padding:13px;font-size:14px">用扭蛋券（'+St.gachaTickets+' 張）</button>'+
+    '</div>'+
+    '<p style="margin-top:14px;font-size:11px;color:#9A9491;text-align:center;line-height:1.6">保底 10 抽必中 · 機率公開<br>多消費 · 克制不賭博</p>'+
+    '<p style="margin-top:6px;font-size:11px;color:#9A9491">點數 '+f(St.points)+' · 券 '+St.gachaTickets+' 張</p>';
+  document.getElementById('iapp').appendChild(ov);
+}
+function _pull(by){
+  if(by==='points'){if(St.points<St.gachaCost){toast('點數不足 ♡');return;}St.points-=St.gachaCost;}
+  else{if(St.gachaTickets<=0){toast('沒有扭蛋券,簽到可拿 ♡');return;}St.gachaTickets--;}
+  var pr=[['小熊帽子','🎀'],['限定牌尺','✨'],['免費奶茶券','🧋'],['點數 +100','💰'],['小熊貼圖','🐻'],['再接再厲','🍀']];
+  var g=pr[Math.floor(Math.random()*pr.length)];
+  if(g[0].indexOf('點數')>=0)St.points+=100;
+  if(g[0].indexOf('奶茶券')>=0)St.coupons.push({n:'免費經典奶茶',k:'餐飲',e:'🧋'});
+  var ov=document.getElementById('gachaOv');
+  ov.innerHTML='<div style="font-size:60px;animation:spin 1.2s ease-out">🥚</div><p style="color:#A4566A;font-size:13px;margin-top:14px">轉啊轉…</p>';
+  setTimeout(function(){
+    ov.innerHTML='<div style="background:#FFF;border-radius:20px;padding:26px 32px;text-align:center;animation:pop .4s"><div style="font-size:54px">'+g[1]+'</div><p style="margin-top:12px;font-size:16px;font-weight:600;color:#2E2B2C">抽到「'+g[0]+'」</p><button onclick="document.getElementById(&#39;gachaOv&#39;).remove();_go(4)" class="ibtn" style="margin-top:16px;background:#C2607A;color:#FFF;padding:9px 26px;font-size:13px">收下 ♡</button></div>';
+  },1300);
+}
+function _coupons(){
+  var ov=document.createElement('div');ov.id='cpOv';
+  ov.style.cssText='position:absolute;inset:0;background:rgba(46,43,44,0.4);display:flex;align-items:flex-end;z-index:30';
+  var rows=St.coupons.map(function(c){return '<div style="display:flex;align-items:center;gap:11px;padding:12px 0;border-bottom:0.5px solid #F2F0EE"><span style="width:34px;height:34px;border-radius:8px;background:#FFE7EE;display:flex;align-items:center;justify-content:center;font-size:17px">'+c.e+'</span><div style="flex:1"><p style="font-size:13px;font-weight:500;color:#2E2B2C">'+c.n+'</p><p style="font-size:11px;color:#7A7572">'+c.k+'類 · 結帳時可用</p></div><span style="font-size:11px;color:#C2607A;background:#FBEAF0;padding:3px 9px;border-radius:999px">可用</span></div>';}).join('');
+  if(!St.coupons.length)rows='<p style="padding:20px;text-align:center;color:#B5B0AC;font-size:12px">目前沒有優惠券</p>';
+  ov.innerHTML='<div style="background:#FFF;border-radius:22px 22px 0 0;width:100%;padding:18px 20px 24px;animation:pop .3s"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><p style="font-size:16px;font-weight:600;color:#2E2B2C">我的優惠券</p><button onclick="document.getElementById(&#39;cpOv&#39;).remove()" style="background:none;border:none;font-size:22px;color:#9A9491;cursor:pointer">×</button></div><p style="font-size:11px;color:#9A9491;margin-bottom:8px">券只折抵檯費/餐飲/派車等服務費 · 在各結帳頁自動帶出</p>'+rows+'</div>';
+  ov.onclick=function(e){if(e.target===ov)ov.remove();};
+  document.getElementById('iapp').appendChild(ov);
+}
+function _sheet(title,subtitle,bodyHtml){
+  var ov=document.createElement('div');ov.id='shOv';
+  ov.style.cssText='position:absolute;inset:0;background:rgba(46,43,44,0.4);display:flex;align-items:flex-end;z-index:30';
+  ov.innerHTML='<div style="background:#FFF;border-radius:22px 22px 0 0;width:100%;padding:18px 20px 24px;animation:pop .3s"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><p style="font-size:16px;font-weight:600;color:#2E2B2C">'+title+'</p><button onclick="document.getElementById(&#39;shOv&#39;).remove()" style="background:none;border:none;font-size:22px;color:#9A9491;cursor:pointer">×</button></div><p style="font-size:11px;color:#9A9491;margin-bottom:10px">'+subtitle+'</p>'+bodyHtml+'</div>';
+  ov.onclick=function(e){if(e.target===ov)ov.remove();};
+  document.getElementById('iapp').appendChild(ov);
+}
+function _hall(){
+  var rows=[['🥇','雀神熊 · 小婷','本季冠軍 · 旗艦店'],['🥈','美美','亞軍 · 連續 3 季入榜'],['🥉','雅琪','季軍'],['🏅','妳','全國排名 #128 · 加油 ♡']];
+  var html=rows.map(function(r){return '<div style="display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:0.5px solid #F2F0EE"><span style="font-size:22px">'+r[0]+'</span><div style="flex:1"><p style="font-size:13px;font-weight:500;color:#2E2B2C">'+r[1]+'</p><p style="font-size:11px;color:#7A7572">'+r[2]+'</p></div></div>';}).join('');
+  _sheet('名人堂俱樂部','歷代雀神熊 · 頂端尊榮,越爬越不想走',html);
+}
+function _refer(){
+  var html='<div style="background:#FBEAF0;border-radius:12px;padding:14px;text-align:center;margin-bottom:12px"><p style="font-size:11px;color:#7A7572">我的推薦碼</p><p style="font-size:20px;font-weight:600;color:#C2607A;letter-spacing:1px;margin-top:2px">MIGI-婷</p></div>'+
+    '<div style="display:flex;gap:8px;margin-bottom:12px"><div style="flex:1;text-align:center;background:#F8F7F6;border-radius:10px;padding:10px"><p style="font-size:18px;font-weight:600;color:#2E2B2C">3</p><p style="font-size:10px;color:#7A7572">已推薦</p></div><div style="flex:1;text-align:center;background:#F8F7F6;border-radius:10px;padding:10px"><p style="font-size:18px;font-weight:600;color:#C2607A">2</p><p style="font-size:10px;color:#7A7572">成常客</p></div></div>'+
+    '<button onclick="toast(&#39;已複製推薦碼 ♡&#39;)" class="ibtn" style="width:100%;background:#C2607A;color:#FFF;padding:11px;font-size:13px">分享給朋友</button>';
+  _sheet('推薦揪團','揪滿一桌 → 達人徽章 + 大獎',html);
+}
+
+function _t2(n){toast('開啟「'+n+'」（原型示意）');}
+_go(0);
+
+/* 明確掛全域,確保 innerHTML 內 onclick 找得到 */
+try{window._go=_go;}catch(e){}
+try{window._iz=_iz;}catch(e){}
+try{window._sel=_sel;}catch(e){}
+try{window._topup=_topup;}catch(e){}
+try{window._match=_match;}catch(e){}
+try{window._invite=_invite;}catch(e){}
+try{window._feed=_feed;}catch(e){}
+try{window._checkin=_checkin;}catch(e){}
+try{window._gacha=_gacha;}catch(e){}
+try{window._pull=_pull;}catch(e){}
+try{window._t2=_t2;}catch(e){}
+try{window._coupons=_coupons;}catch(e){}
+try{window._hall=_hall;}catch(e){}
+try{window._refer=_refer;}catch(e){}
+try{window._sheet=_sheet;}catch(e){}
+try{window._pull=_pull;}catch(e){}
+</script>
+</body>
+</html>
