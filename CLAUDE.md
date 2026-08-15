@@ -160,6 +160,18 @@ migi github/           ← Claude Code 的 project folder 選這層
   - migi-web 與 migi-admin 的資料層**還沒**比照加 try/catch
 
 ### 待辦
+0. 🔴 **首次結帳吃不到購物車品項，儲值完全沒進資料庫**（2026-08-15 發現，**碰錢，最優先**）
+   - `join_session_tx` **沒有 items 參數**，只收自己算的檯費。開桌時加的餐飲／商品
+     **不會進 `orders`**；而前端送的 `payments` 含了那些金額，
+     `checkout_tx` 第 6 步收款驗證必然失敗 —— 這條路等於結不掉帳。
+   - **POS 全專案沒有任何儲值 RPC 呼叫**（`api.js` 無 topup 函式）。
+     `doPay` 的 `topupCredit` 只改 React state，畫面餘額會跳但
+     `wallets.balance` 沒動，重新整理就回去。**儲值按鈕從來沒有真的生效過。**
+   - 加購那條路（`pos_addon_checkout_tx`）有送 items 且會擋下 `kind='topup'`，所以沒事。
+     洞只在「首次結帳」—— 而那是最常用的路徑。
+   - **已定方向 A**：後端 `join_session_tx` 加 `p_items`，一筆交易收檯費 + 商品
+     （加參數＝改簽名，依硬規則 2 必須先 `DROP FUNCTION IF EXISTS`）；
+     **儲值獨立成一步**走 `topup_tx`（它寫 `topup_orders` 不是 `orders`，本就不該混同一張單）。
 1. **會員 App 沒有消費明細** —— `wallet.jsx` 的「明細」是錢包點數流水（`wallet_txns`），
    不是消費紀錄（`orders`）。**付現金的消費完全不會出現** ——
    改元計價 + 混合付款後檯費可直接收現金，收現金不產生點數異動，會員端就什麼都看不到。
