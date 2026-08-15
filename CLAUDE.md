@@ -160,7 +160,7 @@ migi github/           ← Claude Code 的 project folder 選這層
   - migi-web 與 migi-admin 的資料層**還沒**比照加 try/catch
 
 ### 待辦
-0. 🔴 **首次結帳吃不到購物車品項，儲值完全沒進資料庫**（2026-08-15 發現，**碰錢，最優先**）
+0. **金流洞（2026-08-15 發現，2026-08-16 大部分修復）**
    - `join_session_tx` **沒有 items 參數**，只收自己算的檯費。開桌時加的餐飲／商品
      **不會進 `orders`**；而前端送的 `payments` 含了那些金額，
      `checkout_tx` 第 6 步收款驗證必然失敗 —— 這條路等於結不掉帳。
@@ -169,9 +169,16 @@ migi github/           ← Claude Code 的 project folder 選這層
      `wallets.balance` 沒動，重新整理就回去。**儲值按鈕從來沒有真的生效過。**
    - 加購那條路（`pos_addon_checkout_tx`）有送 items 且會擋下 `kind='topup'`，所以沒事。
      洞只在「首次結帳」—— 而那是最常用的路徑。
-   - **已定方向 A**：後端 `join_session_tx` 加 `p_items`，一筆交易收檯費 + 商品
-     （加參數＝改簽名，依硬規則 2 必須先 `DROP FUNCTION IF EXISTS`）；
-     **儲值獨立成一步**走 `topup_tx`（它寫 `topup_orders` 不是 `orders`，本就不該混同一張單）。
+   - **2026-08-16 已修復並實機驗證**，只剩最後一項（見下）：
+     `join_session_tx` 加 `p_items`（改簽名，已 DROP 重建）；
+     `pos_checkout_with_topup_tx` 在單一交易內先 `topup_tx` 再 `join_session_tx`，
+     **關鍵是 join 回 `ok:false` 時要主動 `raise`** —— 它的業務錯誤不拋例外，
+     不 raise 的話交易照常提交，儲值會留下半筆帳；
+     `topup_orders` 加 `session_id` 並併入 `get_session_member_orders_tx`，
+     桌帳看得到儲值（標題改「本場交易紀錄」）。
+   - ⏳ **仍未開放：已入座的客人儲值。** 加購走 `pos_addon_checkout_tx`，
+     那條路還沒接，前端擋下並提示「稍後開放」。
+     比照 `pos_checkout_with_topup_tx` 擴充即可 —— 同樣是單一交易內先 topup 再 checkout。
 1. **會員 App 沒有消費明細** —— `wallet.jsx` 的「明細」是錢包點數流水（`wallet_txns`），
    不是消費紀錄（`orders`）。**付現金的消費完全不會出現** ——
    改元計價 + 混合付款後檯費可直接收現金，收現金不產生點數異動，會員端就什麼都看不到。
