@@ -131,8 +131,13 @@ migi github/           ← Claude Code 的 project folder 選這層
   驗證通過：版本數 1 / DEFINER / 煙霧測試 `not_found`
 - **座位卡稱號落地**（2026-08-15）：`get_session_tx` 的 players 補回傳 `members.title`
   （`CREATE OR REPLACE`，簽名未變故不需 DROP），`TablePage.jsx` 的 `title: null` 改吃真值。
-  驗證通過：版本數 1、定義已含 title、實測取得「測試01 / 新手上路」。
-  `SeatPage` 的稱號膠囊與選人清單同時生效 —— 那段實作寫好很久，一直沒資料可顯示
+  驗證通過：版本數 1、定義已含 title、實測取得「測試01 / 新手上路」
+- **稱號與段位三端統一**（2026-08-15）：改用會員 App 個人檔案的既有寫法 ——
+  稱號「直角引號」+ `--ink` 無底色，段位半透明白膠囊帶「段位: 」前綴，
+  `fmtRank()` 兩端同一份定義。順序為稱號 → 暱稱 → 段位。
+  **`#B8860B` 隨之移除，POS 現在零寫死色碼。**
+  過程中一度以為缺「深金字」token，查了會員 App 才發現稱號本來就不是金色 ——
+  那個色碼不屬於任何設計決定（實測對比僅 3.2:1，未達 AA）
 - `list_tables_tx` 人數修正：原本用 `sp.status <> 'left'` 判斷在座，
   但 status 沒有 'left' 這個值，條件恆為真、離座者被算進去（2026-08-14）
 - **POS M2 開收桌全流程完成並實機驗證通過**（2026-08-14～15，共 20 個 commit，`e91fafd`）：
@@ -186,13 +191,10 @@ migi github/           ← Claude Code 的 project folder 選這層
    產兩段式流水號，前綴表寫 `SER-` 但資料庫實際用 `SVC-`；又取「貨號尾端數字最大值 +1」，
    掃到 `SVC-TBL-P24` 會得 24 → 產出 `SER-025`。
    其餘上線前必做見 `docs/08-決策與踩坑/決策紀錄.md` 第十六節（附驗證狀態）。
-9. **座位卡稱號的「深金字」token 未定** —— 稱號本身已經會顯示了（2026-08-15 完成），
-    但那個膠囊的文字色寫死 `#B8860B`（CSS 具名色 `darkgoldenrod`），
-    是**全 POS 唯一的寫死色碼**。
-    `--gold #E8B89B` 是淺金、定義為邊框與點綴，當文字看不清；
-    `--milktea-ink #7A5C42` 又失去金色質感。
-    **等在實機上看過實際效果之後，定一個「深金字」token 收進三端**
-    （見 `docs/04-設計系統/設計Token規範.md`「已知缺口：深金字」）。
+9. **`migi-web` 與 `migi-admin` 的資料層還沒比照 POS 加 try/catch** ——
+    POS 已於 2026-08-15 補上 `ErrorBoundary` 與 `rpc()` 的例外收斂
+    （supabase-js 在 HTTP 層失敗時是直接 throw 而非回 error 物件，
+    原本會變成 unhandled rejection：畫面沒反應也沒提示）。另外兩端同樣的洞還在。
 
 ### PENDING
 - 店員登入未做，`staffId` 一律傳 null，`App.jsx` 還有 `const STAFF = "小美"` 寫死
