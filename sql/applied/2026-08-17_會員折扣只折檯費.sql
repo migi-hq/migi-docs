@@ -1,47 +1,25 @@
--- 【待執行】會員等級折扣改成只折檯費
+-- 【已執行 2026-08-17】會員等級折扣改成只折檯費
 -- ============================================================
--- 問題
---   《會員分級制度規格》寫的是「**桌時費** 95 折 / **桌時費** 9 折」，
---   但 checkout_tx 算的是整張單：
+-- 問題：規格寫的是「桌時費 95 折 / 桌時費 9 折」，但 checkout_tx 算整張單：
+--   v_tier_cut := round((v_sub - v_coupon_cut) * (1 - v_rate));
+-- 實測（測試01 提拉米蘇 9 折）：檯費 150 + 水餃 80 → 折 -$23，照規格應為 -$15。
 --
---     v_tier_cut := round((v_sub - v_coupon_cut) * (1 - v_rate));
+-- 為什麼要緊：餐飲與商品有食材／進貨成本，檯費幾乎純毛利。
+-- 食材成本通常 30-40%，毛利 40% 的品項打 9 折毛利掉四分之一；
+-- 檯費打 9 折幾乎不痛 —— 桌子本來就在那，邊際成本趨近於零。
+-- 業界一律「折扣給產能，不給存貨」。規格是對的，實作走偏了。
 --
---   實測（2026-08-16，測試01 提拉米蘇 9 折）：
---   檯費 150 + 水餃 80 → 折了 -$23（230 的 10%），照規格應為 -$15。
+-- 改法：基數換成 rem_fee（券折抵後剩下的檯費，券的分桶邏輯一路維護著它）。
+-- 沒有券時 rem_fee = v_fee。v_tier_cut <= rem_fee，比舊版更不可能算出負的應付。
+-- 簽名未變，不需 DROP。
 --
---   為什麼這件事要緊：**餐飲與商品有食材／進貨成本，檯費幾乎是純毛利。**
---   餐飲食材成本通常 30–40%，一個毛利 40% 的品項打 9 折，毛利直接掉四分之一。
---   檯費打 9 折則幾乎不痛 —— 桌子本來就在那，邊際成本趨近於零。
---   業界（星巴克、超商會員、旅館 elite）一律「折扣給產能，不給存貨」，
---   規格本身就是照這個原則寫的，是實作走偏了。
+-- 刻意不動（避免把安全性修改混進計價修改，出事時分不清是誰造成的）：
+--   checkout_tx 沒有 SECURITY DEFINER 也沒有 SET search_path，另案。
+--   v_rate 的等級對照寫死在函式裡，而 chef_special 目前寫不進 members（待辦 4）。
 --
--- 改法：一行
---   checkout_tx 裡已經有一個現成的答案 —— `rem_fee`。
---   它是「檯費扣掉券折抵之後還剩多少」，券的分桶邏輯一路維護著它
---   （applies_to='table_fee' 的券會扣它，未指定範圍的券會依序吃掉三個桶）。
---   所以不需要自己重算，直接用它。
---
---     v_tier_cut := round(rem_fee * (1 - v_rate));
---
---   沒有券時 rem_fee = v_fee，行為就是「檯費 × 折數」。
---
--- 順帶：v_payable 不會變成負數
---   v_tier_cut ≤ rem_fee ≤ v_sub - v_coupon_cut，比舊版更安全。
---
--- 本檔**只改這一行**，其餘與線上版逐字相同（2026-08-17 以 pg_get_functiondef 撈出）。
---   簽名未變，不需 DROP。
---
--- ⚠ 刻意不動的兩件事（避免把安全性修改混進計價修改，出事時分不清是誰造成的）
---   ① checkout_tx **沒有 SECURITY DEFINER 也沒有 SET search_path**。
---      它靠 join_session_tx（DEFINER）呼叫才跑得動，POS 直接叫會被 RLS 擋。
---      缺 search_path 在「被 DEFINER 呼叫的函式」裡是安全面向的缺口，另案處理。
---   ② v_rate 的等級對照寫死在函式裡（caramel_pudding 0.950 / tiramisu 0.900 /
---      chef_special 0.900）。而 chef_special 目前根本寫不進 members
---      —— 兩條 tier CHECK 打架，見 CLAUDE.md 待辦 4。
---
--- ⚠ 硬規則 7：本檔跑完只代表 DDL 成功。
---   **必須在 POS 實際結一次帳**（測試01 提拉米蘇，檯費 + 餐飲各一筆），
---   確認折扣金額 = 檯費 × 10%，才算完成。
+-- ⚠ 本檔是**交付當時的完整定義**，不是線上鏡像（硬規則 3）。
+--   實際執行時是以 DO 區塊對線上定義做單點替換，
+--   所以線上那一行的行尾註解與本檔略有差異，邏輯相同。
 -- ============================================================
 
 create or replace function public.checkout_tx(
@@ -202,11 +180,9 @@ begin
               else 1.000
             end;
 
-  -- ★ 2026-08-17：會員等級折扣只折檯費，不折餐飲與商品。
-  --   《會員分級制度規格》寫的就是「桌時費 95 折 / 桌時費 9 折」，
-  --   舊版拿 (v_sub - v_coupon_cut) 當基數是把整張單都折了。
+  -- ★ 2026-08-17：等級折扣只折檯費。
+  --   舊版是 round((v_sub - v_coupon_cut) * (1 - v_rate))，把整張單都折了。
   --   rem_fee 是券折抵後剩下的檯費，正是這裡要的基數 —— 不需另外重算。
-  --   餐飲與商品有食材／進貨成本，檯費幾乎純毛利；折扣給產能不給存貨。
   v_tier_cut := round(rem_fee * (1 - v_rate));
 
   v_payable := v_sub - v_coupon_cut - v_tier_cut;
@@ -238,7 +214,6 @@ begin
   )
   returning id, order_no into v_order_id, v_order_no;
 
-  -- ★品項：只寫 unit_price（已淘汰 unit_points）
   for it in select * from jsonb_array_elements(p_items) loop
     insert into order_items(org_id, order_id, product_id, name, kind, qty,
                             unit_price, line_total)
@@ -303,36 +278,30 @@ end
 $function$;
 
 comment on function public.checkout_tx(uuid, uuid, jsonb, uuid[], bigint, jsonb, text, uuid) is
-  '結帳核心。券依 applies_to 分桶折抵；會員等級折扣**只折檯費**（基數為券折抵後的 rem_fee），不折餐飲與商品。寫入 orders / order_items / wallet_txns / order_payments / member_coupons。';
+  '結帳核心。券依 applies_to 分桶折抵；會員等級折扣只折檯費（基數為券折抵後的 rem_fee），不折餐飲與商品。寫入 orders / order_items / wallet_txns / order_payments / member_coupons。';
 
 -- ============================================================
--- 驗證（單一 SELECT）
---   新算式存在 / 舊算式已移除 都應為 true；版本數 1。
---   最後兩欄是**今天已成立的訂單**裡，折扣是否只折了檯費 ——
---   本檔跑之前的舊訂單會是 false（那是歷史事實，不回頭改），
---   跑完之後在 POS 結一筆新的再看，新那筆應為 true。
+-- 驗證結果（2026-08-17 執行）
+--   版本數 1 / 新算式存在 true / 舊算式已移除 true ✅
 --
---   ⚠ 硬規則 7：DDL 成功不等於功能正確。
---     必須在 POS 用測試01（提拉米蘇 9 折）結一筆「檯費 + 餐飲」的帳，
---     確認 tier_discount = 檯費 × 10%，才算完成。
+--   ⚠ 但當時列出的四筆 true 都是**純檯費單**（小計 = 檯費），
+--     新舊算式在那種單上本來就一樣，證明不了什麼。
+--     唯一的混合單 MG-S02-260816-0041（小計 290、檯費 150、折 29）是改之前的，
+--     所以 false 是正確的歷史事實。
+--   → **功能仍需一筆改後的混合單才算驗證完成**（硬規則 7）。
 -- ============================================================
 select
   (select count(*) from pg_proc p
      join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.proname = 'checkout_tx')             as 版本數,
-  (select pg_get_functiondef(p.oid) like '%round(rem_fee * (1 - v_rate))%'
-     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-    where n.nspname = 'public' and p.proname = 'checkout_tx'
-      and p.prokind = 'f' limit 1)                                        as 新算式存在,
-  (select pg_get_functiondef(p.oid) not like '%(v_sub - v_coupon_cut) * (1 - v_rate)%'
-     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-    where n.nspname = 'public' and p.proname = 'checkout_tx'
-      and p.prokind = 'f' limit 1)                                        as 舊算式已移除,
-  o.order_no                                                              as 最近訂單,
+  o.order_no                                                              as 訂單,
+  o.created_at                                                            as 時間,
   o.subtotal                                                              as 小計,
   o.tier_discount                                                         as 等級折扣,
   (select coalesce(sum(oi.line_total), 0) from order_items oi
-    where oi.order_id = o.id and oi.kind = 'fee')                         as 其中檯費,
+    where oi.order_id = o.id and oi.kind = 'fee')                         as 檯費,
+  (select coalesce(sum(oi.line_total), 0) from order_items oi
+    where oi.order_id = o.id and oi.kind <> 'fee')                        as 非檯費,
   (o.tier_discount = round(
      (select coalesce(sum(oi.line_total), 0) from order_items oi
        where oi.order_id = o.id and oi.kind = 'fee')
@@ -341,5 +310,8 @@ from public.orders o
 where o.status = 'paid'
   and o.deleted_at is null
   and o.tier_discount > 0
+  -- 只看混合單：純檯費單新舊算式相同，看了也證明不了
+  and exists (select 1 from order_items oi
+               where oi.order_id = o.id and oi.kind <> 'fee')
 order by o.created_at desc
 limit 5;

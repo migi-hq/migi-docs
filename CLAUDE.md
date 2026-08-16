@@ -47,6 +47,8 @@ migi github/           ← Claude Code 的 project folder 選這層
 
 1. **SQL 一律從 Supabase Dashboard 的 SQL Editor 執行**，不用 CLI、不做本機部署。
    產出的 SQL 放 `sql/pending/`，每份結尾都要附**單一 SELECT 的驗證段**。
+   **交付方式：在對話裡給一個可點擊的 markdown 連結指向那個檔案，不要貼內容。**
+   貼整份 SQL 會把對話洗掉，使用者從檔案複製就好。
    **看到驗證結果、確認執行成功之後，由 Claude 自己把檔案移到 `sql/applied/`**，
    不要留給使用者手動搬。沒看到驗證結果就留在 `pending/`，不准假設跑過了。
 2. **改函式簽名必須在同一份 SQL 檔開頭附 `DROP FUNCTION IF EXISTS`**，否則會建出多載版本。
@@ -58,6 +60,7 @@ migi github/           ← Claude Code 的 project folder 選這層
    `join_session_tx` 沒有回填 `orders.session_id` 的那段，線上版本有，
    我拿檔案當基準判斷，結論整個反了。
    → **改既有函式一律先 `pg_get_functiondef` 撈線上版**，檔案只能當背景參考。
+
 
    **`docs/` 也不是鏡像，而且漂得比 `applied/` 更兇。** 2026-08-16 我信了
    `資料模型設計說明.md` 的「⏳ `products` 尚未有 `kind` 欄位」就直接加欄位，
