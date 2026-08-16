@@ -54,6 +54,14 @@ migi github/           ← Claude Code 的 project folder 選這層
    `join_session_tx` 沒有回填 `orders.session_id` 的那段，線上版本有，
    我拿檔案當基準判斷，結論整個反了。
    → **改既有函式一律先 `pg_get_functiondef` 撈線上版**，檔案只能當背景參考。
+
+   **`docs/` 也不是鏡像，而且漂得比 `applied/` 更兇。** 2026-08-16 我信了
+   `資料模型設計說明.md` 的「⏳ `products` 尚未有 `kind` 欄位」就直接加欄位，
+   線上早就有了 —— 建出兩個職責重疊的欄位。同批三支「pending」SQL，
+   實際上兩支跑過、一支沒跑，全都躺在 `applied/`。
+   → 判斷線上有沒有某個東西，**只有 `information_schema` / `pg_proc` /
+   `pg_constraint` 的查詢算數**；檔案位置、文件敘述、待辦勾選都是二手傳聞。
+   細節見 `docs/08-決策與踩坑/踩過的坑.md` 第 29 條。
 4. **POS 所有查詢必須走 SECURITY DEFINER 的 RPC**，不可用 `supabase.from('表').select()`。
    原因：資料表都有 RLS（`org_id = current_org_id()`），而 POS 目前用 anon key 沒有 auth session，
    直接查表會回空陣列且不報錯 —— 這種 bug 很難抓。
@@ -177,6 +185,27 @@ migi github/           ← Claude Code 的 project folder 選這層
   - Toast 改用會員 App 同一套視覺，分 ok / warn / error 三種語意
   - 色彩 token 三端統一，全部對標 migi-web 命名
   - migi-web 與 migi-admin 的資料層**還沒**比照加 try/catch
+- **商品分類拆成三個維度 + 分類主檔表**（2026-08-16，兩支 SQL 已驗證通過）。
+  起點是「`fee`／`fnb`／`goods` 這三個詞到底是什麼層級」，查下去發現同一個「檯費」
+  概念在系統裡有**四種拼法**（`category='service'`／`kind='fee'`／
+  `applies_to='table_fee'`／SKU 第一段 `SVC`），而顯示名有三套、SKU 前綴有兩套。
+  - `products` 加三欄，讓「放哪一頁／錢算哪個桶／要不要盤點」各自有答案，
+    不再互相推導：`revenue_type`（venue_fee / fnb / retail / other）、
+    `subcategory`（貨號第二段，毛利維度）、`tracks_stock`。
+    推導會壞的具體案例：教室課程 `category=service` 但不該吃檯費折扣；
+    器材租借 `category=service` 卻要盤點；預購商品 `category=merch` 卻不該盤點。
+  - **`venue_fee` 而非 `table_fee`**：賣的是場地與服務，桌只是計價單位；
+    此 schema 裡 `table_*` 已滿場；而且會員權益已承諾「專屬包廂」，包廂是房間不是桌。
+    **中文顯示一律「檯費」**（店員與客人看同一畫面，不分層），識別碼與中文不對應是常態
+    —— `fnb`／`retail`／`other` 本來就沒有一個是字面翻譯。
+  - `product_taxonomy`（11 列）+ `list_product_taxonomy_tx()`：
+    三端的分類顯示名與貨號前綴唯一來源。**無 org_id、無寫入政策** ——
+    `revenue_type` 的值寫死在 `checkout_tx` 分桶邏輯裡，讓單店自訂會讓金流函式無聲算錯。
+  - `other` 是候車室不是家：任何項目一有量就給它自己的桶。
+    M8 教室上線時直接開 `lesson`，不要先放 `other` 再搬 ——
+    `order_items` 是快照不回頭改，搬家會在報表留下永久接縫。
+  - ⚠ 派車若是代收代付給司機，會計上根本不是收入而是代收款（同儲值），
+    做派車前先問會計師，不要直接開 `ride` 桶。
 
 ### 待辦
 0. ~~金流洞~~ **已全部修復**（2026-08-15 發現 → 2026-08-16 完成，詳見已完成區）
@@ -196,9 +225,11 @@ migi github/           ← Claude Code 的 project folder 選這層
    發票、消費累積全無。目前最大的洞，也是唯一牽涉收錢的。
    注意它現在是 `SECURITY INVOKER`，POS 用 anon 無 session 會被 RLS 擋，
    實作時要改成 `DEFINER`，依硬規則 2 得先 `DROP FUNCTION`。
-4. `sql/pending/` 未跑的 SQL：`drop_leave_match_queue_overload`（清掉多載孤兒版）、
-   `fix_members_tier_constraint`（兩條 tier CHECK 打架，`chef_special` 永遠寫不進去）、
-   `products加kind欄位`。
+4. **`fix_members_tier_constraint` 仍未執行** —— 2026-08-16 查證：`members` 上
+   仍有**兩條** tier CHECK 打架，`chef_special` 永遠寫不進去。檔案在 `sql/applied/`
+   但線上沒跑（同批另兩支 `drop_leave_match_queue_overload` 與 `products加kind欄位`
+   則已執行，後者只做了一半 —— 欄位建了、`list_products_tx` 沒改）。
+   `sql/pending/` 目前是空的。
 5. **配桌列表整頁是假資料** —— `App.jsx` 的 `QueuePage` 寫死四個房間與人名。
    後端 `list_match_queues_tx` 已存在，但參數帶 `p_member`（為會員端設計），
    POS 要的是「本店所有進行中的房」，得先確認 `p_member` 傳 null 的行為。
