@@ -237,6 +237,32 @@ migi github/           ← Claude Code 的 project folder 選這層
     暢打只該免他自己那份。此洞在包桌改動之前就存在。
 
 ### 待辦
+
+0. **分類主檔只有一端在讀** —— `product_taxonomy` 與 `list_product_taxonomy_tx`
+   已上線，但目前**只有 migi-admin 讀它**：
+   - migi-pos：`OpenCheckoutPage.jsx:522` 與 `:537` 仍寫死
+     `category === 'fnb' ? '餐飲' : category === 'merch' ? '周邊' : '服務'`
+   - migi-web：`wallet.jsx` 的 `tile()` 把 `wallet_txns.type` 與商品分類混在一張對照表
+     （`table_fee` / `merch` / `event_fee` / `adjust` / `topup` / `fnb` 六種值混用）
+   建了主檔卻沒人讀，就是踩坑第 29 條那個形狀。
+   ⚠ migi-web 那份會跟「會員 App 最近消費」一起重寫（見待辦 1），先不要單獨改。
+
+0.5 **當日暢打沒有販售路徑**（規則已於 2026-08-17 拍板）：
+   - **當天 23:59:59 前免費，隔天 00:00:00 開始收費**
+   - **包桌也免**（目前 `calc_session_fee_tx` 的暢打判斷寫在配桌分支裡，要移到模式判斷之前）
+   - **在結帳頁的「檯費」分頁賣**
+
+   目前完全賣不掉：`list_products_tx` 不回傳 service 類（所以 POS 沒有「服務」分頁），
+   `OpenCheckoutPage` 那三處 `sku === 'SVC-TBL-DAY'` 特判是**空轉**的；
+   就算顯示出來，它的 `kind='fee'` 也會被 `join_session_tx` 回 `fee_item_not_allowed`。
+
+   ⚠ **實作前必須確認 `has_daypass_tx` 用的是台灣時間還是 UTC。**
+   若是 UTC，台灣時間早上 8 點前會被算成前一天 ——
+   這種錯每天只發生 8 小時，最難抓。
+
+0.6 🔴 **暢打持有者代付會全部免費** —— `join_session_tx` 是
+   `v_unit × (1 + 代付人數)`，而 `v_unit` 來自**付款人**的試算。
+   暢打只該免他自己那一份，卻把代付的份數一起歸零。碰錢，跟 0.5 一起修。
 0. ~~金流洞~~ **已全部修復**（2026-08-15 發現 → 2026-08-16 完成，詳見已完成區）
 1. **會員 App 沒有消費明細** —— `wallet.jsx` 的「明細」是錢包點數流水（`wallet_txns`），
    不是消費紀錄（`orders`）。**付現金的消費完全不會出現** ——
@@ -254,6 +280,17 @@ migi github/           ← Claude Code 的 project folder 選這層
    發票、消費累積全無。目前最大的洞，也是唯一牽涉收錢的。
    注意它現在是 `SECURITY INVOKER`，POS 用 anon 無 session 會被 RLS 擋，
    實作時要改成 `DEFINER`，依硬規則 2 得先 `DROP FUNCTION`。
+3.5 🔴 **會員折扣折了整張單，規格說只折檯費** —— `checkout_tx` 算的是
+   `v_tier_cut := round((v_sub - v_coupon_cut) * (1 - v_rate))`，基數是整張單。
+   《會員分級制度規格》寫的是「**桌時費** 95 折 / **桌時費** 9 折」。
+   實測（2026-08-16，測試01 提拉米蘇 9 折）：檯費 150 + 水餃 80 → 折 **−$23**（230 的 10%），
+   照規格應為 **−$15**。餐飲與商品有食材／進貨成本，檯費幾乎純毛利 ——
+   折錯桶是直接侵蝕毛利，而且每天都在發生。
+   `checkout_tx` 已把小計分成 fee / fnb / goods 三桶（券折抵就是這樣運作），
+   改動只是把 `v_tier_cut` 的基數換成 fee 桶。
+   **不要跟待辦 4（`kind` → `revenue_type`）綁在一起做** ——
+   那個是零行為改變的重新命名，這個是純行為改變，混在一起出事時分不清是誰造成的。
+
 4. **`fix_members_tier_constraint` 仍未執行** —— 2026-08-16 查證：`members` 上
    仍有**兩條** tier CHECK 打架，`chef_special` 永遠寫不進去。檔案在 `sql/applied/`
    但線上沒跑（同批另兩支 `drop_leave_match_queue_overload` 與 `products加kind欄位`
