@@ -123,6 +123,25 @@ migi github/           ← Claude Code 的 project folder 選這層
   索引與待辦 ×7→2、基石規範 ×2、開桌結帳流程 ×2、`01-資料庫` ×4→2。
   分工定案：`db-現況快照.md` 是事實層，`資料模型設計說明.md` 與 `RPC職責與設計.md` 是設計意圖層。
   進行中待辦只寫在本檔，`docs/00-進度與索引/待辦與未定案.md` 只放未排程與未拍板的，兩邊不重複
+- 🔴 **金流洞全數修復**（2026-08-15 發現 → 2026-08-16 完成）。
+  起點是「儲值跟消費無法同時進行」與一個 `payfor_already_joined` 錯誤訊息，
+  但那個訊息是誤導的，真正的問題在它底下三層：
+  - `join_session_tx` **沒有 items 參數**，開桌時加的餐飲／商品不會進 `orders`，
+    而前端送的 `payments` 含了那些金額 → `checkout_tx` 收款驗證必然失敗。
+    → 加 `p_items`（改簽名，已 DROP 重建），拒收 `fee`（會重複收費）與 `topup`。
+  - **POS 全專案沒有任何儲值 RPC 呼叫。** `topupCredit` 只改 React state，
+    畫面餘額會跳但 `wallets.balance` 沒動 —— **儲值按鈕從來沒真的生效過**。
+    → `pos_checkout_with_topup_tx`：單一交易內先 `topup_tx` 再結帳。
+  - **關鍵陷阱**：`join_session_tx` / `pos_addon_checkout_tx` 的業務錯誤是
+    **回傳 `{ok:false}` 而不是拋例外**。不主動 `raise` 的話交易照常提交，
+    儲值會留下半筆帳 —— 「單一交易」會是假的。最外層用 `EXCEPTION` 接住回滾。
+  - `topup_orders` 加 `session_id`，桌帳看得到儲值；
+    再靠冪等鍵前綴（`pos-<sess>-<member>-<ts>` 加 `:order` / `:topup`）
+    把同一次收款的兩張單併成一列。舊資料也用同一把鑰匙救回。
+  - 模式由**後端**查 `session_players` 決定（join / addon / topup_only），
+    不採信前端的 `cur.seated` —— 那是還原出來的推測值，
+    讓推測值決定收不收檯費是重複收費的溫床。
+  - 餘額改吃後端回傳的 `new_balance`，不再自己推算。
 - **取消開桌**（2026-08-15）：`void_session_tx` + POS 標題列按鈕與確認彈窗。
   開桌設定按下去就建 session 並被 `uq_sessions_open_table` 鎖住那張桌，
   開錯桌原本只能等 pg_cron 空桌回收，最久 40 分鐘（30 分門檻 + 10 分排程）。
@@ -160,25 +179,7 @@ migi github/           ← Claude Code 的 project folder 選這層
   - migi-web 與 migi-admin 的資料層**還沒**比照加 try/catch
 
 ### 待辦
-0. **金流洞（2026-08-15 發現，2026-08-16 大部分修復）**
-   - `join_session_tx` **沒有 items 參數**，只收自己算的檯費。開桌時加的餐飲／商品
-     **不會進 `orders`**；而前端送的 `payments` 含了那些金額，
-     `checkout_tx` 第 6 步收款驗證必然失敗 —— 這條路等於結不掉帳。
-   - **POS 全專案沒有任何儲值 RPC 呼叫**（`api.js` 無 topup 函式）。
-     `doPay` 的 `topupCredit` 只改 React state，畫面餘額會跳但
-     `wallets.balance` 沒動，重新整理就回去。**儲值按鈕從來沒有真的生效過。**
-   - 加購那條路（`pos_addon_checkout_tx`）有送 items 且會擋下 `kind='topup'`，所以沒事。
-     洞只在「首次結帳」—— 而那是最常用的路徑。
-   - **2026-08-16 已修復並實機驗證**，只剩最後一項（見下）：
-     `join_session_tx` 加 `p_items`（改簽名，已 DROP 重建）；
-     `pos_checkout_with_topup_tx` 在單一交易內先 `topup_tx` 再 `join_session_tx`，
-     **關鍵是 join 回 `ok:false` 時要主動 `raise`** —— 它的業務錯誤不拋例外，
-     不 raise 的話交易照常提交，儲值會留下半筆帳；
-     `topup_orders` 加 `session_id` 並併入 `get_session_member_orders_tx`，
-     桌帳看得到儲值（標題改「本場交易紀錄」）。
-   - ⏳ **仍未開放：已入座的客人儲值。** 加購走 `pos_addon_checkout_tx`，
-     那條路還沒接，前端擋下並提示「稍後開放」。
-     比照 `pos_checkout_with_topup_tx` 擴充即可 —— 同樣是單一交易內先 topup 再 checkout。
+0. ~~金流洞~~ **已全部修復**（2026-08-15 發現 → 2026-08-16 完成，詳見已完成區）
 1. **會員 App 沒有消費明細** —— `wallet.jsx` 的「明細」是錢包點數流水（`wallet_txns`），
    不是消費紀錄（`orders`）。**付現金的消費完全不會出現** ——
    改元計價 + 混合付款後檯費可直接收現金，收現金不產生點數異動，會員端就什麼都看不到。
