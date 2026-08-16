@@ -256,20 +256,50 @@ migi github/           ← Claude Code 的 project folder 選這層
    `OpenCheckoutPage` 那三處 `sku === 'SVC-TBL-DAY'` 特判是**空轉**的；
    就算顯示出來，它的 `kind='fee'` 也會被 `join_session_tx` 回 `fee_item_not_allowed`。
 
-   ⚠ **實作前必須確認 `has_daypass_tx` 用的是台灣時間還是 UTC。**
-   若是 UTC，台灣時間早上 8 點前會被算成前一天 ——
-   這種錯每天只發生 8 小時，最難抓。
+   ✅ **時區已查證無誤**（2026-08-17）：`has_daypass_tx` 用的是
+   `(o.created_at at time zone 'Asia/Taipei')::date = (now() at time zone 'Asia/Taipei')::date`，
+   正是拍板的規則。判斷條件是「今天有一張 `status='paid'` 且含 `SVC-TBL-DAY` 的訂單」——
+   所以販售路徑只要能開出這樣一張單就會自動生效。
+
+   ⚠ **但它只比對 `org_id`，不比對 `store_id`** —— 目前暢打是**全連鎖通用**，
+   在高雄買、當天到別間店也免費。這是否為預期行為**尚未確認**。
 
 0.6 🔴 **暢打持有者代付會全部免費** —— `join_session_tx` 是
    `v_unit × (1 + 代付人數)`，而 `v_unit` 來自**付款人**的試算。
    暢打只該免他自己那一份，卻把代付的份數一起歸零。碰錢，跟 0.5 一起修。
 0. ~~金流洞~~ **已全部修復**（2026-08-15 發現 → 2026-08-16 完成，詳見已完成區）
+0.7 **`kind` → `revenue_type` 全面替換**（前端 84 處：POS 36 / Web 48 / Admin 0，SQL 15 支）。
+   ⚠ **改值失敗是無聲的** —— `if (i.kind === "fee")` 漏改一處只會變成 false，
+   不報錯，只會讓檯費不進桶、折扣算錯、報表少一塊，要靠對帳才發現。
+   風險與引用數成正比，愈晚做愈貴。
+   值同時改：`fee` → `venue_fee`、`goods` → `retail`、新增 `other`。
+   **全部改完之後最後一步才 drop `products.kind`**（孤兒欄位，目前沒人讀）。
+   ⚠ 不要跟待辦 3.5（折扣只折檯費）綁在一起 —— 一個是零行為改變的重新命名，
+   一個是純行為改變，混在一起出事時分不清是誰造成的。
+
+0.8 **`coupons.applies_to` 改成 `coupon_scope` 表**。
+   促銷適用範圍不該是型別欄位而是規則：行銷每發明一種新範圍
+   （聯名商品專用、週二飲料、段位解鎖限定品）就要改 CHECK、跑 migration、
+   改 `checkout_tx` —— 等於「一個活動企劃 = 一次金流函式改版」。
+   `coupon_scope(coupon_id, scope_type, scope_value)`，`scope_type ∈ revenue_type | category | product_id`，
+   一張券可多列。`ride` / `topup` 那兩個不是商品分類的值自然消失。
+   **動手時機：發券後台開工前。** `grant_rules` / `grant_log` 目前完全不存在，
+   還沒有任何已發出的券要遷移，現在改成本最低。
+
 1. **會員 App 沒有消費明細** —— `wallet.jsx` 的「明細」是錢包點數流水（`wallet_txns`），
    不是消費紀錄（`orders`）。**付現金的消費完全不會出現** ——
    改元計價 + 混合付款後檯費可直接收現金，收現金不產生點數異動，會員端就什麼都看不到。
    資料早就齊（`orders` / `order_items` / `order_payments`），只差一支
    `get_my_orders_tx`，與 `get_session_member_orders_tx` 是同一份資料的不同切法。
    連帶要確認：會員分級的「消費累積」是用什麼算的 —— 若讀 `wallet_txns` 會漏掉所有現金消費。
+
+   **UI 端已指定**（2026-08-16）：首頁「最近消費」只顯示**前 10 筆**；
+   切頁標題從「點數明細」改成「**最近消費**」；內容要含**現金消費 + 點數消費 + 儲值**。
+   前兩項是純前端，第三項要等 `get_my_orders_tx`（現在 `get_wallet_tx` 只回 `wallet_txns`）。
+
+   **消費累積採 B 案：從 `orders` 即時算，不存計數欄位**（2026-08-16 決定）。
+   存欄位會出現「欄位與訂單對不上」而且無從得知哪邊才對；退款、作廢、補開都要記得回沖，
+   漏一次就永久偏差。從事實表算則永遠一致，慢了再加物化檢視表。
 2. **`checkout_tx` 的價格完全來自前端傳入的 JSON** —— `l_price := (it->>'unit_price')::bigint`，
    不讀 `products` 表。前端送什麼價格就記什麼價格，**可以送 0**。
    POS 是店員在用，風險可控；但 KIOSK 或任何會員端能觸發結帳的路徑一出現，就是可竄改價格的漏洞。
@@ -308,6 +338,16 @@ migi github/           ← Claude Code 的 project folder 選這層
    產兩段式流水號，前綴表寫 `SER-` 但資料庫實際用 `SVC-`；又取「貨號尾端數字最大值 +1」，
    掃到 `SVC-TBL-P24` 會得 24 → 產出 `SER-025`。
    其餘上線前必做見 `docs/08-決策與踩坑/決策紀錄.md` 第十六節（附驗證狀態）。
+10. **平板沒有按壓回饋** —— POS 的互動狀態只做了 hover（滑鼠移入變深灰框），
+    但**手指沒有 hover**。平板上點下去到畫面更新之間完全沒有回饋，
+    店員會不確定按到沒有而重複點。需要 `:active` 的按壓態，
+    而那會是這個 codebase 第一個元件 CSS class（目前全是 inline style）。
+
+11. **贈點目前可以立即消費，未確認是否符合預期** —— `topup_tx` 把本金與贈點
+    都寫進 `wallets.balance`，現場儲值 1000 送 150，那 150 當下就能拿來折抵。
+    若要限制（例如贈點次月生效、或不可折抵檯費），`wallet_txns` 需要能區分本金與贈點 ——
+    目前兩者都是 `type='topup'`，事後分不出來。**要改就趁還沒有真實資料。**
+
 9. **`migi-web` 與 `migi-admin` 的資料層還沒比照 POS 加 try/catch** ——
     POS 已於 2026-08-15 補上 `ErrorBoundary` 與 `rpc()` 的例外收斂
     （supabase-js 在 HTTP 層失敗時是直接 throw 而非回 error 物件，
