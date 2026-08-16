@@ -24,28 +24,27 @@
 
 ## 已知待修問題
 
-### 1. `leave_match_queue_tx` 有多載版本（硬規則 2 被違反過）
+### 1. ~~`leave_match_queue_tx` 有多載版本~~ → 2026-08-16 已清
+
+三參數的孤兒版已刪除，線上只剩：
 
 ```
-leave_match_queue_tx(p_org_id uuid, p_member uuid, p_queue uuid)            ← 舊版，孤兒
-leave_match_queue_tx(p_org_id uuid, p_member uuid, p_queue uuid, p_reason text)  ← 新版，實際使用中
+leave_match_queue_tx(p_org_id uuid, p_member uuid, p_queue uuid, p_reason text)
 ```
 
-`migi-web/src/lib/social.js` 的 `leaveMatchQueue()` 一律傳四個具名參數，
-PostgREST 依參數名解析，只會打到新版；全專案無其他呼叫點。
-→ 舊版可安全刪除，見 `sql/pending/2026-08-14_drop_leave_match_queue_overload.sql`
+### 2. ~~`members` 兩條 tier CHECK 互相打架~~ → 2026-08-16 已修
 
-### 2. `members` 兩條 tier CHECK 互相打架
+較嚴的 `members_tier_check` 已移除。目前只剩兩條，**都允許 `chef_special`**：
 
 ```
-members_tier_check  → bubble_tea / caramel_pudding / tiramisu          （舊，較嚴）
-members_tier_chk    → 上述三種 + chef_special + NULL                    （新，較寬）
+members_tier_chk           → NULL / bubble_tea / caramel_pudding / tiramisu / chef_special
+members_tier_override_chk  → 同上（作用於 tier_override）
 ```
 
-兩條同時生效 = 取交集 → **`chef_special` 永遠寫不進 `members.tier`**。
-但 `members_tier_override_chk` 允許 `chef_special`，所以只要有邏輯把 `tier_override` 套回 `tier` 就會失敗。
-目前前端未使用 `chef_special`，屬潛伏問題；後台做會員分級時會踩到。
-→ 修法見 `sql/pending/2026-08-14_fix_members_tier_constraint.sql`
+> 折扣率寫在 `checkout_tx` 裡：`caramel_pudding` 0.950、
+> `tiramisu` 與 `chef_special` 0.900、其餘 1.000。
+> 讀的是 `coalesce(tier_override, tier)` —— **`tier_override` 有值會蓋掉 `tier`**，
+> 改了等級卻沒反應通常就是這個原因。
 
 ### 3. 金流函式是 INVOKER，POS 不能直接呼叫
 
