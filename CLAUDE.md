@@ -268,6 +268,25 @@ migi github/           ← Claude Code 的 project folder 選這層
   - ⚠ 查證時發現 **`coupons.discount_value` 是「折抵百分比」不是「折數」** ——
     9 折券要填 10 不是 90。見 `docs/01-資料庫/資料模型設計說明.md` 的 `coupons` 節
 
+- **`member_tiers` 主檔：折扣率統一成「折抵幅度」，等級設定改成資料**（2026-08-17）。
+  起點是「世界級的券要用 9 折邏輯還是 10% 邏輯」。
+  - **世界級一律存折抵幅度**（Shopify `value`+`value_type`、Square `percentage`、
+    Stripe `percent_off`、Oracle RPM / SAP condition record）。理由三個都很實際：
+    ① 折扣是會計科目（銷貨折讓），財報要的是「折了多少」，存保留比例每次都要 `1 - x`
+    ② 零值是自然的恆等元；保留比例的「沒折扣」是 100，加總平均累計都會出錯
+    ③ 折扣相加有意義，保留比例相加沒有
+  - 原本兩種相反的存法並存：`coupons.discount_value` 是折抵幅度，
+    `orders.tier_rate` 是保留比例（`checkout_tx` 那個 `* (1 - v_rate)` 就是在補償）。
+    → `orders.tier_rate` 已 drop，改 **`tier_discount_pct`**。訂單全是測試資料，回填零成本。
+  - **折扣率原本寫在兩支函式各一份 case**（`checkout_tx` 與 `pos_member_detail_tx`），
+    後者的註解自己寫著「與 checkout_tx 邏輯一致」—— 而「一致」是靠人維護的。
+    改一邊忘另一邊就是畫面顯示與實收不同，且不報錯。
+    → 兩支都改查 `member_tiers`。驗證掃全庫「仍寫死 `caramel_pudding` 的函式數 = 0」。
+  - 升等門檻（暫定 0 / 10,000 / 50,000）從此有欄位可放（`threshold_amount`）；
+    `chef_special` 為 null = 邀請制，不靠累積取得。
+  - **儲存與顯示刻意分層**：資料庫存折抵幅度，畫面一律折數（POS 顯示「9 折」不是「10%」）。
+    遷就顯示去存 90，就會長出 `coupons.discount_value` 那種矛盾。
+
 ### 待辦
 
 0. **分類主檔只有一端在讀** —— `product_taxonomy` 與 `list_product_taxonomy_tx`
@@ -278,6 +297,14 @@ migi github/           ← Claude Code 的 project folder 選這層
      （`table_fee` / `merch` / `event_fee` / `adjust` / `topup` / `fnb` 六種值混用）
    建了主檔卻沒人讀，就是踩坑第 29 條那個形狀。
    ⚠ migi-web 那份會跟「會員 App 最近消費」一起重寫（見待辦 1），先不要單獨改。
+
+   **同一個問題也存在於 `member_tiers`**（2026-08-17 建立）：
+   `discount_pct` 與 `threshold_amount` 已由 `checkout_tx` 與 `pos_member_detail_tx` 讀取，
+   但 **`label` 沒人讀** —— 等級中文名仍寫死在 `migi-pos/src/shared.jsx` 的 `TIER_LABEL`。
+   要讀它得把 `list_member_tiers_tx` 的結果傳進 `OpenCheckoutPage` 的三個子元件
+   （:857、:1381、:1452），是純 prop 串接的工。
+   風險比分類前綴低（品牌名幾乎不變，且錯了只是名字錯不會算錯錢），
+   但**不做就是「建了主檔沒人讀」**，一併排進來。
 
 0.5 **當日暢打沒有販售路徑**（規則已於 2026-08-17 拍板）：
    - **當天 23:59:59 前免費，隔天 00:00:00 開始收費**
