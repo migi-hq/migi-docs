@@ -393,22 +393,20 @@ migi github/           ← Claude Code 的 project folder 選這層
    產兩段式流水號，前綴表寫 `SER-` 但資料庫實際用 `SVC-`；又取「貨號尾端數字最大值 +1」，
    掃到 `SVC-TBL-P24` 會得 24 → 產出 `SER-025`。
    其餘上線前必做見 `docs/08-決策與踩坑/決策紀錄.md` 第十六節（附驗證狀態）。
-12. **碰錢結構盤點的三項待辦**（2026-08-17，完整分析見
-    `docs/01-資料庫/資料模型設計說明.md` 三之三節）：
-    - 🔴 **`coupons.cost_bearer`（store / hq）從來沒被讀過** ——
-      加盟成本歸屬欄位，`checkout_tx` 完全沒碰。`topup_orders.entity_id` /
-      `held_by_entity` 同樣沒人讀。**現在只需做一件事：核銷時把 `cost_bearer`
-      快照進 `member_coupons`** —— 券的設定日後會改，改了就再也回推不出
-      「這筆折扣當時該由誰吸收」。分潤邏輯可以晚點寫，事實必須當下記。
-    - 🔴 **`wallet_txns.type` 一欄裝兩個維度** ——
-      `topup/refund/reversal/adjust`（性質）與 `spend/table_fee/fnb/merch/event_fee`
-      （消費類別）混在同一個 enum，且 `checkout_tx` 現在一律寫 `spend`，
-      四個類別值是舊世代留下的。**不要動 enum**（改 enum 要處理歷史列，收益只是整齊），
-      改成立規矩：新寫入只用性質值、消費類別一律從 `ref_table`/`ref_id` 追訂單取得。
-      → 這直接決定待辦 1 的 `tile()` 怎麼寫。
-    - 🟡 **`order_payments` 約束允許現金不記實收找零** ——
-      抽屜對帳式 `sum(cash_received) - sum(change_given)` 會被 null 跳過，
-      **少算且不報錯**。訂單全是測試資料，現在收緊約束不必處理歷史列。
+12. **`wallet_txns.type` 一欄裝兩個維度**（2026-08-17 盤點，完整分析見
+    `docs/01-資料庫/資料模型設計說明.md` 三之三節）——
+    `topup/refund/reversal/adjust`（交易性質）與
+    `spend/table_fee/fnb/merch/event_fee`（消費類別）混在同一個 enum，
+    且 `checkout_tx` 現在一律寫 `spend`，那四個類別值是舊世代
+    （`_charge_core` / `charge_fnb_tx` 等）留下的 —— 同一欄兩代慣例並存。
+    這也解釋了 `migi-web` 的 `tile()` 為什麼混用六種值：它忠實反映一個本來就混的欄位。
+
+    **不要動 enum**（要處理歷史列，收益只是整齊）。改成立規矩：
+    - 新寫入一律只用**性質值**（`topup` / `spend` / `refund` / `reversal` / `adjust`）
+    - **消費類別一律從 `ref_table` / `ref_id` 追訂單取得**，不要讀 `type`
+    - 那四個類別值視為已凍結的歷史值，只讀不寫
+
+    → 這直接決定待辦 1 的 `tile()` 怎麼寫：看關聯訂單的品項，不看 `wallet_txns.type`。
 
 10. **平板沒有按壓回饋** —— POS 的互動狀態只做了 hover（滑鼠移入變深灰框），
     但**手指沒有 hover**。平板上點下去到畫面更新之間完全沒有回饋，
