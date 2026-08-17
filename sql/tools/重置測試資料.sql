@@ -10,8 +10,15 @@
 --          測試02= 500  中等
 --          測試03= 150  剛好一次配桌檯費（3將）—— 測邊界
 --          測試04=   0  沒錢 —— 測現場儲值後折抵
---      **訂單不刪**：order_payments 有 trg_payments_no_delete，
---      外鍵是 RESTRICT，收過錢的訂單設計上就不可刪，靠 is_test 隔離。
+--      **訂單不刪，但會作廢**（2026-08-17 起）：
+--      order_payments 有 trg_payments_no_delete、外鍵是 RESTRICT，
+--      收過錢的訂單設計上就不可刪 —— 但刪不掉不代表不能作廢。
+--      訂單與儲值單一律改成 status='void'。
+--      ★ 最重要的效果：**當日暢打會一併失效**。
+--        has_daypass_tx 只認 status='paid' 的訂單，舊版留著訂單，
+--        測試帳號買過一次暢打就整天免場地費，場地費測試全部做不了。
+--      ⚠ 作廢不等於退款：不沖銷點數、不退現金。
+--        但餘額本來就會被重設成固定矩陣，訂單留著才是不一致的那一邊。
 --
 --   ② cleanup_empty_sessions_tx(0)
 --      作廢「開了但沒人入座」的場次。0 = 不管開多久立刻清
@@ -46,7 +53,8 @@ select
   res ->> 'members'                   as 測試會員數,
   res ->> 'sessions_voided'           as 作廢場次,
   res ->> 'players_deleted'           as 刪除入座記錄,
-  res ->> 'orders_kept'               as 保留訂單數,
+  res ->> 'orders_voided'             as 作廢訂單,
+  res ->> 'topups_voided'             as 作廢儲值單,
   res ->> 'wallets_adjusted'          as 調整錢包,
 
   (case when res is not null
