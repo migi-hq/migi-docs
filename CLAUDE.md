@@ -102,6 +102,13 @@ migi github/           ← Claude Code 的 project folder 選這層
    專案所有 .md 是 UTF-8 無 BOM，而 PowerShell 5.1 的 `Get-Content` 預設用 ANSI（Big5）讀，
    中文會全變亂碼；`Get-Content | Select-String` 也一樣壞（管線進去前就毀了）。
    非用 `Get-Content` 不可時要加 `-Encoding UTF8`。
+
+   **寫檔一律用 Write／Edit 工具，不要用 PowerShell。**
+   PS 5.1 的 `Set-Content -Encoding UTF8` / `Add-Content -Encoding UTF8`
+   寫的是 **UTF-8 with BOM**，會在檔頭插入 `EF BB BF`；不加 `-Encoding` 則是 ANSI。
+   **兩種都錯，沒有正確的選項。**（2026-08-17 因此在一份文件檔頭加了 BOM。）
+   真的非用不可時走 .NET：
+   `[System.IO.File]::WriteAllText($f, $s, (New-Object System.Text.UTF8Encoding $false))`
    2026-08-15 因此產出過一份「70 個檔案全部受損」的錯誤報告，實際一個字都沒壞。
    → **任何「全部檔案都有問題」的掃描結果，先懷疑儀器再懷疑資料。**
    細節見 `docs/08-決策與踩坑/踩過的坑.md` 第 25 條。
@@ -340,11 +347,13 @@ migi github/           ← Claude Code 的 project folder 選這層
    發票、消費累積全無。目前最大的洞，也是唯一牽涉收錢的。
    注意它現在是 `SECURITY INVOKER`，POS 用 anon 無 session 會被 RLS 擋，
    實作時要改成 `DEFINER`，依硬規則 2 得先 `DROP FUNCTION`。
-4. **`fix_members_tier_constraint` 仍未執行** —— 2026-08-16 查證：`members` 上
-   仍有**兩條** tier CHECK 打架，`chef_special` 永遠寫不進去。檔案在 `sql/applied/`
-   但線上沒跑（同批另兩支 `drop_leave_match_queue_overload` 與 `products加kind欄位`
-   則已執行，後者只做了一半 —— 欄位建了、`list_products_tx` 沒改）。
-   `sql/pending/` 目前是空的。
+4. ~~`fix_members_tier_constraint` 仍未執行~~ → **假警報，2026-08-17 更正**。
+   我當時用 `pg_get_constraintdef(c.oid) ilike '%tier%'` 數出 2 條就判定「還在打架」，
+   但那兩條是 `members_tier_chk` 與 **`members_tier_override_chk`**（作用於不同欄位），
+   兩條都允許 `chef_special`。較嚴的那條早在 2026-08-16 就移除了
+   （見 `docs/01-資料庫/db-現況快照.md` 已知待修問題第 2 項）。
+   → **教訓：數量不等於衝突。** 數 constraint 的數量卻不看它們約束哪個欄位，
+   等於用一個不會分辨的儀器下結論 —— 同踩坑第 25 條「先懷疑儀器再懷疑資料」。
 5. **配桌列表整頁是假資料** —— `App.jsx` 的 `QueuePage` 寫死四個房間與人名。
    後端 `list_match_queues_tx` 已存在，但參數帶 `p_member`（為會員端設計），
    POS 要的是「本店所有進行中的房」，得先確認 `p_member` 傳 null 的行為。
