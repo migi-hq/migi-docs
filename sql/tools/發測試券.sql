@@ -56,7 +56,12 @@ insert into public.member_coupons(
   org_id, member_id, coupon_id, status, expires_at, code)
 select m.org_id, m.id, c.id, 'active',
        now() + interval '30 days',
-       'TEST-FEE10'
+       -- ⚠ code 上有唯一索引 member_coupons_org_code_uq(org_id, code)，
+       --   固定字串只能發一次。帶時間戳讓這支能重複跑。
+       --   （2026-08-20 踩到：盤點時查 pg_constraint 沒看到它 ——
+       --     唯一索引不在 pg_constraint 裡，要查 pg_indexes。
+       --     Postgres 報錯仍稱它 unique constraint，所以名字看起來一樣。）
+       'TEST-FEE10-' || to_char(now() at time zone 'Asia/Taipei', 'MMDDHH24MISS')
   from public.members m
   join public.coupons c
     on c.org_id = m.org_id
