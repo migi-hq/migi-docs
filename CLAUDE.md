@@ -338,6 +338,40 @@ migi github/           ← Claude Code 的 project folder 選這層
     正解是 `sum(order_items.line_total)`。
     **`暢打抵掉金額 ÷ 暢打售出金額` 是定價對不對的答案，分母錯結論會整個反。**
 
+- **`kind` → `revenue_type` 全面替換完成**（2026-08-19～20，四支 SQL 全部驗證通過）。
+  用 expand → migrate → contract：A 後端雙軌（前端不動）→ B POS 改用新詞彙 →
+  C-1 收掉 `order_items.kind` → C-2 收掉 `products.kind` 並把兩個
+  `revenue_type` 收成 NOT NULL → C-3 清掉發射端與三道失效的擋牆。
+  值同時改名：`fee`→`venue_fee`、`goods`→`retail`。
+  - 🔴 **文件的兩個數字都是錯的，而且錯得很危險**。CLAUDE.md 記「前端 84 處、
+    SQL 15 支」，實際是**前端 27 處（全在 migi-pos）、SQL 6 支**。
+    差額全是**同名不同義**：`migi-web` 那 42 處一處都不是商品分類
+    （rewards 的收藏類型、match 的房型、data 的牌局類型、ErrorBoundary 的錯誤類型、
+    `coupons.kind`）；POS 有 13 處是**牌規**（台麻／美麻），`OpenSetupPage` 整支。
+    資料庫端 `kind` 出現在**六張表、六種意思**
+    （coupons / invoices / legal_entities / member_interactions / order_items / products）。
+    → **全域取代在這種題目上是災難**：把 `match.jsx` 的 `kind="live"` 改掉不會報錯，
+    只會讓配桌房型靜靜失效。先盤點語意，再決定改哪些。
+  - 🔴 **`NULL not in (...)` 的結果是 NULL 不是 TRUE。**
+    `checkout_tx` 的品項防護寫成 `if l_kind not in ('fee','fnb','goods') then raise`，
+    欄位改名後 `l_kind` 是 null，**那道防護完全不擋**，接著
+    `if l_kind='fee' ... else v_goods` 讓**所有品項都掉進 goods 桶** ——
+    `rem_fee` 恆為 0 → 等級折扣恆為 0、檯費券一律「不適用」。
+    金額不爆、結帳成功，只有折扣默默不見。
+    → 防護一律先判 null。存在目的是擋不合法值的檢查，遇到 null 卻放行，是最壞的組合。
+  - 🔴 **排序不要靠字母巧合。** 收據原本 `order by i.kind`，
+    `fee/fnb/goods` 剛好讓檯費第一。換成 revenue_type 後字母序是
+    `fnb/other/retail/venue_fee`，檯費會掉到最後一行 —— 畫面沒壞、金額也對。
+    → 改成明寫的桶序 CASE。
+  - **`topup` 從分類欄位抽成獨立旗標**（前端 `isTopup`、API `is_topup`）。
+    儲值是預收款不是收入桶，它從來不會進 `order_items`。
+  - ✅ **「改到一半就整支失敗」的 guard 救了兩次。**
+    DO 區塊末尾加 `if v_new ~ '\ykind\y' then raise`，
+    兩次都擋下只改對一半的函式並整支回滾（Supabase SQL Editor 是單一交易）。
+    沒有它，線上會出現「場地費擋牆修好了、白名單還是壞的」而且不報錯。
+    → 但更根本的教訓是：**同一支函式要改三處以上就撈全文重建，不要堆 DO 區塊。**
+    我在 `join_session_tx` 上連續判斷錯兩次，都是因為只看片段。
+
 ### 待辦
 
 0. **分類主檔只有一端在讀** —— `product_taxonomy` 與 `list_product_taxonomy_tx`
@@ -370,14 +404,10 @@ migi github/           ← Claude Code 的 project folder 選這層
    這是定價決策不是技術問題，改動只在 `has_daypass_tx` 一支函式。
 
 0. ~~金流洞~~ **已全部修復**（2026-08-15 發現 → 2026-08-16 完成，詳見已完成區）
-0.7 **`kind` → `revenue_type` 全面替換**（前端 84 處：POS 36 / Web 48 / Admin 0，SQL 15 支）。
-   ⚠ **改值失敗是無聲的** —— `if (i.kind === "fee")` 漏改一處只會變成 false，
-   不報錯，只會讓檯費不進桶、折扣算錯、報表少一塊，要靠對帳才發現。
-   風險與引用數成正比，愈晚做愈貴。
-   值同時改：`fee` → `venue_fee`、`goods` → `retail`、新增 `other`。
-   **全部改完之後最後一步才 drop `products.kind`**（孤兒欄位，目前沒人讀）。
-   ⚠ 不要跟待辦 3.5（折扣只折檯費）綁在一起 —— 一個是零行為改變的重新命名，
-   一個是純行為改變，混在一起出事時分不清是誰造成的。
+0.7 ~~`kind` → `revenue_type` 全面替換~~ → **已完成**（2026-08-19～20，詳見已完成區）。
+   四支 SQL（A 雙軌 / C-1 order_items / C-2 products / C-3 收尾），
+   POS 27 處，`kind` 作為商品分類已從整個系統消失。
+   **待實測**：入座時直接點餐飲、買暢打、用一次檯費券。
 
 0.8 **`coupons.applies_to` 改成 `coupon_scope` 表**。
    促銷適用範圍不該是型別欄位而是規則：行銷每發明一種新範圍
