@@ -461,10 +461,33 @@ migi github/           ← Claude Code 的 project folder 選這層
    根本解：前端只送 `product_id` + `qty`，`checkout_tx` 自己從主檔查名稱／單價／kind。
    檯費那筆虛擬品項也有真實 SKU（`SVC-TBL-*`），`calc_session_fee_tx` 已回 `product_id`，一樣查得到。
    **KIOSK 開工前必須做完。**
-3. **`settle_session_tx` 仍是空殼** —— 收桌結算整條不存在：尾款、包桌超時補收、
-   發票、消費累積全無。目前最大的洞，也是唯一牽涉收錢的。
-   注意它現在是 `SECURITY INVOKER`，POS 用 anon 無 session 會被 RLS 擋，
-   實作時要改成 `DEFINER`，依硬規則 2 得先 `DROP FUNCTION`。
+3. **收桌結算：第一版（關場次 + 放桌）已完成**（2026-08-20，SQL 已驗證）。
+   ⚠ **原本這條寫「`settle_session_tx` 仍是空殼」，那是錯的** ——
+   線上版本一直都在做 `status='completed'` / `ended_at` / `fee_points`。
+   真正的問題是它 **`SECURITY INVOKER`**：POS 用 anon 沒有 auth session，
+   RLS 把那個 UPDATE 過濾成 0 列，**而且不報錯**，函式照樣回 ok。
+   「跑了、回了、什麼都沒發生」正是硬規則 4 要防的形狀，
+   也再次證明只有 `pg_get_functiondef` 算數（硬規則 3）。
+   - 改 `DEFINER` + 加 `p_staff_id`（簽名變了，已先 `DROP`）
+   - **放桌不需要額外動作**：`uq_sessions_open_table` 是部分索引
+     （`WHERE status='open' AND deleted_at IS NULL`），改狀態就自動解鎖
+   - 在座玩家一律寫 `left_at`；冪等（已收桌回 `already_settled`）
+   - POS 按鈕改名「**收桌**」不叫「收桌結算」—— 這一版不結算任何東西，
+     檯費在入座時已收清，叫「結算」會讓店員以為還要收錢
+   - **沒有「未結帳就不給收桌」的擋牆**：`session_players` 每一列都是
+     checkout 成功後才建立的，系統裡不存在「已入座但未付款」。
+     持有暢打的人 `order_id` 是 null，那是「不用付」不是「還沒付」——
+     拿它當判準會把暢打的客人擋在桌上下不來。
+
+   **第二版待做**，四個規則已於 2026-08-20 拍板：
+   - **包桌超時** → 收桌時補收到**實際級距**（打 4 小時就按 5 小時那檔，補差額）。
+     單一規則、不用每小時算，與現行級距定價一致（停車場與 KTV 都是這套）。
+   - **發票** → 維持**每筆結帳各一張**，收桌不碰發票。
+     合開要作廢重開，且代付時「整桌」屬於誰也要定義。
+   - **消費累積** → 用**實付金額 `payable`**（折扣後）。
+     用折前小計的話，發券等於送升等進度。
+   - **尾款** → 現行檯費入座收清，暫無尾款概念；等超時補收做完再看是否需要。
+   ⚠ 超時補收會撞上暢打的跨午夜規則：跨午夜的長桌到那時才第一次被計算時長。
 4. ~~`fix_members_tier_constraint` 仍未執行~~ → **假警報，2026-08-17 更正**。
    我當時用 `pg_get_constraintdef(c.oid) ilike '%tier%'` 數出 2 條就判定「還在打架」，
    但那兩條是 `members_tier_chk` 與 **`members_tier_override_chk`**（作用於不同欄位），
