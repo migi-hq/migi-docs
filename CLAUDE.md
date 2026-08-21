@@ -498,6 +498,34 @@ migi github/           ← Claude Code 的 project folder 選這層
 5. **配桌列表整頁是假資料** —— `App.jsx` 的 `QueuePage` 寫死四個房間與人名。
    後端 `list_match_queues_tx` 已存在，但參數帶 `p_member`（為會員端設計），
    POS 要的是「本店所有進行中的房」，得先確認 `p_member` 傳 null 的行為。
+
+   **自動配桌的規則已於 2026-08-20 拍板，做配桌時一起實作（四件事缺一不可）：**
+   - `tables.auto_assign boolean NOT NULL default true` ——
+     **預設所有桌都開放系統自動配**，店員可把個別桌改成「現場專用」。
+     ⚠ 這是**設定不是狀態**：桌況（使用中／空桌）是每次從 `table_sessions` 算出來的，
+     而「這桌不給系統配」是店員的意思，沒人改就不會變，所以要存欄位。
+     `tables` 仍然沒有 `status` 欄位，兩者不衝突。
+   - **桌況卡片要顯示「現場」標記** —— 否則週六關掉的桌週一沒人記得，
+     那幾桌從此永遠不會被自動配而且畫面上看不出來。
+     不加到期時間（那會變成「為什麼我設的又跑掉了」），用看得見來防忘記。
+   - **收桌彈窗加一個勾選「收完保留給現場」** ——
+     情境是「現場有四人在等」，店員必須**先關掉那桌再按收桌**，
+     順序反了就被 App 搶走，而那是客人站在旁邊時要記得的事。
+     一個勾選同時做兩件事，就沒有順序可以搞錯。
+   - **指派時只看 `auto_assign = true` 且目前沒有 open 場次的桌。**
+
+   🔴 **還沒解決：現場客人與 App 不在同一條隊。**
+   就算桌不會被自動搶走，店員仍要自己判斷「App 那組先報名還是現場這組先到」——
+   那個判斷沒有依據，就會變成客訴。
+   → POS 要能**幫現場客人登記進同一個隊列**（walk-in），先來先排、同一份名單。
+   餐飲業的候位系統（OpenTable / Yelp Waitlist）都是這樣：
+   系統從不自己帶位，但兩種客人一定進同一條隊。
+
+   ⚠ **現在不要先建 `auto_assign` 欄位。** 自動配桌根本還不存在 ——
+   `open_method` 允許 `'auto'` 但沒有任何程式送這個值，
+   `table_sessions` 只有 `open_session_tx` 會寫入而它只有 POS 呼叫。
+   現在加就是第四個「建了沒人讀」（前三個：`product_taxonomy`、
+   `member_tiers.label`、分類前綴），正是踩坑第 29 條的形狀。
 6. 約桌邀請：`table_invites` 表不存在，但 `send_table_invite_tx` / `respond_table_invite_tx` 在，
    實際載體待確認（推測掛在 `app_notifications`）。設計稿見 `sql/_設計稿未落地/`。
 7. **會員錢包顯示三張假券** —— `migi-web/src/pages/wallet.jsx:26` 的 fallback
