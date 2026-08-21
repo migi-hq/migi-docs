@@ -567,6 +567,35 @@ migi github/           ← Claude Code 的 project folder 選這層
     （supabase-js 在 HTTP 層失敗時是直接 throw 而非回 error 物件，
     原本會變成 unhandled rejection：畫面沒反應也沒提示）。另外兩端同樣的洞還在。
 
+13. 🔴 **發票整條未接** —— 這是**法規**問題不是營運不便，比收桌硬性。
+    現況（2026-08-20 掃過確認）：
+    - `create_invoice_draft_tx` 寫好了，**`migi-pos/src` 裡 `invoice` 一次都沒出現**，
+      沒有任何前端呼叫它，`invoices` 表沒有資料
+    - 沒有串任何電子發票加值中心（綠界／ecPay／關貿）
+    - 資料骨架其實齊了：`members.inv_type / inv_carrier / inv_donate_code /
+      inv_tax_id / inv_title`（`create_invoice_draft_tx` 會讀成快照）、
+      `invoices.kind ∈ invoice | allowance`、`status ∈ pending | issued | void | failed`、
+      內含稅拆分（`round(payable / 1.05)`）也寫好了
+
+    **✅ 已拍板：消費明細與發票分開，照業界做法。**
+    - **消費紀錄在結帳當下就有**，不等發票 —— `get_my_orders_tx` 的條件是
+      `orders.status='paid'`，與發票無關。
+      讓明細等發票的話會出現「客人已經付錢了但 App 上什麼都沒有」，
+      而發票失敗的原因通常跟消費無關（載具錯、加值中心斷線、字軌用完）。
+    - **會員 App 之後要有獨立的發票區**（載具設定／發票查詢），
+      與「最近消費」分開兩個入口。全家、星巴克、路易莎都是這樣。
+    - 收桌**不碰發票**（2026-08-20 一併拍板）：維持每筆結帳各一張。
+
+    **實作前要先想清楚的（不是寫 SQL 的問題）：**
+    - **誰呼叫、什麼時機** —— `checkout_tx` 成功後同一交易內？還是結帳後非同步？
+      同交易內的話，加值中心逾時會讓結帳整筆失敗（錢收不了）；
+      非同步的話要有重試與失敗告警，否則失敗會沒人發現。
+    - **失敗了怎麼辦** —— `status='failed'` 之後由誰重送、店員看得到嗎
+    - **作廢與折讓** —— 退款時開折讓單（`kind='allowance'`）還是作廢重開，
+      兩者稅務處理不同，且跨月只能折讓
+    - **代付時發票開給誰** —— 訂單掛在付款人身上，但被代付者可能要自己的發票
+    - **字軌與配號** —— 加值中心配發，用完要提前申請
+
 ### PENDING
 - 店員登入未做，`staffId` 一律傳 null，`App.jsx` 還有 `const STAFF = "小美"` 寫死
 - LINE Developers 帳號未申請
