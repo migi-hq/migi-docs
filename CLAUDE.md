@@ -461,7 +461,9 @@ migi github/           ← Claude Code 的 project folder 選這層
    根本解：前端只送 `product_id` + `qty`，`checkout_tx` 自己從主檔查名稱／單價／kind。
    檯費那筆虛擬品項也有真實 SKU（`SVC-TBL-*`），`calc_session_fee_tx` 已回 `product_id`，一樣查得到。
    **KIOSK 開工前必須做完。**
-3. **收桌結算：第一版（關場次 + 放桌）已完成**（2026-08-20，SQL 已驗證）。
+3. **收桌結算：第一版（關場次 + 放桌）已完成並實測通過**（2026-08-20）。
+   四步全過：開桌結帳帶桌 → 收桌 → 桌況變空桌 → **重新開同一張桌成功**。
+   最後一步才是真正驗到放桌（部分索引確實隨 status 變動而放行）。
    ⚠ **原本這條寫「`settle_session_tx` 仍是空殼」，那是錯的** ——
    線上版本一直都在做 `status='completed'` / `ended_at` / `fee_points`。
    真正的問題是它 **`SECURITY INVOKER`**：POS 用 anon 沒有 auth session，
