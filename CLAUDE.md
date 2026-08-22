@@ -562,10 +562,21 @@ migi github/           ← Claude Code 的 project folder 選這層
     若要限制（例如贈點次月生效、或不可折抵檯費），`wallet_txns` 需要能區分本金與贈點 ——
     目前兩者都是 `type='topup'`，事後分不出來。**要改就趁還沒有真實資料。**
 
-9. **`migi-web` 與 `migi-admin` 的資料層還沒比照 POS 加 try/catch** ——
-    POS 已於 2026-08-15 補上 `ErrorBoundary` 與 `rpc()` 的例外收斂
-    （supabase-js 在 HTTP 層失敗時是直接 throw 而非回 error 物件，
-    原本會變成 unhandled rejection：畫面沒反應也沒提示）。另外兩端同樣的洞還在。
+9. **資料層例外收斂：`migi-web` 做了一半，`migi-admin` 還沒開始**（2026-08-21 更正）。
+    ⚠ 原本這條寫「migi-web 還沒有 ErrorBoundary」，**是錯的** ——
+    它早就有而且掛在 `main.jsx:64`，`main.jsx:28` 也有全域 `unhandledrejection` 上報。
+    - 🔴 **但 `ErrorBoundary` 接不到非同步錯誤。** supabase-js 在 HTTP 層失敗
+      （斷網、CORS、逾時）時是直接 throw，`.then()` 整段不執行，
+      畫面永遠停在「載入中…」。全域監聽只**上報**，使用者端沒有任何提示
+      —— 也就是「錯誤進了資料庫，客人還在盯著轉圈」。
+    - ✅ 已加 `migi-web/src/lib/rpc.js`（與 POS 的 `api.js` 同一套想法）：
+      兩種失敗收斂成同一形狀、永遠不 throw、依原因給人看得懂的話術。
+      **錢包頁已遷移**並改成可重試的區塊。
+    - ⏳ 其餘約 30 處仍直接呼叫 `supabase.rpc`：
+      `lib/profile.js`（15）、`lib/social.js`（6）、`match.jsx`、`App.jsx`、
+      `lib/analytics.js`。逐頁跟著改，不要一次全域取代
+      —— 每個呼叫端對失敗的處理方式不同（有的要重試、有的要靜默）。
+    - ⏳ `migi-admin` 兩樣都還沒有。
 
 13. 🔴 **發票整條未接** —— 這是**法規**問題不是營運不便，比收桌硬性。
     現況（2026-08-20 掃過確認）：
