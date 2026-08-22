@@ -572,11 +572,42 @@ migi github/           ← Claude Code 的 project folder 選這層
     - ✅ 已加 `migi-web/src/lib/rpc.js`（與 POS 的 `api.js` 同一套想法）：
       兩種失敗收斂成同一形狀、永遠不 throw、依原因給人看得懂的話術。
       **錢包頁已遷移**並改成可重試的區塊。
-    - ⏳ 其餘約 30 處仍直接呼叫 `supabase.rpc`：
-      `lib/profile.js`（15）、`lib/social.js`（6）、`match.jsx`、`App.jsx`、
-      `lib/analytics.js`。逐頁跟著改，不要一次全域取代
-      —— 每個呼叫端對失敗的處理方式不同（有的要重試、有的要靜默）。
+    - ✅ **`lib/social.js` 與配桌頁已完成**（2026-08-22）。三種模式定案：
+
+      | 類型 | 失敗時 | 用哪支 |
+      |---|---|---|
+      | 讀取整頁 | 整頁 `PageError` / 清單位置 `ListFail` | `rpcRead()` |
+      | 寫入動作 | `showError()`，**畫面不動、保留輸入** | `rpc()` |
+      | 背景（埋點、已讀） | **靜默** | `rpc()`，不接錯誤 |
+
+      決定用哪一種的是「**這個呼叫在做什麼**」，不是「這是哪一頁」——
+      同一個配桌頁裡三種都有。
+    - ⚠ **`rpc()` 預設不自動重試，讀取要用 `rpcRead()`。**
+      忘記關掉重試的代價是重複報名、重複儲值，而那不會在測試時發現，
+      只會在對帳時發現 —— 所以危險的那一邊當預設。
+      逾時只是**停止等待**，底層請求仍在跑，寫入防重複只能靠後端冪等鍵。
+    - ⏳ 其餘仍直接呼叫 `supabase.rpc`：`lib/profile.js`（15，全是寫入 ——
+      「改了沒存到而沒有提示」是這裡最危險的）、`App.jsx`、`lib/analytics.js`。
     - ⏳ `migi-admin` 兩樣都還沒有。
+
+14. 🔴 **會員端沒有真正的身分：LIFF 換 JWT** —— 三件事同一個根，**必須一起解**。
+    現況：`migi-web` 用 anon key，會員身分靠**前端傳 `p_member_id`**，
+    RPC 全是 `SECURITY DEFINER`（`get_wallet_tx` 一直如此，`get_my_orders_tx` 沿用）。
+    - 🔴 **存取控制**：知道任何一個會員 uuid 就能查他的錢包與**消費明細**
+      （買了什麼、花多少、什麼時間在店裡）。餘額已經夠敏感，消費明細更甚。
+    - 🔴 **Supabase Realtime 做不了**：訂閱走 SELECT，**RLS 照樣套用**，
+      而資料表的 RLS 是 `org_id = current_org_id()` —— anon 訂閱會**安靜地收不到任何東西**
+      （與 POS 直接查表回空陣列同一個原因，硬規則 4）。
+      ⚠ **不要以為 Realtime 可以單獨做** —— 它是這件事做完之後的紅利，不是獨立項目。
+    - 🟡 **輪詢成本**：配桌現在每 5 秒、8 秒、30 秒各一支，
+      每個開著 App 的人都在打。Realtime 上線後這些都可以拆掉
+      （但**輪詢要留作 fallback** —— LIFF 進背景連線會斷）。
+
+    解法：LIFF 的 `id_token` 換 Supabase JWT（Edge Function 或自建端點驗簽），
+    RPC 改從 `auth.uid()` 取會員、拿掉 `p_member_id` 參數、
+    `SECURITY DEFINER` 大多可以改回 `INVOKER` 讓 RLS 自己擋。
+    ⚠ 動到每一支會員端 RPC 的簽名（硬規則 2：全部要先 DROP），
+    而且 POS 用的 anon 路徑不能一起壞掉 —— 兩端的驗證模型會從此分家。
 
 13. 🔴 **發票整條未接** —— 這是**法規**問題不是營運不便，比收桌硬性。
     現況（2026-08-20 掃過確認）：
