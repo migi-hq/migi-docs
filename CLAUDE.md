@@ -590,6 +590,30 @@ migi github/           ← Claude Code 的 project folder 選這層
       「改了沒存到而沒有提示」是這裡最危險的）、`App.jsx`、`lib/analytics.js`。
     - ⏳ `migi-admin` 兩樣都還沒有。
 
+15. 🔴 **同一個人可能變成兩個會員，而且沒有合併機制** —— 上線前必做，**越晚越貴**。
+    現況（2026-08-22 確認）：**LINE 根本還沒接**（`migi-web/src/App.jsx:64` 註解
+    明寫「LINE 尚未接上：授權為模擬」），身分就是 `localStorage.migi_member.id`。
+    所有資料掛在 **`members.id`** 上，不是掛在 LINE user id 上。
+    - ✅ **同一個 member 換綁不同 LINE 帳號**沒問題 —— `rebind_line_user_tx` 就是做這個的。
+    - 🔴 **同一個人變成兩個 member 就完了**：先用手機號註冊過一個，
+      之後從 LINE 進來又建一個 —— 兩邊各持一半的**點數、消費紀錄、牌咖、成就、段位**。
+      `rebind_line_user_tx` 是「換綁」不是「合併」，**目前沒有任何合併機制**。
+    - 合併要逐項決定怎麼併：錢包餘額（相加？`wallet_txns` 要不要搬）、
+      `orders`（改 member_id 會動到已開的發票）、`mahjong_buddies`（去重）、
+      成就與段位（取高的還是重算）。**有真實資料之後每一項都變成錢的問題。**
+
+    ⚠ **與待辦 14 的關係（順序不能反）**
+    - JWT 解決的是「**你是不是你說的那個人**」；合併解決的是「**同一個人有兩個帳號**」。
+      兩個不同的問題，但 JWT 的 subject 是 **LINE 帳號**不是 member，
+      所以仍然需要一張 `line_user_id → member_id` 的對應。
+      **那個對應建錯了 JWT 也救不了** —— 它只會忠實地把你導到其中一個。
+    - 🔴 **JWT 上線的那一刻就是「LINE 帳號 ↔ member」正式綁定的時候。**
+      那時若已經有重複的 member，綁定會固定下來，之後更難拆。
+      → **合併機制要在 JWT 之前或同時做，不能之後補。**
+    - 另一個實務後果：現在切換測試帳號只要改 localStorage，
+      JWT 之後就不能這樣切了 —— 測試流程要一起重想。
+    - 順帶：JWT 之後 `rebind_line_user_tx` 等於「改身分」，需要授權控制。
+
 14. 🔴 **會員端沒有真正的身分：LIFF 換 JWT** —— 三件事同一個根，**必須一起解**。
     現況：`migi-web` 用 anon key，會員身分靠**前端傳 `p_member_id`**，
     RPC 全是 `SECURITY DEFINER`（`get_wallet_tx` 一直如此，`get_my_orders_tx` 沿用）。
