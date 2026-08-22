@@ -41,10 +41,41 @@ members_tier_chk           → NULL / bubble_tea / caramel_pudding / tiramisu / 
 members_tier_override_chk  → 同上（作用於 tier_override）
 ```
 
-> 折扣率寫在 `checkout_tx` 裡：`caramel_pudding` 0.950、
-> `tiramisu` 與 `chef_special` 0.900、其餘 1.000。
+> 折扣率**存在 `member_tiers.discount_pct`**，`checkout_tx` 與 `pos_member_detail_tx`
+> 都查主檔（2026-08-17 起）。存的是**折抵幅度**不是保留比例 —— 9 折存 10 不是 90。
+> 訂單上的欄位是 `orders.tier_discount_pct`（舊的 `tier_rate` 已 drop）。
+>
+> ~~折扣率寫在 `checkout_tx` 裡：`caramel_pudding` 0.950、`tiramisu` 與
+> `chef_special` 0.900、其餘 1.000。~~ ← 2026-08-22 更正：這是 2026-08-17 之前的寫法，
+> 而且那些數字是**保留比例**，與現在的存法相反，照著用會把折扣算反。
+>
 > 讀的是 `coalesce(tier_override, tier)` —— **`tier_override` 有值會蓋掉 `tier`**，
-> 改了等級卻沒反應通常就是這個原因。
+> 改了等級卻沒反應通常就是這個原因。（這條仍然成立）
+
+### 2.5 ~~`members.display_name` 完全沒有長度約束~~ → 2026-08-22 已修
+
+盤點當下：**沒有任何 CHECK**，`register_member_tx` 也沒有長度守衛
+（`set_my_nickname_tx` 有，但寫 20，與前端的 12 不一致）。
+前端 `maxLength={12}` 不是約束，直接打 RPC 可塞任意長度。
+
+```
+members_display_name_len_chk →
+  display_name IS NOT NULL
+  AND btrim(display_name) <> ''
+  AND char_length(display_name) BETWEEN 1 AND 12
+```
+
+`set_my_nickname_tx` 已同步改成 12，訊息「暱稱最多 12 個字」。
+
+> ⚠ **`IS NOT NULL` 是明寫的，不能省。** Postgres 的 CHECK 判定為 NULL 時
+> **視為通過** —— 只寫 `char_length(...) between 1 and 12` 的話 NULL 會直接放行，
+> 與 2026-08-19 的 `NULL not in (...)` 是同一個坑。
+>
+> ⚠ `char_length` 算的是**碼點**，一個組合 emoji（如家庭）可能吃掉 7 個。
+> 這是刻意接受的：要按「視覺寬度」限制，Postgres 沒有可靠做法。
+>
+> ⚠ `register_member_tx` **仍然沒有友善守衛**，超長會噴 23514 constraint violation。
+> 安全問題已由 CHECK 解決，剩下的只是訊息好不好看。
 
 ### 3. 金流函式是 INVOKER，POS 不能直接呼叫
 
