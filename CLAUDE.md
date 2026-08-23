@@ -705,12 +705,23 @@ migi github/           ← Claude Code 的 project folder 選這層
     **庫存與報表不回來**：那是 `migi-admin` 的事。前場與後台是兩套 App
     （Square Register 上沒有進貨單），放進 POS 就是同一件事兩個地方維護。
 
-19. ⚠ **`next_doc_no` 已經存在，不要再建第二套流水編號**（2026-08-23 發現）。
-    `next_doc_no(p_org_id, p_store_id, p_doc_type)` 加上觸發器
-    `trg_orders_set_no` / `trg_topup_set_no` / `trg_coupon_set_code` ——
-    **訂單與儲值單在寫入當下就被自動編號了**。
-    → 「配桌成功要不要給編號」的正確問法是「要不要沿用既有那套」，不是「要不要建」。
-    細節查 `sql/checks/查流水編號現況.sql`（還沒跑）。
+19. ⚠ **`next_doc_no` 已經存在，不要再建第二套流水編號**（2026-08-23 查證完畢）。
+    機制是 **`doc_counters` 計數表 + `next_doc_no(p_org_id, p_store_id, p_doc_type)`**，
+    由觸發器 `trg_orders_set_no` / `trg_topup_set_no` / `trg_coupon_set_code` 自動帶入。
+    **而且它本來就是分店編號**（`p_store_id` 在簽名裡）—— 目前有 **7 間門市**，這點重要。
+
+    | 表 | 單號 |
+    |---|---|
+    | `orders` | `order_no`、`txn_no` |
+    | `topup_orders` | `topup_no`、`txn_no`、`invoice_no` |
+    | `invoices` | `invoice_no`（法規那一套，不可混用） |
+    | **`table_sessions`** | ❌ 沒有 |
+    | **`match_queues`** | ❌ 沒有 |
+
+    → 牌局／配桌要編號的話是 **`next_doc_no(org, store, 'session')` 加一個觸發器**，
+    不是建新機制。
+    ⚠ 我 2026-08-23 差點自己成為「加第二套編號」那個反例 ——
+    當天才剛寫下「加第二套是這題最糟的結果」。**先查再提議。**
 
 ### PENDING
 - 店員登入未做，`staffId` 一律傳 null，`App.jsx` 還有 `const STAFF = "小美"` 寫死
