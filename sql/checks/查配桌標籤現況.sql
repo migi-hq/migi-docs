@@ -54,16 +54,18 @@ from (
              '❌ 函式不存在')
 
   -- ⚠ tags 是 jsonb 不是 text[]（2026-08-23 實測 unnest(jsonb) 不存在才確認的）
-  --   → 用 jsonb_array_elements_text，而且要先確認它真的是陣列：
-  --     jsonb 欄位可能裝著物件或字串，那時 jsonb_array_elements_text 會直接拋錯。
+  -- ⚠ 展開要用 LATERAL，不能把 jsonb_array_elements_text 直接寫在 select 清單裡
+  --   跟 count(*) 並列 —— 集合回傳函式不能出現在聚合的同一層。
+  -- ⚠ jsonb_typeof 的檢查不能省：這個欄位也可能裝物件或字串，
+  --   那時 jsonb_array_elements_text 會直接拋錯而不是回空。
   union all select 7, '⑦ 現在資料庫裡實際出現過哪些 tag 值',
     coalesce((select string_agg(t || '　×' || n::text, chr(10) order by n desc)
-                from (select jsonb_array_elements_text(tags) as t, count(*) n
-                        from match_queues
-                       where tags is not null
-                         and jsonb_typeof(tags) = 'array'
-                         and jsonb_array_length(tags) > 0
-                       group by 1) x),
+                from (select tg.t, count(*) n
+                        from match_queues m
+                        cross join lateral jsonb_array_elements_text(m.tags) as tg(t)
+                       where m.tags is not null
+                         and jsonb_typeof(m.tags) = 'array'
+                       group by tg.t) x),
              '（目前沒有任何一房有掛標籤）')
 
   -- 存進去的到底是不是陣列。若出現 object / string，代表某個寫入端形狀不一致，
