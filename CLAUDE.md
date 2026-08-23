@@ -723,6 +723,33 @@ migi github/           ← Claude Code 的 project folder 選這層
     ⚠ 我 2026-08-23 差點自己成為「加第二套編號」那個反例 ——
     當天才剛寫下「加第二套是這題最糟的結果」。**先查再提議。**
 
+20. 🔴 **店員登入：身分是「有 LINE 的會員 + staff 表一列」**（2026-08-23 查證定案）。
+    `current_staff()` 的判準是
+    `members.line_user_id = (auth.jwt() ->> 'sub')`，經由 `staff.member_id` join。
+    - ⚠ **文件是錯的**：`docs/01-資料庫/資料架構基石規範.md:114` 與
+      `docs/02-POS與開桌/M2技術設計_桌台與配桌.md:404、468` 都還在寫
+      「Supabase Auth email/password 店員登入」，那是舊設計。
+      `staff.auth_uid` 這個欄位還在，但 **`current_staff()` 完全沒用到它**。
+    - ✅ `grant_staff_tx` 的角色值已修（2026-08-23）：
+      `floor`（一般店員，預設）/ `manager`（店長）/ `hq`（總部）/ `owner`（老闆）。
+      修之前守衛寫 `clerk/manager/hq` 而 CHECK 是 `floor/manager/hq/owner`，
+      **預設用法必定拋 23514** —— 那支「把會員升級成店員」的函式從來沒成功過。
+    - 🔴 **現有唯一那筆 staff（MIGI 總部管理員 · hq）的 `member_id` 是 null**。
+      `current_staff()` 是 INNER JOIN，null 永遠 join 不到 ——
+      **LINE 接上之後那個帳號還是登不進去**，要先綁到一個真的會員身上。
+    - 🔴 **整條路卡在 LINE Developers 帳號還沒申請**（見 PENDING）。
+      申請時要**同時開兩個 channel**：
+      · **LINE Login**（OAuth web flow）→ POS 平板用的獨立瀏覽器
+      · **LIFF** → 會員 App（在 LINE App 內）
+      兩者接法不同，只開一個會卡住另一端。
+    - ⚠ **權限差異尚未定義**（誰能收桌／作廢訂單／看報表）。
+      現在定會是憑空想像，等有實際場景再拍板。
+    - 相依：待辦 14（會員端 JWT）是同一套換發機制；
+      待辦 15（帳號合併）必須在 JWT 之前或同時做。
+
 ### PENDING
-- 店員登入未做，`staffId` 一律傳 null，`App.jsx` 還有 `const STAFF = "小美"` 寫死
-- LINE Developers 帳號未申請
+- 店員登入未做，`staffId` 一律傳 null，`App.jsx` 還有 `const STAFF = "小美"` 寫死。
+  ⚠ 後果不只是「不知道是誰」：`table_sessions` 98/98、`orders` 150/150 的
+  `updated_by` **全部是 null**，出事完全查不到經手人；而且交班日結沒有意義。
+- LINE Developers 帳號未申請 —— 🔴 **這一項卡著三件事**：
+  店員登入（待辦 20）、會員端 JWT（待辦 14）、帳號合併（待辦 15）。

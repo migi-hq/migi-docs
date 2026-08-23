@@ -130,10 +130,16 @@ from (
         like '%floor%manager%hq%owner%'
     then '是（四個都對得上）' else '❌ 仍然對不上' end
 
-  union all select 4, '④ 函式裡還有沒有殘留 clerk（應為 沒有）',
+  -- 🔴 這一項我寫錯了，執行時回「❌ 還有 clerk」——
+  --    但那是因為 clerk 出現在我自己寫的**註解**裡（「之前這裡寫的是 clerk…」）。
+  --    行為上 clerk 確實被擋掉了，證據是 ⑳ 回 invalid_role。
+  --    ⚠ 教訓：**檢查「有沒有這個字」會被註解騙，要檢查行為。**
+  --      跟同一天 jsxcomment.py 那個誤判是同一類 —— 儀器要能分辨。
+  --      留著這一行是為了記錄這個錯，不是因為它有用。
+  union all select 4, '④（寫壞的檢查，看 ⑳ 就好）函式文字裡有沒有 clerk',
     case when (select pg_get_functiondef(oid) from pg_proc
                 where pronamespace='public'::regnamespace and proname='grant_staff_tx' limit 1)
-              like '%clerk%' then '❌ 還有 clerk' else '沒有' end
+              like '%clerk%' then '有（在註解裡，非程式碼）' else '沒有' end
 
   union all select 10, '⑩ 現有 staff 資料（角色必須都在 CHECK 裡）',
     coalesce((select string_agg(coalesce(s.name, '(無名)') || ' · ' || s.role ||
