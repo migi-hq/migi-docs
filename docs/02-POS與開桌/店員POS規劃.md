@@ -7,7 +7,8 @@
 > **v1.2（2026-07-13）**：付款模式更新為「元計價 + 混合付款」。舊「桌面不見現金／一律走點數／現金不足先儲值」已作廢，改新金流鐵則。權威文件：《MIGI_開桌結帳流程規格_v2.0》。
 
 > **定位**：麻將館版的 POS —「桌台管理 + 配桌撮合 + 結帳」的混合體。
-> **網址**：staff.migi.tw（獨立前端，非 LIFF，平板/電腦用，Supabase Auth 店員登入）
+> **網址**：**`pos.migi.tw`**（獨立前端 `migi-hq/migi-pos`，非 LIFF，平板/電腦用，**LINE Login**）
+> ⚠ 2026-08-23 更正：原記「staff.migi.tw ＋ Supabase Auth 店員登入」，兩處都與實作不符。
 > **對象**：門市現場店員。RLS 綁 store_id（只看得到自己店）。
 > **前置**：需 M2 後端 RPC（開桌/收桌/配桌/撮合）先到位。
 
@@ -177,9 +178,16 @@ POS 要讓店員**一眼看到全店桌況**，並快速完成「開桌 / 撮合
 ---
 
 ### P9. 登入 / 交班
-- 店員 Supabase Auth 登入（email/password）
-- 綁 store_id（只看自己店）
-- 交班紀錄（誰在班、幾點交班）— M2 可先簡單
+- ~~店員 Supabase Auth 登入（email/password）~~
+  🔴 **2026-08-23 更正：實作走 LINE。**
+  `current_staff()` 比對 `members.line_user_id = auth.jwt()->>'sub'`，
+  經由 `staff.member_id` join —— **店員 = 有 LINE 的會員 + `staff` 表一列**。
+  總部用 `grant_staff_tx(p_member_id, p_store_id, p_role)` 升級某個會員。
+- 綁 store_id（只看自己店）—— `has_store_access()` 已實作（`hq` 通吃，其餘比對 store_id）
+- 交班紀錄（誰在班、幾點交班）
+  ⚠ `next_doc_no` 已預留 **`shift`** 這個 doc_type（交班單號 `SH-店碼-YYMMDD-0001`），
+  但 `doc_counters` 目前只用到 order / topup / txn —— 交班還沒有人在發號。
+- 🔴 **整條路卡在 LINE Developers 帳號還沒申請**，詳見 CLAUDE.md 待辦 20。
 
 ---
 
@@ -187,8 +195,8 @@ POS 要讓店員**一眼看到全店桌況**，並快速完成「開桌 / 撮合
 
 | 項目 | 選擇 |
 |---|---|
-| 前端 | React（獨立 repo / staff.migi.tw）|
-| 登入 | Supabase Auth（email/password），非 LINE |
+| 前端 | React（獨立 repo `migi-hq/migi-pos` / **`pos.migi.tw`**）⚠ 不是 staff.migi.tw |
+| 登入 | **LINE Login**（OAuth web flow，非 LIFF）⚠ 2026-08-23 更正，原記「Supabase Auth email/password」是舊設計 |
 | 權限 | RLS 綁 store_id，店員只看自己店 |
 | 即時 | Supabase Realtime（桌況/等待名單即時更新）|
 | 裝置 | 平板橫式為主（櫃台），也支援電腦 |

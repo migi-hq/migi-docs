@@ -746,6 +746,17 @@ migi github/           ← Claude Code 的 project folder 選這層
       現在定會是憑空想像，等有實際場景再拍板。
     - 相依：待辦 14（會員端 JWT）是同一套換發機制；
       待辦 15（帳號合併）必須在 JWT 之前或同時做。
+    - ⚠ **一個還沒查證的矛盾**：`docs/06-架構藍圖/總部後台架構藍圖.md:33` 與
+      `決策紀錄.md:192` 說總部後台走 **Supabase Auth Email 登入**，
+      但 `current_staff()` 比對的是 `line_user_id = auth.jwt()->>'sub'` ——
+      Email 帳號的 `sub` 是 uuid，**永遠不會等於 LINE user id**。
+      而 migi-admin 目前看起來是能用的，所以 `current_org_id()` 很可能
+      走的是另一條路（也許就是 `staff.auth_uid`）。
+      → 也就是**同一張 staff 表上可能並存兩套判準**：
+      `current_org_id()` 認 auth_uid、`current_staff()` 認 line_user_id。
+      🔴 若真是如此，那總部人員的 `has_store_access()` 恆為 false
+      （它是 `current_staff()` 包出來的）。
+      **動店員登入之前要先撈 `current_org_id()` 的全文確認**，不要憑推論。
 
 ### PENDING
 - 店員登入未做，`staffId` 一律傳 null，`App.jsx` 還有 `const STAFF = "小美"` 寫死。

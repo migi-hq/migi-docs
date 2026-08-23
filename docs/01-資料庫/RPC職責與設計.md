@@ -175,7 +175,7 @@ checkout_tx      reverse_txn_tx    wallet_topup_tx      settle_session_tx
 | **會員消費明細 `get_my_orders_tx`** | 不存在。會員 App 現在只看得到點數流水，**付現金的消費完全看不到**（`CLAUDE.md` 待辦 1）|
 | 當日暢打（`SVC-TBL-DAY`）收費路徑 | `open_session_tx` 只收 matched / private，暢打商品建了卻收不到。規則細節也尚未拍板 |
 | 超時提醒（時段結束前 10 分鐘）| 未實作，需 pg_cron 或前端計時 |
-| `has_store_access(p_store_id)` | **函式已存在**，但內部是否真的做門市檢查**未驗證**。原設計是待 Supabase Auth 接上後限制店員只能操作自己門市 |
+| `has_store_access(p_store_id)` | ✅ **2026-08-23 已撈全文驗證**：`exists(select 1 from current_staff() cs where cs.role='hq' or cs.store_id = p_store_id)` —— `hq` 通吃，其餘比對門市，邏輯是對的。<br>🔴 **但它現在恆為 false**：`current_staff()` 靠 `members.line_user_id = auth.jwt()->>'sub'`，而 POS 用 anon 沒有 JWT。要等 LINE 接上（CLAUDE.md 待辦 20）才會活過來。 |
 
 ---
 
