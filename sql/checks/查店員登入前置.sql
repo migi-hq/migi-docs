@@ -46,8 +46,15 @@ from (
                  and contype = 'c'),
              '（沒有 CHECK 或表不存在）')
 
-  union all select 4, '④ 目前有幾筆 staff 資料',
-    coalesce((select count(*)::text || ' 筆' from staff), '（表不存在或查不到）')
+  -- ⚠ 不能直接 `select count(*) from staff` —— Postgres 是**先解析整段**再執行，
+  --   表不存在的話整支查詢會在解析階段就爆掉，連 ① 的答案都拿不到。
+  --   改查系統目錄的估計筆數（catalog-only，表不存在只是回空）。
+  union all select 4, '④ staff 表的估計筆數（表不存在也不會爆）',
+    coalesce((select case when c.reltuples < 0 then '（從未 ANALYZE，筆數未知）'
+                          else c.reltuples::bigint::text || ' 筆（估計）' end
+                from pg_class c join pg_namespace n on n.oid = c.relnamespace
+               where n.nspname = 'public' and c.relname = 'staff'),
+             '（沒有 staff 這張表 —— 看 ① 的實際表名）')
 
   union all select 5, '⑤ current_staff() 全文　🔴 重點：它靠什麼判斷「我是誰」',
     coalesce((select pg_get_functiondef(oid) from pg_proc
@@ -64,8 +71,11 @@ from (
                where pronamespace='public'::regnamespace and proname='grant_staff_tx' limit 1),
              '❌ 不存在')
 
-  union all select 8, '⑧ 用 anon 身分呼叫時 current_staff() 會回什麼',
-    coalesce((select coalesce(current_staff()::text, '(null)')), '(執行失敗)')
+  -- ⚠ current_staff() 是**集合回傳函式**，不能放進 COALESCE（0A000）——
+  --   要放進 FROM 才行。回空就是「判斷不出你是誰」，那正是我們要確認的事。
+  union all select 8, '⑧ 現在這個身分呼叫 current_staff() 回什麼',
+    coalesce((select s::text from current_staff() s limit 1),
+             '（回空 —— 代表沒有 auth session 就判斷不出是誰）')
 
   union all select 9, '⑨ auth.uid() 現在是什麼（在 SQL Editor 裡通常是 null 或你的帳號）',
     coalesce(auth.uid()::text, '(null)')
