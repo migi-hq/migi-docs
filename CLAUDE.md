@@ -738,10 +738,25 @@ migi github/           ← Claude Code 的 project folder 選這層
       `current_staff()` 是 INNER JOIN，null 永遠 join 不到 ——
       **LINE 接上之後那個帳號還是登不進去**，要先綁到一個真的會員身上。
     - 🔴 **整條路卡在 LINE Developers 帳號還沒申請**（見 PENDING）。
-      申請時要**同時開兩個 channel**：
-      · **LINE Login**（OAuth web flow）→ POS 平板用的獨立瀏覽器
-      · **LIFF** → 會員 App（在 LINE App 內）
-      兩者接法不同，只開一個會卡住另一端。
+      **三端都是 LINE Login** —— LIFF 不是另一種登入方式，
+      它是掛在 LINE Login channel 底下的一種**執行環境**：
+
+      ```
+      Provider（MIGI）
+      └── LINE Login channel
+          ├── LIFF app       → 會員 App（在 LINE App 內，liff.getIDToken()）
+          └── 一般 OAuth web → POS（平板瀏覽器，redirect → callback → 換 id_token）
+      ```
+
+      🔴 **硬條件：兩者必須在同一個 Provider 底下。**
+      LINE 的 `userId` 是 **per-Provider 不是 per-channel** ——
+      同 Provider 的所有 channel，同一個人拿到同一個 `userId`；
+      **不同 Provider 會是兩個不同的值**。
+      而 `members.line_user_id` 只有一欄 → 分成兩個 Provider 的話，
+      同一個人在會員 App 與 POS 會變成兩個 id，`current_staff()` 的 join
+      永遠接不起來，**而且不報錯，只是登不進去**。
+      ⚠ 要不要分兩個 channel 是選擇（看要不要分開的同意畫面與 callback）；
+      **同一個 Provider 是硬條件。**
     - ⚠ **權限差異尚未定義**（誰能收桌／作廢訂單／看報表）。
       現在定會是憑空想像，等有實際場景再拍板。
     - 相依：待辦 14（會員端 JWT）是同一套換發機制；
