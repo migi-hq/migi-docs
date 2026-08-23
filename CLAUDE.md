@@ -761,17 +761,34 @@ migi github/           ← Claude Code 的 project folder 選這層
       現在定會是憑空想像，等有實際場景再拍板。
     - 相依：待辦 14（會員端 JWT）是同一套換發機制；
       待辦 15（帳號合併）必須在 JWT 之前或同時做。
-    - ⚠ **一個還沒查證的矛盾**：`docs/06-架構藍圖/總部後台架構藍圖.md:33` 與
-      `決策紀錄.md:192` 說總部後台走 **Supabase Auth Email 登入**，
-      但 `current_staff()` 比對的是 `line_user_id = auth.jwt()->>'sub'` ——
-      Email 帳號的 `sub` 是 uuid，**永遠不會等於 LINE user id**。
-      而 migi-admin 目前看起來是能用的，所以 `current_org_id()` 很可能
-      走的是另一條路（也許就是 `staff.auth_uid`）。
-      → 也就是**同一張 staff 表上可能並存兩套判準**：
-      `current_org_id()` 認 auth_uid、`current_staff()` 認 line_user_id。
-      🔴 若真是如此，那總部人員的 `has_store_access()` 恆為 false
-      （它是 `current_staff()` 包出來的）。
-      **動店員登入之前要先撈 `current_org_id()` 的全文確認**，不要憑推論。
+    - ✅ **兩條身分路徑已查證（2026-08-23）**，設計本來就對：
+      ```sql
+      current_org_id()  -- 兩條都認，順序也對
+        coalesce(
+          (select org_id from staff   where auth_uid = auth.uid() …),            -- 總部 Email
+          (select org_id from members where line_user_id = auth.jwt()->>'sub' …) -- LINE
+        )
+      ```
+      總部走 Email 是有理由的（`總部後台架構藍圖.md:33`、`決策紀錄.md` 第八節）：
+      ① 總部員工不是會員 ② **開機問題** —— 第一個管理員沒有人能升級他，
+      必須有一條不依賴既有 staff 的路 ③ 職能不同。
+      `staff.auth_uid` **正是為那條路存在的**，不是殘留。
+      🔴 錯的是後來的漂移：店員登入改用 LINE 時 `current_staff()` 被寫成只認 LINE，
+      而且用 `INNER JOIN members` —— `member_id` 是 null 的總部那列永遠 join 不到。
+      → `sql/applied/2026-08-23_current_staff補回總部路徑.sql` 已修（LEFT JOIN + 兩條 OR）。
+
+21. 🔴 **門市隔離「有機制但沒插電」，而且它對會員的影響比對店員更嚴重**（2026-08-23）。
+    - 用到 `current_staff()` / `has_store_access()` 的 RLS policy：**0 條**
+    - 整套 RLS 只靠 `current_org_id()`：**24 條**
+    - 唯一呼叫 `current_staff()` 的是 `has_store_access()`，而它也沒人用
+    → 也就是 RLS 目前只做到「同一個 org」，**沒有做到「店員只看自己店」**。
+    店員登入之後，店員會看得到全集團 7 間門市的資料。
+    🔴 **對會員更嚴重，這改變了待辦 14 的內容**：
+    給會員發 JWT 之後，`current_org_id()` 會走 `members` 那條路回傳 org，
+    那位會員就**通過全部 24 條 org 級 policy**。
+    也就是從「知道 uuid 才查得到」變成「**登入就能查全部**」—— 可能比現在更糟。
+    → **待辦 14 不是「換發 JWT」而已，是「換發 JWT ＋ 同時收緊 policy」，
+    兩件事必須同一批做。** 分開做的中間那段時間，洞是敞開的。
 
 ### PENDING
 - 店員登入未做，`staffId` 一律傳 null，`App.jsx` 還有 `const STAFF = "小美"` 寫死。
