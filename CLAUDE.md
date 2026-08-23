@@ -674,6 +674,44 @@ migi github/           ← Claude Code 的 project folder 選這層
     ✅ `QUEUE_TAGS`（新手友善／網紅在這桌／職業選手桌）**保留** ——
     那是受控清單裡的具體描述，不是價值判斷，兩者性質不同。
 
+17. 🔴 **贈點級距沒有主檔，規則只活在前端**（2026-08-23 發現）。
+    `bonusOf()` 寫死在 `migi-pos/src/OpenCheckoutPage.jsx:30`
+    （150→0、500→20、1000→50、3000 以上一律 300），前端算完用
+    `p_topup_bonus` 送給後端，而 **`topup_tx` 照收 `p_bonus_points` 不驗證**。
+    - 🔴 這跟待辦 2（`checkout_tx` 的價格完全來自前端）是**同一個病**：
+      能送任意金額。POS 是店員在用風險可控，但 KIOSK 或任何會員端能觸發的路徑
+      一出現就是可竄改的贈點。
+    - 🔴 **而且它擋住了會員頁的儲值功能**：在第二個地方做儲值就是第二份 `bonusOf`，
+      兩邊必然漂，而「哪一邊的贈點才對」只會在對帳時才發現。
+      所以 2026-08-23 的會員頁刻意**只做查詢不做儲值**，並在頁尾寫明原因。
+    → 建 `topup_plans` 主檔（金額 / 贈點 / 是否啟用 / 有效期），
+    POS 讀它畫按鈕、`topup_tx` 用它驗證 `p_bonus_points`。
+    ⚠ 自訂金額怎麼算贈點也要一起定義 —— 現行 `bonusOf` 是級距函式不是查表，
+    改成主檔時要決定「自訂 1500 算多少」是往下取級距還是不給贈點。
+
+18. **POS 側邊欄已收成三項**（2026-08-23），以下兩項做好要加回去：
+    - **快速結帳**（不開桌也能賣東西）—— 🔴 所有結帳 RPC 都要 `p_session_id`，
+      所以外帶一杯奶茶、賣一副牌尺、客人只來領生日禮，**系統一律做不到**。
+      這也是原本「券核銷」那一頁真正想解決的事。
+      ⚠ 「券核銷」已**永久拿掉**：券是折扣，折扣必須附在消費上，
+      沒有它能單獨完成的事。除非之後要接第三方團購券（GOMAJI 那類要輸入券號
+      標記已使用），那是完全不同的東西，系統現在沒有那個概念。
+    - **交班日結** —— 🟡 **後端幾乎齊了只是沒有畫面**：
+      `v_order_settlement` / `v_entity_settlement` / `v_entity_settlement_summary` /
+      `v_payment_store_mismatch` / `v_wallet_balance_check` /
+      `daily_wallet_audit_tx` / `reconcile_wallets_tx`。接上就有。
+      ⚠ 但它要等**店員登入**（見 PENDING）—— 不知道是誰的班，日結沒有意義。
+
+    **庫存與報表不回來**：那是 `migi-admin` 的事。前場與後台是兩套 App
+    （Square Register 上沒有進貨單），放進 POS 就是同一件事兩個地方維護。
+
+19. ⚠ **`next_doc_no` 已經存在，不要再建第二套流水編號**（2026-08-23 發現）。
+    `next_doc_no(p_org_id, p_store_id, p_doc_type)` 加上觸發器
+    `trg_orders_set_no` / `trg_topup_set_no` / `trg_coupon_set_code` ——
+    **訂單與儲值單在寫入當下就被自動編號了**。
+    → 「配桌成功要不要給編號」的正確問法是「要不要沿用既有那套」，不是「要不要建」。
+    細節查 `sql/checks/查流水編號現況.sql`（還沒跑）。
+
 ### PENDING
 - 店員登入未做，`staffId` 一律傳 null，`App.jsx` 還有 `const STAFF = "小美"` 寫死
 - LINE Developers 帳號未申請
