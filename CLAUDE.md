@@ -131,6 +131,21 @@ migi github/           ← Claude Code 的 project folder 選這層
    看起來像 `style` 有問題，實際原因在前面兩行。這是這個坑最花時間的部分。
    → 檢查器：`jsxcomment.py`（屬性列表變體）＋ `jsxcomment2.py`（運算式位置變體），
    **兩支都要跑**。這個專案沒有本機 node，靜態檢查是唯一的事前防線。
+
+   **3.7 掃全庫函式內文時，`pg_get_functiondef` 一定要先過濾 `prokind = 'f'`。**
+   （2026-08-25 炸過一次）
+   它**對聚合函式會直接拋錯**：`ERROR 42809: "array_agg" is an aggregate function`。
+   `pg_proc` 裡混著 `f` 一般函式 / `a` 聚合 / `w` 視窗 / `p` 預存程序。
+   🔴 **光加 `nspname = 'public'` 擋不住** —— WHERE 裡的函式可能在 join 過濾
+   之前就被求值，規劃器不保證順序。安全寫法：
+   ```sql
+   from pg_proc p
+   where p.pronamespace = 'public'::regnamespace   -- 直接比對，不 join
+     and p.prokind = 'f'                            -- 排除聚合／視窗／程序
+     and pg_get_functiondef(p.oid) ilike '%關鍵字%'
+   ```
+   ⚠ 先前幾支同樣寫法沒炸，是因為它們還有 `proname = any(名單)` 這個便宜的
+   條件先把範圍縮掉了 —— **那是運氣不是設計**。
 4. **POS 所有查詢必須走 SECURITY DEFINER 的 RPC**，不可用 `supabase.from('表').select()`。
    原因：資料表都有 RLS（`org_id = current_org_id()`），而 POS 目前用 anon key 沒有 auth session，
    直接查表會回空陣列且不報錯 —— 這種 bug 很難抓。
@@ -485,6 +500,18 @@ migi github/           ← Claude Code 的 project folder 選這層
    （:857、:1381、:1452），是純 prop 串接的工。
    風險比分類前綴低（品牌名幾乎不變，且錯了只是名字錯不會算錯錢），
    但**不做就是「建了主檔沒人讀」**，一併排進來。
+
+0.6 **總部要能調會員等級的折數與門檻**（2026-08-25 使用者指定）。
+   `member_tiers` 是主檔、`checkout_tx` 與 `pos_member_detail_tx` 都即時查它，
+   所以改一個數字**立刻生效不用部署** —— 但 migi-admin **沒有編輯畫面**，
+   目前只能跑 SQL（範本：`sql/applied/2026-08-25_主廚特調改20趴.sql`）。
+   要做的是 migi-admin 的一頁：四級的 `label` / `discount_pct` / `threshold_amount` /
+   `is_active` 可編輯。
+   ⚠ **`code` 不可編輯**：`chef_special` 這類代碼被寫進判斷邏輯與歷史訂單快照，
+     改了會讓舊資料對不上。中文名（`label`）才是可以改的那一層。
+   ⚠ 存的是**折抵幅度**（20 = 8 折），畫面要顯示折數 —— 兩層刻意分開，
+     遷就顯示去存 80 就會長出 `coupons.discount_value` 那種矛盾。
+   ⚠ 這一頁做出來之前，**`label` 仍然沒人讀**（待辦 0 那個「建了主檔沒人讀」）。
 
 0.5 ~~當日暢打全鏈路~~ → **已完成並實機驗證通過**（2026-08-17～19，詳見已完成區）。
    2026-08-19 三項實測全過：買暢打當桌檯費 $0、買完暢打卡消失、
