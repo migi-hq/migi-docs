@@ -777,6 +777,8 @@ migi github/           ← Claude Code 的 project folder 選這層
     - 順帶：JWT 之後 `rebind_line_user_tx` 等於「改身分」，需要授權控制。
 
 14. 🔴 **會員端沒有真正的身分：LIFF 換 JWT** —— 三件事同一個根，**必須一起解**。
+    🚧 **開工前先看待辦 21 的「阻擋條件」五項** ——
+    那不是建議，是「沒做完就不能開 JWT」。開了之後洞是敞開的。
     現況：`migi-web` 用 anon key，會員身分靠**前端傳 `p_member_id`**，
     RPC 全是 `SECURITY DEFINER`（`get_wallet_tx` 一直如此，`get_my_orders_tx` 沿用）。
     - 🔴 **存取控制**：知道任何一個會員 uuid 就能查他的錢包與**消費明細**
@@ -886,6 +888,9 @@ migi github/           ← Claude Code 的 project folder 選這層
     當天才剛寫下「加第二套是這題最糟的結果」。**先查再提議。**
 
 20. 🔴 **店員登入：身分是「有 LINE 的會員 + staff 表一列」**（2026-08-23 查證定案）。
+    🚧 **開工前先看待辦 21 的「阻擋條件」五項** —— 店員登入也是一種 JWT。
+    ⚠ 它比會員 JWT 稍微不那麼急（店員人少、可控），但**同一個洞**：
+      `current_org_id()` 一旦回傳 org，那 24 條 policy 就全部通過。
     `current_staff()` 的判準是
     `members.line_user_id = (auth.jwt() ->> 'sub')`，經由 `staff.member_id` join。
     - ⚠ **文件是錯的**：`docs/01-資料庫/資料架構基石規範.md:114` 與
@@ -951,6 +956,31 @@ migi github/           ← Claude Code 的 project folder 選這層
     也就是從「知道 uuid 才查得到」變成「**登入就能查全部**」—— 可能比現在更糟。
     → **待辦 14 不是「換發 JWT」而已，是「換發 JWT ＋ 同時收緊 policy」，
     兩件事必須同一批做。** 分開做的中間那段時間，洞是敞開的。
+
+    ### 🚧 阻擋條件：以下五項未完成前，**不得**開啟任何 JWT 換發
+    （2026-08-26 從「順便做」升級為阻擋條件。
+      🔴 危險不是「現在沒收緊」—— 現在沒人讀得到，是安全的。
+        危險是**開 JWT 那天有人加了一條寬鬆的 policy**，
+        而那一刻沒有任何東西會提醒他。）
+
+    1. **逐條檢視那 24 條 org 級 policy**，決定每一條要不要再加
+       門市限制（`has_store_access()`）或角色限制。
+       ⚠ 不是全部都要收緊 —— `list_stores_tx` 那類本來就該全 org 可讀。
+         **要的是「每一條都被看過並做了決定」**，不是「一律加嚴」。
+    2. **敏感表清單至少涵蓋**：`app_events`、`orders`、`topup_orders`、
+       `wallet_txns`、`members`、`member_interactions`、`member_blocks`。
+       🔴 `app_events` 特別要收 —— 使用者拍板「只有總部分析數據的人看得到」
+         （待辦 23），而那個保證**目前是靠「所有人都讀不到」達成的**。
+    3. **`app_events` 的 policy 只開給 `staff.role in ('hq','owner')`。**
+       這需要待辦 29 的 `can()` 或至少 `current_staff()` 能用 ——
+       也就是待辦 20（店員登入）要先到位。
+    4. **帳號合併機制先做好**（待辦 15）。
+       JWT 上線那一刻就是「LINE 帳號 ↔ member」正式綁定的時候，
+       那時若已有重複的 member，綁定會固定下來、之後更難拆。
+    5. **驗證方式：拿一個真的測試 JWT 實際查一次**，確認查不到不該看的。
+       🔴 **不可以只讀 policy 定義就宣告安全** —— RLS 的實際效果取決於
+         policy 組合、`current_org_id()` 的回傳、以及 SECURITY DEFINER
+         函式繞過的路徑。**只有真的用那個身分查一次算數**（同硬規則 7）。
 
 22. ⏳ **快速結帳與會員查詢的前端**（2026-08-25 決定，後端已就緒）。
     後端 `pos_quick_checkout_tx` 已上線並驗證，`api.js` 的 `quickCheckout()` 也加好了。
