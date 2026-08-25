@@ -236,12 +236,33 @@ migi github/           ← Claude Code 的 project folder 選這層
   | `uq_members_line (org_id, line_user_id)` | 允許同一個 LINE 帳號在**不同 org** 各有一個會員 | M0 地基，`00a_M0建表_資料骨架.sql:131` 有註解 |
   | `uq_members_line_user (line_user_id)` | **全域唯一**，跨 org 不行 | 🔴 `sql/` 裡完全找不到 —— 直接在 Dashboard 手動建的，沒留紀錄 |
 
-  **全域那個贏了（比較嚴），而且它可能是必要的**：`current_org_id()` 是
-  `select org_id from members where line_user_id = auth.jwt()->>'sub'` ——
-  允許跨 org 的話它會回傳不確定的那一列，**而那是整套 RLS 的地基**。
-  → **兩個都留著**（刪 composite 省不到東西），但這個決定要有人知道。
-  ⚠ 日後真的要跨 org（加盟、代營運）時，**先解決 `current_org_id()` 的歧義**，
-    不要只是把索引拿掉。
+  🔴 **`uq_members_line_user` 是承重牆，不可移除**（2026-08-26 逐行查證）：
+
+  ```sql
+  -- current_member_id()：**完全沒有 org 過濾**
+  select m.id from members m
+   where m.line_user_id = (auth.jwt() ->> 'sub')
+     and m.deleted_at is null
+   limit 1;              -- 沒有 order by ⇒ 任意一列
+  ```
+  沒有 org 過濾是**必然的不是疏漏** —— org 是從 member 查出來的，
+  不可能先用 org 縮小範圍（雞生蛋）。
+  → 因此 **composite `(org_id, line_user_id)` 在身分解析上完全幫不上忙**：
+    查詢根本不給 org，它只保證「同 org 內不重複」，跨 org 重複照樣通過。
+  → **只有全域唯一能保證「我是誰」有唯一答案。**
+
+  ⚠ 三支身分函式（`current_org_id` / `current_member_id` / `current_staff`）
+    **都有 `LIMIT 1`**，所以重複時**不會報錯，會靜默選錯**——
+    那位客人會拿到別人的身分、看到別人的錢包。**完全沒有症狀。**
+
+  📌 所以真相不是「手動索引推翻了地基設計」，而是
+    **地基的設計（允許跨 org）與地基自己寫的 `current_org_id()` 互相矛盾**，
+    有人發現了、補上索引，但沒把這件事寫下來。
+  → **兩個都留著**（刪 composite 省不到東西，而且它是 M0 文件引用的那個）。
+  ⚠ 日後真的要跨 org（加盟、代營運）時，**要改的是那三支函式的身分解析方式**
+    （例如 JWT 帶 org、或 line_user_id + org 一起當鍵），**不是把索引拿掉**。
+  ✅ 2026-08-26 確認兩個索引都是 `indisvalid = true`（INVALID 的索引會
+    存在、看得到、但完全不擋 —— 而且沒有任何症狀）。
 
 - **註冊就是綁定：`register_member_tx` 本身就是 find-or-bind-or-create**
   （2026-08-26 查證）。不需要為「既有客人第一次用 LINE」另外設計流程：
