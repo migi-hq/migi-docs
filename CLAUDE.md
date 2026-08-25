@@ -1206,7 +1206,62 @@ migi github/           ← Claude Code 的 project folder 選這層
       推斷引擎（行為 → 回填 `member_availability.inferred`）規劃在 **M3**。
     → 現在**不該做 MA**，該做的是**把資料餵進正確的那張表**，讓 MA 上線時有料。
 
-26. **「常來時段」有兩套並存，做之前要先查**（2026-08-25）。
+26. **「常來時段」有兩套，而它們回答不同的問題**（2026-08-26 查證定案）。
+
+    ### 兩套的分工（使用者 2026-08-26 拍板的框架）
+    | | 誰產生 | 給誰看 | 存哪 |
+    |---|---|---|---|
+    | **A 行為推斷** | 系統算 | 🔴 **只有系統與總部** | `member_availability` `source='inferred'` |
+    | **B 自我宣告** | 客人填 | 其他客人（自我介紹） | 目前在 `members.sched`，M3 搬到 `source='stated'` |
+
+    ✅ **這個分法早就在 schema 裡**：
+    `member_availability_source_check CHECK (source in ('stated','inferred'))`。
+    其餘允許值：`slot ∈ morning|afternoon|evening|late`、
+    `preference ∈ often|sometimes|never`、`weekday 0..6`。
+    ⚠ 表目前是**空的** —— 設計做完了沒人實作。
+
+    ### 🔴 隱私邊界：A 不對客人顯示，連他本人都不行
+    同 `M2技術設計:465`「合拍度只後台用，不在客人前端出現」。
+    「他通常等 12 分鐘就走」對他本人都不該顯示 ——
+    那會讓人覺得被監視，而且**測量行為本身會改變行為**。
+
+    ⚠ **「遲到」這個維度特別要小心**：它推斷的是「他造成別人等」，
+      是**對他的負面評價**。而且**遲到常常不是他的錯**（店員晚開桌、前一桌拖到）。
+      → 只能當**統計傾向**用於配桌（把趕時間的人避開），
+        **不能當事實**，更不能拿來當客訴依據。這一點要寫進設計。
+
+    ### ✅ 原料的欄位全齊，一個都不用補（2026-08-26 查證）
+    ```
+    報名      match_queues.created_at
+    約定開打  match_queues.play_at        ← 我原本以為沒有，它在
+    成桌      match_queues.matched_at
+    實際入座  session_players.joined_at   ← 遲到 = joined_at − play_at
+    離座      session_players.left_at
+    ```
+
+    ### 🔴 但「他能等多久」不能從 expired 房算
+    2026-08-26 實測：`expired` 43 房，`updated_at − created_at` 中位數
+    **1140 分鐘（19 小時）** —— 那不是「他等了 19 小時」，
+    是**房間放到過期**的時間。開房的人可能十分鐘就走了。
+    → 真正的訊號是 **`cancelled`（他主動放棄）**，而那只有 7 房、中位數 0 分
+      （測試時隨手取消）。**欄位齊了，但耐心這個維度還沒有可信的行為資料。**
+
+    ### ⏳ 現在不要搬 `members.sched`
+    搬過去的價值在於**跟 `inferred` 對照**（「他說他打早上，實際都晚上來」——
+    **那個落差本身就是情報**），而 `inferred` 要等 M3 的推斷引擎。
+    沒有對照對象，搬過去只是換一個地方存同一個字串 → 又一個「建了沒人讀」。
+    → **等 M3 一起做**，但對照關係先寫下來免得有人發明第二套：
+    ```
+    早上為主 → (weekday 0..6, morning,   often, stated)
+    下午為主 → (weekday 0..6, afternoon, often, stated)
+    晚上為主 → (weekday 0..6, evening,   often, stated)
+    深夜為主 → (weekday 0..6, late,      often, stated)
+    不一定   → ⚠ 未定案：不寫任何列？還是四個 slot 各寫 'sometimes'？
+    ```
+    ⚠ **「不一定」是唯一沒有對應的值**，而它的處理方式會影響配桌演算法
+      （「沒有偏好」與「沒填」在演算法裡不該是同一件事）。M3 動手前要拍板。
+
+26.5 **（舊）「常來時段」有兩套並存，做之前要先查**（2026-08-25 的原始記錄）。
     `member_availability`（`weekday` / `slot` / `preference` / `source`）表存在，
     `get_my_availability_tx(p_org_id, p_member_id)` 也在 ——
     但會員 App 實際在用的是**另一套**：`profile.jsx:180` 的「作息偏好」
