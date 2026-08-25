@@ -812,6 +812,48 @@ migi github/           ← Claude Code 的 project folder 選這層
       `orders`（改 member_id 會動到已開的發票）、`mahjong_buddies`（去重）、
       成就與段位（取高的還是重算）。**有真實資料之後每一項都變成錢的問題。**
 
+    ### ✅ 2026-08-26 盤點結果：結構上沒有地雷，可以安心延後
+    - **23 個指向 `members` 的外鍵，沒有一個是 `CASCADE`**（21 RESTRICT / 2 NO ACTION）。
+      🔴 CASCADE 才是最怕的（刪舊帳號時資料靜默消失）。
+      **RESTRICT 反而是保護：搬不完就刪不掉，它會逼你做完。**
+    - **有三支餘額工具**：`fix_wallet_balance_tx(org, member)` /
+      `reconcile_wallets_tx(org)` / `audit_wallet_balance()`
+      → 合併後可以**重算驗證**，不必只靠相加。
+      ⚠ 相加是「假設兩邊 balance 都對」，而 `wallet_txns` 沒有觸發器同步餘額
+        —— **能重算就不要相加**。
+    - `invoices` **0 筆** → 發票那條法律硬條件今天不咬。
+
+    ### 🔴 真正的工作量在 8 個含 member_id 的唯一約束（不在外鍵清單裡）
+    只改 `member_id` 會撞鍵，每一個都要決定「兩邊都有時怎麼併」：
+    `wallets_pkey` / `member_app_state_pkey` / `uq_buddies` /
+    `uq_session_player` / `uq_queue_member` / `uq_availability` /
+    `uq_staff_member_store`。
+    ⚠ 其中 **`uq_session_player (session_id, member_id)` 最刺**：
+      兩個帳號在同一桌打過 = 同一個人分飾兩角，**檯費收了兩次**。
+      那不只是資料問題，是要不要退款的問題。
+
+    ### 合併規則（2026-08-26 拍板的部分）
+    - **存活者 = 歷史比較貴的那個**，判準依序：
+      ① **有已開立發票的**（硬條件，法律文件不能改開給別人）
+      ② 訂單數多的　③ 建立時間早的
+      ⚠ **不要用「有沒有綁 LINE」當判準** —— 那正是要被搬的東西，
+        拿它決定誰活下來是循環論證。
+    - **搬 `line_user_id`，不搬歷史**：前者一個欄位，後者上千列且有些不能改。
+    - **順序**：搬 rows → 軟刪 loser → 才把 `line_user_id` 寫到存活者。
+      ✅ `uq_members_line_user` 的 `WHERE deleted_at IS NULL` 讓順序做錯會被擋下來，
+        不會靜默出錯 —— **索引本身就是順序的守衛**。
+    - **硬搬，不做別名**（`merged_into` 指標）。別名會讓**每一支查詢都必須記得跟指標**，
+      漏一支就查到空的而且不報錯 —— 那比「建了沒人讀」更糟。
+    - 留一份合併紀錄（誰併誰、何時、誰按的、搬了幾列）。**不可逆，要有確認步驟。**
+
+    ### ⏳ 為什麼工具現在不做
+    ① **現在不可能發生**：0 個會員綁 LINE、4 個測試帳號、LINE 還沒接。
+    ② `register_member_tx` 的 find-or-bind 已經是預防（手機對得上就綁不新建），
+       2026-08-26 又修掉它會謊報成功的洞 —— **那才是重複帳號最可能的入口**。
+       ⚠ 但**前端要真的送手機**，不然那條路永遠走不到。接 LINE 時必做。
+    ③ 🔴 **做出來也沒人能按**：合併是稽核級操作，必須記錄 `p_staff_id`，
+       而店員登入卡在 LINE Developers 帳號 —— 會是第 10 個「建了沒人讀」。
+
     ⚠ **與待辦 14 的關係（順序不能反）**
     - JWT 解決的是「**你是不是你說的那個人**」；合併解決的是「**同一個人有兩個帳號**」。
       兩個不同的問題，但 JWT 的 subject 是 **LINE 帳號**不是 member，
@@ -1189,6 +1231,18 @@ migi github/           ← Claude Code 的 project folder 選這層
       `sql/applied/2026-08-25_刪死碼與內部呼叫改具名.sql` 完成：
       刪掉死碼 `wallet_topup_tx`、內部呼叫改具名參數。
 
+27.5 **`mahjong_buddies` 有兩個一模一樣的唯一索引**（2026-08-26 發現）。
+   ```
+   uq_buddies     UNIQUE (member_id, buddy_id) WHERE deleted_at IS NULL
+   uq_buddy_pair  UNIQUE (member_id, buddy_id) WHERE deleted_at IS NULL
+   ```
+   ⚠ 這次是**真的重複**（定義逐字相同），與 `members` 那兩個不同 ——
+     那兩個定義不一樣、意圖也不一樣（見「資料模型注意事項」）。
+   → 可以刪掉其中一個，但**先查它是誰建的、有沒有被 FK 引用**
+     （唯一索引可能被別的外鍵當成參照目標，刪了會連帶失敗）。
+   📌 優先度低：兩個索引在這個資料量下只是多一點寫入成本，不會壞事。
+     但它是「同一件事做了兩次」的訊號，值得知道為什麼。
+
 28. **資料庫裡可能有一批死碼**（2026-08-25 粗估）。
     `public` 有 **135 支函式，其中 104 支沒有被任何其他函式呼叫**。
     ⚠ 這個數字**一定偏高** —— 前端直接呼叫的 70 支不算在「被函式呼叫」裡，
@@ -1218,9 +1272,15 @@ migi github/           ← Claude Code 的 project folder 選這層
        （同 `member_tiers` 的教訓：折扣率原本寫在兩支函式各一份 case。）
 
     **② `staff` 要能一人多列**（A 店店長兼總部採購）。
-       ✅ **2026-08-26 查證：已經可以** —— `member_id` 沒有 unique 約束。
-       ⚠ 但 `staff_auth_uid_key UNIQUE (auth_uid)` 存在 ——
+       ✅ **2026-08-26 查證：可以，但條件比我第一次說的精確** ——
+       🔴 我先前寫「`member_id` 沒有 unique 約束」是**不完整的**：
+         那次查的是 `pg_constraint`（約束），而它是**索引**不是約束，所以沒撈到。
+         實際上有 `uq_staff_member_store (member_id, store_id) WHERE deleted_at is null`
+         → **一人多列可以，但「同一個人在同一店」只能一列**。那是對的行為。
+       ⚠ `staff_auth_uid_key UNIQUE (auth_uid)` 存在 ——
          **總部 Email 那條路一人只能一列**。要一人多職的話這條要拆。
+       📌 教訓：查「有沒有唯一限制」時，`pg_constraint` 與 `pg_index` **兩邊都要看**
+         —— `CREATE UNIQUE INDEX` 建的不會出現在 `pg_constraint` 裡。
 
     **③ `role` 不要繼續裝兩個維度** → 拆成 `scope`（store/hq）＋ `role`（職務名）。
        現在 `staff` 只有 **1 列**，拆是零成本；有 30 個店員之後就是
