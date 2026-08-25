@@ -228,6 +228,33 @@ migi github/           ← Claude Code 的 project folder 選這層
 - 錢包餘額在 `wallets.balance`，**`members` 沒有 `points_balance`**。
   `wallet_txns` 是 append-only（`type` / `amount`，不是 `kind` / `points`），
   沒有觸發器會自動同步餘額 —— 插完流水要呼叫 `fix_wallet_balance_tx` 重算。
+- **一個 LINE 帳號只能屬於一個 org**（2026-08-26 查證後確立的既成決定）。
+  `members` 上有**兩個**與 `line_user_id` 有關的唯一索引，它們的意圖互相矛盾：
+
+  | 索引 | 意圖 | 來源 |
+  |---|---|---|
+  | `uq_members_line (org_id, line_user_id)` | 允許同一個 LINE 帳號在**不同 org** 各有一個會員 | M0 地基，`00a_M0建表_資料骨架.sql:131` 有註解 |
+  | `uq_members_line_user (line_user_id)` | **全域唯一**，跨 org 不行 | 🔴 `sql/` 裡完全找不到 —— 直接在 Dashboard 手動建的，沒留紀錄 |
+
+  **全域那個贏了（比較嚴），而且它可能是必要的**：`current_org_id()` 是
+  `select org_id from members where line_user_id = auth.jwt()->>'sub'` ——
+  允許跨 org 的話它會回傳不確定的那一列，**而那是整套 RLS 的地基**。
+  → **兩個都留著**（刪 composite 省不到東西），但這個決定要有人知道。
+  ⚠ 日後真的要跨 org（加盟、代營運）時，**先解決 `current_org_id()` 的歧義**，
+    不要只是把索引拿掉。
+
+- **註冊就是綁定：`register_member_tx` 本身就是 find-or-bind-or-create**
+  （2026-08-26 查證）。不需要為「既有客人第一次用 LINE」另外設計流程：
+  ```
+  ① 有 line_user_id 且查得到 → 'existing_line'（不新建）
+  ② 有 phone 且查得到 → 綁上去 → 'rebound'
+     ⚠ 那個會員已綁**別的** LINE → 'line_conflict'（2026-08-26 修，舊版會謊報成功）
+  ③ 都查不到 → 'created'
+  ```
+  ⚠ `rebind_line_user_tx` **不是註冊流程的一部分**，它是店員的補救工具
+    （客人換手機／換 LINE 帳號），簽名裡有 `p_staff_id` 就是證據。
+  ⚠ 四個測試帳號接 LINE 時走 ②，`is_test` 不受影響。
+
 - 代付：檯費份數 = 自己 1 份 + 代付人數。被代付者仍建立 `session_players` 記錄，
   但 `charged_points = 0`、`paid_by = 付款人`。消費金額與發票都歸付款人。
 - 埋點測試隔離：`app_events.is_test`。
