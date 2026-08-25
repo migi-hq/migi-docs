@@ -71,6 +71,22 @@ migi github/           ← Claude Code 的 project folder 選這層
    ⚠ 已知代價：Claude 看得到會員真實資料（手機、消費、餘額）。唯讀擋「改」不擋「看」。
    ⚠ 啟用後 `checks/` 仍然要**存檔**（那是查證的紀錄，不是拋棄式指令）。
 2. **改函式簽名必須在同一份 SQL 檔開頭附 `DROP FUNCTION IF EXISTS`**，否則會建出多載版本。
+   ⚠ **`DROP` + 重建會把 `GRANT` 一起丟掉**，所以那種檔案結尾一定要有
+   `grant execute on function ...(簽名) to anon, authenticated;`。
+   （`CREATE OR REPLACE` 不會丟，只有 `DROP` 會。）
+
+   **2.5 「函式在包裝裡跑得動」不代表「前端叫得動」。**（2026-08-25 踩到）
+   權限是在**呼叫點**檢查的。一支長期只被 SECURITY DEFINER 包裝**從內部**呼叫的函式，
+   可能整支從來沒授權給 `anon` —— 而且**完全沒有跡象**，因為在 DEFINER 裡面
+   呼叫端的權限根本不會被檢查。
+   - 實例：`topup_tx` 一直只被 `pos_checkout_with_topup_tx` 內部呼叫。
+     2026-08-24 會員頁第一次讓前端**直接**叫它 → `permission denied`。
+     也就是**櫃檯儲值從上線那天起就沒成功過一次**，不是壞掉是從來沒通。
+   - 🔴 我第一次判斷成「DROP 帶走 GRANT」，查證後推翻 ——
+     那支檔案用的是 `CREATE OR REPLACE`，根本沒 DROP。**先查再下結論。**
+   → **讓前端第一次直接呼叫某支既有 RPC 時，必須確認它有 `anon EXECUTE`。**
+     盤點範本：`sql/applied/2026-08-25_補回前端RPC的執行權.sql`
+     （一次掃三個前端呼叫的 70 支，順便查「函式存不存在」與「是不是 INVOKER」）。
 3. **不要線上猜欄位名稱或約束值。** 動任何 RPC / schema 之前，先讀 `docs/` 下的權威文件，
    或用唯讀查詢把現況撈出來確認。猜錯的成本遠高於多問一次。
 
@@ -102,6 +118,19 @@ migi github/           ← Claude Code 的 project folder 選這層
    → 真的必須掃欄位名時，改成**逐行印出來讓人判讀**，不要回傳一個是非題
    （範本：`sql/checks/2026-08-25_驗證快速結帳沒碰桌次.sql`）。
    → 同踩坑第 25 條：**先懷疑儀器再懷疑資料。**
+
+   **3.6 `{/* */}` 只在 JSX 的「子元素位置」合法。**（2026-08-25 掛掉一次 build）
+   2026-08-18 記的是「不能放進屬性列表」，但實際規則更嚴：
+   運算式位置（`? (` / `: (` / `=> (` / `return (` 之後）也不行，要用**裸的** `/* */`。
+   ```jsx
+   ) : (
+     {/* 說明 */}            ← 🔴 parser 把 { 當成物件實字
+     <div style={{ ... }}>
+   ```
+   🔴 **錯誤訊息會指向下一行**：`Expected ")" but found "style"` ——
+   看起來像 `style` 有問題，實際原因在前面兩行。這是這個坑最花時間的部分。
+   → 檢查器：`jsxcomment.py`（屬性列表變體）＋ `jsxcomment2.py`（運算式位置變體），
+   **兩支都要跑**。這個專案沒有本機 node，靜態檢查是唯一的事前防線。
 4. **POS 所有查詢必須走 SECURITY DEFINER 的 RPC**，不可用 `supabase.from('表').select()`。
    原因：資料表都有 RLS（`org_id = current_org_id()`），而 POS 目前用 anon key 沒有 auth session，
    直接查表會回空陣列且不報錯 —— 這種 bug 很難抓。
