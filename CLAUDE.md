@@ -539,8 +539,19 @@ migi github/           ← Claude Code 的 project folder 選這層
 1. **會員 App 沒有消費明細** —— `wallet.jsx` 的「明細」是錢包點數流水（`wallet_txns`），
    不是消費紀錄（`orders`）。**付現金的消費完全不會出現** ——
    改元計價 + 混合付款後檯費可直接收現金，收現金不產生點數異動，會員端就什麼都看不到。
-   資料早就齊（`orders` / `order_items` / `order_payments`），只差一支
-   `get_my_orders_tx`，與 `get_session_member_orders_tx` 是同一份資料的不同切法。
+   ✅ **更正（2026-08-25）：`get_my_orders_tx` 早就存在而且早就接好了。**
+   這條原本寫「只差一支 `get_my_orders_tx`」—— 錯的。
+   `migi-web/src/pages/wallet.jsx:125` 一直在呼叫它，首頁與明細頁都是。
+   2026-08-25 盤點三個前端呼叫的 70 支 RPC 時證實它在線上（0 支不存在）。
+   簽名：`get_my_orders_tx(p_member_id, p_limit, p_before)` →
+   `{ orders: [...], has_more }`，每列有 `paid_at` / `payable` / `collected` /
+   `points_used` / `payments[]` / `items[]` / `topup`。
+   → 又一個「文件說沒有、實際上有」（同踩坑第 29 條）。**先查再說沒有。**
+   → POS 的會員查詢已於 2026-08-25 接上（最近消費 5 筆 + 上次來訪）。
+
+   🔴 **真正還缺的是「累積消費」**：`get_my_orders_tx` 是分頁的，
+   前 N 筆加總不是總額。B 案（從 `orders` 即時算）需要自己的 RPC 或
+   在既有回傳裡多一個欄位 —— 這也是會員分級門檻要用的數字。
    連帶要確認：會員分級的「消費累積」是用什麼算的 —— 若讀 `wallet_txns` 會漏掉所有現金消費。
 
    **UI 端已指定**（2026-08-16）：首頁「最近消費」只顯示**前 10 筆**；
