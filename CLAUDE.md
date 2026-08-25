@@ -208,7 +208,14 @@ migi github/           ← Claude Code 的 project folder 選這層
   沒有觸發器會自動同步餘額 —— 插完流水要呼叫 `fix_wallet_balance_tx` 重算。
 - 代付：檯費份數 = 自己 1 份 + 代付人數。被代付者仍建立 `session_players` 記錄，
   但 `charged_points = 0`、`paid_by = 付款人`。消費金額與發票都歸付款人。
-- 埋點測試隔離：`app_events.is_test`（由 `set_is_test_from_store()` 依門市自動帶入）。
+- 埋點測試隔離：`app_events.is_test`。
+  🔴 **更正（2026-08-26）**：這裡原本寫「由 `set_is_test_from_store()` **依門市**自動帶入」
+  —— **是錯的**。查證後：`app_events` **沒有 `store_id` 欄位**，唯一的觸發器是
+  `trg_app_events_no_mutate`（防改）。`is_test` 是 `log_app_event_tx` **從會員**推的
+  （`if p_member_id is not null then select is_test from members`）。
+  `set_is_test_from_store()` 確實存在，但它掛的是 `orders` 那類**有 `store_id`** 的表。
+  🔴 **後果**：POS 的事件 `member_id` 一律是 null → `is_test` 恆為 false
+  → **測試門市的操作會混進營運數據且不報錯**。做 POS 埋點時必須先補這個洞。
   過濾用的檢視表共**四個**：`v_real_app_events`、`v_real_wallet_txns`、`v_real_members`、`v_real_stores`。
   做報表一律查 `v_real_*`，直接查原表會把測試資料算進營運數據且不報錯。
 - 完整欄位、RPC 簽名、CHECK 約束見 `docs/01-資料庫/db-現況快照.md`（2026-08-14 盤點）。
@@ -957,7 +964,39 @@ migi github/           ← Claude Code 的 project folder 選這層
       要 `get_my_orders_tx`（待辦 1）。先做兩格（等級、手機），**空格不畫** ——
       畫了會讓人以為壞掉。
 
-23. 🔴 **POS 完全沒有埋點，而且錯誤沒有留下任何紀錄**（2026-08-25 查證）。
+23. ~~POS 完全沒有埋點~~ → ✅ **三層全部完成**（2026-08-26，`migi-pos` 0cd4fac）。
+    `lib/analytics.js`（精簡版，不是移植 migi-web 那支）＋
+    `main.jsx` 全域監聽 ＋ `ErrorBoundary` ＋ `rpc()` 失敗 ＋ 五個關鍵動作。
+
+    **事件清單**（`event like 'pos_%'` 就能把 POS 與會員端分開）：
+    | 事件 | 回答什麼 |
+    |---|---|
+    | `pos_error` | 錯誤。`kind` 分 render／unhandled／window／rpc／**network** |
+    | `pos_version_stuck` / `pos_update_reload` | 這台平板卡在舊版 |
+    | `pos_open_session` | 開桌（含牌規／模式 —— 那是**營運資訊**不是店員行為） |
+    | `pos_checkout` | 結帳，**成功與失敗都記** |
+    | `pos_carry` / `pos_settle` / `pos_void_session` | 帶桌／收桌／取消開桌 |
+    | `pos_nav` | 側邊欄 from/to —— 「哪些功能有人用」唯一的入口 |
+
+    ⚠ **`network` 要與 `rpc` 分開**：混在一起看，「店裡 wifi 爛」
+      會被誤讀成「系統常出錯」。
+    ⚠ **成功與失敗都記**：只記成功的話「哪一步最常中斷」永遠答不出來。
+
+    **兩條資料庫約束（2026-08-26 查證，違反會靜默失敗）**：
+    - `event ~ '^[a-z][a-z0-9_]{0,49}$'` —— 🔴 **不是白名單，是格式檢查**
+      （我一度誤判成白名單並據此推論了一整段）。小寫字母開頭。
+    - `pg_column_size(props) <= 8192` —— 🔴 stack trace 很容易破。
+      超過 → 插入失敗 → **而埋點是靜默的，那筆會直接消失**。
+      `fit()` 逐層瘦身：先截字串，再由長到短丟非 meta 欄位。
+
+    **隱私**：現在**不帶任何個人身分**。`_did` 是這台平板的隨機 id，
+    清 localStorage 就換一個 —— **夠用來除錯，不夠用來監控**。
+    `rpc` 失敗只帶函式名與錯誤碼，**不帶 params**（裡面有會員 id、金額、手機）。
+
+    ⏳ **還沒做的**：`app_events` 的 RLS 仍是 org 級 ——
+    「只有總部看得到」目前是靠「所有人都讀不到」達成的（見下）。
+
+23.5 🔴 **原始問題與政策紀錄（2026-08-25，保留供日後查）**。
     | | migi-web | migi-pos |
     |---|---|---|
     | `analytics.js`（session/event id、離線佇列、測試閘門） | ✅ | ❌ |
@@ -973,11 +1012,21 @@ migi github/           ← Claude Code 的 project folder 選這層
       ⚠ 要等店員登入，否則只知道「這台平板」不知道「這個人」。
     - **③ 功能使用率**：等功能變多才有意義。
 
-    ⚠ **一個政策問題要先決定，不是技術問題**：App 埋點記的是**客人行為**，
-      POS 埋點記的是**店員操作** —— 那是**勞動監控**。
-      「小美今天操作 47 次、平均每桌 3 分 20 秒」一旦存在就會有人拿去做績效。
-      **做之前先決定：誰看得到、會不會進獎金計算。**
-    → 建議 ① 現在就能做（不涉及個人績效），②③ 等店員登入與那個決定。
+    ✅ **政策已拍板（2026-08-25 使用者決定）：三層全做。**
+    > 「資料只有總部分析數據的人看得到。獎金計算日後討論，但數據還是要有。」
+
+    🔴 **但「只有總部看得到」目前是靠「所有人都讀不到」達成的，不是靠設計。**
+    `app_events` 的 RLS 是 `org_id = current_org_id()`；POS 用 anon 沒有
+    auth session → 回 null → 讀不到。寫入走 `log_app_event_tx`（DEFINER）不受影響。
+    ⚠ **待辦 14（會員 JWT）或待辦 20（店員登入）上線那天這個保護就破**：
+      那時 `current_org_id()` 會回傳 org，同一條 org 級 policy 會讓店員
+      甚至會員讀得到 `app_events`。同待辦 21。
+    → **要讓「只有總部」成為設計，需要一條比 org 級更嚴的 policy**
+      （例如只開給 `staff.role in ('hq','owner')`）。與待辦 14／21 同一批做。
+
+    ⚠ 獎金計算「日後討論」不等於「不會發生」。埋的時候就要想到：
+      事件的 `props` 一旦含了可辨識個人的欄位，事後無法回溯移除
+      （歷史資料改不掉）。所以**加 staff_id 那一刻是不可逆的決定**。
 
 24. **`members` 有三個欄位建了完全沒人寫**（2026-08-25 查證）。
     | 欄位 | 有值 | 有函式寫 |
@@ -1048,6 +1097,51 @@ migi github/           ← Claude Code 的 project folder 選這層
       而且 `INVOKER` + `anon` 可執行、簽名沒有任何付款或授權參數）。已刪除。
     → 盤點方法：`135 支` 減去「三個前端呼叫的 70 支」與「被其他函式呼叫的」，
       剩下的逐一判斷。**不要一次全刪** —— 有些是給 pg_cron 或未來用的。
+
+29. **角色要重新設計：POS 端與總部端分開**（2026-08-25 使用者指定，2026-08-26 查證）。
+    目標形狀：
+    ```
+    POS 端   店員 / 店長 / 門市營運 / BOSS
+    總部端   BOSS / 數據分析 / 財務 / 採購 / 行銷 …
+    ```
+    現在是**一欄 `role` 裝兩個維度**（`floor`/`manager` 是門市職務，
+    `hq`/`owner` 是層級）—— 同 `wallet_txns.type`（待辦 12）那個病。
+    ⚠ **不要直接把值加多**：每新增一個職務就要改 CHECK、改所有判斷邏輯，
+      那是 `coupons.applies_to`（待辦 0.8）的形狀。
+
+    **現在要打的基礎只有三件，都不是「建表」：**
+
+    **① 判斷點一律呼叫 `can('order.void')`，不要比對 role 字串。**
+       即使 `can()` 今天的實作就是一行 `role in ('hq','owner')`。
+       重點是**「權限怎麼決定」與「誰有權限」從第一天就分家** ——
+       之後換成查 `role_permissions` 表時，所有呼叫點一行都不用改。
+       （同 `member_tiers` 的教訓：折扣率原本寫在兩支函式各一份 case。）
+
+    **② `staff` 要能一人多列**（A 店店長兼總部採購）。
+       ✅ **2026-08-26 查證：已經可以** —— `member_id` 沒有 unique 約束。
+       ⚠ 但 `staff_auth_uid_key UNIQUE (auth_uid)` 存在 ——
+         **總部 Email 那條路一人只能一列**。要一人多職的話這條要拆。
+
+    **③ `role` 不要繼續裝兩個維度** → 拆成 `scope`（store/hq）＋ `role`（職務名）。
+       現在 `staff` 只有 **1 列**，拆是零成本；有 30 個店員之後就是
+       一次 migration ＋ 回填 ＋ 對照表。
+
+    **④ 權限碼用動詞不用頁面名**：`order.void` / `session.settle` /
+       `price.override` / `report.view` / `member.export` / `analytics.view`。
+       🔴 **頁面會改名、會合併、會拆開；動作不會。**
+       （2026-08-25 一天內就發生過：「會員」→「會員查詢」、側邊欄八項→三項→五項。）
+
+    **不用現在做的**：`role_permissions` 表（①做了之後補它是純加法）、
+    權限碼清單（等真有第二個職務再列，現在列是憑空想像）、後台角色編輯 UI。
+    ⚠ **角色繼承永遠不要做** —— RBAC 最常被誤用的功能，
+      而且沒有人說得出「店長繼承店員」到底包含什麼。
+
+    ⚠ **收斂判準：權限碼控制在 10–15 個。** 多過那個數字就會沒人記得哪個是哪個，
+      最後全部給 `owner` 了事（硬規則 5.5：七間店不需要 SAP 的權限矩陣）。
+
+    ⚠ **動手時機：跟待辦 20（店員登入）同一批。** 現在單獨做是第 9 個
+      「建了沒人讀」—— 沒有店員登入就沒有人有身分可以被判斷，
+      `current_staff()` 永遠回 null，而 **2026-08-26 重新確認：讀 role 的 policy 仍是 0 條**。
 
 ### PENDING
 - 店員登入未做，`staffId` 一律傳 null，`App.jsx` 還有 `const STAFF = "小美"` 寫死。
