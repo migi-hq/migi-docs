@@ -146,6 +146,28 @@ migi github/           ← Claude Code 的 project folder 選這層
    ```
    ⚠ 先前幾支同樣寫法沒炸，是因為它們還有 `proname = any(名單)` 這個便宜的
    條件先把範圍縮掉了 —— **那是運氣不是設計**。
+
+   **3.8 約束名稱不等於約束內容。**（2026-08-26 踩到）
+   錯誤訊息只給你名字（`app_events_event_check`），**沒給定義**。
+   看到 `xxx_check` 就推論它是白名單／範圍／格式，那是猜。
+   - 實例：`app_events_event_check` 我推論成「事件名白名單」，
+     還據此討論了一整段「要擴充 CHECK 還是改成註冊表」——
+     實際上它是 `CHECK (event ~ '^[a-z][a-z0-9_]{0,49}$')`，**只管格式**。
+     我的測試事件叫 `_smoke_pos_log`，敗在底線開頭而已。
+   → `pg_get_constraintdef(oid)` 一句話就撈得到。**先撈再說。**
+
+   **3.9 `set_config(key, val, true)` 會被 savepoint 回滾。**（2026-08-26 踩到）
+   驗證段常用 `DO ... EXCEPTION` 接住錯誤、再用 set_config 把結果傳給
+   最後那支 SELECT。⚠ 但 `is_local = true` 是**交易內**的設定 ——
+   寫在 `raise` 之前的話，會跟著被回滾掉，最後印出**空白**。
+   ```sql
+   -- 🔴 訊息會不見
+   perform set_config('migi.x', '✅ 成功', true);
+   raise exception 'rollback_on_purpose';
+   -- ✅ 訊息留得住
+   exception when others then perform set_config('migi.x', '…', true);
+   ```
+   → **訊息一律設在 exception 處理器裡**，不要設在成功路徑上再 raise。
 4. **POS 所有查詢必須走 SECURITY DEFINER 的 RPC**，不可用 `supabase.from('表').select()`。
    原因：資料表都有 RLS（`org_id = current_org_id()`），而 POS 目前用 anon key 沒有 auth session，
    直接查表會回空陣列且不報錯 —— 這種 bug 很難抓。
