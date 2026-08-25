@@ -957,6 +957,73 @@ migi github/           ← Claude Code 的 project folder 選這層
       要 `get_my_orders_tx`（待辦 1）。先做兩格（等級、手機），**空格不畫** ——
       畫了會讓人以為壞掉。
 
+23. 🔴 **POS 完全沒有埋點，而且錯誤沒有留下任何紀錄**（2026-08-25 查證）。
+    | | migi-web | migi-pos |
+    |---|---|---|
+    | `analytics.js`（session/event id、離線佇列、測試閘門） | ✅ | ❌ |
+    | 全域 `unhandledrejection` 上報 | ✅ `main.jsx:28` | ❌ |
+    | 渲染錯誤上報 | ✅ `track('app_error')` | 🔴 只有 `console.error` |
+
+    🔴 **店員說「剛剛結帳失敗」，你查不到任何東西** —— 而 POS 是收錢的那一端。
+    分三層，依急迫排序：
+    - **① 錯誤上報**（最急，跟數據分析無關）：`unhandledrejection` + ErrorBoundary
+      + `rpc()` 失敗 → 寫 `app_events`。`app_events.is_test` 已有
+      `set_is_test_from_store()` 自動帶入，基礎建設是現成的。
+    - **② 關鍵流程漏斗**（開桌設定 → 結帳 → 帶桌 → 收桌）：
+      ⚠ 要等店員登入，否則只知道「這台平板」不知道「這個人」。
+    - **③ 功能使用率**：等功能變多才有意義。
+
+    ⚠ **一個政策問題要先決定，不是技術問題**：App 埋點記的是**客人行為**，
+      POS 埋點記的是**店員操作** —— 那是**勞動監控**。
+      「小美今天操作 47 次、平均每桌 3 分 20 秒」一旦存在就會有人拿去做績效。
+      **做之前先決定：誰看得到、會不會進獎金計算。**
+    → 建議 ① 現在就能做（不涉及個人績效），②③ 等店員登入與那個決定。
+
+24. **`members` 有三個欄位建了完全沒人寫**（2026-08-25 查證）。
+    | 欄位 | 有值 | 有函式寫 |
+    |---|---|---|
+    | `last_visit_at` | 0 / 4 | ❌ |
+    | `visit_count` | 0 / 4 | ❌ |
+    | `primary_staff_id` | 0 / 4 | ❌ |
+    | `lifecycle` | 4 / 4 | ❌（應是 DEFAULT `'new'` 後凍結） |
+    | `last_app_active_at` | 4 / 4 | ✅ 活的 |
+
+    ✅ 所以 POS 的「上次來訪」從 `orders` 即時算是對的，不是第二套。
+    🔴 但那三欄是第 5、6、7 個「建了沒人讀」。
+    **要嘛讓它們活起來（結帳時更新），要嘛承認不該存在** —— 留著不動最糟。
+    ⚠ 這與待辦 1 的 B 案（累積消費從 `orders` 即時算）**不衝突**：
+      即時算適合單一會員的頁面；MA 要掃「全店 7 天沒來的人」時，
+      掃描 `orders` 的成本遠高於一個有索引的欄位。兩者是不同的用途。
+    ✅ `lifecycle` 的桶子已定義：`new / growing / regular / at_risk / churned`。
+
+25. **會員再行銷（MA）：策略設計完整，一行都還沒實作**（2026-08-25 盤點）。
+    - `06-架構藍圖/整合系統開發藍圖.md:345–385` 有**七個觸發式自動旅程**
+      （新會員／7 天未回訪／N 天沒來／生日／點數到期／
+      ⭐**牌咖上線開局**／⭐**段位快升級**）。最後兩個是 MIGI 獨有的召回鉤子。
+    - **MA × 店員 CRM 是同一份資料的兩個出口**，共用 `member_interactions`
+      —— 避免重複打擾、店員看得到系統已發過什麼。
+      ✅ 那張表的 schema **已經完全對得上**（`channel`/`kind`/`staff_id`/`note`），
+      2026-08-25 的店員備註是它的第一個寫入者。
+    - `03-會員App與社交/會員情報體系.md` 的「行銷黃金訊號」：
+      **`match_queues.status='expired'` = 某人在某時段想打但沒湊到人**。
+      ✅ 已在累積（2026-08-25：expired 42 房 / waiting 4 / cancelled 7）。
+      > 「成功的配桌是營收，**失敗的配桌是情報**。」
+    - ⚠ 藍圖說「結構（RFM/lifecycle/interactions/availability）Day 1 已在」——
+      **半對**：`member_interactions` / `member_availability` / `lifecycle` 在，
+      但 **`member_rating` 不存在**，RFM 也沒有任何表或欄位。
+    - 📌 落地時機文件已寫：**「會員量起來後做；初期會員少，店員手動就夠。」**
+      推斷引擎（行為 → 回填 `member_availability.inferred`）規劃在 **M3**。
+    → 現在**不該做 MA**，該做的是**把資料餵進正確的那張表**，讓 MA 上線時有料。
+
+26. **「常來時段」有兩套並存，做之前要先查**（2026-08-25）。
+    `member_availability`（`weekday` / `slot` / `preference` / `source`）表存在，
+    `get_my_availability_tx(p_org_id, p_member_id)` 也在 ——
+    但會員 App 實際在用的是**另一套**：`profile.jsx:180` 的「作息偏好」
+    是一個字串（早上為主／下午為主／晚上為主／深夜為主／不一定），走 `set_my_sched_tx`。
+    ⚠ 要先查：`member_availability` 是不是空的、`slot` 的允許值有哪些、
+      兩套哪一套才是正本。**猜形狀就是硬規則 3 那個坑**，所以 2026-08-25
+      那批刻意沒做這一項。
+
 ### PENDING
 - 店員登入未做，`staffId` 一律傳 null，`App.jsx` 還有 `const STAFF = "小美"` 寫死。
   ⚠ 後果不只是「不知道是誰」：`table_sessions` 98/98、`orders` 150/150 的
