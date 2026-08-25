@@ -51,6 +51,25 @@ migi github/           ← Claude Code 的 project folder 選這層
    貼整份 SQL 會把對話洗掉，使用者從檔案複製就好。
    **看到驗證結果、確認執行成功之後，由 Claude 自己把檔案移到 `sql/applied/`**，
    不要留給使用者手動搬。沒看到驗證結果就留在 `pending/`，不准假設跑過了。
+
+   **1.5 讀與寫分家（2026-08-25 決定）** ——
+   這條規則當初的目的是「不要讓 Claude 亂改線上」，而**唯讀查詢從來不在那個風險裡**。
+   2026-08-25 光是「快速結帳」一件事就因為唯讀查詢停了三次
+   （查後端缺口 → 撈 checkout_tx → 查儲值單 where），每次都是硬停。
+
+   | | 走哪裡 |
+   |---|---|
+   | **唯讀查詢**（`sql/checks/`、`pg_get_functiondef`、`information_schema`） | **Supabase MCP，Claude 自己跑** |
+   | **寫入**（`sql/pending/`：DDL、migration、改資料） | **一律 Dashboard**，且看到驗證結果才歸檔 |
+
+   ⏳ **尚未啟用** —— 要先在 Terminal 跑（token 由使用者自己填，不要貼進對話）：
+   ```
+   claude mcp add supabase --env SUPABASE_ACCESS_TOKEN=<token> -- npx -y @supabase/mcp-server-supabase@latest --read-only --project-ref=roksgepxxmcewlkshtzn
+   ```
+   `--read-only` 與 `--project-ref` 兩個都不可拿掉：前者讓 INSERT/UPDATE/DDL 一律被擋，
+   後者鎖死只能碰 MIGI 這個專案。
+   ⚠ 已知代價：Claude 看得到會員真實資料（手機、消費、餘額）。唯讀擋「改」不擋「看」。
+   ⚠ 啟用後 `checks/` 仍然要**存檔**（那是查證的紀錄，不是拋棄式指令）。
 2. **改函式簽名必須在同一份 SQL 檔開頭附 `DROP FUNCTION IF EXISTS`**，否則會建出多載版本。
 3. **不要線上猜欄位名稱或約束值。** 動任何 RPC / schema 之前，先讀 `docs/` 下的權威文件，
    或用唯讀查詢把現況撈出來確認。猜錯的成本遠高於多問一次。
@@ -69,6 +88,20 @@ migi github/           ← Claude Code 的 project folder 選這層
    → 判斷線上有沒有某個東西，**只有 `information_schema` / `pg_proc` /
    `pg_constraint` 的查詢算數**；檔案位置、文件敘述、待辦勾選都是二手傳聞。
    細節見 `docs/08-決策與踩坑/踩過的坑.md` 第 29 條。
+
+   **3.5 掃全文找禁字時，禁字不能是自己註解裡會出現的詞。**
+   驗證段常寫「掃全庫確認某個舊寫法已消失」，但 `pg_get_functiondef` 回的是
+   **含註解的全文**，字串比對分不出程式碼與說明文字。已經踩兩次：
+   - 2026-08-23 修 `grant_staff_tx` 角色值，掃 `clerk` 被自己寫的註解觸發
+   - 2026-08-25 建 `pos_quick_checkout_tx`，掃 `session_id` 被
+     自己寫的「**不回填 session_id**」觸發，回報「🔴 竟然引用了桌次」
+
+   → **禁字只用「會產生行為的東西」：表名、函式名。**
+   表名不會出現在正常的說明文字裡，欄位名會（`session_id`、`kind`、`status`
+   這種到處都有的詞尤其危險）。
+   → 真的必須掃欄位名時，改成**逐行印出來讓人判讀**，不要回傳一個是非題
+   （範本：`sql/checks/2026-08-25_驗證快速結帳沒碰桌次.sql`）。
+   → 同踩坑第 25 條：**先懷疑儀器再懷疑資料。**
 4. **POS 所有查詢必須走 SECURITY DEFINER 的 RPC**，不可用 `supabase.from('表').select()`。
    原因：資料表都有 RLS（`org_id = current_org_id()`），而 POS 目前用 anon key 沒有 auth session，
    直接查表會回空陣列且不報錯 —— 這種 bug 很難抓。
@@ -371,6 +404,39 @@ migi github/           ← Claude Code 的 project folder 選這層
     沒有它，線上會出現「場地費擋牆修好了、白名單還是壞的」而且不報錯。
     → 但更根本的教訓是：**同一支函式要改三處以上就撈全文重建，不要堆 DO 區塊。**
     我在 `join_session_tx` 上連續判斷錯兩次，都是因為只看片段。
+
+- **快速結帳的後端完成**（2026-08-25，兩支 SQL 均已驗證）。
+  起點是「會員儲值跟快速結帳要不要合併」，結論是**版型沿用桌況結帳，只換左欄**
+  （四格座位 → 搜尋選客人），底部不要帶桌列，而「沒有 session 就沒有檯費」是
+  **自己消失的**，不用特別拿掉。
+  - 🔴 **我從 `api.js` 看到「每支結帳都送 `p_session_id`」就推論「後端非有桌不可」——
+    結論反了。** `checkout_tx` 的簽名根本沒有 session 參數、INSERT orders 也沒寫
+    `session_id`（桌邊訂單是外層包裝事後回填的）。綁桌次的是外面那三支包裝。
+    → **看前端推後端不算數**，只有 `pg_proc` 算數（硬規則 3）。
+  - 所以 `pos_quick_checkout_tx` 只是**一層 DEFINER 外殼**，不是新的結帳邏輯。
+    🔴 為什麼非要外殼：**`checkout_tx` 是 SECURITY INVOKER**，POS 用 anon
+    直接叫它 RLS 會濾成「什麼都沒發生而且不報錯」（同 `settle_session_tx` 那個洞）。
+    **前端永遠不可以直接呼叫 `checkout_tx`。**
+  - 三種模式：`topup_only` / `items_only` / `topup_and_items`。
+    純儲值不能走 `checkout_tx`（它開頭就擋「沒有品項」）。
+    ✅ 不需要 `EXCEPTION` 回滾 —— `topup_tx` 與 `checkout_tx` 失敗都是 `raise`，
+    例外自然往上拋。`pos_checkout_with_topup_tx` 當初要自己接住是因為
+    `join_session_tx` 回 `{ok:false}` 不拋。
+  - 🔴 **匿名結帳做不到，而且欄位可空性騙了我一次**：`orders.member_id` 可為 null，
+    但 `checkout_tx` 有一段 `select balance into v_bal from wallets ...; if v_bal is null then raise`
+    ——**即使 `points_used = 0` 也會查錢包**。
+    **欄位可為 null ≠ 函式接受 null。** 要做外帶一杯奶茶得改 `checkout_tx` 本身。
+  - ⚠ **第二支 SQL 是補我漏的**：建立時少了 `p_topup_cash_received` /
+    `p_topup_change_given`。理由是「`topup_tx` 沒有這兩個」—— **又漏了一層**，
+    `pos_checkout_with_topup_tx` 是自己 `update topup_orders`（用 `topup_id` 認回）。
+    🔴 在快速結帳更嚴重：**純儲值時 `orderCash = 0` → `payments` 是 null，
+    沒有任何 `order_payments` 能承接實收找零**，「收 2000 找 500」完全不落地。
+    → 趁「還沒有東西呼叫它」時改簽名是免費的，上線後就要走部署順序。
+  - 📌 查證順帶得到：**`orders.channel` 是 NOT NULL DEFAULT `'counter'`，150 筆全是
+    `counter`**（含桌邊）。也就是這欄目前**沒有分辨力**，櫃檯與桌邊只能靠
+    `session_id` 是不是 null 分。所以快速結帳刻意不寫 channel ——
+    只補一邊會讓兩條路的資料長得不一樣。
+  - ⏳ **前端還沒做**：見待辦 22。
 
 ### 待辦
 
@@ -789,6 +855,40 @@ migi github/           ← Claude Code 的 project folder 選這層
     也就是從「知道 uuid 才查得到」變成「**登入就能查全部**」—— 可能比現在更糟。
     → **待辦 14 不是「換發 JWT」而已，是「換發 JWT ＋ 同時收緊 policy」，
     兩件事必須同一批做。** 分開做的中間那段時間，洞是敞開的。
+
+22. ⏳ **快速結帳與會員查詢的前端**（2026-08-25 決定，後端已就緒）。
+    後端 `pos_quick_checkout_tx` 已上線並驗證，`api.js` 的 `quickCheckout()` 也加好了。
+    剩下純前端：
+
+    | 檔案 | 要做什麼 |
+    |---|---|
+    | `App.jsx` NAV | 會員 → **會員查詢**（圖示換**放大鏡**）；新增 **快速結帳**（購物車圖示） |
+    | `MemberPage.jsx` | **完全不碰錢**：拿掉右欄與儲值，變成 左 216 ＋ 詳情吃滿；右上加「儲值 →」 |
+    | `OpenCheckoutPage.jsx` | 加 quick 模式：左欄換成搜尋選客人；`doPay` 加 `!sessionId` 分支走 `quickCheckout` |
+    | `TopupPickModal` | 刪掉（方案改成中欄卡片／或沿用桌況的儲值彈窗） |
+
+    - **版型完全沿用桌況結帳**：`seatCol 216` / `midCol` / `rCol 420`、標題列 72、
+      `pbar` / `balBox` / 品項 / 收款全部同一組 `S`。**只有左欄換掉、底部沒有帶桌列。**
+    - ✅ 好消息：`OpenCheckoutPage` 裡與 session 有關的 effect **本來就都有
+      `if (!sessionId) return`**（還原座位、桌帳、檯費試算），所以傳 `sessionId: null`
+      大部分會自己短路。要動的是左欄 UI、`cat` 預設值（現在寫死 `"檯費"`）、
+      `doPay` 的分支、標題列與底部。
+    - 🔴 **「儲值 →」必須有**：不然店員在會員查詢看完發現要儲值，得切頁**再搜同一個人一次**。
+      按下去＝切到快速結帳**並把人帶過去**。
+      按鈕寫「儲值」而頁面叫「快速結帳」是刻意的 —— **按鈕說你要做什麼，導覽說你去哪裡**。
+    - ✅ **商品分類是開的**（餐飲／周邊）。原本寫「今天不顯示，實測過再打開」，
+      實作時推翻：後端已支援 `items_only` 與 `topup_and_items`，
+      而「因為沒實測過所以藏起來」會讓它**永遠測不到**。
+    - 🔴 **但當日暢打刻意不放進快速結帳**，理由是新查到的：
+      暢打的「不可重複購買」擋牆（`daypass_already_held`）在 **`join_session_tx` 裡，
+      不在 `checkout_tx` 裡**。從櫃檯賣會繞過那道牆 ——
+      第二張完全沒作用（`has_daypass_tx` 只問「今天有沒有」）而錢照收 300。
+      要在快速結帳賣暢打，得先把擋牆搬進 `checkout_tx` 或包裝層。
+    - ⚠ **沒有「不指定客人」那張卡** —— 匿名結帳做不到（見已完成區）。
+      商品打開之後也不會有，那要等改 `checkout_tx` 的另一批。
+    - 📌 **會員查詢的三格今天做不出來**（最近消費／累積消費／上次來訪），
+      要 `get_my_orders_tx`（待辦 1）。先做兩格（等級、手機），**空格不畫** ——
+      畫了會讓人以為壞掉。
 
 ### PENDING
 - 店員登入未做，`staffId` 一律傳 null，`App.jsx` 還有 `const STAFF = "小美"` 寫死。
