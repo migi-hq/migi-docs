@@ -1372,6 +1372,36 @@ migi github/           ← Claude Code 的 project folder 選這層
       「建了沒人讀」—— 沒有店員登入就沒有人有身分可以被判斷，
       `current_staff()` 永遠回 null，而 **2026-08-26 重新確認：讀 role 的 policy 仍是 0 條**。
 
+30. **生日填不了，而 POS 已經在等它**（2026-08-26 發現）。
+    ```
+    members.birthday          欄位在，0 / 4 有值
+    register_member_tx(...)   🔴 簽名裡沒有 birthday
+    migi-web 註冊 form.birth  存 localStorage，沒送後端
+    ```
+    🔴 2026-08-26 在 POS 會員查詢加了「🎂 生日 N 天後」的膠囊（七天內才出現），
+    **但那顆永遠不會亮，因為沒有任何地方能填生日**。
+    而**生日招待是已承諾的權益**。
+
+    → 做法：**另開一支 `set_my_birthday_tx`**（比照 `set_my_sched_tx`），
+      不要改 `register_member_tx` 的簽名。
+      理由：生日可以之後補填，不該綁在註冊那一刻；
+      而改簽名要 DROP + 補 GRANT + 部署順序。
+
+    **順帶：日曆 sheet 元件**（2026-08-26 使用者提供參考介面）。
+    App 現在的 `DateField`（`lib/ui.jsx:12`）是**粉色膠囊外觀 ＋ 透明的原生
+    `<input type="date">` 疊在上面** —— 外觀是自己的，選擇器是 OS 的。
+    值得換成自訂 sheet 的三個理由：
+    - 🔴 **LIFF 是 LINE 的 in-app WebView**，原生 `type="date"` 在 iOS 與
+      Android 的 LINE 裡長得不一樣、行為也不一致 —— 自訂是唯一可控的做法
+    - 視覺斷層：點下去跳出系統灰底滾輪，與 MIGI 粉色設計系統斷開
+    - **生日要往回捲幾十年**，原生 picker 在這件事上很痛
+    ⚠ **但滾輪時間選擇器不要自己寫**：它解決的問題（拇指滑動選時間）
+      原生已經做得很好，而 `ichip` 快捷（`+30 分` / `+1 小時` / `不限`）
+      已覆蓋 90%。自己寫要處理慣性、吸附、無障礙 —— 投入大、收益小。
+    ⚠ 這一項是**會員 App 的事，不要搬進 POS**：POS 是平板、店員用食指點，
+      滾輪的價值（拇指滑動）在那裡不存在；而且滾輪永遠有一個當前值，
+      表達不出「還沒選」——那與「開桌設定五項不預選」的決定衝突。
+
 ### PENDING
 - 店員登入未做，`staffId` 一律傳 null，`App.jsx` 還有 `const STAFF = "小美"` 寫死。
   ⚠ 後果不只是「不知道是誰」：`table_sessions` 98/98、`orders` 150/150 的
