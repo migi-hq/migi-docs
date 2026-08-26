@@ -561,22 +561,38 @@ migi github/           ← Claude Code 的 project folder 選這層
 
 ### 待辦
 
-0. **分類主檔只有一端在讀** —— `product_taxonomy` 與 `list_product_taxonomy_tx`
-   已上線，但目前**只有 migi-admin 讀它**：
-   - migi-pos：`OpenCheckoutPage.jsx:522` 與 `:537` 仍寫死
-     `category === 'fnb' ? '餐飲' : category === 'merch' ? '周邊' : '服務'`
-   - migi-web：`wallet.jsx` 的 `tile()` 把 `wallet_txns.type` 與商品分類混在一張對照表
-     （`table_fee` / `merch` / `event_fee` / `adjust` / `topup` / `fnb` 六種值混用）
-   建了主檔卻沒人讀，就是踩坑第 29 條那個形狀。
-   ⚠ migi-web 那份會跟「會員 App 最近消費」一起重寫（見待辦 1），先不要單獨改。
+0. ~~分類主檔只有一端在讀~~ → ✅ **POS 已接上兩張主檔**（2026-08-26，`migi-pos` f246b58）。
+   - `shared.jsx` 的 `TIER_LABEL` → `list_member_tiers_tx`
+   - `OpenCheckoutPage.jsx:769,808` 的 `'fnb' ? '餐飲' : …` → `list_product_taxonomy_tx`
 
-   **同一個問題也存在於 `member_tiers`**（2026-08-17 建立）：
-   `discount_pct` 與 `threshold_amount` 已由 `checkout_tx` 與 `pos_member_detail_tx` 讀取，
-   但 **`label` 沒人讀** —— 等級中文名仍寫死在 `migi-pos/src/shared.jsx` 的 `TIER_LABEL`。
-   要讀它得把 `list_member_tiers_tx` 的結果傳進 `OpenCheckoutPage` 的三個子元件
-   （:857、:1381、:1452），是純 prop 串接的工。
-   風險比分類前綴低（品牌名幾乎不變，且錯了只是名字錯不會算錯錢），
-   但**不做就是「建了主檔沒人讀」**，一併排進來。
+   🔴 **接之前就在錯**：寫死那份 `TIER_LABEL` **少了 `chef_special`**，
+   所以主廚特調的會員在 POS 上顯示「chef_special」四個字 ——
+   而 2026-08-26 才剛把主廚特調改成 8 折。**那就是「建了主檔沒人讀」的代價。**
+
+   ⚠ **一定要走 RPC 不能直接查表**：兩張主檔表**都有 RLS**（各 1 條 policy），
+   POS 用 anon 沒有 auth session，`from('member_tiers')` 會回空陣列
+   **而且不報錯**（硬規則 4）。兩支 RPC 都是 DEFINER + anon ✅。
+
+   **設計：寫死的不刪，降級成 fallback。**
+   | 情況 | 顯示 |
+   |---|---|
+   | 主檔還沒載回來／載入失敗 | fallback → **不會閃英文代碼、不會整頁中文名消失** |
+   | 主檔載回來了 | 主檔覆蓋 → 總部改名 POS 跟著變 |
+
+   🔴 POS 是收銀機，**中文名突然變成英文代碼比顯示舊名字更糟**。
+   ⚠ 但 fallback **必須完整**（補上 `chef_special`）—— 少一個等於什麼都沒防到。
+   ⚠ 載入在 `App.jsx` 開機一次，**載完要 bump 一個 state 觸發重繪**
+     （`shared.jsx` 讀的是模組層快取，單純寫進去的話已畫好的畫面不會更新）。
+     不 await、不擋畫面 —— POS 不能因為讀不到主檔就開不起來。
+
+   📌 順帶：`member_tiers` **早就有 `sort` 欄位**，所以等級高低可以由主檔決定。
+   2026-08-26 早上我還在 `MemberPage.jsx` 寫死一份 `TIER_ORDER`，
+   註解寫「等等級編輯頁做出來，順序應該由主檔給」—— **查了才知道主檔早就有**。
+   已改用 `shared.jsx` 的 `tierRank()`。
+
+   ⏳ **還沒接的：migi-web `wallet.jsx` 的 `tile()`**
+   （把 `wallet_txns.type` 與商品分類混在一張對照表，六種值混用）。
+   ⚠ 它會跟「會員 App 最近消費」一起重寫（見待辦 1），先不要單獨改。
 
 0.6 **總部要能調會員等級的折數與門檻**（2026-08-25 使用者指定）。
    `member_tiers` 是主檔、`checkout_tx` 與 `pos_member_detail_tx` 都即時查它，
