@@ -156,6 +156,18 @@ migi github/           ← Claude Code 的 project folder 選這層
      我的測試事件叫 `_smoke_pos_log`，敗在底線開頭而已。
    → `pg_get_constraintdef(oid)` 一句話就撈得到。**先撈再說。**
 
+   **3.8.5 猜「約束允許哪些值」跟猜約束內容一樣糟。**（2026-08-26 踩到）
+   測試裡寫 `origin = 'manual'`，而實際是 `origin ∈ ('pre_existing','matched')`
+   —— 整個唯一性測試因此沒跑到。
+   → 要在測試裡填一個受 CHECK 約束的欄位時，**從約束把值撈出來**：
+   ```sql
+   select (regexp_matches(pg_get_constraintdef(c.oid), '''([a-zA-Z0-9_]+)''::text'))[1]
+   ```
+   ⚠ **讀一半比沒讀更危險**：我當天讀過那張表的定義，看到
+     `check (member_id <> buddy_id)` 就以為那是全部的 CHECK，
+     而 `origin` 的 check 在我沒讀到的上面幾行。「我看過了」給了不該有的信心。
+     （同日另一例：看到 `api.js` 每支都送 `p_session_id` 就推論後端非有桌不可。）
+
    **3.9 `set_config(key, val, true)` 會被 savepoint 回滾。**（2026-08-26 踩到）
    驗證段常用 `DO ... EXCEPTION` 接住錯誤、再用 set_config 把結果傳給
    最後那支 SELECT。⚠ 但 `is_local = true` 是**交易內**的設定 ——
@@ -1316,17 +1328,29 @@ migi github/           ← Claude Code 的 project folder 選這層
       `sql/applied/2026-08-25_刪死碼與內部呼叫改具名.sql` 完成：
       刪掉死碼 `wallet_topup_tx`、內部呼叫改具名參數。
 
-27.5 **`mahjong_buddies` 有兩個一模一樣的唯一索引**（2026-08-26 發現）。
+27.5 ~~`mahjong_buddies` 有兩個一模一樣的唯一索引~~ → ✅ **已刪除**（2026-08-26）。
+   留 `uq_buddies`（M0 地基），刪 `uq_buddy_pair`（`MA1B-牌咖與通知.sql:33` 後來補的）。
+
+   🔴 **根因不是粗心，是一句錯的現況敘述。**
+   `_設計稿未落地/MA1C:76` 寫「M0 的 mahjong_buddies 補唯一鍵
+   （**原表只有 check，沒防重複配對**）」—— 那句是錯的，
+   `00a_M0建表_資料骨架.sql:502` 就已經建了定義逐字相同的 `uq_buddies`。
+   MA1B 照那份設計稿執行，於是線上長出第二個。
+   ⚠ 已在 MA1C 把 B2 整段註解掉並標記作廢（那份若日後執行會建回來）。
+
+   🔴 **教訓：`IF NOT EXISTS` 只檢查名字，不檢查定義。**
+   換一個名字就會靜靜建出第二個一模一樣的索引，**沒有任何警告**。
+   → 要「補一個唯一鍵」之前先查那張表現有的索引，
+     **不要靠 `if not exists` 當保險 —— 它保的是名字不是意圖。**
+
+   📌 補驗時順帶查到 `origin` 的允許值，而**它比索引本身重要**：
    ```
-   uq_buddies     UNIQUE (member_id, buddy_id) WHERE deleted_at IS NULL
-   uq_buddy_pair  UNIQUE (member_id, buddy_id) WHERE deleted_at IS NULL
+   origin ∈ ('pre_existing', 'matched')
    ```
-   ⚠ 這次是**真的重複**（定義逐字相同），與 `members` 那兩個不同 ——
-     那兩個定義不一樣、意圖也不一樣（見「資料模型注意事項」）。
-   → 可以刪掉其中一個，但**先查它是誰建的、有沒有被 FK 引用**
-     （唯一索引可能被別的外鍵當成參照目標，刪了會連帶失敗）。
-   📌 優先度低：兩個索引在這個資料量下只是多一點寫入成本，不會壞事。
-     但它是「同一件事做了兩次」的訊號，值得知道為什麼。
+   對應《牌搭關係與護城河戰略》的兩種牌咖關係 ——
+   `pre_existing` 是自帶團、**`matched` 是 MIGI 配桌認識的（護城河）**。
+   → **護城河深度可以直接數**：`count(*) where origin = 'matched'`。
+   文件講了很多策略，但沒人把它跟這個欄位連起來。
 
 28. **資料庫裡可能有一批死碼**（2026-08-25 粗估）。
     `public` 有 **135 支函式，其中 104 支沒有被任何其他函式呼叫**。

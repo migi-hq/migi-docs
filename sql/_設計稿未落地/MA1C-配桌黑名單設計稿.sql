@@ -73,9 +73,24 @@ create index if not exists idx_invites_invitee on buddy_invites(invitee_id) wher
 alter table buddy_invites enable row level security;
 revoke all on buddy_invites from anon, authenticated;
 
--- B2. M0 的 mahjong_buddies 補唯一鍵（原表只有 check，沒防重複配對）
-create unique index if not exists uq_buddy_pair
-  on mahjong_buddies(member_id, buddy_id) where deleted_at is null;
+-- 🔴🔴 B2 已作廢，**不要執行這一段**（2026-08-26 查證）
+--
+-- 原註解寫「原表只有 check，沒防重複配對」—— **那是錯的**。
+-- `00a_M0建表_資料骨架.sql:502` 就已經建了：
+--     create unique index uq_buddies
+--       on mahjong_buddies(member_id, buddy_id) where deleted_at is null;
+-- 與下面這一行**定義逐字相同**。
+--
+-- 而 MA1B-牌咖與通知.sql:33 照這份設計稿執行了，結果線上長出兩個
+-- 一模一樣的唯一索引（uq_buddies 與 uq_buddy_pair）。
+-- 2026-08-26 已刪掉 uq_buddy_pair。
+--
+-- ⚠ **`IF NOT EXISTS` 只檢查名字不檢查定義** ——
+--   換一個名字就會靜靜建出第二個，而且沒有任何警告。
+--   要「補一個唯一鍵」之前先查那張表現有的索引，不要靠它當保險。
+--
+-- create unique index if not exists uq_buddy_pair
+--   on mahjong_buddies(member_id, buddy_id) where deleted_at is null;
 -- 關係模型：接受邀請時寫入「兩筆互指」（A→B 與 B→A），查詢單向即可
 
 -- B3. App 通知（通知中心的資料來源）
