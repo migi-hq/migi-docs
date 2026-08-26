@@ -1412,7 +1412,25 @@ migi github/           ← Claude Code 的 project folder 選這層
       「建了沒人讀」—— 沒有店員登入就沒有人有身分可以被判斷，
       `current_staff()` 永遠回 null，而 **2026-08-26 重新確認：讀 role 的 policy 仍是 0 條**。
 
-30. **生日填不了，而 POS 已經在等它**（2026-08-26 發現）。
+30. ~~生日填不了~~ → ✅ **已完成**（2026-08-26，`migi-web` 5a1f854）。
+    - `set_my_birthday_tx(p_org_id, p_member_id, p_birthday)` —— 另開一支，
+      **不改 `register_member_tx` 的簽名**（生日可以之後補填，不該綁在註冊那一刻）
+    - `get_my_profile_tx` 補回傳 `birthday`（簽名不變）
+      ⚠ **只補 birthday**：`gender` / `occupation` / `district` /
+        `acquisition_source` / `phone` 刻意不加 —— 前四個是註冊與行銷用的
+        內部欄位，`phone` 是 PII 而 App 沒有顯示手機的地方。
+        **多回傳一個沒人讀的欄位，是白白擴大暴露面。**
+    - `lib/ui.jsx` 的 `BirthdaySheet`（自訂日曆）＋ `profile.jsx` 的設定列
+
+    🔴 **有到期日的決定：現在允許重複修改生日。**
+    生日招待是**權益** → 可以隨時改生日 = 可以隨時領招待。
+    現在不鎖的理由：① 今天不可能被濫用（0 人綁 LINE、招待還沒自動化）
+    ② **鎖了會讓打錯的人卡住** —— 改要找店員，而店員登入卡在 LINE（PENDING）。
+    → **生日招待自動化之前必須加鎖**（`where birthday is null`，修改走店員工具）。
+    ⚠ 加鎖時記得：`update ... where ...` 之後**一定要看 `FOUND`** ——
+      `register_member_tx` 就是這樣謊報成功的（同日修掉）。
+
+30.5 **（舊）生日填不了的原始記錄**（2026-08-26）。
     ```
     members.birthday          欄位在，0 / 4 有值
     register_member_tx(...)   🔴 簽名裡沒有 birthday
