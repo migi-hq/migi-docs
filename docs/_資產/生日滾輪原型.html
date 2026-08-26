@@ -1,0 +1,205 @@
+<meta charset="utf-8">
+<title>生日滾輪 · 可試滑</title>
+<style>
+:root{
+  --xs:13px; --s:14px; --m:15px; --l:16px; --xl:19px;
+  --brand:#FAD6DC; --brand-tint:#FFF6F8; --brand-light:#FFE7EE;
+  --ink:#2E2B2C; --accent:#C2607A;
+  --gray-1:#7A7572; --gray-2:#9A9491; --gray-3:#ECEAE9; --gray-4:#F2F0EE;
+  --white:#fff; --field-bg:#F8F7F6; --field-bd:#ECE7E4;
+  --r-pill:999px; --r-lg:16px; --r-card:14px; --r-field:12px; --r-sm:8px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#EFECEA;padding:22px;
+  font:15px/1.5 -apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;color:var(--ink)}
+.wrap{max-width:900px;margin:0 auto}
+h1{font-size:21px;margin:0 0 6px}
+.n{font-size:13px;color:#6b6461;line-height:1.85;margin:0 0 16px}
+.n b{color:var(--ink)}
+.two{display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap}
+
+/* 手機殼 + DragSheet（照 ui.jsx） */
+.phone{width:375px;height:560px;background:#DDD8D4;border-radius:26px;
+  overflow:hidden;position:relative;box-shadow:0 10px 30px rgba(0,0,0,.16)}
+.dim{position:absolute;inset:0;background:rgba(46,43,44,.4)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--white);
+  border-radius:22px 22px 0 0;display:flex;flex-direction:column;max-height:78%}
+.grabwrap{padding:8px 20px 4px;flex-shrink:0}
+.grab{width:38px;height:4px;border-radius:var(--r-pill);background:var(--gray-3);margin:0 auto 12px}
+.htitle{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px}
+.htitle span{font-size:17px;font-weight:700}
+.htitle .x{font-size:22px;color:var(--gray-2);line-height:1}
+.body{padding:0 20px 26px;overflow-y:auto;flex:1}
+
+.echo{text-align:center;margin:2px 0 14px}
+.echo .big{font-size:23px;font-weight:800;letter-spacing:.5px;
+  font-variant-numeric:tabular-nums}
+.age{display:inline-flex;align-items:center;gap:5px;border-radius:var(--r-pill);
+  white-space:nowrap;font-weight:700;color:var(--ink);background:var(--brand-light);
+  font-size:var(--xs);padding:5px 13px;margin-left:8px;vertical-align:4px}
+
+.wheel{position:relative;height:220px;margin:0 -4px}
+.band{position:absolute;left:0;right:0;top:88px;height:44px;background:var(--brand);
+  border-radius:var(--r-pill);z-index:0;pointer-events:none}
+.cols{position:relative;z-index:1;display:grid;
+  grid-template-columns:1.15fr 1fr .85fr;height:100%}
+.wheelcol{height:100%;overflow-y:auto;scroll-snap-type:y mandatory;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none}
+.wheelcol::-webkit-scrollbar{display:none}
+.wi{height:44px;line-height:44px;text-align:center;scroll-snap-align:center;
+  font-variant-numeric:tabular-nums;font-size:var(--m);font-weight:500;color:var(--gray-2)}
+.wi.a1{color:var(--gray-1)}
+.wi.a0{font-size:18px;font-weight:800;color:var(--ink)}
+.spacer{height:88px}
+
+.btns{display:flex;gap:10px;margin-top:18px}
+.b{flex:1;border:none;border-radius:var(--r-pill);padding:13px 0;
+  font-size:var(--m);font-weight:700;font-family:inherit;cursor:pointer}
+.b.g{background:var(--gray-4);color:var(--gray-1)}
+.b.k{background:var(--ink);color:var(--white)}
+.b.k[disabled]{background:var(--gray-3);cursor:default}
+
+.side{width:420px;font-size:12.5px;color:var(--gray-1);line-height:1.9}
+.side h2{font-size:15px;margin:0 0 8px;color:var(--ink)}
+.side b{color:var(--ink)}
+.side ul{margin:0 0 16px;padding-left:18px}
+.side li{margin-bottom:7px}
+code{font-size:11.5px;background:var(--field-bg);padding:1px 5px;border-radius:4px}
+.out{background:var(--white);border-radius:var(--r-card);padding:11px 13px;
+  font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--ink);margin-top:4px}
+</style>
+<div class="wrap">
+
+<h1>生日滾輪 · 可以真的滑</h1>
+<p class="n">
+用滑鼠滾輪或拖曳三欄看看。尺寸、token、<code>scroll-snap</code> 設定跟
+<code>ui.jsx</code> 裡的 <code>WheelCol</code> <b>完全一樣</b>。
+</p>
+
+<div class="two">
+  <div class="phone">
+    <div class="dim"></div>
+    <div class="sheet">
+      <div class="grabwrap">
+        <div class="grab"></div>
+        <div class="htitle"><span>選擇生日</span><span class="x">×</span></div>
+      </div>
+      <div class="body">
+        <div class="echo">
+          <span class="big" id="echo">1996 年 1 月 1 日</span><span class="age" id="age">30 歲</span>
+        </div>
+        <div class="wheel">
+          <div class="band"></div>
+          <div class="cols">
+            <!-- ⚠ 初始畫面直接寫死在 HTML 裡：預覽器對 file:// 只做靜態快照、不跑 JS。
+                 JS 跑得起來時 render() 會把這三段換成完整清單並接上滾動。
+                 年份欄刻意沒有上方 spacer —— 前兩項（1994/1995）剛好填滿 88px，
+                 選中的 1996 就會落在粉色選中列上。 -->
+            <div class="wheelcol" id="cy"><div class="wi">1994</div><div class="wi a1">1995</div><div class="wi a0">1996</div><div class="wi a1">1997</div><div class="wi">1998</div></div>
+            <div class="wheelcol" id="cm"><div class="spacer"></div><div class="wi a0">1 月</div><div class="wi a1">2 月</div><div class="wi">3 月</div></div>
+            <div class="wheelcol" id="cd"><div class="spacer"></div><div class="wi a0">1</div><div class="wi a1">2</div><div class="wi">3</div></div>
+          </div>
+        </div>
+        <div class="btns">
+          <button class="b g">取消</button>
+          <button class="b k" id="save" disabled>儲存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="side">
+    <h2>會送出的值</h2>
+    <div class="out" id="out">（還沒動過 —— 儲存是鎖住的）</div>
+
+    <h2 style="margin-top:18px">刻意處理的幾件事</h2>
+    <ul>
+      <li>🔴 <b>「還沒選」是存在的狀態。</b> 滾輪永遠有一個當前值，
+        所以沒有初始生日時<b>動過才准存</b> —— 否則一打開就按儲存，
+        會存到他根本沒看過的 30 年前 1 月 1 日。</li>
+      <li>🔴 <b>未來日期直接不生成</b>，不是生成了再擋。
+        滾輪沒有「看得到但不能選」這種狀態 —— <b>捲得到就是選得到</b>。
+        年份到今年為止；選到今年時月份只到本月，日只到今天。</li>
+      <li><b>2 月只有 28／29 天。</b> 1/31 換到 2 月會夾成 28（或閏年 29）。
+        試試看：把年捲到 2024（閏年）與 2023，日捲到底。</li>
+      <li><b>三欄方向一致</b>（都由小到大）。參考的 LINE 是年降序、月日升序，
+        同一個元件裡三欄方向不一致。</li>
+      <li>選中列是<b>粉底墨字</b> —— <code>.ichip.on</code> 的既有慣例。
+        舊版月曆用的是墨底白字，不符合。</li>
+      <li>滾動<b>停止 80ms 後</b>才回報，不是每一幀 —— 每幀 setState 會讓慣性卡住。</li>
+      <li>慣性與吸附<b>完全交給瀏覽器</b>（<code>scroll-snap-type: y mandatory</code>），
+        一行都沒有自己寫。</li>
+    </ul>
+
+    <h2>已知代價</h2>
+    <ul>
+      <li>🔴 看不到禮拜幾與整個月 → <b>這支不能給開房選日期用</b>。
+        那是不同的問題：生日是「幾十年前的某一天」，開房是「這幾天的哪一天」。</li>
+    </ul>
+  </div>
+</div>
+</div>
+
+<script>
+var ITEM_H = 44, PAD = 88;
+var now = new Date(), TY = now.getFullYear(), TM = now.getMonth() + 1, TD = now.getDate();
+var y = TY - 30, m = 1, d = 1, touched = false;
+
+function range(n){ var a = []; for (var i = 1; i <= n; i++) a.push(i); return a }
+function pad2(n){ return String(n).length < 2 ? '0' + n : String(n) }
+
+function lists(){
+  var years = []; for (var i = TY - 100; i <= TY; i++) years.push(i);
+  var months = range(y === TY ? TM : 12);
+  var mm = Math.min(m, months.length);
+  var dmax = (y === TY && mm === TM) ? TD : new Date(y, mm, 0).getDate();
+  return { years: years, months: months, mm: mm, days: range(dmax), dd: Math.min(d, dmax) };
+}
+
+function fill(el, items, val, fmt){
+  var idx = items.indexOf(val); if (idx < 0) idx = 0;
+  var h = '<div class="spacer"></div>';
+  for (var i = 0; i < items.length; i++){
+    var away = Math.abs(i - idx);
+    h += '<div class="wi ' + (away === 0 ? 'a0' : away === 1 ? 'a1' : '') + '">' + fmt(items[i]) + '</div>';
+  }
+  h += '<div class="spacer"></div>';
+  el.innerHTML = h;
+  var want = idx * ITEM_H;
+  if (Math.round(el.scrollTop / ITEM_H) !== idx) el.scrollTop = want;
+}
+
+function render(){
+  var L = lists();
+  m = L.mm; d = L.dd;
+  fill(document.getElementById('cy'), L.years, y, function(v){ return v });
+  fill(document.getElementById('cm'), L.months, m, function(v){ return v + ' 月' });
+  fill(document.getElementById('cd'), L.days, d, function(v){ return v });
+  document.getElementById('echo').textContent = y + ' 年 ' + m + ' 月 ' + d + ' 日';
+  var age = TY - y - ((TM * 100 + TD) < (m * 100 + d) ? 1 : 0);
+  document.getElementById('age').textContent = age + ' 歲';
+  document.getElementById('save').disabled = !touched;
+  document.getElementById('out').textContent = touched
+    ? "onPick('" + y + '-' + pad2(m) + '-' + pad2(d) + "')"
+    : '（還沒動過 —— 儲存是鎖住的）';
+}
+
+function wire(id, get, set){
+  var el = document.getElementById(id), t = null;
+  el.addEventListener('scroll', function(){
+    clearTimeout(t);
+    t = setTimeout(function(){
+      var items = get();
+      var i = Math.max(0, Math.min(items.length - 1, Math.round(el.scrollTop / ITEM_H)));
+      if (items[i] !== undefined && items[i] !== curOf(id)) { set(items[i]); touched = true; render() }
+    }, 80);
+  });
+}
+function curOf(id){ return id === 'cy' ? y : id === 'cm' ? m : d }
+
+wire('cy', function(){ return lists().years },  function(v){ y = v });
+wire('cm', function(){ return lists().months }, function(v){ m = v });
+wire('cd', function(){ return lists().days },   function(v){ d = v });
+
+render();
+</script>
