@@ -85,7 +85,10 @@ code{font-size:11.5px;background:var(--field-bg);padding:1px 5px;border-radius:4
         <div class="htitle"><span>選擇生日</span><span class="x">×</span></div>
       </div>
       <div class="body">
-        <div class="echo">
+        <!-- ⚠ 2026-08-27：上方的大字回顯與「N 歲」膠囊已依使用者要求拿掉。
+             這裡保留 display:none 的節點只為了讓下方的 JS 不用改
+             （render() 仍會寫入它們）。已知代價寫在右欄。 -->
+        <div class="echo" style="display:none">
           <span class="big" id="echo">1996 年 1 月 1 日</span><span class="age" id="age">30 歲</span>
         </div>
         <div class="wheel">
@@ -114,6 +117,9 @@ code{font-size:11.5px;background:var(--field-bg);padding:1px 5px;border-radius:4
 
     <h2 style="margin-top:18px">刻意處理的幾件事</h2>
     <ul>
+      <li>⚠ <b>上方的大字回顯與「N 歲」已拿掉</b>（2026-08-27，要求簡潔）。<br>
+        已知代價：<b>年份錯十年不會有任何提示</b> —— 日期在滾輪上讀得到，
+        年齡讀不到，而年齡正是唯一能一眼發現年份錯的東西。</li>
       <li>🔴 <b>「還沒選」是存在的狀態。</b> 滾輪永遠有一個當前值，
         所以沒有初始生日時<b>動過才准存</b> —— 否則一打開就按儲存，
         會存到他根本沒看過的 30 年前 1 月 1 日。</li>
