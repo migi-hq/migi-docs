@@ -1,13 +1,14 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 104 個檔案**（依檔名排序最後一個是 `測試帳號建立.sql`；
-> 最後歸檔的是 `2026-08-28_手機正規化與格式約束.sql`）
+> **基準：`sql/applied/` 有 105 個檔案**（依檔名排序最後一個是 `測試帳號建立.sql`；
+> 最後歸檔的是 `2026-08-28_註冊暱稱一律正規化.sql`）
 >
-> 📌 依硬規則 1.6，三次歸檔已同步更新本文件：
+> 📌 依硬規則 1.6，四次歸檔已同步更新本文件：
 > `p_rounds` 與 `rounds` 欄位預設值、`topup_void_tx` 的 anon 授權、
 > `orgs.live_from` 新欄位、`v_real_*` 從 5 個變 12 個、
-> `set_my_profile_basics_tx` 與 `migi_norm_phone` 兩支新函式、`members_phone_chk`。
+> `set_my_profile_basics_tx` 與 `migi_norm_phone` 兩支新函式、`members_phone_chk`、
+> `register_member_tx` 的暱稱正規化與 `display_name_reserved`。
 > 來源：`sql/checks/2026-08-28_現況全匯出.sql`（pg_proc / pg_class / pg_constraint / pg_index / information_schema）
 
 ## 怎麼用這份
@@ -20,7 +21,7 @@
 
 ## 怎麼知道它過期了（硬規則 1.7）
 
-比對現在 `sql/applied/` 的檔案數與上面的基準（**104**）—— **不同就是過期**。
+比對現在 `sql/applied/` 的檔案數與上面的基準（**105**）—— **不同就是過期**。
 這個檢查不需要資料庫。
 
 ⚠ **但它只能證明「確定過期」，不能證明「還是新的」。**
@@ -422,7 +423,18 @@ list_notifications_tx / mark_notifs_read_tx / unread_count_tx
 
 ```
 register_member_tx(p_org_id, p_display_name, p_phone, p_line_user_id, p_home_store_id, p_created_by)
+  find-or-bind-or-create，回傳 action ∈
+    existing_line / rebound / line_conflict / existing_phone / created
+  ⚠ **raise 的訊息是英文代碼不是中文人話**（前端必須自己翻，見 App.jsx 的 REG_ERR）：
+    phone_invalid ／ display_name_reserved ／ display_name too long (max 12)
+    ／ display_name required ／ need phone or line_user_id ／ org_id required
+  ✅ 2026-08-28 起：**暱稱與手機都在「查詢之前」與「寫入之前」正規化**
+    （migi_norm_nickname／migi_norm_phone），禁字改成明確 raise
+    `display_name_reserved` 而不是讓 CHECK 拋 23514。
+    🔴 在此之前只做 trim → 暱稱有連續兩個空格或全形空格就撞
+      members_display_name_chk，客人看到「資料有誤」而永遠註冊不了。
 rebind_line_user_tx(p_member_id, p_new_line_user_id, p_staff_id, p_reason)
+  ⚠ 這是**店員的補救工具**不是註冊流程的一部分（簽名有 p_staff_id 就是證據）
 get_my_profile_tx / get_wallet_tx / get_my_orders_tx / get_my_games_tx
 set_my_nickname_tx / set_my_avatar_tx / set_my_title_tx / set_my_about_tx
 set_my_sched_tx / set_my_style_tx / set_my_baby_tile_tx / set_my_see_score_tx
