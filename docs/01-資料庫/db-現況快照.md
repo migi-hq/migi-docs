@@ -1,9 +1,9 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 106 個檔案**（依檔名排序最後一個是 `測試帳號建立.sql`；
-> 最後歸檔的是 `2026-08-29_測試01改手機讓出創辦人號碼.sql`）
-> ⚠ 那一支**只改一列資料不動 schema**，所以本文件的欄位／約束／函式內容未變。
+> **基準：`sql/applied/` 有 107 個檔案**（依檔名排序最後一個是 `測試帳號建立.sql`；
+> 最後歸檔的是 `2026-08-29_頭像地基_清舊圖與記住小熊.sql`）
+> 📌 該支新增 `members.avatar_bear`（已補進下方欄位說明）。
 >
 > 📌 依硬規則 1.6，四次歸檔已同步更新本文件：
 > `p_rounds` 與 `rounds` 欄位預設值、`topup_void_tx` 的 anon 授權、
@@ -22,7 +22,7 @@
 
 ## 怎麼知道它過期了（硬規則 1.7）
 
-比對現在 `sql/applied/` 的檔案數與上面的基準（**106**）—— **不同就是過期**。
+比對現在 `sql/applied/` 的檔案數與上面的基準（**107**）—— **不同就是過期**。
 這個檢查不需要資料庫。
 
 ⚠ **但它只能證明「確定過期」，不能證明「還是新的」。**
@@ -230,6 +230,8 @@ update orgs set live_from = '<真實客人開始使用的時間>';
 | `members.members_sched_chk` | NULL 或 早上為主／下午為主／晚上為主／深夜為主／**不一定**（NOT VALID）|
 | `members.members_see_score_chk` | 所有人／牌咖／只有自己（NOT VALID）|
 | `members.members_avatar_source_chk` | bear / photo　⚠ **只有兩個值** —— LINE 大頭貼要走 `photo`（抓下來存自己的 storage），不要加第三個值 |
+| `members.avatar_bear` | 🆕 2026-08-29。會員選用的小熊造型名稱（例：`金牌熊`）。**null = 沒選過，依 `rank` 推導**（維持原行為）。<br>⚠ **刻意不加 CHECK**：小熊清單是**內容**不是狀態，會增加；壞值時 `rankBearSrc()` 會 fallback 回**銅牌熊**，不會壞掉。<br>📌 渲染規則：`rankBearSrc(avatar_bear \|\| rank)` |
+| `members.rank` | NOT NULL **DEFAULT `'銅牌熊 I'`**，🔴 **沒有 CHECK**。<br>⚠ `rankBearSrc()` 是用 `indexOf` 逐條比對關鍵字（雀神→大師→鑽石→白金→金牌→銀牌→其餘銅牌），<br>所以 `'大師級銅牌熊'` 會匹配到**大師** —— 順序決定結果。今天只有系統在寫這欄，但值得知道 |
 | `members.members_phone_chk` | NULL 或 `= migi_norm_phone(phone)`（2026-08-28 新增）—— **等於強制只收 09 開頭 10 碼**，市話與國際格式在寫入時就被擋 |
 | `members.members_inv_type_chk` | member / mobile / citizen / donate / company / paper |
 | `member_tiers.member_tiers_pct_chk` | 0 <= discount_pct <= 100 |
