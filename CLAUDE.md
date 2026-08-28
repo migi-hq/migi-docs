@@ -62,13 +62,16 @@ migi github/           ← Claude Code 的 project folder 選這層
    | **唯讀查詢**（`sql/checks/`、`pg_get_functiondef`、`information_schema`） | **Supabase MCP，Claude 自己跑** |
    | **寫入**（`sql/pending/`：DDL、migration、改資料） | **一律 Dashboard**，且看到驗證結果才歸檔 |
 
-   ⏳ **尚未啟用** —— 要先在 Terminal 跑（token 由使用者自己填，不要貼進對話）：
-   ```
-   claude mcp add supabase --env SUPABASE_ACCESS_TOKEN=<token> -- npx -y @supabase/mcp-server-supabase@latest --read-only --project-ref=roksgepxxmcewlkshtzn
-   ```
-   `--read-only` 與 `--project-ref` 兩個都不可拿掉：前者讓 INSERT/UPDATE/DDL 一律被擋，
-   後者鎖死只能碰 MIGI 這個專案。
+   ✅ **2026-08-28 已啟用並實測通過。** 設定在專案根目錄的 `.mcp.json`
+   （已 gitignore），完整說明見 `docs/09-環境流程/Supabase唯讀MCP設定.md`。
+   - 連線身分是 **`supabase_read_only_user`** —— 唯讀是**在連線層強制**的，不只是旗標。
+     實測 `update ... where 1=0`（一列都不會動）也直接拋 `25006 cannot execute
+     UPDATE in a read-only transaction`。
+   - Token 只開 **Database → READ**，鎖定單一專案，30 天到期。
+     ⚠ **到期就讓它過期，不要無腦續** —— 那是唯一會自動縮小暴露面的機制。
    ⚠ 已知代價：Claude 看得到會員真實資料（手機、消費、餘額）。唯讀擋「改」不擋「看」。
+   ⚠ **token 無法避免進入對話紀錄** —— 編輯 `.mcp.json` 時環境會自動把差異顯示給
+     Claude，這擋不掉。所以 token 的權限範圍要小、要有到期日，而不是指望它不外洩。
    ⚠ 啟用後 `checks/` 仍然要**存檔**（那是查證的紀錄，不是拋棄式指令）。
 
    **1.6 歸檔 pending 時，一併重跑現況匯出**（2026-08-28 立，MCP 啟用後生效）。
@@ -80,8 +83,8 @@ migi github/           ← Claude Code 的 project folder 選這層
    → 綁進既有流程：**把檔案從 `pending/` 移到 `applied/` 的那一刻，
      就是 schema 剛改過而且剛確認過的時刻** —— 同時重跑
      `sql/checks/2026-08-28_現況全匯出.sql` 並更新快照。
-   ⚠ 這條在 MCP 啟用前**不可行**（每次歸檔都要打擾使用者貼結果，
-     那個成本會讓它跟現在一樣爛掉）。MCP 之後它是免費的。
+   ✅ **MCP 已於 2026-08-28 啟用，這條從現在起生效** ——
+     重跑匯出不需要打擾使用者，所以沒有藉口讓快照再爛掉一次。
 
    **1.7 讓過期看得見，不要靠記性。**
    快照檔頭記兩個數字：產生時間、**當時 `sql/applied/` 的檔案數與最後一個檔名**。
@@ -150,8 +153,15 @@ migi github/           ← Claude Code 的 project folder 選這層
    ```
    🔴 **錯誤訊息會指向下一行**：`Expected ")" but found "style"` ——
    看起來像 `style` 有問題，實際原因在前面兩行。這是這個坑最花時間的部分。
-   → 檢查器：`jsxcomment.py`（屬性列表變體）＋ `jsxcomment2.py`（運算式位置變體），
-   **兩支都要跑**。這個專案沒有本機 node，靜態檢查是唯一的事前防線。
+   → 檢查器：`jsxcomment.py`（屬性列表變體）＋ `jsxcomment2.py`（運算式位置變體）。
+
+   ✅ **2026-08-28：本機終於裝了 Node（v24.20.0），`npm run build` 跑得動了。**
+   三個 repo 都是 `vite build`，在此之前**從來沒在本機 build 過** ——
+   每次都是推上去讓 Cloudflare 告訴你對不對，而這個坑就炸過一次 Cloudflare build。
+   🔴 **從現在起，推之前先在本機 build。** migi-web 實測 2.29 秒。
+   ⚠ 靜態檢查器仍然有用（它們抓的是 build 抓不到的東西，例如
+     `tone="plain"` 站在灰底上），但**不再是唯一的防線**。
+   ⚠ 首次要先 `npm install`（`node_modules` 不進版控）。
 
    **3.7 掃全庫函式內文時，`pg_get_functiondef` 一定要先過濾 `prokind = 'f'`。**
    （2026-08-25 炸過一次）
@@ -828,20 +838,37 @@ migi github/           ← Claude Code 的 project folder 選這層
    後端 `list_match_queues_tx` 已存在，但參數帶 `p_member`（為會員端設計），
    POS 要的是「本店所有進行中的房」，得先確認 `p_member` 傳 null 的行為。
 
-   **自動配桌的規則已於 2026-08-20 拍板，做配桌時一起實作（四件事缺一不可）：**
-   - `tables.auto_assign boolean NOT NULL default true` ——
-     **預設所有桌都開放系統自動配**，店員可把個別桌改成「現場專用」。
-     ⚠ 這是**設定不是狀態**：桌況（使用中／空桌）是每次從 `table_sessions` 算出來的，
-     而「這桌不給系統配」是店員的意思，沒人改就不會變，所以要存欄位。
-     `tables` 仍然沒有 `status` 欄位，兩者不衝突。
-   - **桌況卡片要顯示「現場」標記** —— 否則週六關掉的桌週一沒人記得，
-     那幾桌從此永遠不會被自動配而且畫面上看不出來。
+   🎯 **自動配桌的後端已經全部做完了**（2026-08-28 用 MCP 查證，先前這條寫「還不存在」是錯的）：
+
+   | | 現況 |
+   |---|---|
+   | `tables.auto_assign` | ✅ boolean NOT NULL default true，**18 張桌全開** |
+   | 讀它的函式 | ✅ `_try_auto_seat_tx`／`list_tables_tx`／`pos_table_forecast_tx`／`set_table_auto_assign_tx`／`settle_session_tx` —— **不是「建了沒人讀」** |
+   | 收桌保留給現場 | ✅ `settle_session_tx(p_session_id, p_staff_id, **p_keep_for_walkin**)` |
+   | 自動入座 | ✅ `_try_auto_seat_tx`（由 `_finalize_queue_full_tx` 呼叫）＋ `sweep_auto_seat_tx` |
+   | 排程 | ✅ **pg_cron `auto-seat-matched` 每 5 分鐘在跑** |
+
+   **完整的 pg_cron 排程**（2026-08-28 查證）：
+   ```
+   auto-seat-matched        */5 * * * *    sweep_auto_seat_tx
+   migi_sweep_expired       */5 * * * *    sweep_expired_queues_tx
+   cleanup-empty-sessions   */10 * * * *   cleanup_empty_sessions_tx(30)
+   gen-recurring-instances  0 */6 * * *    generate_recurring_instances_tx
+   daily-wallet-audit       0 21 * * *     daily_wallet_audit_tx
+   ```
+
+   ⚠ **但它從來沒成功配過一次**：`match_queues` 目前 expired 47／cancelled 7／waiting 5，
+     **`matched` 與 `seated` 都是 0**。機制在跑但沒有成果 ——
+     可能只是「同一個 queue 湊不到四人」（正常），也可能有 bug。
+     🔴 **做配桌前要先驗這件事**，不要假設它是好的。
+
+   ⏳ **所以真正還沒做的只有前端**：
+   - **桌況卡片要顯示「現場」標記**（`auto_assign = false` 的桌）—— 否則週六關掉的桌
+     週一沒人記得，那幾桌從此永遠不會被自動配而且畫面上看不出來。
      不加到期時間（那會變成「為什麼我設的又跑掉了」），用看得見來防忘記。
-   - **收桌彈窗加一個勾選「收完保留給現場」** ——
+   - **收桌彈窗的「收完保留給現場」勾選** —— 後端參數已經在了，只差 UI。
      情境是「現場有四人在等」，店員必須**先關掉那桌再按收桌**，
-     順序反了就被 App 搶走，而那是客人站在旁邊時要記得的事。
-     一個勾選同時做兩件事，就沒有順序可以搞錯。
-   - **指派時只看 `auto_assign = true` 且目前沒有 open 場次的桌。**
+     順序反了就被 App 搶走。一個勾選同時做兩件事，就沒有順序可以搞錯。
 
    🔴 **還沒解決：現場客人與 App 不在同一條隊。**
    就算桌不會被自動搶走，店員仍要自己判斷「App 那組先報名還是現場這組先到」——
@@ -1045,20 +1072,21 @@ migi github/           ← Claude Code 的 project folder 選這層
     ✅ `QUEUE_TAGS`（新手友善／網紅在這桌／職業選手桌）**保留** ——
     那是受控清單裡的具體描述，不是價值判斷，兩者性質不同。
 
-17. 🔴 **贈點級距沒有主檔，規則只活在前端**（2026-08-23 發現）。
-    `bonusOf()` 寫死在 `migi-pos/src/OpenCheckoutPage.jsx:30`
-    （150→0、500→20、1000→50、3000 以上一律 300），前端算完用
-    `p_topup_bonus` 送給後端，而 **`topup_tx` 照收 `p_bonus_points` 不驗證**。
-    - 🔴 這跟待辦 2（`checkout_tx` 的價格完全來自前端）是**同一個病**：
-      能送任意金額。POS 是店員在用風險可控，但 KIOSK 或任何會員端能觸發的路徑
-      一出現就是可竄改的贈點。
-    - 🔴 **而且它擋住了會員頁的儲值功能**：在第二個地方做儲值就是第二份 `bonusOf`，
-      兩邊必然漂，而「哪一邊的贈點才對」只會在對帳時才發現。
-      所以 2026-08-23 的會員頁刻意**只做查詢不做儲值**，並在頁尾寫明原因。
-    → 建 `topup_plans` 主檔（金額 / 贈點 / 是否啟用 / 有效期），
-    POS 讀它畫按鈕、`topup_tx` 用它驗證 `p_bonus_points`。
-    ⚠ 自訂金額怎麼算贈點也要一起定義 —— 現行 `bonusOf` 是級距函式不是查表，
-    改成主檔時要決定「自訂 1500 算多少」是往下取級距還是不給贈點。
+17. ~~贈點級距沒有主檔，規則只活在前端~~ → ✅ **前後端都完成了**（2026-08-28 用 MCP 查證）。
+    | | 現況 |
+    |---|---|
+    | `topup_plans` 主檔 | ✅ 存在，**5 筆**：150→0、500→0、1000→50、2000→150、3000→300 |
+    | `calc_topup_bonus_tx` | ✅ 存在 |
+    | `topup_tx` | ✅ **已呼叫 `calc_topup_bonus_tx`** —— 贈點由後端查主檔算，不採信前端 |
+    | `list_topup_plans_tx` | ✅ DEFINER + anon，POS 與會員 App 都能讀 |
+    | POS 前端 | ✅ `bonusOf()` 已移除、`p_topup_bonus` 2026-08-25 就不送了、已接 `listTopupPlans()` |
+
+    ⚠ **這條在文件裡過期了五天，而我 2026-08-28 差點根據它回報一個不存在的 bug**
+      （以為主檔 500→0 與前端寫死 500→20 不一致）。
+      🔴 **先查再說沒有** —— 同踩坑第 29 條，也正是硬規則 1.6／1.7 要防的。
+
+    📌 連帶解除：會員頁當初「只做查詢不做儲值」的理由（怕長出第二份 `bonusOf`）
+      已經不成立 —— 贈點現在只有主檔一個來源。要做會員端儲值只剩金流串接。
 
 18. **POS 側邊欄已收成三項**（2026-08-23），以下兩項做好要加回去：
     - **快速結帳**（不開桌也能賣東西）—— 🔴 所有結帳 RPC 都要 `p_session_id`，
@@ -1660,6 +1688,34 @@ migi github/           ← Claude Code 的 project folder 選這層
       而 `data.jsx` **根本沒有 export 這兩個** → 執行時是 `undefined`，
       只因為沒人用才沒炸。
     · `match.jsx` 的 `DEMO_LIVE`／`DEMO_FIX` 也只剩 import，程式碼裡只剩註解。
+
+34. 🔴 **兩個「等著發生」的靜默故障**（2026-08-28 用 MCP 查證）。
+    兩者都是「東西在那裡、看起來正常、但第一次真的用就會失敗」——
+    跟 `topup_tx` 那次（櫃檯儲值從上線那天起沒成功過一次）同一個形狀。
+
+    **① `topup_void_tx` 沒有授權給 `anon`**（`auth=✅` 但 `anon=無`）。
+    POS 用 anon key，所以**作廢儲值一叫就 permission denied**。
+    ⚠ 現在沒踩到只是因為 POS 還沒有作廢儲值的按鈕。
+    → 做那個功能時**第一步**就是補 grant（硬規則 2.5）。
+
+    **② 桌況分不出「預留中」與「正在打」。**
+    自動帶桌是「**湊滿就佔桌**」（使用者 2026-08-28 確認要這個行為），
+    所以 21:00 的局 19:00 湊滿就會立刻佔一張桌，**空等兩小時**。
+    而 `_try_auto_seat_tx` 的註解自己寫著：
+    > ⚠ 代價是那張桌在開打前會空著 —— **所以桌況一定要能顯示「預留中」**，
+    > 否則店員會以為有人在打。
+
+    🔴 但 **`list_tables_tx` 沒有回傳 `activated_at`** —— 那個要求從來沒實作。
+    後果：客人上門問有沒有桌，店員說滿了，而那張桌是空的。
+    **不是不方便，是營收損失而且沒有人會發現。**
+
+    ✅ **地基已經有了**：`table_sessions.activated_at` 欄位與 `activate_session_tx`
+      都存在（「帶桌」與「真的開始打」本來就是兩個動作），缺的只是接出來。
+    → 後端：`list_tables_tx` 多回 `activated_at`（簽名不變，`CREATE OR REPLACE`）
+    → POS：`activated_at is null` → 「**預留中 · 21:00**」（**要顯示幾點開打**），
+      有值 → 「使用中」
+    ⚠ **這一項的急迫性綁在自動帶桌真的開始運作那一天** ——
+      而目前 `open_method='auto'` 的場次是 **0**，一次都還沒發生過。
 
 ### PENDING
 - 店員登入未做，`staffId` 一律傳 null，`App.jsx` 還有 `const STAFF = "小美"` 寫死。
