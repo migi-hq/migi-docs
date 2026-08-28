@@ -1,7 +1,11 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 100 個檔案，最後一個是 `測試帳號建立.sql`**
+> **基準：`sql/applied/` 有 101 個檔案**（依檔名排序最後一個是 `測試帳號建立.sql`；
+> 最後歸檔的是 `2026-08-28_修一將預設與補作廢儲值授權.sql`）
+>
+> 📌 依硬規則 1.6，那次歸檔已同步更新本文件的三處：
+> `p_rounds` 預設值、`rounds` 欄位預設值、`topup_void_tx` 的 anon 授權。
 > 來源：`sql/checks/2026-08-28_現況全匯出.sql`（pg_proc / pg_class / pg_constraint / pg_index / information_schema）
 
 ## 怎麼用這份
@@ -33,7 +37,7 @@
 
 | 函式 | 狀況 | 後果 |
 |---|---|---|
-| `topup_void_tx` | INVOKER 之外 **anon=無**、auth=✅ | 🔴 **POS 用 anon，所以叫不動作廢儲值** —— 真的要用時會 permission denied |
+| ~~`topup_void_tx`~~ | ✅ **2026-08-28 已補 anon 授權** | 補之前 POS 叫不動，跟 `topup_tx` 同一個形狀，只是提前補掉了 |
 | `charge_matched_tx` | INVOKER、**anon=無 auth=無** | 完全沒授權給任何人 = 不可能被前端呼叫。舊世代收費函式，**死碼候選**（待辦 28） |
 | `charge_private_tx` | 同上 | 同上 |
 | `checkout_tx` | INVOKER、anon=✅ | ⚠ **有授權但不該被直接呼叫** —— RLS 會濾成「什麼都沒發生而且不報錯」。授權存在本身就是危險（有人會叫） |
@@ -51,6 +55,22 @@
 
 📌 固定牌局的後端也整套都在：`recurring_tables` 表、`pos_create_recurring_tx`、
 `generate_recurring_instances_tx`、`pos_set_recurring_enabled_tx`。
+
+---
+
+## 🔴 `rounds` 的值決定帶不帶得了桌
+
+`pos_seat_queue_tx` 解析 `rounds` 時**只吃「三/3」或「二/2」**，其餘一律回
+`rounds_not_supported` —— 而且**只是不帶桌，不報錯**。
+
+後果：房間湊滿 → `status='matched'` → 排程每 5 分鐘試一次 → 每次都失敗 →
+**客人以為成桌了，桌永遠不會出現，沒有任何人知道。**
+
+✅ **2026-08-28 已把五個地方的預設值從 `'一將'` 改成 `'2 將'`**
+（三支建房函式的 `p_rounds` ＋ 兩張表的欄位預設）。
+⚠ **既有的 33 個「一將」房沒有被動到**（全部已 expired/cancelled，不是活的問題）。
+⚠ 但值本身**沒有 CHECK 約束** —— 明確傳一個不支援的值仍然存得進去。
+  真要根治是讓約束與 `pos_seat_queue_tx` 的判準同源，那是另一個決定。
 
 ---
 
@@ -88,7 +108,7 @@
 | `legal_entities` | id! │ org_id! │ name! │ tax_id │ kind! │ bank_account jsonb │ is_active!=true │ created_at! │ updated_at! |
 | `mahjong_buddies` | id! │ org_id! │ member_id! │ buddy_id! │ **origin!** │ co_play_count!=1 │ **compat_score** │ linked_at! │ deleted_at │ created_at! |
 | `match_queue_players` | id! │ org_id! │ queue_id! │ member_id! │ join_source │ joined_at! │ left_at │ leave_reason │ no_show!=false │ leave_detail |
-| `match_queues` | id! │ org_id! │ store_id! │ stake_level_id! │ game_type!='16張' │ rounds!='一將' │ seats!=4 │ prefs jsonb!={} │ status!=waiting │ opened_by │ **play_at!** │ **matched_at** │ matched_session_id │ expires_at!=now()+2h │ created_at! │ updated_at! │ source!=member │ tags jsonb!=[] │ recurring_id │ recurring_freq │ flower │ **open_at** |
+| `match_queues` | id! │ org_id! │ store_id! │ stake_level_id! │ game_type!='16張' │ **rounds!='2 將'**（2026-08-28 由 `'一將'` 改，見下）│ seats!=4 │ prefs jsonb!={} │ status!=waiting │ opened_by │ **play_at!** │ **matched_at** │ matched_session_id │ expires_at!=now()+2h │ created_at! │ updated_at! │ source!=member │ tags jsonb!=[] │ recurring_id │ recurring_freq │ flower │ **open_at** |
 | `member_app_state` | member_id! │ org_id! │ bear jsonb!={} │ titles jsonb!=[] │ updated_at! |
 | `member_availability` | id! │ org_id! │ member_id! │ weekday! │ slot! │ preference!=often │ **source!=stated** │ created_at! │ updated_at! |
 | `member_blocks` | id! │ org_id! │ blocker_id! │ blocked_id! │ reason │ created_at! |
@@ -105,7 +125,7 @@
 | `product_taxonomy` | **dimension!** │ **code!**（PK 是兩者）│ label! │ parent_code │ sku_prefix │ sort!=0 │ is_active!=true │ note │ created_at! │ default_revenue_type |
 | `products` | id! │ org_id! │ **sku!** │ name! │ **category!** │ **unit_price!** │ unit_cost │ **is_active!=true** │ deleted_at │ created_at! │ updated_at! │ created_by │ updated_by │ **stock_qty!=0** │ **is_available!=true** │ **revenue_type!** │ **subcategory** │ **tracks_stock!=true** │ **is_system!=false** │ **discountable!=true** |
 | `queue_tags` | code!（PK）│ label! │ sort_order!=0 │ is_active!=true │ created_at! |
-| `recurring_tables` | id! │ org_id! │ store_id! │ weekday │ start_time! │ stake_level_id! │ game_type!='16張' │ rounds!='一將' │ seats!=4 │ enabled!=true │ note │ created_at! │ frequency!=weekly │ flower │ lead_hours!=24 │ tags jsonb!=[] |
+| `recurring_tables` | id! │ org_id! │ store_id! │ weekday │ start_time! │ stake_level_id! │ game_type!='16張' │ **rounds!='2 將'**（同上）│ seats!=4 │ enabled!=true │ note │ created_at! │ frequency!=weekly │ flower │ lead_hours!=24 │ tags jsonb!=[] |
 | `session_players` | id! │ org_id! │ session_id! │ member_id! │ join_type!=opener │ status!=playing │ charged_points!=0 │ **joined_at!** │ created_at! │ created_by │ finish_rank │ score_points │ settled_at │ **order_id** │ seat │ **left_at** │ **paid_by** │ **fee_waived_amount!=0** │ **fee_waived_reason** |
 | `staff` | id! │ org_id! │ store_id │ **auth_uid** │ name! │ **role!=floor** │ deleted_at │ created_at! │ updated_at! │ created_by │ updated_by │ **member_id** |
 | `stake_levels` | id! │ org_id! │ store_id │ label! │ base │ tai │ is_hygiene!=false │ sort_order!=0 │ is_active!=true │ deleted_at │ created_at! │ updated_at! │ created_by │ updated_by |
