@@ -1321,6 +1321,23 @@ migi github/           ← Claude Code 的 project folder 選這層
           └── 一般 OAuth web → POS（平板瀏覽器，redirect → callback → 換 id_token）
       ```
 
+      **兩條路徑的使用者體驗完全不同**（2026-08-28 查官方文件確認）：
+
+      | | 客人／店員看到什麼 |
+      |---|---|
+      | **LIFF（會員 App，在 LINE 內）** | 🔴 **什麼都看不到** —— 自動登入。<br>`the LIFF app can access user data without having to prompt users to log in`<br>→ **不需要登入按鈕，也畫不到同意畫面**（那是 LINE 自己算繪的） |
+      | **一般 OAuth（POS，平板瀏覽器）** | ✅ 需要真的「使用 LINE 登入」按鈕 → LINE 的同意畫面 → callback |
+
+      🔴 **所以 `migi-web` 現在那個 step 0「LINE 授權」畫面是開發期的替身，
+        接上之後會整個消失** —— 客人點連結進來會直接看到暱稱那一步。
+        不要再花時間打磨它的外觀。
+
+      🔴 **POS 那顆登入按鈕必須用 LINE 提供的官方素材，不可以自己畫**：
+      - 顏色：base `#06C755`／hover +10% 黑／pressed +30% 黑／disabled 白底
+      - **不可改形狀** ——「使用不同或修改過的 icon」是官方明列的常見錯誤
+      - 文字可改，但不可換行、必須清楚表達是用 LINE 登入
+      - 素材與規範：https://developers.line.biz/en/docs/line-login/login-button/
+
       🔴 **硬條件：兩者必須在同一個 Provider 底下。**
       LINE 的 `userId` 是 **per-Provider 不是 per-channel** ——
       同 Provider 的所有 channel，同一個人拿到同一個 `userId`；
