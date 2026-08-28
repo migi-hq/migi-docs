@@ -2037,9 +2037,51 @@ migi github/           ← Claude Code 的 project folder 選這層
     🎯 **它的觸發點是單一而明確的**：把 `toGA4` 或 `toMeta` 改成 `true` 之前，
       先做完這一項。寫在這裡就是機制本身（同硬規則 12）。
 
+38. 🔴 **官方帳號（Messaging API）開通時的清單**（2026-08-28 立，開之前先讀這條）。
+    2026-08-28 已建立：Provider `MIGI 咪吉麻將` ＋ 一個 **LINE Login** channel ＋ LIFF app。
+    **官方帳號刻意還沒開** —— 它是另一種 channel（Messaging API），要另外建。
+
+    ### 🔴 為什麼「是會員」不等於「能通知他」
+    | | |
+    |---|---|
+    | 客人用 LINE 登入 | ✅ 拿到 `line_user_id`，他是會員 |
+    | 你要推播給他 | 🔴 **他必須先加官方帳號好友**，否則送不到 |
+
+    對 MIGI 這件事很具體：配桌最關鍵的一則訊息是「**你的牌局湊滿了 · 今晚 21:00 · 3 號桌**」。
+    **只有加了好友的人收得到。** App 內通知（`app_notifications`）要他打開 App 才看得到 ——
+    而人不會沒事打開 App。
+    → 「湊滿了但當事人不知道」會直接讓配桌的價值垮掉。
+
+    ### 開通當天要做的四件事
+    1. 🔴 **Messaging API channel 必須建在同一個 Provider 底下**（`userId` 是 per-Provider，
+       同硬規則：分開會讓同一個人有兩個 id，而且不報錯只是接不起來）。
+    2. 🔴 **回到 LIFF 設定把 `Add friend option` 從 `Off` 改成 `On (Normal)`。**
+       那一格讓「授權」與「加好友」一步完成。
+       ⚠ **不要選 `On (Aggressive)`** —— 它會強迫跳出加好友，客人的第一印象變成被推銷。
+       ⚠ 這一格現在是 Off 是對的（那時官方帳號還不存在），**但沒有人會自己想起來要改**。
+    3. **圖文選單（Rich Menu）的「會員」按鈕**：連到 **`https://liff.line.me/{LIFF_ID}`**，
+       不要連 `app.migi.tw`。走 LIFF URL 客人才會自動登入（在 LINE 內免授權畫面）。
+       📌 同理：**門市 QR code 印的也是 LIFF URL** —— 好處是日後換域名不用重印，
+         代價是**那個 LIFF app 不能刪**（刪了所有印出去的 QR 全部失效）。
+    4. **加入好友的歡迎訊息**：第一句就給 LIFF 連結，不要只寫「感謝加入」。
+
+    ⚠ 還沒決定的：回應模式（聊天／自動回應）、要不要開 webhook。
+      **有人要顧聊天室嗎？** 沒有的話就關掉聊天、只做推播（硬規則 5.5）。
+
 ### PENDING
 - 店員登入未做，`staffId` 一律傳 null，`App.jsx` 還有 `const STAFF = "小美"` 寫死。
   ⚠ 後果不只是「不知道是誰」：`table_sessions` 98/98、`orders` 150/150 的
   `updated_by` **全部是 null**，出事完全查不到經手人；而且交班日結沒有意義。
-- LINE Developers 帳號未申請 —— 🔴 **這一項卡著三件事**：
-  店員登入（待辦 20）、會員端 JWT（待辦 14）、帳號合併（待辦 15）。
+- ✅ ~~LINE Developers 帳號未申請~~ → **2026-08-28 已建立**：
+  Business ID（`admin@migi.tw`）→ Provider **`MIGI 咪吉麻將`** →
+  一個 **LINE Login** channel（同名）→ LIFF app（Full／`https://app.migi.tw`／
+  scope `openid`+`profile`）。Region 與 Company country 都選 **Taiwan**。
+  ⚠ `Require two-factor authentication` 刻意**關掉** —— 它會要求客人輸入
+    **LINE 帳號密碼**，而很多人是手機號＋簡訊註冊的、**從來沒設過密碼**，
+    那條路會直接斷掉。日後 POS 店員登入若要更嚴，**那才是開第二個 channel 的正當理由**
+    （同一個 Provider 底下，客人寬鬆、店員嚴格）。
+  ⚠ Privacy policy URL／Terms of use URL 先留空（optional）——
+    🔴 **上線前必須有隱私權政策頁**：你要收手機、生日、消費紀錄，
+    那是**法規要求**不是 LINE 的要求。App 裡那兩列現在還是「即將推出」的 toast。
+  ⏳ **還沒做**：拿 LIFF ID 接進 `App.jsx` 的 step 0、Edge Function 驗 id_token、
+    官方帳號（見待辦 38）。
