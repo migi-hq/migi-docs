@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "migi-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "migi-web", "run", "dev"],
+      "port": 5173
+    },
+    {
+      "name": "migi-pos",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "migi-pos", "run", "dev"],
+      "port": 5174
+    },
+    {
+      "name": "migi-admin",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "migi-admin", "run", "dev"],
+      "port": 5175
+    }
+  ]
+}

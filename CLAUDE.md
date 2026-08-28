@@ -345,6 +345,30 @@ migi github/           ← Claude Code 的 project folder 選這層
     📌 這是「沒有自動化測試」那個缺口裡**唯一今天就能關掉的一格**。
       其餘兩格（`sql/checks/` 沒人定期跑、`app_events` 的錯誤沒人在看）還開著。
 
+    **11.5 🔴 `npm run build` 通過**不代表** `npm run dev` 跑得動。**（2026-08-28 踩到）
+    兩者的模組解析根本不同：
+    | | 誰在解析 | import 一個不存在的具名匯出 |
+    |---|---|---|
+    | `npm run build` | Rollup（打包） | 🟡 只警告，值變 `undefined` |
+    | `npm run dev` | **瀏覽器原生 ESM** | 🔴 **模組載入期 SyntaxError，整個 App 起不來** |
+
+    實例：`App.jsx` import 了 `DEMO_MATCHES` / `DEMO_RECORDS`，而 `data.jsx`
+    根本沒有 export 它們。CLAUDE.md 待辦 33 寫「只因為沒人用才沒炸」——
+    **錯的**：build 不炸，dev **畫面全白**。
+    → 也就是**本機 dev server 從來沒有人成功跑起來過**，
+      而那正是為什麼這個死 import 活了這麼久。
+
+    ✅ **要看畫面就一定要跑 dev server**（硬規則 3.85：畫出來才會發現）。
+    ⚠ 開發環境需求（2026-08-28 建立）：
+    - `.claude/launch.json` 在**母資料夾**（不是各 repo 底下），
+      三個 repo 用 `npm --prefix <repo> run dev`，port 5173／5174／5175
+    - 各 repo 要有 `.env`（已被各自的 `.gitignore` 擋住）：
+      `VITE_SUPABASE_URL` ＋ `VITE_SUPABASE_ANON_KEY`
+      ⚠ anon key **本來就是公開的**（會被打包進瀏覽器拿得到的 JS），
+        真正的防線是 RLS 與 SECURITY DEFINER，不是這把 key 的機密性。
+    - 🔴 **MCP 的 token 拿不到 API key**（只開 Database READ）——
+      那不是缺陷，是權限範圍設對了的證據。要 anon key 得去 Dashboard。
+
 12. **每次 session 開始跑一次 `sql/checks/錯誤儀表.sql`。**（2026-08-28 起，MCP 直接跑）
     埋點的寫入端做好了（migi-web 2026-07、POS 2026-08-26），但**讀取端是零** ——
     🔴 2026-08-28 第一次打開，**50 筆 `app_error` 躺了一個多月沒有人看過**，
@@ -1805,11 +1829,16 @@ migi github/           ← Claude Code 的 project folder 選這層
     ### 📌 寫死但**合理**的（是內容不是狀態，不用接）
     成就徽章清單、小熊圖鑑清單、衣櫃、零食圖、`CITIES`、`STORE_CATS`。
 
-    ### 🧹 順手要清的
-    · `App.jsx:10` import 了 `DEMO_MATCHES` 與 `DEMO_RECORDS`，
-      而 `data.jsx` **根本沒有 export 這兩個** → 執行時是 `undefined`，
-      只因為沒人用才沒炸。
-    · `match.jsx` 的 `DEMO_LIVE`／`DEMO_FIX` 也只剩 import，程式碼裡只剩註解。
+    ### ✅ 🧹 已清（2026-08-28，`migi-web` cc31645）
+    `App.jsx` 那行 import 八個名字**一個都沒用到**，`match.jsx` 三個同樣沒用到，
+    兩行整行刪除。
+
+    🔴 **原本這裡寫「只因為沒人用才沒炸」—— 那是錯的，它會炸。**
+    `DEMO_MATCHES` / `DEMO_RECORDS` 連 `data.jsx` 都沒有 export，而
+    `npm run dev` 走瀏覽器原生 ESM → **模組載入期 SyntaxError，畫面全白**。
+    只有正式 build 不炸（Rollup 容忍）。
+    → 也就是**本機 dev server 從來沒有人成功跑起來過**，
+      而那正是這個死 import 活這麼久的原因。詳見硬規則 11.5。
 
 34. 🔴 **兩個「等著發生」的靜默故障**（2026-08-28 用 MCP 查證）。
     兩者都是「東西在那裡、看起來正常、但第一次真的用就會失敗」——
