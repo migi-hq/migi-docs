@@ -1,11 +1,12 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 101 個檔案**（依檔名排序最後一個是 `測試帳號建立.sql`；
-> 最後歸檔的是 `2026-08-28_修一將預設與補作廢儲值授權.sql`）
+> **基準：`sql/applied/` 有 102 個檔案**（依檔名排序最後一個是 `測試帳號建立.sql`；
+> 最後歸檔的是 `2026-08-28_報表看不到測試資料.sql`）
 >
-> 📌 依硬規則 1.6，那次歸檔已同步更新本文件的三處：
-> `p_rounds` 預設值、`rounds` 欄位預設值、`topup_void_tx` 的 anon 授權。
+> 📌 依硬規則 1.6，兩次歸檔已同步更新本文件：
+> `p_rounds` 與 `rounds` 欄位預設值、`topup_void_tx` 的 anon 授權、
+> `orgs.live_from` 新欄位、`v_real_*` 從 5 個變 12 個。
 > 來源：`sql/checks/2026-08-28_現況全匯出.sql`（pg_proc / pg_class / pg_constraint / pg_index / information_schema）
 
 ## 怎麼用這份
@@ -120,7 +121,41 @@
 | `order_items` | id! │ order_id! │ **product_id!** │ qty!=1 │ created_at! │ org_id! │ name │ unit_price! │ line_total │ **revenue_type!** |
 | `order_payments` | id! │ org_id! │ store_id! │ order_id! │ method! │ amount! │ cash_received │ change_given │ ref_no │ staff_id │ created_at! |
 | `orders` | id! │ org_id! │ store_id! │ member_id │ table_id │ **session_id** │ status!=open │ **channel!=counter** │ total_points!=0 │ deleted_at │ created_at! │ updated_at! │ **created_by** │ **updated_by** │ order_no │ subtotal!=0 │ coupon_discount!=0 │ tier_discount!=0 │ payable!=0 │ points_used!=0 │ cash_due!=0 │ tier_at_order │ **idempotency_key** │ wallet_txn_id │ paid_at │ entity_id │ is_test!=false │ tier_discount_pct │ txn_no |
-| `orgs` | id! │ name! │ plan!=self │ deleted_at │ created_at! │ updated_at! │ created_by │ updated_by |
+| `orgs` | id! │ name! │ plan!=self │ deleted_at │ created_at! │ updated_at! │ created_by │ updated_by │ 🎯 **live_from**（2026-08-28 新增） |
+
+### 🎯 `orgs.live_from` —— 報表的第三層防線
+
+**營運起始時間。`null` = 還沒上線 → 12 個 `v_real_*` 一律回 0 列。**
+
+前兩層（根實體 `is_test`、自己的 `is_test`）**都依賴標記被正確設定**，
+而那會壞 —— 2026-08-28 找到兩筆漏網事件（`test_event` 與一筆 `app_error`），
+**兩筆都沒有門市也沒有會員，任何關聯都認不出它們是測試**。
+
+🎯 **`coalesce(live_from, 'infinity')` 讓「忘記設」的後果是「報表全空」，
+不是「報表錯的」。** 這個專案一再踩的坑（`is_test` 恆為 false、RLS 濾成空陣列、
+`|| []` 讓數字通過）全都是「壞掉了但看起來正常」——**這個設計刻意讓失敗吵。**
+
+⚠ **上線那天要做的唯一一件事**：
+```sql
+update orgs set live_from = '<真實客人開始使用的時間>';
+```
+🔴 那不是「修 bug 的日期」，是**真實客人開始使用**的時間。
+
+### 12 個 `v_real_*`（報表一律查這些，不要查原表）
+
+```
+根實體  v_real_stores          v_real_members
+交易    v_real_orders          v_real_order_items     v_real_order_payments
+        v_real_topup_orders    v_real_wallet_txns     v_real_invoices
+桌      v_real_table_sessions  v_real_session_players
+配桌    v_real_match_queues
+埋點    v_real_app_events
+```
+
+📌 **子表直接引用父表的 view**（`v_real_order_items` → `exists(v_real_orders)`）
+—— 規則只定義一次，不可能漂。
+⚠ 這些 view **一個授權都沒有** —— 只有 `service_role`／Dashboard 讀得到，
+  跟「只有總部分析數據的人看得到」是一致的。
 | `pricing_tiers` | id! │ org_id! │ store_id │ mode! │ rule_key! │ min_unit │ max_unit │ points! │ sort_order!=0 │ is_active!=true │ deleted_at │ created_at! │ updated_at! │ created_by │ updated_by |
 | `product_taxonomy` | **dimension!** │ **code!**（PK 是兩者）│ label! │ parent_code │ sku_prefix │ sort!=0 │ is_active!=true │ note │ created_at! │ default_revenue_type |
 | `products` | id! │ org_id! │ **sku!** │ name! │ **category!** │ **unit_price!** │ unit_cost │ **is_active!=true** │ deleted_at │ created_at! │ updated_at! │ created_by │ updated_by │ **stock_qty!=0** │ **is_available!=true** │ **revenue_type!** │ **subcategory** │ **tracks_stock!=true** │ **is_system!=false** │ **discountable!=true** |
