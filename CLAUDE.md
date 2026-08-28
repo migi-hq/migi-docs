@@ -420,6 +420,24 @@ migi github/           ← Claude Code 的 project folder 選這層
   → **測試門市的操作會混進營運數據且不報錯**。做 POS 埋點時必須先補這個洞。
   過濾用的檢視表共**四個**：`v_real_app_events`、`v_real_wallet_txns`、`v_real_members`、`v_real_stores`。
   做報表一律查 `v_real_*`，直接查原表會把測試資料算進營運數據且不報錯。
+
+  🔴 **但 `v_real_*` 現在保護不了你**（2026-08-28 查證）：
+  `app_events` 有 **2847 筆 `is_test = false`，而它們全部是測試資料** ——
+  那是 2026-08-26 修 `is_test` 推導之前累積的（在那之前 POS 事件的
+  `member_id` 一律 null → `is_test` 恆為 false）。
+  `v_real_app_events` 的條件就是 `is_test = false`，所以**那 2847 筆會原樣通過**。
+  ⚠ 而且**改不掉**：`trg_app_events_no_mutate` 同時擋 DELETE 與 UPDATE。
+
+  🎯 **正解不是去補那個檢視表，是承認一件事：**
+  **今天資料庫裡沒有任何一筆營運資料。**
+  `orders` 150 筆、`table_sessions` 99 場、`app_events` 3331 筆 ——
+  **全部都是測試**，因為真實客人到現在都還沒出現。
+  `is_test` 這個旗標的工作**從真實客人出現那天才開始**。
+
+  → **上線時要定一個「營運起始時間」，所有報表以它為下限。**
+  ⚠ 不要在檢視表裡寫死 `2026-08-26` —— 那只是修 bug 的日期，不是營運起點。
+  ⚠ 這條對 `orders` / `table_sessions` / `wallet_txns` 同樣成立：
+    **任何跨越上線日的全期統計都是無意義的。**
 - **`order_payments` 的三條 CHECK**（2026-08-27 撈出來留檔，寫付款測試前先看）：
   ```
   method ∈ ('cash','credit_card','line_pay')
