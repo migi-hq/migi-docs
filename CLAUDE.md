@@ -1969,6 +1969,31 @@ migi github/           ← Claude Code 的 project folder 選這層
       📌 比照錢包儲值抽屜（「儲值金流串接後開放」），那是這個 App 裡
         處理「還沒接」的正確示範。
 
+37. 🔴 **開 GA4／Meta 之前必做：測試帳號的判斷要改吃後端**（2026-08-28 標記）。
+    `migi-web/src/lib/analytics.js` 用一份**寫死的 4 個 uuid 清單**判斷測試帳號。
+    資料庫有 `members.is_test`，但**沒有任何 RPC 把它回傳給前端**。
+
+    | | 現況 |
+    |---|---|
+    | `ANALYTICS.toGA4` | **false** |
+    | `ANALYTICS.toMeta` | **false** |
+    | `app_events` 的 `is_test` | ✅ 後端從 `members` 推，**與前端清單無關** |
+
+    🟢 **所以今天零影響** —— 那份清單什麼都沒在擋。
+    🔴 **但 `toGA4` 改成 true 的那一刻它就變成洞**：資料庫新增第 5 個測試帳號
+      而沒人記得改 `analytics.js` → 那個人的事件會被當成真實客人送進 GA4，
+      而 **GA4 的資料洗不掉，還會污染廣告受眾學習**（同 `app_events` 那 2847 筆）。
+
+    ✅ **修法很便宜**：`isTestMember()` **已經先看 `m.is_test`**，
+    才 fallback 到 uuid 清單 —— 所以只要 `register_member_tx` 回傳 `is_test`
+    （`CREATE OR REPLACE`、簽名不變、不掉 GRANT），前端存進 localStorage 就生效。
+    **一支 SQL ＋ 一行 JS。**
+
+    ⚠ **現在不要做** —— 今天已經挖出兩個「建了沒人讀」
+      （`TestAccountSwitcher` 死碼、`DEMO_MATCHES` 死 import），不要製造第三個。
+    🎯 **它的觸發點是單一而明確的**：把 `toGA4` 或 `toMeta` 改成 `true` 之前，
+      先做完這一項。寫在這裡就是機制本身（同硬規則 12）。
+
 ### PENDING
 - 店員登入未做，`staffId` 一律傳 null，`App.jsx` 還有 `const STAFF = "小美"` 寫死。
   ⚠ 後果不只是「不知道是誰」：`table_sessions` 98/98、`orders` 150/150 的
