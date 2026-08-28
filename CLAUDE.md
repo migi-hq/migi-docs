@@ -1307,9 +1307,32 @@ migi github/           ← Claude Code 的 project folder 選這層
       `floor`（一般店員，預設）/ `manager`（店長）/ `hq`（總部）/ `owner`（老闆）。
       修之前守衛寫 `clerk/manager/hq` 而 CHECK 是 `floor/manager/hq/owner`，
       **預設用法必定拋 23514** —— 那支「把會員升級成店員」的函式從來沒成功過。
-    - 🔴 **現有唯一那筆 staff（MIGI 總部管理員 · hq）的 `member_id` 是 null**。
-      `current_staff()` 是 INNER JOIN，null 永遠 join 不到 ——
-      **LINE 接上之後那個帳號還是登不進去**，要先綁到一個真的會員身上。
+    - ✅ ~~現有唯一那筆 staff 的 `member_id` 是 null，INNER JOIN 永遠 join 不到~~
+      → **這句話從 2026-08-23 起就過期了**（`current_staff()` 那天改成
+      LEFT JOIN ＋ 兩條 OR），2026-08-29 查證後更正。
+
+      **總部那條 Email 路徑本來就是通的**：
+      ```
+      staff  role=hq  auth_uid=2485579b-…  member_id=null
+      auth.users 只有 1 個帳號：admin@migi.tw（2026-07-12 建立並登入過）
+      ```
+      🔴 **`member_id = null` 不是 bug** —— 那是 Email 路徑的 staff 列
+        **應該有的狀態**（決策紀錄第八節：總部員工不是會員）。
+      ⚠ **不要把它綁到創辦人的會員身上。** 2026-08-29 我一度這樣建議並寫了 SQL，
+        理由就是引用上面那句過期的敘述 —— 而我**當天才剛撈出 `current_staff()`
+        看到它是 LEFT JOIN**。讀到了正確的線上版本卻照著過期文件下結論，
+        正是硬規則 3 要防的形狀。SQL 已撤回。
+
+      🎯 **日後若要讓創辦人用 LINE 登入 POS 並具有權限，正解是「另開一列 staff」**，
+        不是改總部那一列：
+        ```
+        新列  member_id = <他的會員>  auth_uid = null  role = 'owner'
+        ```
+        · `uq_staff_member_store (member_id, store_id)` 不衝突（現有那列 member_id 是 null）
+        · `staff_auth_uid_key UNIQUE (auth_uid)` 也不衝突（Postgres 的唯一索引視多個 NULL 為相異）
+        · 同待辦 29 ②「staff 要能一人多列」
+      ⚠ 那是**授予最高權限**的動作：綁下去之後，拿到那個 LINE 帳號的人就是 hq／owner。
+        等真的要用 POS 時再做，不要現在先建。
     - 🔴 **整條路卡在 LINE Developers 帳號還沒申請**（見 PENDING）。
       **三端都是 LINE Login** —— LIFF 不是另一種登入方式，
       它是掛在 LINE Login channel 底下的一種**執行環境**：
@@ -2124,6 +2147,9 @@ migi github/           ← Claude Code 的 project folder 選這層
     他在註冊時填的暱稱不會生效，要另外到個人設定改。
   ⚠ 生日那一步是必填，而 `set_my_profile_basics_tx` 有給值就覆蓋 ——
     **要選成一樣的 1985-06-12**，否則既有生日會被蓋掉。
+
+  ⚠ **不要把總部那筆 staff 綁到這個會員上** —— 理由見待辦 20（Email 路徑已通，
+    `member_id = null` 是對的狀態）。要讓創辦人用 LINE 登入 POS 是**另開一列**的事。
 
   🎯 **`is_test` 先留 `true`**（驗收期間會亂點）。
     **改成 `false` 的時機是「設 `orgs.live_from`」那一天** —— 那是同一個動作的兩半。
