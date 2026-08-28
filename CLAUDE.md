@@ -2103,5 +2103,29 @@ migi github/           ← Claude Code 的 project folder 選這層
   ⚠ Privacy policy URL／Terms of use URL 先留空（optional）——
     🔴 **上線前必須有隱私權政策頁**：你要收手機、生日、消費紀錄，
     那是**法規要求**不是 LINE 的要求。App 裡那兩列現在還是「即將推出」的 toast。
-  ⏳ **還沒做**：拿 LIFF ID 接進 `App.jsx` 的 step 0、Edge Function 驗 id_token、
-    官方帳號（見待辦 38）。
+  ✅ **LIFF ID `2011312117-Zuul0Ndo`**，前端已接（`lib/line.js` ＋ step 0 改寫）。
+  ✅ **Edge Function `line-login` 已部署**（`supabase/functions/line-login/index.ts`），
+    secret `LINE_CHANNEL_ID = 2011312117`（SHA256 比對確認過值正確）。
+    四項測試全過：假 token → `line_token_invalid`（**證明它真的去跟 LINE 驗了**）／
+    無 token → `id_token_required`／無 anon key → Verify JWT 擋下／CORS preflight 200。
+  ⏳ **還沒做**：官方帳號（見待辦 38）、實機走完一次註冊。
+
+  ### 🔴 創辦人的會員帳號（2026-08-29 確認）
+  ```
+  member  d73fdac2-d6b9-4b8a-bcff-b19c2786056f   ← 就是 analytics.js 裡的「測試01」
+  暱稱    測試測試測試測試測試測試（待改）
+  手機    0910768736 ← **創辦人本人的號碼**
+  生日    1985-06-12　等級 提拉米蘇　餘額 3,580　訂單 70 筆
+  is_test true
+  ```
+  🔴 **所以他用 LINE 註冊會走 `rebound`，不會建新會員** ——
+    既有的餘額／訂單／生日全部保住。
+  ⚠ 但 `rebound` 那條路**只更新 `line_user_id`，不動 `display_name`** ——
+    他在註冊時填的暱稱不會生效，要另外到個人設定改。
+  ⚠ 生日那一步是必填，而 `set_my_profile_basics_tx` 有給值就覆蓋 ——
+    **要選成一樣的 1985-06-12**，否則既有生日會被蓋掉。
+
+  🎯 **`is_test` 先留 `true`**（驗收期間會亂點）。
+    **改成 `false` 的時機是「設 `orgs.live_from`」那一天** —— 那是同一個動作的兩半。
+    ⚠ 那時要順便決定一個會計問題：**老闆自己打牌的消費要不要進營收報表？**
+      他若常免費打，那些資料會扭曲客單價與場地費營收。
