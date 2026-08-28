@@ -11,7 +11,7 @@
   <rect width="560" height="940" fill="#FBFAF9"/>
 
   <!-- 標題 -->
-  <text x="34" y="40" fill="#2E2B2C" font-size="20" font-weight="700">MIGI 麻將連鎖 · 15 坪狹長型首店</text>
+  <text x="34" y="40" fill="#2E2B2C" font-size="20" font-weight="700">MIGI 咪吉麻將 · 15 坪狹長型首店</text>
   <text x="34" y="61" fill="#9B9591" font-size="12">面寬 4.5m × 進深 11m ≈ 49.5㎡ ≈ 15 坪 · 6 桌 · 比例 1:60</text>
 
   <!-- 牆內範圍:x:120~390(270px=4.5m→60px/m), y:90~750(660px=11m) -->

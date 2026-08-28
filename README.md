@@ -1,6 +1,6 @@
 # migi-docs
 
-MIGI 麻將連鎖的**文件與資料庫變更**版控庫。
+MIGI 咪吉麻將的**文件與資料庫變更**版控庫。
 
 程式碼不在這裡 —— 三端各自獨立：
 [migi-pos](https://github.com/migi-hq/migi-pos)（店員端）・
