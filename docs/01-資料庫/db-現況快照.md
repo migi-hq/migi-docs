@@ -1,12 +1,13 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 102 個檔案**（依檔名排序最後一個是 `測試帳號建立.sql`；
-> 最後歸檔的是 `2026-08-28_報表看不到測試資料.sql`）
+> **基準：`sql/applied/` 有 104 個檔案**（依檔名排序最後一個是 `測試帳號建立.sql`；
+> 最後歸檔的是 `2026-08-28_手機正規化與格式約束.sql`）
 >
-> 📌 依硬規則 1.6，兩次歸檔已同步更新本文件：
+> 📌 依硬規則 1.6，三次歸檔已同步更新本文件：
 > `p_rounds` 與 `rounds` 欄位預設值、`topup_void_tx` 的 anon 授權、
-> `orgs.live_from` 新欄位、`v_real_*` 從 5 個變 12 個。
+> `orgs.live_from` 新欄位、`v_real_*` 從 5 個變 12 個、
+> `set_my_profile_basics_tx` 與 `migi_norm_phone` 兩支新函式、`members_phone_chk`。
 > 來源：`sql/checks/2026-08-28_現況全匯出.sql`（pg_proc / pg_class / pg_constraint / pg_index / information_schema）
 
 ## 怎麼用這份
@@ -19,7 +20,7 @@
 
 ## 怎麼知道它過期了（硬規則 1.7）
 
-比對現在 `sql/applied/` 的檔案數與上面的基準（100）—— **不同就是過期**。
+比對現在 `sql/applied/` 的檔案數與上面的基準（**104**）—— **不同就是過期**。
 這個檢查不需要資料庫。
 
 ⚠ **但它只能證明「確定過期」，不能證明「還是新的」。**
@@ -226,7 +227,8 @@ update orgs set live_from = '<真實客人開始使用的時間>';
 | `members.members_lifecycle_check` | new / growing / regular / at_risk / churned |
 | `members.members_sched_chk` | NULL 或 早上為主／下午為主／晚上為主／深夜為主／**不一定**（NOT VALID）|
 | `members.members_see_score_chk` | 所有人／牌咖／只有自己（NOT VALID）|
-| `members.members_avatar_source_chk` | bear / photo |
+| `members.members_avatar_source_chk` | bear / photo　⚠ **只有兩個值** —— LINE 大頭貼要走 `photo`（抓下來存自己的 storage），不要加第三個值 |
+| `members.members_phone_chk` | NULL 或 `= migi_norm_phone(phone)`（2026-08-28 新增）—— **等於強制只收 09 開頭 10 碼**，市話與國際格式在寫入時就被擋 |
 | `members.members_inv_type_chk` | member / mobile / citizen / donate / company / paper |
 | `member_tiers.member_tiers_pct_chk` | 0 <= discount_pct <= 100 |
 | `member_availability.*_slot_check` | **morning / afternoon / evening / late** |
@@ -427,7 +429,15 @@ set_my_sched_tx / set_my_style_tx / set_my_baby_tile_tx / set_my_see_score_tx
 set_my_home_store_tx / set_my_birthday_tx / set_my_availability_tx / get_my_availability_tx
 set_avatar_tx / admin_remove_avatar_tx / save_app_state_tx / mark_app_active_tx
 set_invoice_pref_tx / list_members_tx
+
+set_my_profile_basics_tx(p_org_id, p_member_id, p_birthday date = null, p_gender text = null)
+  DEFINER · anon ✅ · 2026-08-28 新增
+  ⚠ **null = 不動那一欄**（不是清空）—— 註冊時生日與性別可以分開補
+  ⚠ 性別在函式裡驗（回 `gender_invalid`），不是丟給 CHECK 拋 23514
 ```
+
+⚠ **沒有「改手機」的 RPC** —— 唯一會寫 `phone` 的是 `register_member_tx`（建立時）。
+  這是待辦 36（情境 D／E）的核心缺口，不是漏記。
 
 ### POS 專用
 
@@ -449,6 +459,11 @@ next_doc_no(p_org_id, p_store_id, p_doc_type)
 log_app_event_tx(p_org_id, p_member_id, p_event, p_props, p_client_ts, p_store_id)
 dev_reset_test_data_tx(p_reset_balance) / dev_set_test_balance_tx(p_display_name, p_balance)
 migi_norm_nickname(p text)
+migi_norm_phone(p text)   INVOKER · anon ✅ · 2026-08-28 新增
+  去掉所有非數字 → `+886`／`886` 開頭補回 `0` → 必須符合 `^09\d{8}$`，否則回 null
+  ⚠ **`register_member_tx` 在「查詢之前」與「寫入之前」都會正規化** ——
+    所以客人填 `0912-345-678` 找得到用 `0912345678` 註冊的舊帳號。
+    那正是情境 C（換 LINE 帳號）唯一的橋。
 ```
 
 ### 發票
