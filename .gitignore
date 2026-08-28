@@ -9,6 +9,11 @@
 # Claude Code 的本機設定（含個人權限選擇，不共用）
 /.claude/settings.local.json
 
+# 🔴 MCP 設定：裡面有 Supabase Personal Access Token，絕不可進版控。
+#   （這個 repo 是私有的，但 token 進 git 之後就永遠在歷史裡，
+#     即使之後刪掉那一行也還在，只能整個 token 作廢重發。）
+/.mcp.json
+
 # 作業系統與編輯器雜物
 Thumbs.db
 desktop.ini
