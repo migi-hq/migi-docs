@@ -1338,6 +1338,21 @@ migi github/           ← Claude Code 的 project folder 選這層
       - 文字可改，但不可換行、必須清楚表達是用 LINE 登入
       - 素材與規範：https://developers.line.biz/en/docs/line-login/login-button/
 
+      ### 命名（2026-08-28 查官方文件）
+      | | 客人看得到嗎 | 限制 |
+      |---|---|---|
+      | **Business ID 的「姓名」** | ❌ | 那是**登入後台的人**的名字，不是品牌名。之後可改 |
+      | **Provider 名稱** | 🔴 **會，顯示在授權畫面上** | 官方要求「反映真實的商業主體」；**認證 provider 改名要送審** |
+      | **Channel 名稱** | 依官方文件**不顯示**給客人 | 🔴 **不可含「LINE」或近似字串** |
+
+      🔴 **客人在授權畫面看到的是 Provider 名稱，不是 channel 名稱**
+        （我一度寫反過，已更正）。
+      ✅ **保險做法：Provider 與 channel 取同一個名字**（`MIGI 咪吉麻將`），
+        這樣不管實際顯示哪一個都一致。
+      ⚠ 若日後要申請**認證 provider**，名稱可能要對得上**公司登記名稱** ——
+        那時「品牌名 vs 法人名」會變成一個取捨：
+        用法人名客人會看到一個沒聽過的公司名而卻步，用品牌名則改名要送審。
+
       🔴 **硬條件：兩者必須在同一個 Provider 底下。**
       LINE 的 `userId` 是 **per-Provider 不是 per-channel** ——
       同 Provider 的所有 channel，同一個人拿到同一個 `userId`；
