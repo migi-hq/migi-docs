@@ -51,14 +51,18 @@ ZINDEX = {100: '--z-sticky', 1000: '--z-sheet', 1100: '--z-sheet2',
           1200: '--z-overlay', 2000: '--z-toast', 2100: '--z-alert'}
 
 RULES = [
-    ('fontSize',     re.compile(r'fontSize:\s*(\d+)\b'),          lambda m: FONT.get(int(m))),
+    # 🔴 `(?![\d.])` 不可以省略：`\b` 擋不住小數點 ——
+    #    `fontSize: 12.5` 會被 `(\d+)\b` 吃到 `12`，於是誤報成「該用 --xxs」。
+    #    ⚠ 這個 bug 在 tokenfix.py 上是**炸掉 build**（語法壞掉，很大聲），
+    #      在這裡卻只是**多報幾筆**（很安靜）—— 後者更容易一直留著。
+    ('fontSize',     re.compile(r'fontSize:\s*(\d+)(?![\d.])'),    lambda m: FONT.get(int(m))),
     ('font-size',    re.compile(r'font-size:\s*(\d+)px'),         lambda m: FONT.get(int(m))),
-    ('borderRadius', re.compile(r'borderRadius:\s*(\d+)\b'),      lambda m: RADIUS.get(int(m))),
+    ('borderRadius', re.compile(r'borderRadius:\s*(\d+)(?![\d.])'), lambda m: RADIUS.get(int(m))),
     ('border-radius',re.compile(r'border-radius:\s*(\d+)px'),     lambda m: RADIUS.get(int(m))),
     ('色碼',          re.compile(r'(#[0-9A-Fa-f]{6})\b'),          lambda m: COLOR.get(m.upper())),
     ('邊框寬度',       re.compile(r'([\d.]+)px solid'),             lambda m: BORDER.get(m)),
     ('lineHeight',   re.compile(r'lineHeight:\s*([\d.]+)'),       lambda m: LINEH.get(m)),
-    ('zIndex',       re.compile(r'zIndex:\s*(\d+)\b'),            lambda m: ZINDEX.get(int(m))),
+    ('zIndex',       re.compile(r'zIndex:\s*(\d+)(?![\d.])'),      lambda m: ZINDEX.get(int(m))),
 ]
 
 # 值對不上 token 的（--all 才報）

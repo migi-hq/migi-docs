@@ -64,8 +64,13 @@ def fix(text):
         return f
 
     # JS inline style：fontSize: 13  →  fontSize: 'var(--xs)'
-    text = re.sub(r'(fontSize:\s*)(\d+)\b', num(FONT, "'"), text)
-    text = re.sub(r'(borderRadius:\s*)(\d+)\b', num(RADIUS, "'"), text)
+    # 🔴 `(?![\d.])` 不可以省略，**`\b` 擋不住小數點**（2026-08-29 踩到，三端 70 處炸掉）：
+    #    `fontSize: 12.5` 會被 `(\d+)\b` 吃掉 `12`（數字→句點是合法的 word boundary），
+    #    剩下的 `.5` 黏在字串後面 → `fontSize: 'var(--xxs)'.5` —— **語法直接壞掉**。
+    #    ⚠ 那次是「炸得夠大聲」（三端 build 全失敗）才被抓到。
+    #      要是它只是靜靜產生一個錯的值，就只能靠人一頁一頁看了。
+    text = re.sub(r'(fontSize:\s*)(\d+)(?![\d.])', num(FONT, "'"), text)
+    text = re.sub(r'(borderRadius:\s*)(\d+)(?![\d.])', num(RADIUS, "'"), text)
     # CSS：font-size: 13px  →  font-size: var(--xs)
     text = re.sub(r'(font-size:\s*)(\d+)px', num(FONT, ''), text)
     text = re.sub(r'(border-radius:\s*)(\d+)px', num(RADIUS, ''), text)
