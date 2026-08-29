@@ -1240,6 +1240,25 @@ migi github/           ← Claude Code 的 project folder 選這層
       每個開著 App 的人都在打。Realtime 上線後這些都可以拆掉
       （但**輪詢要留作 fallback** —— LIFF 進背景連線會斷）。
 
+    ### 🔴 localStorage 裡的舊身分會讓整個註冊流程被跳過（2026-08-29 踩到）
+    ```js
+    App.jsx:95   if (!member) return <Register …/>      // member 來自 localStorage
+    ```
+    創辦人在 LIFF 走註冊，結果**進去變成測試01** —— 而資料庫可以證明
+    `register_member_tx` 一次都沒被呼叫到（四個會員 `line_user_id` 全是 null、
+    沒有第五個會員、測試01 的手機也確實已經是 `0910000001`）。
+    → 不是「繼承」，是**根本沒註冊** —— 那台裝置的 localStorage 裡存著測試01，
+      所以連 LINE 授權那一步都不會出現。
+
+    ⚠ 當下的解法是「個人設定 → 登出」（`profile.jsx:207`），但那只是繞過。
+    🔴 **真正的問題是：這個 App 的身分是 localStorage 說了算，不是 LINE 說了算。**
+      在 LIFF 裡進來就一定拿得到驗過簽的 `line_user_id`，
+      **應該拿它去問後端「我是誰」**，而不是相信瀏覽器裡存的那個。
+    → 需要一支 `get_member_by_line_tx`（或讓 `line-login` 也能純查詢），
+      本來就屬於這一項的範圍。
+    📌 這也是待辦 15（帳號合併）非得跟這一項一起做的原因：
+      **只要身分是前端宣告的，「我是誰」就永遠有第二個答案。**
+
     解法：LIFF 的 `id_token` 換 Supabase JWT（Edge Function 或自建端點驗簽），
     RPC 改從 `auth.uid()` 取會員、拿掉 `p_member_id` 參數、
     `SECURITY DEFINER` 大多可以改回 `INVOKER` 讓 RLS 自己擋。
