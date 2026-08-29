@@ -2195,9 +2195,18 @@ migi github/           ← Claude Code 的 project folder 選這層
       數字原樣通過 `|| []`，然後 `.map` 直接炸。
       **`|| []` 給了一種「我防過了」的錯覺，那比完全沒防更危險。**
 
-    ✅ 前端已止血（`GameDetailSheet.jsx` 改用 `Array.isArray`）。
-    ⏳ **根因未修**：`list_match_queues_tx` 的數字應改名 `player_count`。
-      走 expand → migrate → contract：① 同時回兩個 key ② 前端改讀新的 ③ 拿掉舊的。
+    ✅ **2026-08-29 幾乎收完**：
+    | | 狀態 |
+    |---|---|
+    | `list_match_queues_tx` | ✅ **contract 完成**，只剩 `player_count` |
+    | `list_tables_tx` | 🟡 **expand 完成**（兩個並存），POS 已改讀 `player_count`。<br>⏳ **等 POS 這版部署過，再做第二次 contract** |
+    | `pos_add_queue_member_tx` | ⚠ **刻意不動** —— 它回的是「加入之後現在幾人」，<br>是一次性操作結果不是清單欄位，而且從來沒有陣列版本 |
+
+    🔴 **查證時才發現源頭有兩個**：我原本只看到 `list_match_queues_tx`，
+      而桌況的 `list_tables_tx` 也是數字版的 `players`，POS 正在讀它。
+      直接拿掉會讓桌況卡片的人數**變空白而且不報錯**。
+    📌 **expand → migrate → contract 的意義就在中間那段兩者並存的時間** ——
+      少了它，還在跑舊版的裝置會立刻壞掉。
 
     📌 這是同一個病的**第三次**（前兩次：`wallet_txns.type` 一欄兩義、
       `staff.role` 一欄兩維度）。**一個名字一個意思**，這條值得當成通則。
