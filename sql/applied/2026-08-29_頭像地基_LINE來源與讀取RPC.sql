@@ -308,23 +308,39 @@ select 序, 項目, 內容 from (
 
   union all
   /* ⚠ 同時印「能不能叫」與「授權從哪來」——
-     只看 has_function_privilege 的話，收錯方向會看不出來（見授權段的說明）。 */
-  select 2, '② 授權（set_line_avatar_tx 不可以有 anon）',
-         (select string_agg(p.proname || '　anon=' ||
-                   case when has_function_privilege('anon', p.oid, 'execute') then '🔴 有' else '✅ 無' end
-                 || '（明確=' || case when exists (select 1 from aclexplode(coalesce(p.proacl,'{}')) a
-                                        where a.grantee = 'anon'::regrole::oid and a.privilege_type='EXECUTE')
-                                      then 'Y' else 'N' end
-                 || '　PUBLIC=' || case when (p.proacl is null or exists (select 1 from aclexplode(p.proacl) a
-                                        where a.grantee = 0 and a.privilege_type='EXECUTE'))
-                                      then 'Y' else 'N' end || '）'
-                 || '　service_role=' ||
-                   case when has_function_privilege('service_role', p.oid, 'execute') then '有' else '🔴 無' end,
-                 E'\n' order by p.proname)
-            from pg_proc p
-           where p.pronamespace = 'public'::regnamespace and p.prokind = 'f'
-             and p.proname in ('set_line_avatar_tx','get_my_avatar_tx','set_avatar_tx'))
-         || E'\n  ⚠ get_my_avatar_tx 與 set_avatar_tx 要有 anon，set_line_avatar_tx 不可以有'
+     只看 has_function_privilege 的話，收錯方向會看不出來（見授權段的說明）。
+
+     🔴 **每一支的期望值不一樣，所以指示燈要按各自的期望判斷。**
+     第一版一律把「有 anon」標成 🔴，於是三支裡有兩支顯示紅色 ——
+     而那兩支**本來就該有**。看起來像壞了，實際上是對的。
+     ⚠ 同踩坑第 25 條：**先懷疑儀器。** 一個會對正確狀態亮紅燈的檢查，
+       比沒有檢查更糟 —— 下次真的紅了不會有人當一回事。 */
+  select 2, '② 授權（set_line_avatar_tx 不可以有 anon，另外兩支要有）',
+         (select string_agg(
+                   p.proname
+                 || '　anon=' || case when a_can then '有' else '無' end
+                 || case when a_can = a_want then '　✅' else '　🔴 期望' ||
+                        case when a_want then '有' else '無' end end
+                 || '（明確=' || case when a_explicit then 'Y' else 'N' end
+                 || '　PUBLIC=' || case when pub then 'Y' else 'N' end || '）'
+                 || '　service_role=' || case when s_can then '有' else '🔴 無' end,
+                 E'\n' order by proname)
+            from (
+              select p.proname,
+                     p.proname <> 'set_line_avatar_tx' as a_want,
+                     has_function_privilege('anon', p.oid, 'execute') as a_can,
+                     has_function_privilege('service_role', p.oid, 'execute') as s_can,
+                     exists (select 1 from aclexplode(coalesce(p.proacl,'{}')) x
+                              where x.grantee = 'anon'::regrole::oid
+                                and x.privilege_type='EXECUTE') as a_explicit,
+                     (p.proacl is null or exists (select 1 from aclexplode(p.proacl) x
+                              where x.grantee = 0 and x.privilege_type='EXECUTE')) as pub
+                from pg_proc p
+               where p.pronamespace = 'public'::regnamespace and p.prokind = 'f'
+                 and p.proname in ('set_line_avatar_tx','get_my_avatar_tx','set_avatar_tx')
+            ) p)
+         || E'\n  📌 set_avatar_tx 的 PUBLIC=Y 是正常的 —— 它是舊函式，'
+         || E'\n     跟其餘 124 支一樣。anon 本來就該叫得動它。'
 
   union all
   select 3, '③ 🎯 行為測試（交易內執行後回滾）',
