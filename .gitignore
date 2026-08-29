@@ -1,10 +1,12 @@
 # ─────────────────────────────────────────────────────────
 # 三個程式 repo 各自獨立版控，不可納入本 repo
 # 它們在 GitHub 上是 migi-hq/migi-pos、migi-web、migi-admin
+# migi-assets 是三端共用的設計 token 與品牌美術（**公開** repo）
 # ─────────────────────────────────────────────────────────
 /migi-pos/
 /migi-web/
 /migi-admin/
+/migi-assets/
 
 # Claude Code 的本機設定（含個人權限選擇，不共用）
 /.claude/settings.local.json
