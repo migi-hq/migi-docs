@@ -130,11 +130,24 @@ Deno.serve(async (req) => {
        那是「只能傳到自己資料夾」這件事唯一的保證。 */
   if (body.mode === 'sign_upload') {
     const path = `${me.memberId}/${crypto.randomUUID()}.webp`
-    const res = await api(`storage/v1/object/upload/sign/${BUCKET}/${path}`, { method: 'POST' })
+    /* 🔴 body 一定要送 `{}`，不可以省略。
+       `api()` 帶了 `Content-Type: application/json`，而 POST 沒有 body 時
+       Storage 會解析失敗 —— 第一版就是這樣，上傳一路失敗到這裡才看得出來。
+       📌 查證方式：讀 `@supabase/storage-js` 自己的 `createSignedUploadUrl`，
+         它送的是 `post(fetch, url, {}, { headers })`。
+         **官方 client 怎麼打，就照著打** —— 這種細節猜不出來。 */
+    const res = await api(`storage/v1/object/upload/sign/${BUCKET}/${path}`, {
+      method: 'POST', body: JSON.stringify({}),
+    })
     const out = await res.json().catch(() => null)
     if (!res.ok || !out?.url) {
       console.error('[avatar-photo] 產生簽名上傳網址失敗', res.status, out)
-      return json({ ok: false, reason: 'sign_failed', message: '上傳失敗，請再試一次' }, 502)
+      /* ⚠ 把狀態碼帶回去。這是**我們自己基礎設施**的錯誤碼，不是機密，
+         而少了它，前端只會顯示「上傳失敗」—— 客人回報之後還是查不到原因。 */
+      return json({
+        ok: false, reason: 'sign_failed',
+        message: '上傳失敗（S' + res.status + '），請再試一次',
+      }, 502)
     }
     /* Storage 回的是相對路徑（`/object/upload/sign/...?token=…`）。
        ⚠ 前端用 supabase-js 的 `uploadToSignedUrl(path, token)`，只需要 token，
