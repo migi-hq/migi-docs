@@ -1,6 +1,6 @@
 /* ============================================================
    line-login —— 驗 LINE 的 id_token，然後**自己**呼叫 register_member_tx
-   2026-08-28 · MIGI 咪吉麻將
+   2026-08-28 建立 · 2026-08-29 加上頭像同步 · MIGI 咪吉麻將
 
    ── 🔴 為什麼不能只回傳 sub 給前端 ──────────────────
    直覺做法是「Edge Function 驗完簽，把 line_user_id 回傳，
@@ -14,15 +14,32 @@
      我們沒有發任何 Supabase JWT，只是在伺服器端驗 LINE 的 token。
      那五個阻擋條件不適用。
 
-   ── 範圍：只做身分，不做個人資料 ────────────────────
-   生日與性別**不經過這裡**，前端拿到 member_id 之後照舊呼叫
-   set_my_profile_basics_tx。
-   ⚠ 那支仍然吃前端傳的 member_id —— 那是待辦 14 既有的問題，
-     不因這次而變糟，也不該在這裡順手解決（範圍會爆炸）。
+   ── 兩個模式 ────────────────────────────────────────
+   | mode | 什麼時候用 | 做什麼 |
+   |---|---|---|
+   | （省略）＝ `register` | 註冊流程最後一步 | 驗簽 → register_member_tx → 存頭像 |
+   | `sync_avatar` | 頭像抽屜按「同步」 | 驗簽 → 查會員 → 只更新頭像 |
+
+   🔴 **`sync_avatar` 不能重用 `register_member_tx`** ——
+     它第一件事就是 `if v_name = '' then raise 'display_name required'`，
+     而同步時前端沒有暱稱可送（也不該送，那會變成偷偷改名）。
+     → 改用 service_role 直接查 `members`（service_role 不受 RLS 限制）。
+
+   ── 🔴 為什麼頭像網址不能讓前端送 ──────────────────
+   直覺是 `liff.getProfile()` 拿 `pictureUrl` 再送過來。**那不行** ——
+   那個值是前端說的，等於「任何人可以把任何圖掛到任何人的頭像上」。
+   🎯 正解：**LINE 的 verify 端點回傳的 payload 裡就有 `picture`**，
+     跟 `sub` 是同一份、同一次驗簽。所以這裡自己取出來用。
+   → `set_line_avatar_tx` 因此只授權 service_role（anon 明確=N、PUBLIC=N）。
+
+   ── ⚠ 存頭像 ≠ 套用頭像 ────────────────────────────
+   註冊完 `avatar_source` 仍然是 `bear`（DB 預設），**只是把網址存起來**。
+   🔴 這是**隱私決定不是偷懶**：MIGI 是陌生人配桌的 App，
+     未經詢問就把某人的真實臉孔顯示給同桌的陌生人，是替他做了決定。
+     → 要不要用 LINE 頭像，由他自己在頭像抽屜裡點。
 
    ── 部署 ────────────────────────────────────────────
-   Supabase Dashboard → Edge Functions → Deploy a new function
-   名稱：line-login　（⚠ 名稱要一致，前端是用這個名字叫它）
+   Supabase Dashboard → Edge Functions → line-login → 貼上這份 → Deploy
    需要的環境變數（Dashboard → Edge Functions → Secrets）：
      LINE_CHANNEL_ID = 2011312117
    ⚠ SUPABASE_URL 與 SUPABASE_SERVICE_ROLE_KEY 由平台自動注入，不用自己設。
@@ -54,11 +71,50 @@ const json = (body: unknown, status = 200) =>
     headers: { ...CORS, 'Content-Type': 'application/json' },
   })
 
+const db = (path: string, init: RequestInit = {}) =>
+  fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...init,
+    headers: {
+      apikey: SERVICE_KEY,
+      Authorization: `Bearer ${SERVICE_KEY}`,
+      'Content-Type': 'application/json',
+      ...(init.headers ?? {}),
+    },
+  })
+
+/* 把驗過簽的 picture 寫進 members.avatar_url。
+   ⚠ 回傳 null 代表沒寫成（沒有 picture、或 RPC 拒絕），
+     由呼叫端決定那是不是致命的 —— 註冊時不是，同步時是。 */
+async function saveLineAvatar(memberId: string, picture: unknown): Promise<string | null> {
+  const url = typeof picture === 'string' ? picture.trim() : ''
+  if (!url) {
+    /* 🔴 沒有 picture 多半是 LIFF 的 scope 沒勾 `profile`。
+       不要讓它靜靜消失 —— 那會變成「同步按了沒反應」而查不出原因。 */
+    console.warn('[line-login] token 裡沒有 picture，檢查 LIFF 的 profile scope')
+    return null
+  }
+  try {
+    const res = await db('rpc/set_line_avatar_tx', {
+      method: 'POST',
+      body: JSON.stringify({ p_member_id: memberId, p_url: url }),
+    })
+    const body = await res.json().catch(() => null)
+    if (!res.ok || !body?.ok) {
+      console.warn('[line-login] set_line_avatar_tx 沒寫成', res.status, body)
+      return null
+    }
+    return body.avatar_url as string
+  } catch (e) {
+    console.warn('[line-login] set_line_avatar_tx 連線失敗', e)
+    return null
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   if (req.method !== 'POST') return json({ ok: false, reason: 'method_not_allowed' }, 405)
 
-  let body: { id_token?: string; display_name?: string; phone?: string }
+  let body: { id_token?: string; display_name?: string; phone?: string; mode?: string }
   try {
     body = await req.json()
   } catch {
@@ -69,6 +125,7 @@ Deno.serve(async (req) => {
   if (!idToken) {
     return json({ ok: false, reason: 'id_token_required', message: '缺少 LINE 授權資訊' }, 400)
   }
+  const syncOnly = body.mode === 'sync_avatar'
 
   /* ── ① 向 LINE 驗簽 ──────────────────────────────
      用 LINE 的 verify 端點，不自己實作 JWKS 驗證：
@@ -117,7 +174,40 @@ Deno.serve(async (req) => {
     return json({ ok: false, reason: 'aud_mismatch', message: '授權來源不符' }, 401)
   }
 
-  /* ── ② 用 service_role 呼叫 register_member_tx ──────
+  /* ── ②a 只同步頭像（頭像抽屜的「同步」按鈕）──────── */
+  if (syncOnly) {
+    let found: Response
+    try {
+      /* service_role 不受 RLS 限制，所以查得到。
+         ⚠ 一併比對 org_id，跟 register_member_tx 的查法一致。 */
+      found = await db(
+        `members?select=id&org_id=eq.${MIGI_ORG_ID}` +
+        `&line_user_id=eq.${encodeURIComponent(sub)}&deleted_at=is.null&limit=1`)
+    } catch (e) {
+      console.error('[line-login] 查會員失敗', e)
+      return json({ ok: false, reason: 'db_unreachable', message: '系統忙碌中，請稍後再試' }, 502)
+    }
+    const rows = await found.json().catch(() => null)
+    const memberId = Array.isArray(rows) && rows[0]?.id
+    if (!memberId) {
+      // 這個 LINE 帳號還沒有會員 —— 不是錯誤，是還沒註冊。
+      return json({ ok: false, reason: 'not_registered', message: '請先完成註冊' }, 404)
+    }
+
+    const avatarUrl = await saveLineAvatar(memberId, lineBody?.picture)
+    if (!avatarUrl) {
+      /* 🔴 同步時「沒寫成」就是失敗，不可以回 ok ——
+         客人按了同步、畫面說成功、頭像沒變，那比報錯更糟。 */
+      return json({
+        ok: false,
+        reason: 'avatar_unavailable',
+        message: '取不到你的 LINE 頭像，請確認 LINE 上有設定大頭貼',
+      }, 400)
+    }
+    return json({ ok: true, action: 'avatar_synced', member_id: memberId, avatar_url: avatarUrl })
+  }
+
+  /* ── ②b 註冊：用 service_role 呼叫 register_member_tx ──
      🔴 這裡是整支函式存在的理由：line_user_id 只能從上面驗過的 sub 來，
        前端沒有任何辦法指定它。
 
@@ -126,13 +216,8 @@ Deno.serve(async (req) => {
        真正不能讓前端決定的只有「他是誰」。 */
   let rpcRes: Response
   try {
-    rpcRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/register_member_tx`, {
+    rpcRes = await db('rpc/register_member_tx', {
       method: 'POST',
-      headers: {
-        apikey: SERVICE_KEY,
-        Authorization: `Bearer ${SERVICE_KEY}`,
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({
         p_org_id: MIGI_ORG_ID,
         p_display_name: body.display_name ?? '',
@@ -160,8 +245,18 @@ Deno.serve(async (req) => {
     }, 400)
   }
 
+  /* ── ③ 存 LINE 頭像（不套用）──────────────────────
+     ⚠ **失敗不影響註冊**。頭像是附加品，而註冊已經成立了 ——
+       這時回「註冊失敗」是騙人的，而且客人再按一次只會走到
+       existing_line 分支、看起來更像壞掉（同前端第二支 RPC 的處理方式）。
+     ⚠ `line_conflict` 時不寫 —— 那個 member_id 是**別人的帳號**。 */
+  let avatarUrl: string | null = null
+  if (rpcBody?.member_id && rpcBody?.action !== 'line_conflict') {
+    avatarUrl = await saveLineAvatar(rpcBody.member_id, lineBody?.picture)
+  }
+
   /* 成功。action ∈ existing_line / rebound / line_conflict / existing_phone / created
      ⚠ line_conflict **不是錯誤而是業務結果**（這支手機的會員已綁別的 LINE），
        原樣回給前端，由它決定怎麼講。 */
-  return json({ ok: true, ...rpcBody })
+  return json({ ok: true, ...rpcBody, avatar_url: avatarUrl })
 })
