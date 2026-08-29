@@ -536,14 +536,39 @@ migi github/           ← Claude Code 的 project folder 選這層
 - 代付：檯費份數 = 自己 1 份 + 代付人數。被代付者仍建立 `session_players` 記錄，
   但 `charged_points = 0`、`paid_by = 付款人`。消費金額與發票都歸付款人。
 - 埋點測試隔離：`app_events.is_test`。
-  🔴 **更正（2026-08-26）**：這裡原本寫「由 `set_is_test_from_store()` **依門市**自動帶入」
-  —— **是錯的**。查證後：`app_events` **沒有 `store_id` 欄位**，唯一的觸發器是
-  `trg_app_events_no_mutate`（防改）。`is_test` 是 `log_app_event_tx` **從會員**推的
-  （`if p_member_id is not null then select is_test from members`）。
-  `set_is_test_from_store()` 確實存在，但它掛的是 `orders` 那類**有 `store_id`** 的表。
-  🔴 **後果**：POS 的事件 `member_id` 一律是 null → `is_test` 恆為 false
-  → **測試門市的操作會混進營運數據且不報錯**。做 POS 埋點時必須先補這個洞。
-  過濾用的檢視表共**四個**：`v_real_app_events`、`v_real_wallet_txns`、`v_real_members`、`v_real_stores`。
+  ⚠ **2026-08-29 再更正一次**：這裡曾寫「`app_events` **沒有 `store_id` 欄位**」
+  —— **現在是錯的**，它有，而且 `v_real_app_events` 正在用它擋測試門市
+  （`not exists (select 1 from stores s where s.id = x.store_id and s.is_test)`）。
+  📌 那句話在 2026-08-26 寫下時是對的，是後來補上的 —— **文件會漂，第三次**。
+  `is_test` 本身仍然是 `log_app_event_tx` **從會員**推的
+  （`if p_member_id is not null then select is_test from members`），
+  寫入時蓋章，而 `trg_app_events_no_mutate` **連 UPDATE 都擋 ⇒ 蓋錯了改不掉**。
+
+  ### 🔒 三層防線，各自管什麼（2026-08-29 查 view 定義確認）
+  | 層 | 擋什麼 | 現在 |
+  |---|---|---|
+  | ③ **時間下限** `orgs.live_from` | **上線日之前的一切** | 🔒 最硬。`coalesce(live_from,'infinity')` ⇒ null = **全擋** |
+  | ① `members.is_test` | 特定的人 | 五個帳號（含創辦人）都是 true |
+  | ② `stores.is_test` | 測試門市 | 一直都在 |
+
+  🎯 **`live_from` 是 null 時，每一支 `v_real_*` 都是空的** ——
+  ```
+  x.created_at >= coalesce(o.live_from, 'infinity'::timestamptz)   -- 永遠 false
+  ```
+  實測 2026-08-29：原表 `orders` 153／`app_events` 3375，
+  而 `v_real_orders` = `v_real_app_events` = `v_real_wallet_txns` = **0**。
+  → **今天沒有任何東西汙染得了報表，而那是設計上的空不是巧合。**
+  → 上線那天把 `live_from` 設成當天，**今天這批全部永久消失在報表外**。
+
+  ⚠ 所以 `is_test` 管的**不是**上線前的資料（時間下限已經全擋），
+    而是**上線之後你還在用同一個帳號測試**的那段時間。
+  🔴 真正會漏的只剩一種：**上線之後、既沒有會員也沒有測試門市的紀錄**
+    —— 三層都認不出它。那正是 CLAUDE.md 記過的那 2 筆的形狀。
+
+  過濾用的檢視表共 **12 個** `v_real_*`。
+  ⚠ 其中 `v_real_order_items` / `v_real_order_payments` **自己不判斷 `is_test`**，
+    而是 `exists (select 1 from v_real_orders ro where ro.id = x.order_id)`
+    —— **間接繼承，過濾邏輯只有一份**。那是對的設計，不是漏掉。
   做報表一律查 `v_real_*`，直接查原表會把測試資料算進營運數據且不報錯。
 
   ⚠ **`app_events` 有 2847 筆 `is_test = false`，而它們全部是測試資料** ——
