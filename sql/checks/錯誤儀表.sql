@@ -96,6 +96,39 @@ select 序, 項目, 內容 from (
           2026-08-26 已修（補門市與會員兩條推導路徑），
           但**修之前的歷史資料仍然標成 is_test=false**。
         ⚠ 所以做報表查 `v_real_app_events` 時，2026-08-26 之前的資料要另外排除。 */
+  /* ⑥ baseline 有沒有過期。
+        🔴 `sql/_baseline/` 是「某一天的完整結構」，**不會自動同步**。
+          而 CLAUDE.md 記過：有人會直接在 Dashboard 改而不留檔
+          （承重牆 `uq_members_line_user` 就是這樣來的）——
+          那種變更**連 `applied/` 都沒有**，baseline 一過期就真的會漏。
+        ⚠ 數字不一樣不代表壞掉，代表「該重跑
+          `sql/checks/匯出完整結構baseline.sql` 了」。
+        📌 更新 baseline 時，記得把下面這四個數字一起改。 */
+  select 6, '⑥ 結構物件數 vs baseline（2026-08-29：表39 函式138 索引81 policy28）',
+         (select '表 ' || (select count(*)::text from pg_class c
+                            join pg_namespace n on n.oid=c.relnamespace
+                           where n.nspname='public' and c.relkind='r')
+              || '　函式 ' || (select count(*)::text from pg_proc p
+                              where p.pronamespace='public'::regnamespace and p.prokind='f')
+              || '　索引 ' || (select count(*)::text from pg_index x
+                              join pg_class t on t.oid=x.indrelid
+                              join pg_namespace n on n.oid=t.relnamespace
+                             where n.nspname='public'
+                               and not exists (select 1 from pg_constraint con
+                                                where con.conindid=x.indexrelid))
+              || '　policy ' || (select count(*)::text from pg_policies
+                                 where schemaname='public')
+              || case when (select count(*) from pg_class c
+                             join pg_namespace n on n.oid=c.relnamespace
+                            where n.nspname='public' and c.relkind='r') = 39
+                       and (select count(*) from pg_proc p
+                             where p.pronamespace='public'::regnamespace and p.prokind='f') = 138
+                       and (select count(*) from pg_policies where schemaname='public') = 28
+                      then E'\n  ✅ 與 baseline 相同'
+                      else E'\n  ⚠ 與 baseline 不同 —— 重跑 sql/checks/匯出完整結構baseline.sql'
+                 end)
+
+  union all
   select 5, '⑤ 測試標記（修好前的歷史資料仍標成營運）',
          (select 'is_test=true ' || count(*) filter (where is_test)::text ||
                  '　is_test=false ' || count(*) filter (where not is_test)::text ||
