@@ -2249,6 +2249,60 @@ migi github/           ← Claude Code 的 project folder 選這層
     ⚠ 還沒決定的：回應模式（聊天／自動回應）、要不要開 webhook。
       **有人要顧聊天室嗎？** 沒有的話就關掉聊天、只做推播（硬規則 5.5）。
 
+39. **原生對話框全站盤點**（2026-08-29 做完盤點，migi-web 的 confirm 已清）。
+
+    ### ✅ 已完成：`askConfirm()` ＋ `<ConfirmHost />`（migi-web）
+    `lib/ui.jsx`，照 `showToast` / `<Toast />` 同一套慣例（全域事件 ＋ 單一 host）。
+    做成回傳 Promise 是為了讓呼叫點**一行換掉**，不必各自加 state。
+    危險動作 `danger: true` → `--danger` 紅；一般確認 → `--ink`。
+    已取代 5 處 `window.confirm`：解除牌咖／加黑名單／移出黑名單 ×2／刪頭像照片。
+
+    🔴 **原生 confirm 的問題不只是醜**：
+    ① 在 LINE 的 WebView 裡 iOS 與 Android 各長一種
+      —— 跟「自己畫日曆與滾輪」是同一個理由
+    ② **講不出「這個動作是危險的」** —— 刪除與一般確認長得一模一樣
+    ③ 標題會被瀏覽器加上網域名（`app.migi.tw 顯示`），像釣魚頁
+
+    ### ⏳ 還沒處理的
+
+    | repo | 處數 | |
+    |---|---|---|
+    | migi-pos | **0** ✅ | 它有自己的 `Modal`（`OpenCheckoutPage.jsx:1811`） |
+    | **migi-admin** | **1** 🔴 | `Products.jsx:182` `confirm('確定刪除…此動作無法復原')` |
+    | migi-web | 9 | 1 個 `prompt` ＋ 8 個 `alert` |
+
+    🔴 **admin 那一個最該優先**：刪商品是真的破壞性動作，
+      而唯一的防線是原生 confirm。而且 `migi-admin/src/lib/` 底下只有
+      `ErrorBoundary` / `products` / `supabase` —— **整個 repo 沒有任何 UI 元件庫**，
+      連 toast 都沒有。
+    ⚠ 所以那不是「換一顆按鈕」，是**要不要給 admin 開一套 UI 基礎**的決定。
+      在那之前，原生 confirm **好過沒有確認**（後台使用者是自己人，
+      而且桌機瀏覽器的 confirm 比手機 WebView 一致得多）。
+
+    **migi-web 那 9 處分成兩類，問題不一樣：**
+    | 類型 | 位置 | 問題 |
+    |---|---|---|
+    | **「還沒接」的佔位** ×8 | `buddies.jsx:142,173,176,226`（牌咖團）／`buddies.jsx:379` 派車／`match.jsx:532` 叫車／`wallet.jsx:345,347` 儲值／`components.jsx:118` 邀進團 | 「還沒接」沒問題（硬規則 10），**錯的是用 `alert` 說**。錢包的儲值抽屜是正解，同一個 App 裡兩套講法 |
+    | **`prompt` 改團名** ×1 | `buddies.jsx:101` | 🔴 `prompt` 是三個裡最糟的：沒有驗證、沒有取消語意、樣子最不可控。而 **`EditTextSheet` 這個 App 已經有了**（`rewards.jsx`） |
+
+    ⚠ **不要把那 8 個 alert 一次全改**：牌咖團整組是待辦 33 的「純補後端」那一批，
+      接後端時那些 alert 本來就會消失。**現在改等於改兩次。**
+      → 該現在改的只有 `prompt`（它有現成元件）與**派車／叫車／儲值**
+        那三個「短期內不會接」的，換成 `showToast`。
+
+    ### 其他「各 OS 長相不同」的原生控制項
+    | repo | |
+    |---|---|
+    | migi-web | `<select>` ×5、`DateField` 的 `type="date"`、`TimeField` 的 `type="time"`、`type="file"` ×1 |
+    | migi-pos | `type="date"` ×1、`type="time"` ×2（`QueuePage` 固定牌局） |
+    | migi-admin | 0 |
+
+    ⚠ **`type="file"` 不用換** —— 那是「開啟系統選檔器」，本來就該是系統的。
+    ⚠ **POS 的 date/time 不急** —— 平板不是 LIFF WebView，長相可控得多；
+      而且 `ichip` 快捷（`+30 分`／`+1 小時`）已經覆蓋大部分情況（同待辦 30 的判斷）。
+    ⏳ migi-web 的 `DateField` / `TimeField` 與 5 個 `<select>` 才是真的要換，
+      理由同待辦 30：**LIFF 是 LINE 的 in-app WebView，原生選擇器兩個平台不一致**。
+
 ### PENDING
 - 店員登入未做，`staffId` 一律傳 null，`App.jsx` 還有 `const STAFF = "小美"` 寫死。
   ⚠ 後果不只是「不知道是誰」：`table_sessions` 98/98、`orders` 150/150 的
