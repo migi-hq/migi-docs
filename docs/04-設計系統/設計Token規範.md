@@ -115,13 +115,47 @@ MIGI 的品牌識別由**蜜桃粉與奶茶色並列**構成。蜜桃粉偏甜�
 
 ---
 
-## 七、三端統一（2026-08-15 完成）
+## 七、三端統一
 
-**這份規範涵蓋三個 repo。** 三處的 `:root` 內容完全一致，可直接互相複製：
+### 🔴 2026-08-29 更新：token 已經搬到 `@migi/assets`，**不要再互相複製**
 
-| | 定義位置 | 用法 |
+下面「可直接互相複製」那句話**已經作廢** —— 它正是這一節要記錄的病。
+
+```jsonc
+"@migi/assets": "github:migi-hq/migi-assets#v1.3.0"
+```
+```js
+import '@migi/assets/tokens.css'              // 三端
+import { C } from '@migi/assets/tokens.js'    // POS（從 shared.jsx re-export）
+```
+
+改 token 去 `migi-assets/tokens.json` → `npm run build` → 打 tag → 三端 bump 版號。
+完整規則見 CLAUDE.md **硬規則 13**。
+
+### 為什麼原本的做法會壞（留著當教訓）
+
+2026-08-15 統一的是**命名**不是**來源**。而**手抄的東西只會抄「當下需要的」**：
+
+```
+2026-08-15  POS 抄了 17 個顏色 token
+之後        web 長出字級／圓角／間距／陰影（27 個）→ POS 沒跟上
+2026-08-29  POS 有 304 個寫死 fontSize、117 個寫死 borderRadius，
+            而它的 var(--) 只用了 17 次
+```
+
+🔴 **那不是店員端偷懶，是那份 token 從來沒送到它手上。**
+📌 下面這一行當時就寫對了問題，只是沒有解：
+> 「改品牌色要改三個 repo，而且很容易漏。」
+
+---
+
+### （以下是 2026-08-15 的原始記錄，定義位置那一欄已經作廢）
+
+**這份規範涵蓋三個 repo。** ~~三處的 `:root` 內容完全一致，可直接互相複製~~：
+
+| | 定義位置（**已作廢**，現在一律來自 `@migi/assets`） | 用法 |
 |---|---|---|
-| `migi-web` | `src/styles.css` 的 `:root` | `var(--brand)` |
+| `migi-web` | ~~`src/styles.css` 的 `:root`~~ | `var(--brand)` |
 | `migi-pos` | `src/index.css` 的 `:root` | `var(--brand)`，或 `shared.jsx` 的 `C.brand`（只是 var 的別名）|
 | `migi-admin` | `src/styles.css` 的 `:root` | `var(--brand)` |
 

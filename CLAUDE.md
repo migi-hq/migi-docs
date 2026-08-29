@@ -13,6 +13,8 @@ migi github/           ← Claude Code 的 project folder 選這層
 ├─ migi-pos/           ← 店員端 POS，React 18 + Vite（migi-hq/migi-pos）
 ├─ migi-web/           ← 會員端 App，LIFF（migi-hq/migi-web）
 ├─ migi-admin/         ← 後台（migi-hq/migi-admin）
+├─ migi-assets/        ← 🔴 三端共用的設計 token 與品牌美術（migi-hq/migi-assets）
+│                        **這是唯一一個公開 repo**（其餘三個私有）。詳見硬規則 13
 ├─ sql/                ← 所有 Supabase SQL（非 repo，手動保存）
 │  ├─ applied/         ← 已在 Dashboard 跑過的
 │  ├─ pending/         ← 寫好還沒跑的
@@ -483,6 +485,97 @@ migi github/           ← Claude Code 的 project folder 選這層
         真正的防線是 RLS 與 SECURITY DEFINER，不是這把 key 的機密性。
     - 🔴 **MCP 的 token 拿不到 API key**（只開 Database READ）——
       那不是缺陷，是權限範圍設對了的證據。要 anon key 得去 Dashboard。
+
+13. 🔴 **設計 token 一律來自 `@migi/assets`，不要在任何 repo 裡再定義一份。**
+    （2026-08-29 建立）
+
+    ```jsonc
+    // 三端的 package.json
+    "@migi/assets": "github:migi-hq/migi-assets#v1.3.0"
+    ```
+    ```js
+    import '@migi/assets/tokens.css'              // 定義 :root（三端）
+    import { C } from '@migi/assets/tokens.js'    // POS 的 C 物件（從 shared.jsx re-export）
+    ```
+
+    ### 為什麼存在（這是一個真的發生過的病）
+    2026-08-15「三端統一色彩 token」統一的是**命名**不是**來源** ——
+    三份 `:root` 靠手抄同步。而**手抄的東西只會抄「當下需要的」**：
+    ```
+    2026-08-15  POS 抄了 17 個顏色
+    之後        web 長出字級／圓角／間距／陰影（27 個）→ POS 沒跟上
+    2026-08-29  POS 有 304 個寫死 fontSize、117 個寫死 borderRadius，
+                而它的 var(--) 只用了 17 次
+    ```
+    🔴 **那不是店員端偷懶，是那份 token 從來沒送到它手上。**
+
+    ### 改 token 的流程（**不要直接改 dist/**）
+    ```bash
+    cd migi-assets
+    # 1. 改 tokens.json    2. npm run build    3. commit（產出物一起）
+    git tag v1.4.0 && git push --tags
+    # 4. 三端 package.json 把 #v1.3.0 改成 #v1.4.0 → npm install
+    ```
+    ⚠ **版本用 tag 不要用 branch** —— `#main` 會讓同一份 package.json
+      在不同時間裝到不同東西。
+    📌 **這不會讓三端變成一起部署**：POS 可以停在舊版，
+      它是收銀機，不該因為會員 App 改了顏色就跟著動。
+    ⚠ 產出物 `dist/` 要 commit（git 相依沒有 publish 步驟）。
+      `npm run check` 會擋「改了 tokens.json 但忘了 build」——
+      那件事一定會發生，而症狀是**三端裝到舊值且沒有任何錯誤**。
+
+    ### 🔴 什麼可以進去、什麼不行
+    | | |
+    |---|---|
+    | ✅ **設計 token** | 顏色／圓角／字級／間距／陰影／層級／邊框／動畫／圖示尺度 |
+    | ✅ **品牌識別美術** | 段位熊、預設頭像、日後的 logo —— **穩定、跨端** |
+    | ❌ **內容美術** | 徽章、零食、活動 hero、抽獎獎品 —— **隨活動更新、只有會員 App 用** |
+    | ❌ **任何碰 Supabase 的程式碼** | 那個 repo 是**公開**的 |
+
+    ⚠ 判準是**變更頻率**不是大小。活動圖進來的話，每換一張 hero 就要
+      改套件 → 打 tag → 三個 repo 可能都要 bump，**而其中兩個根本沒用到那張圖**。
+    ⚠ 灰色地帶（養成小熊 `bear-lv*`、教練熊）歸類為**內容** ——
+      **判準問的是「它為什麼存在」，不是「它畫的是什麼」。**
+
+    ### 檢查器
+    ```bash
+    python tokencheck.py            # 抓「有 token 可用卻寫死」
+    python tokencheck.py --all      # 連「沒有 token 可用」的也列（判斷用）
+    ```
+    🔴 **遷移舊的寫死值是固定利息**（今天改一處跟明年改一處成本一樣），
+      **但「新寫的程式碼繼續寫死」是複利** —— 每寫一行 UI 就多一個要遷移的點。
+      → 檢查器才是那個擋著的東西，遷移可以慢慢來。
+
+    ⚠ 它只報「值剛好等於某個 token」的 —— 那些是零風險零判斷的取代。
+      值對不上的（`fontSize: 17` 那種）預設不報，因為那是**設計問題**
+      （該升 16 還是降 19），不是機械工作。
+
+    **13.5 字階只有 9 階，圖示與字階分家。**
+    ```
+    --xxxs 11  --xxs 12  --xs 13  --s 14  --m 15  --l 16  --xl 18  --xxl 22  --h 38
+    --icon-sm 13   --icon-nav 22        ← 返回 ‹、關閉 ×、小箭頭 ›
+    ```
+    🔴 **挑不到就提出來討論，不要再加一階。** 2026-08-29 之前有 **22 種字級** ——
+      那不是「需要 22 個 token」，是「沒有人決定過字階是什麼」。
+      把 22 個都給名字，等於**用 token 認可那個混亂**。
+    🔴 **用文字字元畫的圖示（`›` `‹` `×` `+`）不可以用字級 token。**
+      它們用 `fontSize` 只是實作方式。掛上 `--xxl` 的話，
+      哪天把 `--xxl` 從 22 調到 24，**全站的返回鍵會一起變大而沒有人預期**。
+      ⚠ 那是**分類錯誤不是視覺 bug** —— 而分類錯誤會**在下一次改動時才爆炸**。
+
+    **13.6 層級只有 6 階，不要再往上加數字。**
+    ```
+    --z-sticky 100（切頁）  --z-sheet 1000  --z-sheet2 1100  --z-sheet3 1200
+    --z-overlay 1500        --z-toast 2000  --z-alert 2100
+    ```
+    🔴 這條規則存在的原因：在這之前有 9 個手挑的數字，
+      其中 `1050` / `1300` / `1400` / `1600` **各只出現一次** ——
+      它們不是層級，是**當時有人發現「我被蓋住了」就往上加了一點**。
+    ⚠ 它**沒有錯誤訊息**：症狀是「彈窗被蓋住、按了沒反應」，
+      而且要**剛好開到那個組合**才會遇到。
+    ⚠ **不要加第四層抽屜** —— 三層以上的堆疊對手機是迷路，那時該用切頁。
+    ⚠ `position: absolute` 在卡片**內部**的 `z-index: 0/1/2/3` 是局部堆疊，
+      **與全域層級無關，不要換成 token**（換了會讓它跳出那張卡）。
 
 12. **每次 session 開始跑一次 `sql/checks/錯誤儀表.sql`。**（2026-08-28 起，MCP 直接跑）
     埋點的寫入端做好了（migi-web 2026-07、POS 2026-08-26），但**讀取端是零** ——
