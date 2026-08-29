@@ -139,6 +139,39 @@ migi github/           ← Claude Code 的 project folder 選這層
    → **讓前端第一次直接呼叫某支既有 RPC 時，必須確認它有 `anon EXECUTE`。**
      盤點範本：`sql/applied/2026-08-25_補回前端RPC的執行權.sql`
      （一次掃三個前端呼叫的 70 支，順便查「函式存不存在」與「是不是 INVOKER」）。
+   **2.6 「anon 叫得動」不等於「anon 被授權」—— 中間隔著 `PUBLIC`。**
+   （2026-08-29 踩到，一份 SQL 整份是空操作）
+   Postgres **建立函式時預設就把 EXECUTE 授權給 `PUBLIC`**，而 `PUBLIC`
+   涵蓋所有角色。所以：
+   ```
+   grant_staff_tx 的 proacl：
+     =X/postgres              ← 🔴 grantee 空白 = PUBLIC，anon 從這裡進來
+     postgres=X/postgres
+     authenticated=X/postgres
+     service_role=X/postgres
+                              ← ⚠ 沒有 anon 這一列
+   ```
+   🔴 **`revoke execute ... from anon` 對它完全沒有效果，而且不會報錯** ——
+     收一個沒被授權的角色是合法的空操作。
+   → 要真的收，是 `revoke ... from public`。
+
+   ⚠ **`has_function_privilege('anon', oid, 'execute')` 分不出這兩種**
+     （明確授權 vs 從 PUBLIC 繼承），所以它可以用來**驗結果**，
+     **不能用來判斷「誰被授權了」**。要分辨只有 `aclexplode`：
+   ```sql
+   -- 明確授權給 anon
+   exists (select 1 from aclexplode(p.proacl) a
+            where a.grantee = 'anon'::regrole::oid and a.privilege_type='EXECUTE')
+   -- PUBLIC 有沒有
+   (p.proacl is null or exists (select 1 from aclexplode(p.proacl) a
+            where a.grantee = 0 and a.privilege_type='EXECUTE'))
+   ```
+   📌 `proacl is null` = **完全沒動過** = PUBLIC 有、其他人沒有。
+
+   🎯 **這件事救回來是因為驗證段**：revoke 成功、驗證回「12 支全部還在」，
+     兩者同時發生而且都不是 bug —— 是**指令下錯了**。
+     沒有那段驗證，那份 SQL 會被當成做完了（同硬規則 3.55）。
+
 3. **不要線上猜欄位名稱或約束值。** 動任何 RPC / schema 之前，先讀 `docs/` 下的權威文件，
    或用唯讀查詢把現況撈出來確認。猜錯的成本遠高於多問一次。
 
@@ -2159,6 +2192,22 @@ migi github/           ← Claude Code 的 project folder 選這層
     secret `LINE_CHANNEL_ID = 2011312117`（SHA256 比對確認過值正確）。
     四項測試全過：假 token → `line_token_invalid`（**證明它真的去跟 LINE 驗了**）／
     無 token → `id_token_required`／無 anon key → Verify JWT 擋下／CORS preflight 200。
+  🔴 **channel 的 `Developing` 狀態會擋住登入，不只是「還沒公開」**
+    （2026-08-29 踩到）。我第一次看到那個標記時說「正常，那只是還沒公開」——
+    **錯的**。實際點進 LIFF 會拿到：
+    ```
+    400 Bad Request
+    This channel is now developing status. User need to have developer role.
+    ```
+    ⚠ 而**你的 LINE Business ID 跟你手機上那個 LINE 帳號是兩個身分** ——
+      channel 的角色掛在 Business ID 上，個人 LINE 沒有那個角色，所以
+      「我就是 Admin」也一樣被擋。
+    → 解法是把 channel 切成 **Published**（Basic settings，channel 名稱旁邊）。
+    ⚠ **不可逆**：要回到 Developing 只能刪掉 channel 重建。
+    📌 但發布**不等於公開曝光** —— 沒有商店列表也搜尋不到，
+      拿不到 LIFF 網址的人進不來。
+    🎯 教訓同硬規則 3.8：**看到一個狀態標記就推論它在管什麼，那是猜。**
+      `Developing` 這個詞完全沒有提示它會擋登入，而**錯誤只在真的去登入時才出現**。
   ⏳ **還沒做**：官方帳號（見待辦 38）、實機走完一次註冊。
 
   ### 🔴 創辦人的會員帳號（2026-08-29 確認）

@@ -118,21 +118,50 @@ with parts as (
   union all
   /* ── 7.5 函式授權 ──
      🔴 DROP 會把 GRANT 一起丟掉（硬規則 2），所以 baseline 一定要含它，
-        否則重建出來的資料庫「函式都在但前端叫不動」。 */
+        否則重建出來的資料庫「函式都在但前端叫不動」。
+
+     🔴 **一定要用 `aclexplode` 讀明確授權，不可以用 `has_function_privilege`**
+       （2026-08-29 踩到）。後者回 true 有兩種原因：
+         ① 那個角色被明確授權　② 它從 **PUBLIC** 繼承
+       Postgres 建函式時**預設就授權 PUBLIC**，所以 12 支從來沒人決定要給
+       anon 的管理函式，`has_function_privilege('anon',…)` 也回 true。
+       → 用它產 baseline，重建時會寫出 `grant … to anon`，
+         **把一個原本只是預設值的洞，變成明確寫下來的授權**。 */
   select 8, 0, p.proname || ':grant',
          /* ⚠ 用 proname + identity_arguments 自己組，不用 `oid::regprocedure`——
-            後者會依 search_path 省略 schema，重建時就變成依賴 search_path。
-            （2026-08-29 的第一版 baseline 是省略版，能跑但不夠穩。） */
+            後者會依 search_path 省略 schema，重建時就變成依賴 search_path。 */
          'grant execute on function public.' || quote_ident(p.proname)
       || '(' || pg_get_function_identity_arguments(p.oid) || ') to '
-      || (select string_agg(r, ', ') from unnest(array['anon','authenticated','service_role']) r
-           where has_function_privilege(r, p.oid, 'execute')) || ';'
+      || (select string_agg(r, ', ')
+            from unnest(array['anon','authenticated','service_role']) r
+           where exists (select 1 from aclexplode(p.proacl) a
+                          where a.grantee = r::regrole::oid
+                            and a.privilege_type = 'EXECUTE')) || ';'
     from pg_proc p
    where p.pronamespace = 'public'::regnamespace
      and p.prokind = 'f'
-     and (has_function_privilege('anon', p.oid, 'execute')
-       or has_function_privilege('authenticated', p.oid, 'execute')
-       or has_function_privilege('service_role', p.oid, 'execute'))
+     and p.proacl is not null
+     and exists (select 1 from aclexplode(p.proacl) a
+                  where a.grantee in ('anon'::regrole::oid,
+                                      'authenticated'::regrole::oid,
+                                      'service_role'::regrole::oid)
+                    and a.privilege_type = 'EXECUTE')
+
+  union all
+  /* ── 7.6 收回 PUBLIC ──
+     🔴 這一段是 7.5 的另一半，**少了它 baseline 就重建不出正確的權限**。
+     `create function` 之後 PUBLIC 自動有 EXECUTE，所以「PUBLIC 沒有」
+     是一個**要主動做的動作**，不是預設狀態 —— 不寫進 baseline 就會消失。
+     ⚠ 排在授權後面：先 grant 明確角色，再收 PUBLIC，順序不能反。 */
+  select 8, 1, p.proname || ':revoke-public',
+         'revoke execute on function public.' || quote_ident(p.proname)
+      || '(' || pg_get_function_identity_arguments(p.oid) || ') from public;'
+    from pg_proc p
+   where p.pronamespace = 'public'::regnamespace
+     and p.prokind = 'f'
+     and p.proacl is not null
+     and not exists (select 1 from aclexplode(p.proacl) a
+                      where a.grantee = 0 and a.privilege_type = 'EXECUTE')
 
   union all
   /* ── 8. 觸發器 ── */
