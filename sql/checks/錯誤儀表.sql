@@ -103,7 +103,13 @@ select 序, 項目, 內容 from (
           那種變更**連 `applied/` 都沒有**，baseline 一過期就真的會漏。
         ⚠ 數字不一樣不代表壞掉，代表「該重跑
           `sql/checks/匯出完整結構baseline.sql` 了」。
-        📌 更新 baseline 時，記得把下面這四個數字一起改。 */
+        📌 更新 baseline 時，記得把下面這五個數字一起改。
+
+        🔴 **⑥ 只數「有幾個」，數不到「權限變了」**（2026-08-29 發現）。
+          收掉 12 支函式的 PUBLIC 執行權之後，表／函式／索引／policy
+          **四個數字一個都沒動** —— 而那是一次真正的安全性變更。
+          → 所以第 ⑦ 段數的是**授權**：明確授權 anon 的支數，
+            以及「只靠 PUBLIC 進來」的支數（**那個應該永遠是 0**）。 */
   select 6, '⑥ 結構物件數 vs baseline（2026-08-29：表39 函式138 索引81 policy28）',
          (select '表 ' || (select count(*)::text from pg_class c
                             join pg_namespace n on n.oid=c.relnamespace
@@ -127,6 +133,34 @@ select 序, 項目, 內容 from (
                       then E'\n  ✅ 與 baseline 相同'
                       else E'\n  ⚠ 與 baseline 不同 —— 重跑 sql/checks/匯出完整結構baseline.sql'
                  end)
+
+  union all
+  /* ⑦ 函式授權有沒有漂。
+        🔴 **「anon 叫得動」有兩種來源，而它們的意思完全不同**（硬規則 2.6）：
+          · **明確授權**  —— 有人決定要給前端叫的
+          · **PUBLIC 繼承** —— 建函式時的預設值，**沒有人做過那個決定**
+        `has_function_privilege` 分不出這兩種，所以這裡一律用 `aclexplode`。
+        ⚠ 「只靠 PUBLIC」那個數字**應該永遠是 0** ——
+          不是 0 就代表有人新建了函式而沒有明確決定它的授權範圍，
+          **而新函式預設是 PUBLIC 可執行**（＝任何人叫得動）。 */
+  select 7, '⑦ 函式授權 vs baseline（2026-08-29：明確 anon 124、只靠 PUBLIC 0）',
+         (select '明確授權 anon ' || count(*) filter (where anon明確)::text
+              || '　只靠 PUBLIC ' || count(*) filter (where public有 and not anon明確)::text
+              || '　兩者都沒有 ' || count(*) filter (where not anon明確 and not public有)::text
+              || case when count(*) filter (where public有 and not anon明確) > 0
+                      then E'\n  🔴 有函式只靠 PUBLIC 進來 —— 那不是決定，是預設值。逐支確認要不要給 anon'
+                      when count(*) filter (where anon明確) <> 124
+                      then E'\n  ⚠ 明確授權的支數變了 —— 重跑 sql/checks/匯出完整結構baseline.sql'
+                      else E'\n  ✅ 與 baseline 相同' end
+            from (select
+                    exists (select 1 from aclexplode(coalesce(p.proacl,'{}')) a
+                             where a.grantee = 'anon'::regrole::oid
+                               and a.privilege_type = 'EXECUTE') as anon明確,
+                    (p.proacl is null or exists (select 1 from aclexplode(p.proacl) a
+                             where a.grantee = 0
+                               and a.privilege_type = 'EXECUTE')) as public有
+                   from pg_proc p
+                  where p.pronamespace = 'public'::regnamespace and p.prokind = 'f') s)
 
   union all
   select 5, '⑤ 測試標記（修好前的歷史資料仍標成營運）',
