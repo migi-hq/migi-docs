@@ -172,6 +172,35 @@ migi github/           ← Claude Code 的 project folder 選這層
      兩者同時發生而且都不是 bug —— 是**指令下錯了**。
      沒有那段驗證，那份 SQL 會被當成做完了（同硬規則 3.55）。
 
+   ### 🔴 2.6b 反過來的那一半：新建的函式，anon 是**明確**授權
+   （2026-08-29 同一天踩到，方向相反）
+   Supabase 在這個專案設了：
+   ```sql
+   alter default privileges in schema public
+     grant execute on functions to anon, authenticated, service_role;
+   ```
+   （`pg_default_acl` 可查，`postgres` 與 `supabase_admin` 各設了一份。）
+   ⇒ **在 `public` 新建的每一支函式，一建立就是 anon 叫得動的**，
+     而且那是**明確授權**不是 PUBLIC 繼承。
+
+   | 情況 | anon 從哪來 | 要怎麼收 |
+   |---|---|---|
+   | 舊的管理函式 | **PUBLIC 繼承** | `revoke from public` |
+   | **新建的函式** | **default privileges 明確授權** | `revoke from anon` |
+
+   🔴 **兩條路都要收才乾淨。** 我在同一天兩次都收錯方向：
+     先是收了 anon 沒效果（來源是 PUBLIC），
+     後是收了 PUBLIC 沒效果（來源是明確授權）。
+   → 新建**不該給前端叫**的函式時，兩行都要寫：
+   ```sql
+   revoke execute on function public.f(...) from public;
+   revoke execute on function public.f(...) from anon, authenticated;
+   grant  execute on function public.f(...) to service_role;
+   ```
+   ⚠ 驗證段不要只印 `has_function_privilege` ——
+     **同時印「明確有沒有」與「PUBLIC 有沒有」**，
+     否則收錯方向時看到的症狀跟沒收一模一樣。
+
 3. **不要線上猜欄位名稱或約束值。** 動任何 RPC / schema 之前，先讀 `docs/` 下的權威文件，
    或用唯讀查詢把現況撈出來確認。猜錯的成本遠高於多問一次。
 
