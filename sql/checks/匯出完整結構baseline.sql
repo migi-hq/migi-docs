@@ -120,7 +120,11 @@ with parts as (
      🔴 DROP 會把 GRANT 一起丟掉（硬規則 2），所以 baseline 一定要含它，
         否則重建出來的資料庫「函式都在但前端叫不動」。 */
   select 8, 0, p.proname || ':grant',
-         'grant execute on function ' || p.oid::regprocedure::text || ' to '
+         /* ⚠ 用 proname + identity_arguments 自己組，不用 `oid::regprocedure`——
+            後者會依 search_path 省略 schema，重建時就變成依賴 search_path。
+            （2026-08-29 的第一版 baseline 是省略版，能跑但不夠穩。） */
+         'grant execute on function public.' || quote_ident(p.proname)
+      || '(' || pg_get_function_identity_arguments(p.oid) || ') to '
       || (select string_agg(r, ', ') from unnest(array['anon','authenticated','service_role']) r
            where has_function_privilege(r, p.oid, 'execute')) || ';'
     from pg_proc p

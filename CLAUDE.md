@@ -86,6 +86,34 @@ migi github/           ← Claude Code 的 project folder 選這層
    ✅ **MCP 已於 2026-08-28 啟用，這條從現在起生效** ——
      重跑匯出不需要打擾使用者，所以沒有藉口讓快照再爛掉一次。
 
+   **1.65 `applied/` 拼不回一個完整的資料庫 —— 那是 `_baseline/` 存在的理由。**
+   （2026-08-29 立）
+   🔴 直接在 Dashboard 改、沒留檔的東西**不在 `applied/` 裡**
+     （承重牆 `uq_members_line_user` 就是）。
+   → 所以**沒有人能從 `sql/` 重建一個一樣的資料庫**，只能一支一支
+     `pg_get_functiondef` 撈。對「未來有人維護」是致命的。
+
+   ✅ **`sql/_baseline/` = 某一天的完整結構快照**（機器產生，不手改）。
+   ```
+   重建 = baseline ＋ 之後累加的 applied/
+   ```
+   ⚠ **baseline 不取代 `applied/`** —— 那是歷史，記著「**為什麼**」；
+     baseline 回答「**現在長什麼樣**」。**兩份都要。**
+
+   **產生方式**：`sql/checks/匯出完整結構baseline.sql`
+   （常駐工具，檔名沒有日期）→ Supabase SQL Editor 執行 → 匯出 CSV
+   → 用 Python 轉成 `.sql` 放進 `sql/_baseline/`。
+   🔴 **不要貼進對話** —— 347 KB 會把上下文吃光，而那份是給**人**看的不是給我看的。
+
+   目前：`2026-08-29_完整結構.sql`（761 個物件、347 KB）
+   涵蓋 12 段：擴充套件／列舉型別／資料表／約束／外鍵／索引／
+   函式／**函式授權**／觸發器／檢視表／啟用 RLS／RLS policy。
+   ⚠ **不含**：種子資料、Storage bucket 與 policy、pg_cron 排程、
+     Edge Functions、auth schema（檔尾都標了）。
+
+   📌 **順帶證明了文件會漂**：CLAUDE.md 記「135 支函式」實際 **138**；
+     待辦 21 記「24 條 org 級 policy」實際 **28**。
+
    **1.7 讓過期看得見，不要靠記性。**
    快照檔頭記兩個數字：產生時間、**當時 `sql/applied/` 的檔案數與最後一個檔名**。
    要用之前比對現在的檔案數 —— 不同就是過期，而**這個檢查不需要資料庫**。
