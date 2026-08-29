@@ -2167,9 +2167,13 @@ migi github/           ← Claude Code 的 project folder 選這層
     > ⚠ 代價是那張桌在開打前會空著 —— **所以桌況一定要能顯示「預留中」**，
     > 否則店員會以為有人在打。
 
-    🔴 但 **`list_tables_tx` 沒有回傳 `activated_at`** —— 那個要求從來沒實作。
-    後果：客人上門問有沒有桌，店員說滿了，而那張桌是空的。
-    **不是不方便，是營收損失而且沒有人會發現。**
+    ✅ **2026-08-29 查證：整條已經做完了，這一段的敘述過期了。**
+    `list_tables_tx` 回的不是 `activated_at` 而是更好用的四個欄位：
+    `is_hold` / `hold_kind`（queue＝配桌佔的、setup＝店員開了還沒結帳）/
+    `queue_play_at` / `queue_members`，外加 `auto_assign`。
+    而 POS **全部都在用**：`App.jsx:268–281` 畫「預留中 · HH:MM 開打」與要來的人，
+    `App.jsx:253` 畫「現場」標記，`App.jsx:507` 可以切換 auto_assign。
+    📌 **文件又漂了一次** —— 同踩坑第 29 條：先查再說沒有。
 
     ✅ **地基已經有了**：`table_sessions.activated_at` 欄位與 `activate_session_tx`
       都存在（「帶桌」與「真的開始打」本來就是兩個動作），缺的只是接出來。
