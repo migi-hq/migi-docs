@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   if (req.method !== 'POST') return json({ ok: false, reason: 'method_not_allowed' }, 405)
 
-  let body: { id_token?: string; mode?: string }
+  let body: { id_token?: string; mode?: string; mime?: string }
   try { body = await req.json() } catch {
     return json({ ok: false, reason: 'bad_json', message: '請求格式錯誤' }, 400)
   }
@@ -129,7 +129,22 @@ Deno.serve(async (req) => {
      🔴 路徑由這裡決定，前端**沒有任何機會指定它** ——
        那是「只能傳到自己資料夾」這件事唯一的保證。 */
   if (body.mode === 'sign_upload') {
-    const path = `${me.memberId}/${crypto.randomUUID()}.webp`
+    /* 副檔名由**前端送來的實際型別**決定，但只認白名單裡的兩種。
+       🔴 iOS 的 Safari 不支援 webp 編碼，`canvas.toBlob` 會靜靜退回 PNG／JPEG ——
+         所以「一律 .webp」是錯的假設（2026-08-29 實機打臉）。
+       ⚠ 白名單放在**這裡**而不是只放 bucket：bucket 的限制擋得住上傳，
+         但錯的副檔名已經寫進路徑了，之後看起來就是一個 `.webp` 的 JPEG。
+       ⚠ **只有副檔名讓前端影響得到，資料夾與檔名仍然由伺服器決定** ——
+         「只能傳到自己資料夾」那個保證沒有被削弱。 */
+    const EXT: Record<string, string> = { 'image/webp': 'webp', 'image/jpeg': 'jpg' }
+    const ext = EXT[String(body.mime ?? '').toLowerCase()]
+    if (!ext) {
+      return json({
+        ok: false, reason: 'mime_not_allowed',
+        message: '這種圖片格式不支援，請換一張',
+      }, 400)
+    }
+    const path = `${me.memberId}/${crypto.randomUUID()}.${ext}`
     /* 🔴 body 一定要送 `{}`，不可以省略。
        `api()` 帶了 `Content-Type: application/json`，而 POST 沒有 body 時
        Storage 會解析失敗 —— 第一版就是這樣，上傳一路失敗到這裡才看得出來。
