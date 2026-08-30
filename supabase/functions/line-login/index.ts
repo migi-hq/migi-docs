@@ -308,6 +308,11 @@ Deno.serve(async (req) => {
       return json({ ok: true, sent: false, reason: out.reason, retry_after: out.retry_after })
     }
 
+    /* 🔴 **開頭的「【MIGI 咪吉麻將】」不可以拿掉。**
+       台灣 NCC 要求發到台灣的簡訊，訊息開頭必須清楚標示
+       品牌／組織／活動名稱 —— 那是法規不是排版。
+       ⚠ 這種前綴看起來很像可以「順手清乾淨」的東西，所以在這裡寫清楚。
+       ⚠ 也不要改成英文縮寫：規定要的是**看得懂是誰發的**。 */
     const sent = await sendSms(out.phone, `【MIGI 咪吉麻將】你的驗證碼是 ${out.code}，5 分鐘內有效。`)
 
     /* 🔴 **簡訊商還沒接通時，把碼交給前端**（`dev_code`）。
