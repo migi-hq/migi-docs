@@ -19,6 +19,7 @@
    |---|---|---|
    | （省略）＝ `register` | 註冊流程最後一步 | 驗簽 → register_member_tx → 存頭像 |
    | `sync_avatar` | 頭像抽屜按「同步」 | 驗簽 → 查會員 → 只更新頭像 |
+   | `whoami` | **開機第一件事** | 驗簽 → `get_member_by_line_tx` → 這個 LINE 是誰 |
    | `check_phone` | 註冊第 2 步按「下一步」 | 驗簽 → `phone_in_use_tx` → 只回一個布林 |
    | `otp_send` | 按「傳送驗證碼」 | 驗簽 → `otp_request_tx` → 發簡訊 |
    | `otp_verify` | 輸入六碼 | 驗簽 → `otp_verify_tx` |
@@ -359,6 +360,35 @@ Deno.serve(async (req) => {
   if (aud && String(aud) !== LINE_CHANNEL_ID) {
     console.error('[line-login] aud 不符', aud, LINE_CHANNEL_ID)
     return json({ ok: false, reason: 'aud_mismatch', message: '授權來源不符' }, 401)
+  }
+
+  /* ── ②0 我是誰（開機第一件事）──────────────────────
+     🎯 **這一支存在的理由**：LIFF 給的 `line_user_id` 是驗過簽的，
+       所以系統一開始就知道他是誰 —— 以前卻沒有人去問，
+       於是老客人被丟進四步表單、中途還收到一則他根本不需要的簡訊，
+       發太多次被自己的限流擋住，變成**完全登不回去**。
+       （2026-08-30 創辦人實際卡在這裡。）
+
+     🔴 **不可以用 `register_member_tx` 代替** —— 它查不到就會**建立**。
+       拿一支會寫入的函式當查詢用，等於「問一個問題，順便改了資料」。
+
+     ⚠ 回的一定是**呼叫者自己的帳號**（`sub` 來自驗過簽的 token，
+       前端沒有機會塞別人的），但仍然只回畫面需要的欄位，
+       手機是**遮罩過的**（`0910***736`）。 */
+  if (body.mode === 'whoami') {
+    let r: Response
+    try {
+      r = await db('rpc/get_member_by_line_tx', {
+        method: 'POST',
+        body: JSON.stringify({ p_org_id: MIGI_ORG_ID, p_line_user_id: sub }),
+      })
+    } catch (e) {
+      console.error('[line-login] get_member_by_line_tx 連線失敗', e)
+      return json({ ok: false, reason: 'db_unreachable' }, 502)
+    }
+    const out = await r.json().catch(() => null)
+    if (!r.ok || !out) return json({ ok: false, reason: 'whoami_failed' }, 502)
+    return json({ ok: true, ...out })
   }
 
   /* ── ②a 只檢查手機有沒有人用（註冊第 2 步）────────
