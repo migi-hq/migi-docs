@@ -1,8 +1,8 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 131 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
-> 最後歸檔的是 `2026-08-30_自助認領與換手機.sql`）
+> **基準：`sql/applied/` 有 133 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
+> 最後歸檔的是 `2026-08-30_個人設定顯示完整手機.sql`）
 >
 > 🔴 **2026-08-30 補記一次漂移**：本文件在此之前**完全沒有 `phone_otps`、
 > `members.phone_verified_at`、`otp_*` 那一整批** —— 也就是 08-30 上午的
@@ -27,7 +27,7 @@
 
 ## 怎麼知道它過期了（硬規則 1.7）
 
-比對現在 `sql/applied/` 的檔案數與上面的基準（**131**）—— **不同就是過期**。
+比對現在 `sql/applied/` 的檔案數與上面的基準（**133**）—— **不同就是過期**。
 這個檢查不需要資料庫。
 
 ⚠ **但它只能證明「確定過期」，不能證明「還是新的」。**
@@ -477,7 +477,7 @@ phone_recently_verified_tx(p_org_id, p_phone, p_line_user_id, p_purpose) → 15 
 otp_consume_tx(p_org_id, p_phone, p_line_user_id, p_purpose, p_member_id) → 用掉 ＋ 蓋章
 claim_member_by_phone_tx(p_org_id, p_phone, p_line_user_id, p_purpose='register')
 set_member_phone_tx(p_org_id, p_line_user_id, p_phone)
-get_member_by_line_tx(p_org_id, p_line_user_id)                   → whoami
+get_member_by_line_tx(p_org_id, p_line_user_id)                   → whoami（手機遮罩）
 phone_in_use_tx(p_org_id, p_phone, p_line_user_id)                → ⏳ 目前沒有人呼叫
 register_member_tx(...)                                           → 🔴 2026-08-30 收回 anon
 ```
@@ -488,6 +488,15 @@ register_member_tx(...)                                           → 🔴 2026-
   ⚠ 收的時候**兩個方向都要收**（硬規則 2.6／2.6b）：
   `revoke from public`（舊函式的 PUBLIC 繼承）＋
   `revoke from anon`（新函式的 default privileges 明確授權）。
+
+🔴 **`get_my_profile_tx` 回的是完整手機，不是遮罩**（2026-08-30 下午改回來）。
+  它一度做成 `phone_masked`（`0910***736`），當天就換掉 ——
+  遮罩答不出「**這是我的哪一支**」，而那是個人設定顯示它的唯一用途。
+  ⚠ 代價：這支是 **anon ＋ 前端送 `p_member_id`** ⇒ 知道某人的 member uuid
+    就查得到他的手機。**已知並接受的取捨**（它本來就已經回生日與性別了），
+    待辦 14 改吃 `auth.uid()` 之後歸零。
+  ⚠ **`get_member_by_line_tx`（whoami）仍然是遮罩的** —— 那條路上沒有畫面
+    在讀它。兩支的行為不同是刻意的，不是漏改。
 
 📌 **`phone_in_use_tx` 現在沒有任何呼叫端。**
   它原本給註冊第 2 步「邊打邊查這支號碼有人用嗎」，
