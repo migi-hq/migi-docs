@@ -1,15 +1,20 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 107 個檔案**（依檔名排序最後一個是 `測試帳號建立.sql`；
-> 最後歸檔的是 `2026-08-29_頭像地基_清舊圖與記住小熊.sql`）
-> 📌 該支新增 `members.avatar_bear`（已補進下方欄位說明）。
+> **基準：`sql/applied/` 有 131 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
+> 最後歸檔的是 `2026-08-30_自助認領與換手機.sql`）
 >
-> 📌 依硬規則 1.6，四次歸檔已同步更新本文件：
+> 🔴 **2026-08-30 補記一次漂移**：本文件在此之前**完全沒有 `phone_otps`、
+> `members.phone_verified_at`、`otp_*` 那一整批** —— 也就是 08-30 上午的
+> 簡訊驗證地基歸檔時**沒有依硬規則 1.6 同步更新**。
+> ⚠ 這是這條規則第二次被跳過。**規則本身沒有錯，是執行時沒做。**
+>
+> 📌 依硬規則 1.6，歷次歸檔已同步更新本文件：
 > `p_rounds` 與 `rounds` 欄位預設值、`topup_void_tx` 的 anon 授權、
 > `orgs.live_from` 新欄位、`v_real_*` 從 5 個變 12 個、
 > `set_my_profile_basics_tx` 與 `migi_norm_phone` 兩支新函式、`members_phone_chk`、
-> `register_member_tx` 的暱稱正規化與 `display_name_reserved`。
+> `register_member_tx` 的暱稱正規化與 `display_name_reserved`、
+> **簡訊驗證整批（`phone_otps` ＋ 8 支函式 ＋ `phone_verified_at`）**。
 > 來源：`sql/checks/2026-08-28_現況全匯出.sql`（pg_proc / pg_class / pg_constraint / pg_index / information_schema）
 
 ## 怎麼用這份
@@ -22,7 +27,7 @@
 
 ## 怎麼知道它過期了（硬規則 1.7）
 
-比對現在 `sql/applied/` 的檔案數與上面的基準（**107**）—— **不同就是過期**。
+比對現在 `sql/applied/` 的檔案數與上面的基準（**131**）—— **不同就是過期**。
 這個檢查不需要資料庫。
 
 ⚠ **但它只能證明「確定過期」，不能證明「還是新的」。**
@@ -120,11 +125,22 @@
 | `member_interactions` | id! │ org_id! │ member_id! │ **staff_id** │ channel!=system │ kind! │ note │ created_at! │ created_by |
 | `member_likes` | id! │ org_id! │ liker_id! │ target_id! │ session_id │ created_at! |
 | `member_tiers` | **code!**（PK）│ label! │ discount_pct!=0 │ threshold_amount │ sort!=0 │ is_active!=true │ note │ created_at! |
-| `members` | id! │ org_id! │ **line_user_id** │ display_name! │ phone │ home_store_id │ **tier!=bubble_tea** │ gender │ **birthday** │ occupation │ district │ acquisition_source │ avatar_url │ **last_visit_at** │ **visit_count!=0** │ lifecycle!=new │ **primary_staff_id** │ deleted_at │ created_at! │ updated_at! │ created_by │ updated_by │ **tier_override** │ last_app_active_at │ rank!='銅牌熊 I' │ title!='新手上路' │ likes_count!=0 │ **is_test!=false** │ about │ sched │ style jsonb │ see_score!='牌咖' │ baby_tile jsonb │ avatar_source!=bear │ avatar_photo_path │ avatar_photo_at │ avatar_blocked!=false │ avatar_removed_count!=0 │ inv_type!=member │ inv_carrier │ inv_donate_code │ inv_tax_id │ inv_title |
+| `members` | id! │ org_id! │ **line_user_id** │ display_name! │ phone │ home_store_id │ **tier!=bubble_tea** │ gender │ **birthday** │ occupation │ district │ acquisition_source │ avatar_url │ **last_visit_at** │ **visit_count!=0** │ lifecycle!=new │ **primary_staff_id** │ deleted_at │ created_at! │ updated_at! │ created_by │ updated_by │ **tier_override** │ last_app_active_at │ rank!='銅牌熊 I' │ title!='新手上路' │ likes_count!=0 │ **is_test!=false** │ about │ sched │ style jsonb │ see_score!='牌咖' │ baby_tile jsonb │ avatar_source!=bear │ avatar_photo_path │ avatar_photo_at │ avatar_blocked!=false │ avatar_removed_count!=0 │ inv_type!=member │ inv_carrier │ inv_donate_code │ inv_tax_id │ inv_title │ **phone_verified_at** |
 | `order_items` | id! │ order_id! │ **product_id!** │ qty!=1 │ created_at! │ org_id! │ name │ unit_price! │ line_total │ **revenue_type!** |
 | `order_payments` | id! │ org_id! │ store_id! │ order_id! │ method! │ amount! │ cash_received │ change_given │ ref_no │ staff_id │ created_at! |
 | `orders` | id! │ org_id! │ store_id! │ member_id │ table_id │ **session_id** │ status!=open │ **channel!=counter** │ total_points!=0 │ deleted_at │ created_at! │ updated_at! │ **created_by** │ **updated_by** │ order_no │ subtotal!=0 │ coupon_discount!=0 │ tier_discount!=0 │ payable!=0 │ points_used!=0 │ cash_due!=0 │ tier_at_order │ **idempotency_key** │ wallet_txn_id │ paid_at │ entity_id │ is_test!=false │ tier_discount_pct │ txn_no |
 | `orgs` | id! │ name! │ plan!=self │ deleted_at │ created_at! │ updated_at! │ created_by │ updated_by │ 🎯 **live_from**（2026-08-28 新增） |
+| `phone_otps` | 🆕 2026-08-30。id! │ org_id! │ phone! │ code_hash! │ purpose! │ line_user_id │ attempts!=0 │ sent_at!=now() │ expires_at! │ verified_at │ consumed_at |
+
+> 🔴 **`members.phone_verified_at`（2026-08-30 起才真的有人寫）** ——
+> 欄位早就在，但在 `otp_consume_tx` 出現之前**掃全庫 0 支函式會寫它**。
+> 也就是客人真的驗過簡訊，卻沒有人在他身上蓋章。
+> 🎯 而**自助認領的分級完全建立在那個章上面**（未驗過的帳號只有在
+> 沒有訂單也沒有餘額時才放行），所以那不是一個裝飾欄位。
+>
+> ⚠ `phone_otps` **啟用了 RLS 而且刻意 0 條 policy** ——
+> 那不是漏掉：它只能被 service_role（Edge Function）碰到，
+> 任何前端角色一律讀不到也寫不到。**驗證碼的雜湊沒有任何人需要看見。**
 
 ### 🎯 `orgs.live_from` —— 報表的第三層防線
 
@@ -245,6 +261,7 @@ update orgs set live_from = '<真實客人開始使用的時間>';
 | `mahjong_buddies.*_origin_check` | **pre_existing / matched** 🎯 護城河深度 = `count(*) where origin='matched'` |
 | `mahjong_buddies.mahjong_buddies_check` | member_id <> buddy_id |
 | `buddy_invites.*_status_check` | pending / accepted / rejected |
+| `phone_otps.phone_otps_purpose_check` | **register / claim / change** 🆕 2026-08-30。<br>⚠ 註冊流程實際用的是 **`register`**（驗過之後由後端決定是註冊還是認領）；<br>`claim` 留給日後獨立出來的認領入口，`change` 給個人設定改手機 |
 
 ### 桌與配桌
 
@@ -451,8 +468,55 @@ set_my_profile_basics_tx(p_org_id, p_member_id, p_birthday date = null, p_gender
   ⚠ 性別在函式裡驗（回 `gender_invalid`），不是丟給 CHECK 拋 23514
 ```
 
-⚠ **沒有「改手機」的 RPC** —— 唯一會寫 `phone` 的是 `register_member_tx`（建立時）。
-  這是待辦 36（情境 D／E）的核心缺口，不是漏記。
+### 🔴 身分與簡訊驗證（2026-08-30 · **全部只給 service_role**）
+
+```
+otp_request_tx(p_org_id, p_phone, p_purpose, p_line_user_id)      → 產碼 ＋ 三道限流
+otp_verify_tx(p_org_id, p_phone, p_code, p_purpose)               → 驗碼（5 次上限）
+phone_recently_verified_tx(p_org_id, p_phone, p_line_user_id, p_purpose) → 15 分鐘內驗過？
+otp_consume_tx(p_org_id, p_phone, p_line_user_id, p_purpose, p_member_id) → 用掉 ＋ 蓋章
+claim_member_by_phone_tx(p_org_id, p_phone, p_line_user_id, p_purpose='register')
+set_member_phone_tx(p_org_id, p_line_user_id, p_phone)
+get_member_by_line_tx(p_org_id, p_line_user_id)                   → whoami
+phone_in_use_tx(p_org_id, p_phone, p_line_user_id)                → ⏳ 目前沒有人呼叫
+register_member_tx(...)                                           → 🔴 2026-08-30 收回 anon
+```
+
+🔴 **這九支一律 `只給 service_role`，前端一個都叫不動。**
+  它們每一支不是「改你是誰」就是「決定要不要把一個帳號交給你」——
+  唯一的入口是 Edge Function `line-login`（驗過 LINE 簽章之後才碰得到）。
+  ⚠ 收的時候**兩個方向都要收**（硬規則 2.6／2.6b）：
+  `revoke from public`（舊函式的 PUBLIC 繼承）＋
+  `revoke from anon`（新函式的 default privileges 明確授權）。
+
+📌 **`phone_in_use_tx` 現在沒有任何呼叫端。**
+  它原本給註冊第 2 步「邊打邊查這支號碼有人用嗎」，
+  2026-08-30 整個拿掉 —— 那個訊息是死路（**真正的號碼主人也被擋在門外**），
+  而且它本身是一個「有 LINE 就能一直問某支號碼是不是會員」的查詢器。
+  ⚠ 先留著不刪：它是**唯一**「不會順手建立帳號」的手機查詢，
+  日後 POS 幫客人註冊時很可能會用到。**但下次盤點死碼時要重新問一次。**
+
+### 🎯 認領的分級（`claim_member_by_phone_tx`）
+
+| 舊帳號的狀態 | 自助 | 回傳 |
+|---|---|---|
+| 已經綁在**你自己**的 LINE 上 | ✅ | `already_yours`（**排在驗證檢查之前** —— 見下） |
+| 手機**驗過** | ✅ | `claimed` |
+| 未驗 ＋ 沒訂單也沒餘額 | ✅ | `claimed` |
+| 未驗 ＋ **有訂單或有餘額** | 🔴 | `staff_required` |
+| 已綁**別的** LINE | 🔴 | `line_bound_elsewhere` |
+| 你的 LINE 已經有別的會員 | 🔴 | `merge_required` |
+
+🔴 **`already_yours` 與 `unchanged` 必須排在驗證檢查之前。**
+  驗證碼**用過一次就消耗**，排在後面的話雙擊的第二次會拿到 `not_verified`
+  —— 客人看到「成功的那一次顯示失敗」。
+  **冪等不可以依賴一個會被用掉的東西。**
+  ⚠ 那不是洩漏：它只認得出「這個帳號已經綁在你自己的 LINE 上」，
+  而 `whoami` 開機時早就告訴他了。
+
+✅ ~~沒有「改手機」的 RPC~~ → **`set_member_phone_tx` 已於 2026-08-30 建立**
+  （待辦 36 的 D2）。舊號碼是什麼**不重要** —— 你證明的是「我控制這支新號碼」。
+  驗不了（手機已經不在手上）才要找店員。
 
 ### POS 專用
 
