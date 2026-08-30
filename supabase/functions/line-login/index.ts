@@ -99,11 +99,21 @@ const db = (path: string, init: RequestInit = {}) =>
    ⚠ 沒設定就**回 false 而不是拋錯** —— 呼叫端據此決定要不要交出 dev_code。
      拋錯的話「還沒接簡訊商」會長得像「簡訊商壞了」。
 
-   ⏳ 目前是三竹（mitake）的形狀。要接通只要在
-     Dashboard → Edge Functions → Secrets 加：
+   ── 🔴 選簡訊商之前一定要先問這一題：**要不要綁 IP？** ──
+   Supabase Edge Functions 跑在 Deno Deploy 上，**沒有固定對外 IP**
+   （每次呼叫都可能從不同位址出去，官方文件明講不提供）。
+   而**三竹的 API 要求把發送主機 IP 加進白名單**（寫信給客服綁定）。
+   ⇒ 兩者直接衝突。要用三竹就得額外架一台固定 IP 的 proxy ——
+     而那是「要有人維護的第三套東西」（硬規則 5.5）。
+   → 所以優先選**用 token 認證、不綁 IP** 的（Twilio／AWS SNS 那一類）。
+
+   ⏳ 設定（Dashboard → Edge Functions → Secrets）：
        SMS_PROVIDER = mitake
        SMS_USER     = <帳號>
        SMS_PASS     = <密碼>
+       SMS_URL      = <客服給的 API 網址>   ← ⚠ 不要寫死
+   ⚠ **網址一定要從 secret 來**：三竹的個人帳號（二站）與企業帳號（三站）
+     網址不同，而且客服會依帳號給不同的位址。寫死一個等於賭它剛好對。
    ⚠ 三竹的回應是**純文字不是 JSON**（`[1]\nmsgid=...\nstatuscode=1`），
      `statuscode` 是 1/2/4 才算成功。不要用 res.ok 判斷 ——
      它送錯帳密也會回 HTTP 200。 */
@@ -120,7 +130,7 @@ async function sendSms(phone: string, text: string): Promise<boolean> {
     return false
   }
   try {
-    const url = 'https://smsapi.mitake.com.tw/api/mtk/SmSend?CharsetURL=UTF8'
+    const url = Deno.env.get('SMS_URL') ?? 'https://smsapi.mitake.com.tw/api/mtk/SmSend?CharsetURL=UTF8'
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
