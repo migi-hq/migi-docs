@@ -119,7 +119,12 @@ const db = (path: string, init: RequestInit = {}) =>
    ```
    SMS_PROVIDER = cresclab
    SMS_TOKEN    = sk_...
+   SMS_FROM     = 1990        ← 選填，有申請專屬號碼才要
    ```
+   🔴 **MAAC Go 的「測試金鑰」不是沙箱。** 後台明寫
+     「測試金鑰僅供環境／用途標示，**實際發送仍依帳戶餘額**」——
+     也就是 `sk_test_` 一樣會送出真的簡訊、一樣扣錢。
+     ⚠ 不要因為看到 `test` 就以為可以隨便打。
    ⚠ 三竹則是 `SMS_USER` / `SMS_PASS` / `SMS_URL`（網址一定要從 secret 來，
      個人帳號二站與企業帳號三站不同）。
 
@@ -177,7 +182,15 @@ async function sendSms(phone: string, text: string): Promise<boolean> {
             Authorization: `Bearer ${Deno.env.get('SMS_TOKEN')}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ to: toE164TW(phone), body: text, type: 'otp' }),
+          /* ⚠ `from`（發送門號／簡碼，例如 `1990`）只有設了才送。
+             官網首頁的範例沒有它，後台的範例有 —— 也就是它**可能是選填**，
+             但也可能是「有申請專屬號碼才要帶」。
+             🎯 做成可選：沒設就不帶，設了就帶。這樣兩種情況都不會壞，
+               而且不用等我猜對才動得了。 */
+          body: JSON.stringify({
+            to: toE164TW(phone), body: text, type: 'otp',
+            ...(Deno.env.get('SMS_FROM') ? { from: Deno.env.get('SMS_FROM') } : {}),
+          }),
         })
       const out = await res.text()
       /* ⚠ **成功的判準還沒查證。** 官網只給了 request 範例，
