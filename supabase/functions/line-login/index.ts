@@ -14,11 +14,19 @@
      我們沒有發任何 Supabase JWT，只是在伺服器端驗 LINE 的 token。
      那五個阻擋條件不適用。
 
-   ── 兩個模式 ────────────────────────────────────────
+   ── 三個模式 ────────────────────────────────────────
    | mode | 什麼時候用 | 做什麼 |
    |---|---|---|
    | （省略）＝ `register` | 註冊流程最後一步 | 驗簽 → register_member_tx → 存頭像 |
    | `sync_avatar` | 頭像抽屜按「同步」 | 驗簽 → 查會員 → 只更新頭像 |
+   | `check_phone` | 註冊第 2 步按「下一步」 | 驗簽 → `phone_in_use_tx` → 只回一個布林 |
+
+   🔴 **`check_phone` 本質上是「這支號碼是不是會員」的查詢器**，
+     所以它一定要在**驗簽之後**才執行 —— 也就是要有一個真的 LINE 帳號才問得到。
+     ⚠ 回傳**只有一個布林**：不給 `member_id`、不給暱稱、不給任何東西。
+     ⚠ 拿到之後也綁不進去（`register_member_tx` 的 A3 已於 2026-08-30 堵掉）。
+   ⏳ 之後若要更嚴，是在這裡加**每個 `sub` 的次數上限**，
+     不是把它改回不存在 —— 沒有它，客人要填完四步才知道被擋。
 
    🔴 **`sync_avatar` 不能重用 `register_member_tx`** ——
      它第一件事就是 `if v_name = '' then raise 'display_name required'`，
@@ -126,6 +134,7 @@ Deno.serve(async (req) => {
     return json({ ok: false, reason: 'id_token_required', message: '缺少 LINE 授權資訊' }, 400)
   }
   const syncOnly = body.mode === 'sync_avatar'
+  const checkPhone = body.mode === 'check_phone'
 
   /* ── ① 向 LINE 驗簽 ──────────────────────────────
      用 LINE 的 verify 端點，不自己實作 JWKS 驗證：
@@ -161,7 +170,7 @@ Deno.serve(async (req) => {
     return json({
       ok: false,
       reason: 'no_sub',
-      message: '取不到 LINE 識別碼，請洽櫃檯',
+      message: '取不到 LINE 識別碼，請找店員或客服',
     }, 500)
   }
 
@@ -174,7 +183,37 @@ Deno.serve(async (req) => {
     return json({ ok: false, reason: 'aud_mismatch', message: '授權來源不符' }, 401)
   }
 
-  /* ── ②a 只同步頭像（頭像抽屜的「同步」按鈕）──────── */
+  /* ── ②a 只檢查手機有沒有人用（註冊第 2 步）────────
+     ⚠ 放在驗簽**之後** —— 這是這一段唯一的防線：要有真的 LINE 帳號才問得到。
+     ⚠ 正規化交給 `phone_in_use_tx` 裡的 `migi_norm_phone()`，
+       這裡**不要自己算** —— 多一個地方算就多一個會算歪的地方，
+       而 `uq_members_phone` 是字串比對（`0912-345-678` ≠ `0912345678`）。 */
+  if (checkPhone) {
+    const phone = (body.phone ?? '').trim()
+    if (!phone) return json({ ok: true, in_use: false })
+    let r: Response
+    try {
+      r = await db('rpc/phone_in_use_tx', {
+        method: 'POST',
+        body: JSON.stringify({ p_org_id: MIGI_ORG_ID, p_phone: phone }),
+      })
+    } catch (e) {
+      /* 🔴 查不到就說「沒被用」（fail open）。
+         把人因為網路問題擋在門外比較糟，而**送出那一步還有一道**
+         （register_member_tx 會回 phone_taken）。 */
+      console.error('[line-login] phone_in_use_tx 連線失敗', e)
+      return json({ ok: true, in_use: false, degraded: true })
+    }
+    if (!r.ok) {
+      console.warn('[line-login] phone_in_use_tx 回錯', r.status)
+      return json({ ok: true, in_use: false, degraded: true })
+    }
+    const used = await r.json().catch(() => null)
+    // 🔴 只回布林。不回 member_id、不回暱稱、不回任何可以辨識那個人的東西。
+    return json({ ok: true, in_use: used === true })
+  }
+
+  /* ── ②b 只同步頭像（頭像抽屜的「同步」按鈕）──────── */
   if (syncOnly) {
     let found: Response
     try {

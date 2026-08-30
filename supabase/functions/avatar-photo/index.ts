@@ -92,7 +92,7 @@ async function whoAmI(idToken: string): Promise<
   const sub = body?.sub
   if (!sub || typeof sub !== 'string') {
     console.error('[avatar-photo] 驗過了但沒有 sub，檢查 LIFF 的 openid scope')
-    return { ok: false, status: 500, body: { ok: false, reason: 'no_sub', message: '取不到 LINE 識別碼，請洽櫃檯' } }
+    return { ok: false, status: 500, body: { ok: false, reason: 'no_sub', message: '取不到 LINE 識別碼，請找店員或客服' } }
   }
   // ⚠ 零成本的第二道：LINE 已經驗過 aud，但換端點或參數寫錯時這裡會擋下來
   if (body?.aud && String(body.aud) !== LINE_CHANNEL_ID) {
