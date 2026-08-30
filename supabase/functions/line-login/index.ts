@@ -105,21 +105,26 @@ const db = (path: string, init: RequestInit = {}) =>
    ⇒ 任何要求 IP 白名單的簡訊商都得再架一台固定 IP 的 proxy，
      而那是「要有人維護的第三套東西」（硬規則 5.5）。
 
-   | | 認證 | 綁 IP | 判定 |
-   |---|---|---|---|
-   | **labspace**（層次數位空間） | Bearer token | **不用** | ✅ 首選 |
-   | mitake（三竹） | 帳號密碼 | 🔴 **必須** | ❌ 除非架 proxy |
+   | | 認證 | 綁 IP | 開通 | 判定 |
+   |---|---|---|---|---|
+   | **cresclab**（MAAC Go） | Bearer token | 不用 | 自助、**不用統編**、送 30 封 | ✅ **首選** |
+   | labspace（層次數位空間） | Bearer token | 不用 | 要**統一編號** | 🟡 備案 |
+   | mitake（三竹） | 帳號密碼 | 🔴 **必須** | 業務洽談 | ❌ 除非架 proxy |
+
+   🎯 選 cresclab 的關鍵不是價格，是它**明確定位交易型簡訊**
+     （官網列的情境就是登入／付款／2FA，承諾送達率 99.7%、平均 3 秒）。
+     OTP 要的是速度與送達，行銷簡訊平台不會對這兩件事做承諾。
 
    ⏳ 設定（Dashboard → Edge Functions → Secrets）：
    ```
-   SMS_PROVIDER = labspace
-   SMS_TOKEN    = <API key>
+   SMS_PROVIDER = cresclab
+   SMS_TOKEN    = sk_...
    ```
-   ⚠ 三竹則是 `SMS_PROVIDER=mitake` ＋ `SMS_USER` / `SMS_PASS` / `SMS_URL`。
-     **網址一定要從 secret 來**：個人帳號（二站）與企業帳號（三站）不同。
+   ⚠ 三竹則是 `SMS_USER` / `SMS_PASS` / `SMS_URL`（網址一定要從 secret 來，
+     個人帳號二站與企業帳號三站不同）。
 
-   ⚠ **一則 = 70 字以內。** 目前的驗證碼簡訊約 28 字，離上限還很遠 ——
-     但**寫長一點就變兩則，成本直接翻倍**，而那不會有任何錯誤訊息。 */
+   ⚠ **一則 = 中文 70 字。** 目前的驗證碼簡訊約 28 字 ——
+     但**寫長一點就變兩段，成本直接翻倍**，而那不會有任何錯誤訊息。 */
 /* 🔴 **「有沒有簡訊能力」只能有一個判斷來源。**
    原本寫死成「有沒有 SMS_USER + SMS_PASS」—— 那是三竹的形狀，
    而 labspace 用的是 Bearer token，根本沒有 user/pass。
@@ -127,10 +132,23 @@ const db = (path: string, init: RequestInit = {}) =>
      「otp_send 說沒設定所以跳過，但其實設定好了」這種不會報錯的狀況。 */
 function smsConfigured(): boolean {
   switch (Deno.env.get('SMS_PROVIDER')) {
+    case 'cresclab':
     case 'labspace': return !!Deno.env.get('SMS_TOKEN')
     case 'mitake': return !!(Deno.env.get('SMS_USER') && Deno.env.get('SMS_PASS'))
     default: return false
   }
+}
+
+/* 09xxxxxxxx → +886xxxxxxxxx（E.164）
+   🔴 **這一步不能省。** `migi_norm_phone` 回的是本地格式 `09...`，
+     而 MAAC Go 的 API 範例是 `+886912345678`。
+     直接送 `09...` 的話**很可能不會報錯，只是送不到** ——
+     那是這類串接最典型的靜默失敗。
+   ⚠ 只處理台灣門號：這個 App 的註冊本來就只收 09 開頭 10 碼
+     （`migi_norm_phone` 擋掉其餘），所以不需要通用的解析。 */
+function toE164TW(local: string): string {
+  const d = (local || '').replace(/\D/g, '')
+  return d.startsWith('0') ? '+886' + d.slice(1) : (d.startsWith('886') ? '+' + d : local)
 }
 
 async function sendSms(phone: string, text: string): Promise<boolean> {
@@ -140,6 +158,41 @@ async function sendSms(phone: string, text: string): Promise<boolean> {
   }
   const provider = Deno.env.get('SMS_PROVIDER')
   try {
+    /* ── MAAC Go（漸強實驗室）──────────────────────
+       🎯 **首選。** 它是這幾家裡唯一**明確定位交易型簡訊**的：
+         官網列的情境就是「登入、付款、2FA」，並承諾送達率 99.7%、
+         平均 3 秒。OTP 要的正是速度與送達，而不是行銷觸達。
+       🎯 自助註冊、**不用統編**、最低儲值 NT$100、送 30 封 ——
+         也就是**不用等合約就能真的測一次**。
+
+       🔴 號碼是 **E.164**（`+886912345678`）不是 `09...` ——
+         送錯格式很可能不報錯只是送不到。
+       🔴 `type: 'otp'` 不是裝飾：交易型與行銷型走的路由不同，
+         標錯會影響送達與計費。 */
+    if (provider === 'cresclab') {
+      const res = await fetch(
+        Deno.env.get('SMS_URL') ?? 'https://sms.cresclab.com/api/sms/send', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${Deno.env.get('SMS_TOKEN')}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ to: toE164TW(phone), body: text, type: 'otp' }),
+        })
+      const out = await res.text()
+      /* ⚠ **成功的判準還沒查證。** 官網只給了 request 範例，
+         沒有列出 response 的結構，所以這裡先用 HTTP 狀態碼，
+         並且**把 body 完整記進 log**。
+         🔴 第一次真的送出之後要回來看 log 確認 ——
+           三竹就是「送錯帳密也回 200」，不能假設別人不會這樣。 */
+      console.log('[line-login] cresclab 回應', res.status, out.slice(0, 300))
+      if (!res.ok) {
+        console.error('[line-login] cresclab 送出失敗', res.status, out.slice(0, 300))
+        return false
+      }
+      return true
+    }
+
     /* ── Labspace（層次數位空間）───────────────────
        🎯 目前的首選：**Bearer token 認證，不綁 IP**，
          所以 Supabase Edge Functions 的浮動 IP 不是問題。
