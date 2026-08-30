@@ -20,6 +20,8 @@
    | （省略）＝ `register` | 註冊流程最後一步 | 驗簽 → register_member_tx → 存頭像 |
    | `sync_avatar` | 頭像抽屜按「同步」 | 驗簽 → 查會員 → 只更新頭像 |
    | `check_phone` | 註冊第 2 步按「下一步」 | 驗簽 → `phone_in_use_tx` → 只回一個布林 |
+   | `otp_send` | 按「傳送驗證碼」 | 驗簽 → `otp_request_tx` → 發簡訊 |
+   | `otp_verify` | 輸入六碼 | 驗簽 → `otp_verify_tx` |
 
    🔴 **`check_phone` 本質上是「這支號碼是不是會員」的查詢器**，
      所以它一定要在**驗簽之後**才執行 —— 也就是要有一個真的 LINE 帳號才問得到。
@@ -90,6 +92,54 @@ const db = (path: string, init: RequestInit = {}) =>
     },
   })
 
+/* ── 發簡訊 ────────────────────────────────────────────
+   🎯 **整支函式就是簡訊商的接縫。** 換一家只要改這裡，
+     其餘（限流、雜湊、嘗試次數、前端）一個字都不用動。
+
+   ⚠ 沒設定就**回 false 而不是拋錯** —— 呼叫端據此決定要不要交出 dev_code。
+     拋錯的話「還沒接簡訊商」會長得像「簡訊商壞了」。
+
+   ⏳ 目前是三竹（mitake）的形狀。要接通只要在
+     Dashboard → Edge Functions → Secrets 加：
+       SMS_PROVIDER = mitake
+       SMS_USER     = <帳號>
+       SMS_PASS     = <密碼>
+   ⚠ 三竹的回應是**純文字不是 JSON**（`[1]\nmsgid=...\nstatuscode=1`），
+     `statuscode` 是 1/2/4 才算成功。不要用 res.ok 判斷 ——
+     它送錯帳密也會回 HTTP 200。 */
+async function sendSms(phone: string, text: string): Promise<boolean> {
+  const provider = Deno.env.get('SMS_PROVIDER')
+  const user = Deno.env.get('SMS_USER')
+  const pass = Deno.env.get('SMS_PASS')
+  if (!provider || !user || !pass) {
+    console.warn('[line-login] 簡訊商還沒設定，這則沒有送出')
+    return false
+  }
+  if (provider !== 'mitake') {
+    console.error('[line-login] 不認得的簡訊商', provider)
+    return false
+  }
+  try {
+    const url = 'https://smsapi.mitake.com.tw/api/mtk/SmSend?CharsetURL=UTF8'
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+      body: new URLSearchParams({ username: user, password: pass, dstaddr: phone, smbody: text }),
+    })
+    const raw = await res.text()
+    const m = raw.match(/statuscode\s*=\s*(\w+)/)
+    const okCodes = ['1', '2', '4']
+    if (!m || !okCodes.includes(m[1])) {
+      console.error('[line-login] 三竹回報失敗', res.status, raw.slice(0, 200))
+      return false
+    }
+    return true
+  } catch (e) {
+    console.error('[line-login] 簡訊送出失敗', e)
+    return false
+  }
+}
+
 /* 把驗過簽的 picture 寫進 members.avatar_url。
    ⚠ 回傳 null 代表沒寫成（沒有 picture、或 RPC 拒絕），
      由呼叫端決定那是不是致命的 —— 註冊時不是，同步時是。 */
@@ -122,7 +172,10 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   if (req.method !== 'POST') return json({ ok: false, reason: 'method_not_allowed' }, 405)
 
-  let body: { id_token?: string; display_name?: string; phone?: string; mode?: string }
+  let body: {
+    id_token?: string; display_name?: string; phone?: string; mode?: string
+    code?: string; purpose?: string
+  }
   try {
     body = await req.json()
   } catch {
@@ -211,6 +264,82 @@ Deno.serve(async (req) => {
     const used = await r.json().catch(() => null)
     // 🔴 只回布林。不回 member_id、不回暱稱、不回任何可以辨識那個人的東西。
     return json({ ok: true, in_use: used === true })
+  }
+
+  /* ── ②b 發驗證碼 ──────────────────────────────────
+     ⚠ 一樣放在驗簽之後 —— 沒有 LINE 帳號就發不出簡訊，
+       否則這支就是一個「幫任何人付錢發簡訊」的按鈕。
+     ⚠ 限流三道都在 `otp_request_tx` 裡（同號碼 60 秒／1 小時 5 則／
+       同一個 LINE 1 小時 10 則），這裡不重複實作 —— 兩個地方算就會不一致。 */
+  if (body.mode === 'otp_send') {
+    const purpose = body.purpose ?? 'register'
+    let r: Response
+    try {
+      r = await db('rpc/otp_request_tx', {
+        method: 'POST',
+        body: JSON.stringify({
+          p_org_id: MIGI_ORG_ID, p_phone: body.phone ?? '',
+          p_purpose: purpose, p_line_user_id: sub,
+        }),
+      })
+    } catch (e) {
+      console.error('[line-login] otp_request_tx 連線失敗', e)
+      return json({ ok: false, reason: 'db_unreachable', message: '系統忙碌中，請稍後再試' }, 502)
+    }
+    const out = await r.json().catch(() => null)
+    if (!r.ok || !out) {
+      return json({ ok: false, reason: 'otp_failed', message: '系統忙碌中，請稍後再試' }, 502)
+    }
+    if (!out.ok) {
+      /* 🔴 限流與格式錯是**業務結果不是錯誤**，所以回 `ok: true`。
+         前端的 `callFn` 看到 `ok: false` 會把整個 data 換成一個 error 物件 ——
+         那樣 `retry_after`（還要等幾秒）就消失了，客人只會看到
+         一句「操作失敗」。同 `line_conflict` 那次的教訓。 */
+      return json({ ok: true, sent: false, reason: out.reason, retry_after: out.retry_after })
+    }
+
+    const sent = await sendSms(out.phone, `【MIGI 咪吉麻將】你的驗證碼是 ${out.code}，5 分鐘內有效。`)
+
+    /* 🔴 **簡訊商還沒接通時，把碼交給前端**（`dev_code`）。
+       這是一個旁路，而硬規則 5.7 說旁路一旦存在就會被忘記 ——
+       所以它**自帶到期日**（寫死在 `otp_request_tx` 裡的 2026-09-30），
+       時間到了資料庫就不再回 `dev_code`，這裡也就沒東西可傳。
+       ⚠ **不要在這裡自己判斷日期** —— 那等於多一個可以偷偷改的地方。
+         唯一的開關在資料庫函式裡，改它會留下一份 applied/ 的 SQL。
+       ⚠ 簡訊真的送出去了就**不回** dev_code —— 有簡訊就不需要旁路。 */
+    return json({
+      ok: true, sent,
+      ...(sent ? {} : { dev_code: out.dev_code ?? null, dev_until: out.dev_until ?? null }),
+    })
+  }
+
+  /* ── ②c 驗證碼 ────────────────────────────────────
+     ⚠ 嘗試次數上限在 `otp_verify_tx` 裡（5 次）。
+       6 位數只有 100 萬種組合，沒有上限的話暴力猜解幾分鐘就會成功。 */
+  if (body.mode === 'otp_verify') {
+    let r: Response
+    try {
+      r = await db('rpc/otp_verify_tx', {
+        method: 'POST',
+        body: JSON.stringify({
+          p_org_id: MIGI_ORG_ID, p_phone: body.phone ?? '',
+          p_code: body.code ?? '', p_purpose: body.purpose ?? 'register',
+        }),
+      })
+    } catch (e) {
+      console.error('[line-login] otp_verify_tx 連線失敗', e)
+      return json({ ok: false, reason: 'db_unreachable', message: '系統忙碌中，請稍後再試' }, 502)
+    }
+    const out = await r.json().catch(() => null)
+    if (!r.ok || !out) {
+      return json({ ok: false, reason: 'otp_failed', message: '系統忙碌中，請稍後再試' }, 502)
+    }
+    /* 🔴 **「驗證碼不對」是業務結果不是錯誤** —— 所以外層一律 `ok: true`，
+       把「對了沒」放在 `verified`。
+       回 `ok: false` 的話前端的 `callFn` 會把 data 換成 error 物件，
+       而 `left`（還可以試幾次）就消失了 —— 客人只會看到
+       「操作失敗，請再試一次」，那正是最沒用的一句話。 */
+    return json({ ok: true, verified: out.ok === true, reason: out.reason ?? null, left: out.left ?? null })
   }
 
   /* ── ②b 只同步頭像（頭像抽屜的「同步」按鈕）──────── */
