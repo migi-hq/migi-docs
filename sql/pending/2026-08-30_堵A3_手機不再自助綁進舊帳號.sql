@@ -65,9 +65,8 @@ begin
      ⚠ 順序反過來是重點：原版是**先寫再判斷**，
        所以「不該綁」那一刻資料已經寫進去了。 */
   v_new := regexp_replace(v_old,
-    'update members\s*\n?\s*set line_user_id = p_line_user_id, updated_at = now\(\)\s*\n?\s*where id = v_existing and line_user_id is null;',
-    'select line_user_id into v_cur_line from members where id = v_existing;',
-    'g');
+    'update members\s+set line_user_id = p_line_user_id, updated_at = now\(\)\s+where id = v_existing and line_user_id is null;',
+    'select line_user_id into v_cur_line from members where id = v_existing;');
   if v_new = v_old then raise exception '錨點①（那段 update）沒對上'; end if;
 
   v_old := v_new;
@@ -82,8 +81,11 @@ begin
     E'\n             這支號碼屬於一個不是你的帳號。**一個字都不寫。** */' ||
     E'\n          return jsonb_build_object(''action'',''phone_taken'',' ||
     E'\n            ''message'',''這支手機已經是 MIGI 會員了。請用原本的 LINE 帳號登入，或在櫃檯出示這個畫面由店員協助綁定。'');' ||
-    E'\n        end if;',
-    'n');
+    E'\n        end if;');
+  /* 🔴 **不要加 `'n'` 旗標。** 在 Postgres 裡 `n` 是「換行敏感」——
+     `.` 會**不匹配換行**，而這個區塊跨十幾行，加了就完全比對不到。
+     不給旗標才是預設的「`.` 連換行一起吃」。2026-08-30 差點送出去，
+     靠 guard 才不會變成「跑完沒報錯但什麼都沒改」。 */
   if v_new = v_old then raise exception '錨點②（not found 那段）沒對上'; end if;
 
   /* 收尾檢查：不可以還留著會寫入的那一行 */
