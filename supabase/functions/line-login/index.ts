@@ -193,16 +193,17 @@ async function sendSms(phone: string, text: string): Promise<boolean> {
           }),
         })
       const out = await res.text()
-      /* ⚠ **成功的判準還沒查證。** 官網只給了 request 範例，
-         沒有列出 response 的結構，所以這裡先用 HTTP 狀態碼，
-         並且**把 body 完整記進 log**。
-         🔴 第一次真的送出之後要回來看 log 確認 ——
-           三竹就是「送錯帳密也回 200」，不能假設別人不會這樣。 */
-      console.log('[line-login] cresclab 回應', res.status, out.slice(0, 300))
+      /* ✅ **成功判準已查證**（2026-08-30 實際送出一次）：
+         失敗時回 **HTTP 400** ＋ `{"error":"...","issues":[{level,code,reason}]}`，
+         `level: 'block'` 是擋下、`level: 'warn'` 是建議。
+         → 用狀態碼判斷是對的（不像三竹會「送錯帳密也回 200」）。
+         ⚠ log 保留：`issues[].reason` 是**中文人話**，
+           下次被退時它會直接告訴你原因，不用再猜。 */
       if (!res.ok) {
-        console.error('[line-login] cresclab 送出失敗', res.status, out.slice(0, 300))
+        console.error('[line-login] cresclab 送出失敗', res.status, out.slice(0, 400))
         return false
       }
+      console.log('[line-login] cresclab 送出成功', res.status, out.slice(0, 200))
       return true
     }
 
@@ -444,12 +445,24 @@ Deno.serve(async (req) => {
       return json({ ok: true, otp_required: true, sent: false, reason: out.reason, retry_after: out.retry_after })
     }
 
-    /* 🔴 **開頭的「【MIGI 咪吉麻將】」不可以拿掉。**
-       台灣 NCC 要求發到台灣的簡訊，訊息開頭必須清楚標示
-       品牌／組織／活動名稱 —— 那是法規不是排版。
-       ⚠ 這種前綴看起來很像可以「順手清乾淨」的東西，所以在這裡寫清楚。
-       ⚠ 也不要改成英文縮寫：規定要的是**看得懂是誰發的**。 */
-    const sent = await sendSms(out.phone, `【MIGI 咪吉麻將】你的驗證碼是 ${out.code}，5 分鐘內有效。`)
+    /* 🔴 **開頭的「【咪吉麻將】」不可以拿掉，而且長度有規定。**
+       台灣 NCC 要求發到台灣的簡訊，開頭必須有品牌簽檔，
+       **括號內 4–8 字** —— 那是法規不是排版。
+
+       🔴 2026-08-30 實際被退過一次：原本寫 `【MIGI 咪吉麻將】`，
+         括號內是 **9 個字**（MIGI 4 ＋ 空格 1 ＋ 咪吉麻將 4），超過上限
+         ⇒ MAAC Go 直接回 400 `ncc_blocked` / `NO_SIGNATURE`
+         ⇒ 而症狀是「**簡訊完全沒送出，對方的發送紀錄也是空的**」。
+         ⚠ 有加簽檔卻被判定成沒有 —— 這是最容易誤判的一種失敗。
+
+       ✅ 現在用 `咪吉麻將`（4 字，離上下限都有餘裕）。
+       ⚠ 不要為了「品牌完整」改回 `MIGI咪吉麻將`（剛好 8 字）——
+         那是踩在上限上，全形／半形算法只要有一點出入就會再被退。
+
+       📌 log 裡的另一條 `NO_STOP`（建議加 STOP 退訂）是 **warn 不是 block**，
+         而且那是給**行銷訊息**的建議。驗證碼是交易型訊息，
+         客人不可能「退訂自己的驗證碼」—— 刻意不加。 */
+    const sent = await sendSms(out.phone, `【咪吉麻將】你的驗證碼是 ${out.code}，5 分鐘內有效。`)
 
     /* 🔴 **這裡沒有旁路，而且刻意不做。**
        2026-08-30 曾經寫過一版「簡訊還沒接通就把碼顯示在畫面上」，
