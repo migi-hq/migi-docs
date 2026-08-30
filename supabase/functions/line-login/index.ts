@@ -99,51 +99,99 @@ const db = (path: string, init: RequestInit = {}) =>
    ⚠ 沒設定就**回 false 而不是拋錯** —— 呼叫端據此決定要不要交出 dev_code。
      拋錯的話「還沒接簡訊商」會長得像「簡訊商壞了」。
 
-   ── 🔴 選簡訊商之前一定要先問這一題：**要不要綁 IP？** ──
+   ── 🔴 選簡訊商的**唯一判準**：要不要綁 IP？ ──────
    Supabase Edge Functions 跑在 Deno Deploy 上，**沒有固定對外 IP**
    （每次呼叫都可能從不同位址出去，官方文件明講不提供）。
-   而**三竹的 API 要求把發送主機 IP 加進白名單**（寫信給客服綁定）。
-   ⇒ 兩者直接衝突。要用三竹就得額外架一台固定 IP 的 proxy ——
+   ⇒ 任何要求 IP 白名單的簡訊商都得再架一台固定 IP 的 proxy，
      而那是「要有人維護的第三套東西」（硬規則 5.5）。
-   → 所以優先選**用 token 認證、不綁 IP** 的（Twilio／AWS SNS 那一類）。
+
+   | | 認證 | 綁 IP | 判定 |
+   |---|---|---|---|
+   | **labspace**（層次數位空間） | Bearer token | **不用** | ✅ 首選 |
+   | mitake（三竹） | 帳號密碼 | 🔴 **必須** | ❌ 除非架 proxy |
 
    ⏳ 設定（Dashboard → Edge Functions → Secrets）：
-       SMS_PROVIDER = mitake
-       SMS_USER     = <帳號>
-       SMS_PASS     = <密碼>
-       SMS_URL      = <客服給的 API 網址>   ← ⚠ 不要寫死
-   ⚠ **網址一定要從 secret 來**：三竹的個人帳號（二站）與企業帳號（三站）
-     網址不同，而且客服會依帳號給不同的位址。寫死一個等於賭它剛好對。
-   ⚠ 三竹的回應是**純文字不是 JSON**（`[1]\nmsgid=...\nstatuscode=1`），
-     `statuscode` 是 1/2/4 才算成功。不要用 res.ok 判斷 ——
-     它送錯帳密也會回 HTTP 200。 */
+   ```
+   SMS_PROVIDER = labspace
+   SMS_TOKEN    = <API key>
+   ```
+   ⚠ 三竹則是 `SMS_PROVIDER=mitake` ＋ `SMS_USER` / `SMS_PASS` / `SMS_URL`。
+     **網址一定要從 secret 來**：個人帳號（二站）與企業帳號（三站）不同。
+
+   ⚠ **一則 = 70 字以內。** 目前的驗證碼簡訊約 28 字，離上限還很遠 ——
+     但**寫長一點就變兩則，成本直接翻倍**，而那不會有任何錯誤訊息。 */
+/* 🔴 **「有沒有簡訊能力」只能有一個判斷來源。**
+   原本寫死成「有沒有 SMS_USER + SMS_PASS」—— 那是三竹的形狀，
+   而 labspace 用的是 Bearer token，根本沒有 user/pass。
+   ⇒ 兩個地方各判斷一次的話，換簡訊商就會出現
+     「otp_send 說沒設定所以跳過，但其實設定好了」這種不會報錯的狀況。 */
+function smsConfigured(): boolean {
+  switch (Deno.env.get('SMS_PROVIDER')) {
+    case 'labspace': return !!Deno.env.get('SMS_TOKEN')
+    case 'mitake': return !!(Deno.env.get('SMS_USER') && Deno.env.get('SMS_PASS'))
+    default: return false
+  }
+}
+
 async function sendSms(phone: string, text: string): Promise<boolean> {
-  const provider = Deno.env.get('SMS_PROVIDER')
-  const user = Deno.env.get('SMS_USER')
-  const pass = Deno.env.get('SMS_PASS')
-  if (!provider || !user || !pass) {
+  if (!smsConfigured()) {
     console.warn('[line-login] 簡訊商還沒設定，這則沒有送出')
     return false
   }
-  if (provider !== 'mitake') {
+  const provider = Deno.env.get('SMS_PROVIDER')
+  try {
+    /* ── Labspace（層次數位空間）───────────────────
+       🎯 目前的首選：**Bearer token 認證，不綁 IP**，
+         所以 Supabase Edge Functions 的浮動 IP 不是問題。
+       ⚠ 回應是 JSON，成功的判準是 `result === 1`。
+         **不要用 res.ok 判斷** —— 失敗時它也可能回 200 並在 body 裡說原因。
+       📌 失敗不扣點（文件明寫），所以重試是安全的。 */
+    if (provider === 'labspace') {
+      const res = await fetch(
+        Deno.env.get('SMS_URL') ?? 'https://sms-api.labspace.com.tw/api/v2/send', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${Deno.env.get('SMS_TOKEN')}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ dstaddr: phone, smbody: text }),
+        })
+      const out = await res.json().catch(() => null)
+      if (out?.result !== 1) {
+        console.error('[line-login] labspace 回報失敗', res.status, JSON.stringify(out).slice(0, 200))
+        return false
+      }
+      return true
+    }
+
+    /* ── 三竹（mitake）─────────────────────────────
+       ⚠ 🔴 **三竹要求把發送主機 IP 加進白名單**，而 Edge Functions
+         沒有固定對外 IP —— 除非另外架 proxy，否則這條走不通。
+         留著只是因為換商時不用重寫。
+       ⚠ 回應是**純文字不是 JSON**（`[1]\nmsgid=...\nstatuscode=1`），
+         而且送錯帳密也會回 HTTP 200。只能看 statuscode。
+       ⚠ 網址一定要從 SMS_URL 來：個人帳號（二站）與企業帳號（三站）不同。 */
+    if (provider === 'mitake') {
+      const res = await fetch(
+        Deno.env.get('SMS_URL') ?? 'https://smsapi.mitake.com.tw/api/mtk/SmSend?CharsetURL=UTF8', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+          body: new URLSearchParams({
+            username: Deno.env.get('SMS_USER')!, password: Deno.env.get('SMS_PASS')!,
+            dstaddr: phone, smbody: text,
+          }),
+        })
+      const raw = await res.text()
+      const m = raw.match(/statuscode\s*=\s*(\w+)/)
+      if (!m || !['1', '2', '4'].includes(m[1])) {
+        console.error('[line-login] 三竹回報失敗', res.status, raw.slice(0, 200))
+        return false
+      }
+      return true
+    }
+
     console.error('[line-login] 不認得的簡訊商', provider)
     return false
-  }
-  try {
-    const url = Deno.env.get('SMS_URL') ?? 'https://smsapi.mitake.com.tw/api/mtk/SmSend?CharsetURL=UTF8'
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-      body: new URLSearchParams({ username: user, password: pass, dstaddr: phone, smbody: text }),
-    })
-    const raw = await res.text()
-    const m = raw.match(/statuscode\s*=\s*(\w+)/)
-    const okCodes = ['1', '2', '4']
-    if (!m || !okCodes.includes(m[1])) {
-      console.error('[line-login] 三竹回報失敗', res.status, raw.slice(0, 200))
-      return false
-    }
-    return true
   } catch (e) {
     console.error('[line-login] 簡訊送出失敗', e)
     return false
@@ -293,7 +341,7 @@ Deno.serve(async (req) => {
        · 送失敗  → 有能力但這次沒送成 → **擋住**，不可以放行
        混在一起的話，簡訊商哪天壞掉或欠費，驗證會**靜靜地整個消失**
        而沒有任何人發現 —— 那是最糟的一種故障。 */
-    if (!Deno.env.get('SMS_PROVIDER') || !Deno.env.get('SMS_USER') || !Deno.env.get('SMS_PASS')) {
+    if (!smsConfigured()) {
       console.warn('[line-login] 簡訊商未設定，這次註冊跳過手機驗證')
       return json({ ok: true, otp_required: false })
     }
