@@ -370,9 +370,16 @@ Deno.serve(async (req) => {
     if (!phone) return json({ ok: true, in_use: false })
     let r: Response
     try {
+      /* 🎯 帶上 `sub` —— 問的不是「這支號碼有人用嗎」，
+         而是「這支號碼被**不是你**的人用了嗎」。
+         🔴 沒帶的話，一個 LINE 已經綁好的客人重走註冊、填**自己的號碼**，
+           會被告知「這支號碼已經是會員了，請找店員」——
+           而那是他自己的號碼。
+         ⚠ 那不是只有測試才會遇到：客人清 App 資料、換手機、
+           或在另一台裝置開 LIFF 都會走到。 */
       r = await db('rpc/phone_in_use_tx', {
         method: 'POST',
-        body: JSON.stringify({ p_org_id: MIGI_ORG_ID, p_phone: phone }),
+        body: JSON.stringify({ p_org_id: MIGI_ORG_ID, p_phone: phone, p_line_user_id: sub }),
       })
     } catch (e) {
       /* 🔴 查不到就說「沒被用」（fail open）。
