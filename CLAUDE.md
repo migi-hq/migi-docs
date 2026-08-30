@@ -2532,6 +2532,30 @@ migi github/           ← Claude Code 的 project folder 選這層
     ⏳ migi-web 的 `DateField` / `TimeField` 與 5 個 `<select>` 才是真的要換，
       理由同待辦 30：**LIFF 是 LINE 的 in-app WebView，原生選擇器兩個平台不一致**。
 
+40. 🔴 **稱號解鎖目前是「前端說了算」**（2026-08-30 查證，**不是**要現在做解鎖機制）。
+    ⚠ **稱號整套還沒討論過**（使用者 2026-08-30 明講），所以這一條**只記錄現況**，
+      不是設計提案。真的要做時再從「有哪些稱號、憑什麼拿到」開始談。
+
+    ```
+    save_app_state_tx(p_org_id, p_member_id, p_bear, p_titles)   ← anon 叫得動
+      titles = 兩邊聯集（只增不減）
+    set_my_title_tx  的守衛：select 1 from member_app_state where titles ? p_title
+    ```
+    🔴 那道守衛擋的是「**前端有沒有先寫進去**」，不是「**他有沒有達成**」。
+      而且「只增不減」讓它**不可逆** —— 寫一次就永遠解鎖。
+
+    🟢 **今天沒有被利用**：前端唯一的呼叫點（`rewards.jsx:1508`）
+      只送 `bear`，`p_titles` 是 null ⇒ `coalesce(null,'[]')` 聯集後不變。
+      也就是**目前沒有任何人解得開任何稱號**，清單永遠只有「新手上路」。
+    🔴 但那是「沒人去按」不是「按不了」：手工打一次 RPC 就能拿到「三屆雀神」。
+
+    📌 同硬規則 5.8：**稱號是成就不是偏好**，它跟小熊造型不一樣 ——
+      造型是他自己的選擇（前端說了算是對的），成就是系統對事實的認定。
+      **兩種東西不該共用同一支寫入函式。**
+    ⏳ 真的要做時的形狀（先記著，不要現在建）：
+      解鎖由後端從事實算出來，`titles` 變成**唯讀的計算結果**，
+      `save_app_state_tx` 拿掉 `p_titles` 參數。
+
 ### PENDING
 - 店員登入未做，`staffId` 一律傳 null，`App.jsx` 還有 `const STAFF = "小美"` 寫死。
   ⚠ 後果不只是「不知道是誰」：`table_sessions` 98/98、`orders` 150/150 的
