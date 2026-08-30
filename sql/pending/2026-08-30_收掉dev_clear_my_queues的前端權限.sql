@@ -60,7 +60,12 @@ grant  execute on function public.dev_clear_my_queues_tx(uuid, uuid) to service_
      如果連它也變成「收掉了」，那就是我下錯範圍而不是成功
      （「全部都沒有權限」與「該收的收了」長得很像，硬規則 3.55）。
    ============================================================ */
-select 序, 函式, anon明確授權, PUBLIC有嗎, service_role, 判定 from (
+/* ⚠ 欄位別名**不要用大寫拉丁字母**（原本叫 `PUBLIC有嗎`）——
+   Postgres 對沒加雙引號的識別字一律折成小寫，
+   而子查詢裡若用 `"PUBLIC有嗎"` 保留了大寫，外層沒括就對不上，
+   錯誤訊息會說 `column "public有嗎" does not exist`。
+   → 全小寫或純中文最省事。 */
+select 序, 函式, anon明確授權, 公開繼承嗎, service_role, 判定 from (
 
   select 1 as 序, p.proname::text as 函式,
          case when exists (select 1 from aclexplode(p.proacl) a
@@ -68,7 +73,7 @@ select 序, 函式, anon明確授權, PUBLIC有嗎, service_role, 判定 from (
               then '🔴 還在' else '✅ 收掉了' end as anon明確授權,
          case when p.proacl is null or exists (select 1 from aclexplode(p.proacl) a
                 where a.grantee=0 and a.privilege_type='EXECUTE')
-              then '🔴 還在' else '✅ 收掉了' end as "PUBLIC有嗎",
+              then '🔴 還在' else '✅ 收掉了' end as 公開繼承嗎,
          case when exists (select 1 from aclexplode(p.proacl) a
                 where a.grantee='service_role'::regrole::oid and a.privilege_type='EXECUTE')
               then '✅ 有' else '🔴 沒有（那就沒人叫得動了）' end as service_role,
