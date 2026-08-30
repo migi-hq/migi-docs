@@ -8,13 +8,12 @@
       也就是註冊時客人**真的驗過簡訊，但沒有人在他身上蓋章** ——
       「這個帳號的手機驗過」這個概念在資料庫裡等於不存在。
       🔴 而整個自助認領的安全性**完全建立在那個章上面**。
-      → 這份 SQL 的第 ① 段就是補那個章。
 
    ② **註冊路徑根本沒有檢查驗證碼。**
       `line-login` 的 register 分支從頭到尾沒有呼叫
       `phone_recently_verified_tx` —— 前端有擋，後端沒有。
       🔴 也就是**跳過驗證那一步直接送出就會成功**。
-      → 那一半在 Edge Function 修（同一批部署），這裡先把函式備好。
+      → 那一半在 Edge Function 修（同一批部署）。
 
    ③ `phone_otps.purpose` 的 CHECK 早就允許 `register / claim / change`
       —— 三條路當初就規劃好了，只是後兩條沒實作。
@@ -112,7 +111,7 @@ end $$;
    ✅ 正解更簡單：**不要先問。** 一律發驗證碼，
      驗過之後**由後端決定**這是註冊還是認領。
    ```
-   輸入手機 → 驗證碼 → 驗過 ─┬─ 沒人用 → 繼續填暱稱
+   輸入手機 → 驗證碼 → 驗過 ─┬─ 沒人用 → 繼續填生日性別
                               └─ 有人用 → 直接把舊帳號給你
    ```
    🎯 順帶把 `check_phone` 整支拿掉 —— 那本來是一個
@@ -138,35 +137,41 @@ begin
   if p_org_id is null or coalesce(trim(p_line_user_id),'') = '' then
     return jsonb_build_object('ok', false, 'reason', 'bad_request');
   end if;
+  if p_purpose not in ('register','claim') then
+    return jsonb_build_object('ok', false, 'reason', 'bad_purpose');
+  end if;
 
   v_phone := public.migi_norm_phone(p_phone);
   if v_phone is null then
     return jsonb_build_object('ok', false, 'reason', 'phone_invalid');
   end if;
 
-  /* 🔴 **先驗證再看帳號。** 順序反過來的話，
-     「這支號碼有沒有帳號」就變成一個不用驗證就問得到的查詢器。 */
-  if p_purpose not in ('register','claim') then
-    return jsonb_build_object('ok', false, 'reason', 'bad_purpose');
+  select * into v_t from members
+   where org_id = p_org_id and phone = v_phone and deleted_at is null limit 1;
+
+  /* 🔴 **「已經是你的」要排在驗證檢查之前，而且那不是洩漏。**
+     它只認得出「這個帳號**已經綁在你自己的 LINE 上**」——
+     而那件事 `whoami` 開機時早就告訴他了，問不出任何新東西。
+
+     ⚠ 排在後面的話會出事：驗證碼**用過一次就消耗掉**，
+       所以雙擊（或前端重送）的第二次會拿到 `not_verified`，
+       客人看到的是「成功的那一次顯示失敗」。
+       **冪等必須不依賴一個會被用掉的東西。** */
+  if v_t.id is not null and v_t.line_user_id = p_line_user_id then
+    return jsonb_build_object('ok', true, 'action', 'already_yours',
+      'member_id', v_t.id, 'display_name', v_t.display_name);
   end if;
 
+  /* 🔴 **再來才驗證。** 順序反過來的話，
+     「這支號碼有沒有帳號」就變成一個不用驗證就問得到的查詢器。 */
   if not public.phone_recently_verified_tx(p_org_id, v_phone, p_line_user_id, p_purpose) then
     return jsonb_build_object('ok', false, 'reason', 'not_verified',
       'message', '請先完成手機驗證');
   end if;
 
-  select * into v_t from members
-   where org_id = p_org_id and phone = v_phone and deleted_at is null limit 1;
-
   if v_t.id is null then
     return jsonb_build_object('ok', false, 'reason', 'not_found',
       'message', '查不到用這支號碼的帳號');
-  end if;
-
-  -- 已經是他自己的 → 冪等，直接回成功（重按、併發都會走到）
-  if v_t.line_user_id = p_line_user_id then
-    return jsonb_build_object('ok', true, 'action', 'already_yours',
-      'member_id', v_t.id, 'display_name', v_t.display_name);
   end if;
 
   -- 這個 LINE 已經有另一個會員 → 那是合併不是綁定（待辦 15）
@@ -185,7 +190,9 @@ begin
 
   /* 🔴 分級的那一格：未驗過的帳號**只有在沒有東西可以被偷時**才放行。
      ⚠ 判準用「有沒有付過錢／有沒有餘額」，不是「建立多久」——
-       時間長短跟被偷走的價值無關。 */
+       時間長短跟被偷走的價值無關。
+     📌 `wallets` 每個會員一定有一列（`trg_members_wallet` AFTER INSERT
+       自動建），所以查得到，新會員是 0。 */
   if v_t.phone_verified_at is null then
     v_valued :=
       exists (select 1 from orders o
@@ -197,11 +204,7 @@ begin
     end if;
   end if;
 
-  update members
-     set line_user_id = p_line_user_id,
-         updated_at   = now()
-   where id = v_t.id;
-
+  update members set line_user_id = p_line_user_id where id = v_t.id;
   if not found then
     return jsonb_build_object('ok', false, 'reason', 'update_failed');
   end if;
@@ -250,11 +253,6 @@ begin
       'message', '手機號碼格式不對');
   end if;
 
-  if not public.phone_recently_verified_tx(p_org_id, v_phone, p_line_user_id, 'change') then
-    return jsonb_build_object('ok', false, 'reason', 'not_verified',
-      'message', '請先完成手機驗證');
-  end if;
-
   -- 🔴 會員從 line_user_id 查出來，不由呼叫端指定
   select * into v_m from members
    where org_id = p_org_id and line_user_id = p_line_user_id and deleted_at is null limit 1;
@@ -262,10 +260,15 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'not_registered');
   end if;
 
-  -- 已經是這支號碼 → 冪等（但仍然補蓋章，因為他剛剛真的驗過）
+  /* 已經是這支號碼 → 冪等。⚠ 同上：**排在驗證之前**，
+     否則雙擊的第二次會因為碼被用掉而顯示失敗。 */
   if v_m.phone = v_phone then
-    perform public.otp_consume_tx(p_org_id, v_phone, p_line_user_id, 'change', v_m.id);
     return jsonb_build_object('ok', true, 'action', 'unchanged', 'phone', v_phone);
+  end if;
+
+  if not public.phone_recently_verified_tx(p_org_id, v_phone, p_line_user_id, 'change') then
+    return jsonb_build_object('ok', false, 'reason', 'not_verified',
+      'message', '請先完成手機驗證');
   end if;
 
   /* 🔴 新號碼被別人用了 → 擋。
@@ -280,7 +283,7 @@ begin
 
   v_old := v_m.phone;
 
-  update members set phone = v_phone, updated_at = now() where id = v_m.id;
+  update members set phone = v_phone where id = v_m.id;
   if not found then
     return jsonb_build_object('ok', false, 'reason', 'update_failed');
   end if;
@@ -318,13 +321,20 @@ grant  execute on function public.set_member_phone_tx(uuid, text, text) to servi
 -- ── ⑤ 驗證（交易內造資料 → 測 → 回滾）────────────────
 /* 🔴 **只驗「該擋的擋了」等於沒驗**（硬規則 3.55）——
    所以每一道擋牆都配一個「應該要通過」的正對照。
-   ⚠ 造的資料全部回滾，一列都不會留下。 */
+   ⚠ 造的資料全部回滾，一列都不會留下。
+
+   🔴 **每個測試用不同的 LINE id，這不是龜毛。**
+     第一版共用 `U_claimer`，而 ① 跑完之後那個 LINE 已經有帳號了
+     ⇒ ② 會回 `merge_required` 而不是 `staff_required`，
+     **測試通過但驗到的是別的東西**。
+   🔴 **錢包不要自己插** —— `trg_members_wallet` AFTER INSERT
+     已經幫每個新會員建好一列（第一版就是撞這個 pkey 炸的）。 */
 do $$
 declare
   v_org  uuid := '11111111-1111-1111-1111-111111111111';
   v_out  text := '';
   v_code text := '123456';
-  a uuid; b uuid; c uuid; d uuid; e uuid; f uuid; g uuid;
+  a uuid; b uuid; c uuid; d uuid; e uuid; f uuid; g uuid; h uuid; j uuid;
   r  jsonb;
 begin
   begin
@@ -339,11 +349,11 @@ begin
     insert into members (org_id, display_name, phone, line_user_id)
       values (v_org,'測F','0900000906','U_chg') returning id into f;
     insert into members (org_id, display_name, phone) values (v_org,'測G','0900000907') returning id into g;
+    insert into members (org_id, display_name, phone) values (v_org,'測H','0900000909') returning id into h;
+    insert into members (org_id, display_name, phone) values (v_org,'測J','0900000910') returning id into j;
 
-    -- B 有餘額（＝有東西可以被偷）
-    insert into wallets (org_id, member_id, balance) values (v_org, b, 100);
-    -- C 也有餘額，但 C 的手機是驗過的
-    insert into wallets (org_id, member_id, balance) values (v_org, c, 100);
+    -- 錢包是觸發器建的，這裡只改金額（B 與 C 各有餘額 ＝ 有東西可以被偷）
+    update wallets set balance = 100 where member_id in (b, c);
 
     ---- 造「已經驗過」的驗證碼 --------------------------------
     /* ⚠ 註冊流程用 `register`，個人設定改手機用 `change`。
@@ -352,67 +362,104 @@ begin
     select v_org, p, encode(extensions.digest(v_code || ':' || p, 'sha256'),'hex'),
            pu, lu, now() + interval '5 min', now()
       from (values
-        ('0900000901','register','U_claimer'),
-        ('0900000902','register','U_claimer'),
-        ('0900000903','claim'   ,'U_claimer'),
-        ('0900000904','register','U_claimer3'),
-        ('0900000908','change'  ,'U_chg'),     -- F 要換去的新號碼
-        ('0900000907','change'  ,'U_chg')      -- 已被 G 占用的號碼
+        ('0900000901','register','U_c1'),
+        ('0900000902','register','U_c2'),
+        ('0900000903','claim'   ,'U_c3'),
+        ('0900000904','register','U_c4'),
+        ('0900000909','register','U_c9'),   -- 綁在 U_c9，要用 U_cX 去試
+        ('0900000910','register','U_c1'),   -- U_c1 認領完 A 之後再來一次 → 合併
+        ('0900000908','change'  ,'U_chg'),  -- F 要換去的新號碼
+        ('0900000907','change'  ,'U_chg')   -- 已被 G 占用的號碼
       ) as t(p, pu, lu);
     -- ⚠ 0900000905 刻意**不建**驗證碼 → 用來驗「沒驗過就想認領」
 
-    ---- 測 ---------------------------------------------------
-    r := public.claim_member_by_phone_tx(v_org,'0900000901','U_claimer');
+    ---- 測 · 認領 --------------------------------------------
+    r := public.claim_member_by_phone_tx(v_org,'0900000901','U_c1');
     v_out := v_out || E'\n' || '① 空帳號自助認領（該通過）' || E'\t' ||
       case when r->>'action' = 'claimed' then '✅ claimed' else '🔴 ' || coalesce(r->>'reason','?') end;
 
-    r := public.claim_member_by_phone_tx(v_org,'0900000902','U_claimer');
+    r := public.claim_member_by_phone_tx(v_org,'0900000902','U_c2');
     v_out := v_out || E'\n' || '② 未驗＋有餘額（該擋）' || E'\t' ||
-      case when r->>'reason' = 'staff_required' then '✅ staff_required' else '🔴 ' || coalesce(r->>'action', r->>'reason','?') end;
+      case when r->>'reason' = 'staff_required' then '✅ staff_required'
+           else '🔴 ' || coalesce(r->>'action', r->>'reason','?') end;
 
-    r := public.claim_member_by_phone_tx(v_org,'0900000903','U_claimer2');
-    v_out := v_out || E'\n' || '③ 驗過＋有餘額（該通過）' || E'\t' ||
-      case when r->>'reason' = 'not_verified' then '🔴 驗證碼綁錯 LINE'
-           when r->>'action' = 'claimed' then '✅ claimed' else '🔴 ' || coalesce(r->>'reason','?') end;
+    r := public.claim_member_by_phone_tx(v_org,'0900000903','U_c3','claim');
+    v_out := v_out || E'\n' || '③ 驗過＋有餘額（該通過· 正對照）' || E'\t' ||
+      case when r->>'action' = 'claimed' then '✅ claimed'
+           else '🔴 ' || coalesce(r->>'reason','?') end;
 
-    r := public.claim_member_by_phone_tx(v_org,'0900000903','U_claimer');
-    v_out := v_out || E'\n' || '③b 驗過＋有餘額 · 同一個 LINE（該通過）' || E'\t' ||
-      case when r->>'action' = 'claimed' then '✅ claimed' else '🔴 ' || coalesce(r->>'reason','?') end;
-
-    r := public.claim_member_by_phone_tx(v_org,'0900000904','U_claimer3');
+    r := public.claim_member_by_phone_tx(v_org,'0900000904','U_c4');
     v_out := v_out || E'\n' || '④ 已綁別的 LINE（該擋）' || E'\t' ||
-      case when r->>'reason' in ('line_bound_elsewhere','not_verified')
-           then '✅ ' || (r->>'reason') else '🔴 ' || coalesce(r->>'action', r->>'reason','?') end;
+      case when r->>'reason' = 'line_bound_elsewhere' then '✅ line_bound_elsewhere'
+           else '🔴 ' || coalesce(r->>'action', r->>'reason','?') end;
 
-    r := public.claim_member_by_phone_tx(v_org,'0900000905','U_claimer4');
+    r := public.claim_member_by_phone_tx(v_org,'0900000905','U_c5');
     v_out := v_out || E'\n' || '⑤ 沒驗過就認領（該擋）' || E'\t' ||
-      case when r->>'reason' = 'not_verified' then '✅ not_verified' else '🔴 ' || coalesce(r->>'action', r->>'reason','?') end;
+      case when r->>'reason' = 'not_verified' then '✅ not_verified'
+           else '🔴 ' || coalesce(r->>'action', r->>'reason','?') end;
 
-    ---- 換手機 -----------------------------------------------
+    r := public.claim_member_by_phone_tx(v_org,'0900000909','U_cX');
+    v_out := v_out || E'\n' || '⑥ 別人驗的碼拿來用（該擋）' || E'\t' ||
+      case when r->>'reason' = 'not_verified' then '✅ not_verified'
+           else '🔴 ' || coalesce(r->>'action', r->>'reason','?') end;
+
+    r := public.claim_member_by_phone_tx(v_org,'0900000910','U_c1');
+    v_out := v_out || E'\n' || '⑦ 自己已經有帳號了（該擋）' || E'\t' ||
+      case when r->>'reason' = 'merge_required' then '✅ merge_required'
+           else '🔴 ' || coalesce(r->>'action', r->>'reason','?') end;
+
+    /* 🔴 雙擊 —— 碼已經在 ① 用掉了。
+       `already_yours` 排在驗證之前，所以這裡必須回成功。
+       回 `not_verified` 的話，客人的第二次點擊會看到
+       「成功的那一次顯示失敗」。 */
+    r := public.claim_member_by_phone_tx(v_org,'0900000901','U_c1');
+    v_out := v_out || E'\n' || '⑧ 重按一次（碼已用掉，該冪等）' || E'\t' ||
+      case when r->>'action' = 'already_yours' then '✅ already_yours'
+           else '🔴 ' || coalesce(r->>'reason','?') end;
+
+    ---- 測 · 換手機 ------------------------------------------
     r := public.set_member_phone_tx(v_org,'U_chg','0900000908');
-    v_out := v_out || E'\n' || '⑥ 換成沒人用的號碼（該通過）' || E'\t' ||
+    v_out := v_out || E'\n' || '⑨ 換成沒人用的號碼（該通過）' || E'\t' ||
       case when r->>'action' = 'changed'
              and (select phone from members where id=f) = '0900000908'
              and (select phone_verified_at from members where id=f) is not null
-           then '✅ changed ＋ 已蓋章' else '🔴 ' || coalesce(r->>'reason', r->>'action','?') end;
+           then '✅ changed ＋ 已蓋章'
+           else '🔴 ' || coalesce(r->>'reason', r->>'action','?') end;
 
     r := public.set_member_phone_tx(v_org,'U_chg','0900000907');
-    v_out := v_out || E'\n' || '⑦ 換成別人的號碼（該擋）' || E'\t' ||
-      case when r->>'reason' = 'phone_taken' then '✅ phone_taken' else '🔴 ' || coalesce(r->>'action', r->>'reason','?') end;
+    v_out := v_out || E'\n' || '⑩ 換成別人的號碼（該擋）' || E'\t' ||
+      case when r->>'reason' = 'phone_taken' then '✅ phone_taken'
+           else '🔴 ' || coalesce(r->>'action', r->>'reason','?') end;
 
-    ---- 驗「碼只能用一次」------------------------------------
-    r := public.claim_member_by_phone_tx(v_org,'0900000901','U_claimer');
-    v_out := v_out || E'\n' || '⑧ 同一組碼再認領一次' || E'\t' ||
-      case when r->>'action' = 'already_yours' then '✅ already_yours（冪等）'
+    r := public.set_member_phone_tx(v_org,'U_chg','0900000908');
+    v_out := v_out || E'\n' || '⑪ 換手機重按一次（該冪等）' || E'\t' ||
+      case when r->>'action' = 'unchanged' then '✅ unchanged'
            else '🔴 ' || coalesce(r->>'reason','?') end;
 
-    ---- 驗蓋章 -----------------------------------------------
-    v_out := v_out || E'\n' || '⑨ 認領後有沒有蓋章' || E'\t' ||
+    ---- 蓋章與消耗 -------------------------------------------
+    v_out := v_out || E'\n' || '⑫ 認領後有沒有蓋章' || E'\t' ||
       case when (select phone_verified_at from members where id=a) is not null
            then '✅ phone_verified_at 有值' else '🔴 還是 null —— 蓋章沒生效' end;
 
+    /* 該被用掉的剛好 3 組：① 認領 A、③ 認領 C、⑨ 換手機。
+       被擋下的那幾次**一個字都不該寫**。 */
+    v_out := v_out || E'\n' || '⑬ 用掉的驗證碼組數（該是 3）' || E'\t' ||
+      (select case when count(*) = 3 then '✅ 3 組'
+                   else '🔴 ' || count(*) || ' 組 —— 擋下的那幾次也動到資料了' end
+         from phone_otps where consumed_at is not null and org_id = v_org
+          and phone like '09000009%');
+
+    v_out := v_out || E'\n' || '⑭ 稽核有沒有留（該是 3 列）' || E'\t' ||
+      (select case when count(*) = 3 then '✅ 3 列'
+                   else '🔴 ' || count(*) || ' 列' end
+         from member_interactions
+        where member_id in (a,c,f) and channel = 'system' and kind = 'note');
+
     ---- 驗權限 -----------------------------------------------
-    v_out := v_out || E'\n' || '⑩ anon 叫不叫得動這三支' || E'\t' ||
+    /* 🔴 硬規則 2.6b：**同時看「明確授權」與「PUBLIC 繼承」**。
+       `has_function_privilege` 分不出這兩種，只用它會在收錯方向時
+       看到跟沒收一模一樣的畫面。 */
+    v_out := v_out || E'\n' || '⑮ anon 叫不叫得動這三支' || E'\t' ||
       (select case when count(*) = 0 then '✅ 三支都收乾淨了'
                    else '🔴 還有 ' || count(*) || ' 支 anon 進得來' end
          from pg_proc p
@@ -429,7 +476,7 @@ begin
     raise exception 'migi_rollback';
   exception when others then
     /* ⚠ 硬規則 3.9：訊息一定要設在 exception 處理器裡 ——
-       設在成功路徑上再 raise 的話，`is_local = true` 會跟著回滾掉，最後印出空白。 */
+       設在成功路徑上再 raise 的話，`is_local = true` 會跟著被回滾，最後印出空白。 */
     if sqlerrm <> 'migi_rollback' then
       v_out := v_out || E'\n' || '🔴 測試自己炸了' || E'\t' || sqlerrm;
     end if;

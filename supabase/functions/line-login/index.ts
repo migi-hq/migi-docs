@@ -647,6 +647,30 @@ Deno.serve(async (req) => {
      ⚠ 暱稱與手機**仍然是前端送的** —— 那是客人自己填的資料，
        本來就該由他決定；後端的 migi_norm_* 與 CHECK 會把關格式。
        真正不能讓前端決定的只有「他是誰」。 */
+
+  /* ── 🔴 註冊前的驗證閘門（2026-08-30 補的洞）──────────
+     修之前這裡**什麼都沒檢查** —— 前端有擋、後端沒有，
+     所以**跳過驗證那一步直接送出就會成功**。
+     整套 OTP 只是一個前端的裝飾。
+
+     ⚠ 條件跟 `otp_send` 那裡**同一個** `smsConfigured()`：
+       還沒接簡訊商 → 這個系統就沒有驗證能力，不能拿它擋人。
+       🔴 兩邊各判斷一次的話，會出現「發的時候說跳過、
+         送出的時候說要驗」——客人卡在一個永遠過不了的畫面。 */
+  if (smsConfigured()) {
+    const v = await callRpc('phone_recently_verified_tx', {
+      p_org_id: MIGI_ORG_ID, p_phone: body.phone ?? '',
+      p_line_user_id: sub, p_purpose: 'register',
+    })
+    if (v.out !== true) {
+      console.warn('[line-login] 沒有驗證紀錄就想註冊', v.status, v.out)
+      return json({
+        ok: false, reason: 'phone_not_verified',
+        message: '請先完成手機驗證',
+      }, 400)
+    }
+  }
+
   let rpcRes: Response
   try {
     rpcRes = await db('rpc/register_member_tx', {
@@ -686,6 +710,25 @@ Deno.serve(async (req) => {
   let avatarUrl: string | null = null
   if (rpcBody?.member_id && rpcBody?.action !== 'line_conflict') {
     avatarUrl = await saveLineAvatar(rpcBody.member_id, lineBody?.picture)
+
+    /* ── 🔴 蓋章（2026-08-30 補的第二個洞）──────────────
+       `members.phone_verified_at` **掃全庫 0 支函式會寫** ——
+       客人真的驗過簡訊，但沒有人在他身上留下紀錄。
+       ⇒「這個帳號的手機驗過」這個概念在資料庫裡等於不存在，
+         而自助認領的分級**完全建立在那個章上面**
+         （未驗過的帳號只有在沒有東西可以被偷時才放行）。
+
+       ⚠ 順便把那組碼用掉 —— 不然 15 分鐘內還能再拿去認領別的帳號。
+       ⚠ **失敗不影響註冊**（同頭像）：會員已經建立了，
+         這時回「註冊失敗」是騙人的。章沒蓋上的代價是他日後
+         換 LINE 時要找店員，那不值得把一個成功的註冊變成失敗。 */
+    const cs = await callRpc('otp_consume_tx', {
+      p_org_id: MIGI_ORG_ID, p_phone: body.phone ?? '',
+      p_line_user_id: sub, p_purpose: 'register', p_member_id: rpcBody.member_id,
+    })
+    if (cs.out?.ok !== true) {
+      console.warn('[line-login] 驗證章沒蓋上', cs.status, cs.out)
+    }
   }
 
   /* 成功。action ∈ existing_line / rebound / line_conflict / existing_phone / created
