@@ -20,16 +20,32 @@
    | （省略）＝ `register` | 註冊流程最後一步 | 驗簽 → register_member_tx → 存頭像 |
    | `sync_avatar` | 頭像抽屜按「同步」 | 驗簽 → 查會員 → 只更新頭像 |
    | `whoami` | **開機第一件事** | 驗簽 → `get_member_by_line_tx` → 這個 LINE 是誰 |
-   | `check_phone` | 註冊第 2 步按「下一步」 | 驗簽 → `phone_in_use_tx` → 只回一個布林 |
    | `otp_send` | 按「傳送驗證碼」 | 驗簽 → `otp_request_tx` → 發簡訊 |
-   | `otp_verify` | 輸入六碼 | 驗簽 → `otp_verify_tx` |
+   | `otp_verify` | 輸入六碼 | 驗簽 → `otp_verify_tx` → **順便決定要走哪一條** |
+   | `set_phone` | 個人設定改手機，驗完六碼 | 驗簽 → `set_member_phone_tx` |
 
-   🔴 **`check_phone` 本質上是「這支號碼是不是會員」的查詢器**，
-     所以它一定要在**驗簽之後**才執行 —— 也就是要有一個真的 LINE 帳號才問得到。
-     ⚠ 回傳**只有一個布林**：不給 `member_id`、不給暱稱、不給任何東西。
-     ⚠ 拿到之後也綁不進去（`register_member_tx` 的 A3 已於 2026-08-30 堵掉）。
-   ⏳ 之後若要更嚴，是在這裡加**每個 `sub` 的次數上限**，
-     不是把它改回不存在 —— 沒有它，客人要填完四步才知道被擋。
+   ── 🔴 2026-08-30：`check_phone` 整支拿掉 ──────────
+   原本第 2 步會邊打邊查「這支號碼有人用嗎」，有人用就顯示紅字擋住。
+   **使用者指出那是死路**：真正的號碼主人也被擋在門外，
+   自助救援永遠走不到入口。
+
+   ✅ 正解更簡單：**不要先問。** 一律發驗證碼，
+     驗過之後**由後端決定**這是註冊還是認領：
+   ```
+   1 暱稱 → 2 手機 → 2.5 驗證碼 ─┬─ 沒人用 → 3 生日 → 4 性別 → 新帳號
+                                  └─ 有人用 → 直接把舊帳號給你（不用再填一次）
+   ```
+   🎯 順帶把整個查詢器消滅了 —— `check_phone` 本來是
+     「有 LINE 就能一直問某支號碼是不是會員」。
+     現在要知道任何事，**都得先證明你拿著那支手機**。
+
+   ── 🔴 2026-08-30 補的兩個洞 ───────────────────────
+   ① **註冊路徑原本完全沒有檢查驗證碼。** 前端有擋、後端沒有 ——
+      跳過驗證那一步直接送出就會成功。現在 register 之前先問
+      `phone_recently_verified_tx`。
+   ② **驗過之後沒有人在會員身上蓋章。** `members.phone_verified_at`
+      掃全庫 0 支函式會寫 —— 而自助認領的安全性完全建立在那個章上。
+      現在成功後呼叫 `otp_consume_tx`（用掉這次驗證 ＋ 蓋章）。
 
    🔴 **`sync_avatar` 不能重用 `register_member_tx`** ——
      它第一件事就是 `if v_name = '' then raise 'display_name required'`，
@@ -313,7 +329,16 @@ Deno.serve(async (req) => {
     return json({ ok: false, reason: 'id_token_required', message: '缺少 LINE 授權資訊' }, 400)
   }
   const syncOnly = body.mode === 'sync_avatar'
-  const checkPhone = body.mode === 'check_phone'
+
+  /* 🔴 不認得的 mode 一律擋下，**不要讓它掉進最底下的註冊分支**。
+     `check_phone` 是 2026-08-30 拿掉的 —— 舊版前端還在打的話，
+     沒有這道就會變成「用 check_phone 的參數去跑註冊」，
+     然後噴一句 `display_name required` 給客人看。 */
+  const KNOWN = ['sync_avatar', 'whoami', 'otp_send', 'otp_verify', 'set_phone']
+  if (body.mode && !KNOWN.includes(body.mode)) {
+    console.warn('[line-login] 不認得的 mode', body.mode)
+    return json({ ok: false, reason: 'unknown_mode', message: '請重新整理頁面' }, 400)
+  }
 
   /* ── ① 向 LINE 驗簽 ──────────────────────────────
      用 LINE 的 verify 端點，不自己實作 JWKS 驗證：
@@ -391,44 +416,22 @@ Deno.serve(async (req) => {
     return json({ ok: true, ...out })
   }
 
-  /* ── ②a 只檢查手機有沒有人用（註冊第 2 步）────────
-     ⚠ 放在驗簽**之後** —— 這是這一段唯一的防線：要有真的 LINE 帳號才問得到。
-     ⚠ 正規化交給 `phone_in_use_tx` 裡的 `migi_norm_phone()`，
-       這裡**不要自己算** —— 多一個地方算就多一個會算歪的地方，
-       而 `uq_members_phone` 是字串比對（`0912-345-678` ≠ `0912345678`）。 */
-  if (checkPhone) {
-    const phone = (body.phone ?? '').trim()
-    if (!phone) return json({ ok: true, in_use: false })
-    let r: Response
+  /* 小工具：叫一支 RPC，回 [成功?, 內容]。
+     ⚠ 只在這支函式內部用，所以刻意不做重試 ——
+       這裡的每一個呼叫都是 service_role 對自己資料庫的呼叫，
+       失敗就是真的有事，重試只會讓症狀更難查。 */
+  async function callRpc(fn: string, args: Record<string, unknown>) {
     try {
-      /* 🎯 帶上 `sub` —— 問的不是「這支號碼有人用嗎」，
-         而是「這支號碼被**不是你**的人用了嗎」。
-         🔴 沒帶的話，一個 LINE 已經綁好的客人重走註冊、填**自己的號碼**，
-           會被告知「這支號碼已經是會員了，請找店員」——
-           而那是他自己的號碼。
-         ⚠ 那不是只有測試才會遇到：客人清 App 資料、換手機、
-           或在另一台裝置開 LIFF 都會走到。 */
-      r = await db('rpc/phone_in_use_tx', {
-        method: 'POST',
-        body: JSON.stringify({ p_org_id: MIGI_ORG_ID, p_phone: phone, p_line_user_id: sub }),
-      })
+      const r = await db(`rpc/${fn}`, { method: 'POST', body: JSON.stringify(args) })
+      const out = await r.json().catch(() => null)
+      return { ok: r.ok, status: r.status, out }
     } catch (e) {
-      /* 🔴 查不到就說「沒被用」（fail open）。
-         把人因為網路問題擋在門外比較糟，而**送出那一步還有一道**
-         （register_member_tx 會回 phone_taken）。 */
-      console.error('[line-login] phone_in_use_tx 連線失敗', e)
-      return json({ ok: true, in_use: false, degraded: true })
+      console.error(`[line-login] ${fn} 連線失敗`, e)
+      return { ok: false, status: 0, out: null }
     }
-    if (!r.ok) {
-      console.warn('[line-login] phone_in_use_tx 回錯', r.status)
-      return json({ ok: true, in_use: false, degraded: true })
-    }
-    const used = await r.json().catch(() => null)
-    // 🔴 只回布林。不回 member_id、不回暱稱、不回任何可以辨識那個人的東西。
-    return json({ ok: true, in_use: used === true })
   }
 
-  /* ── ②b 發驗證碼 ──────────────────────────────────
+  /* ── ②a 發驗證碼 ──────────────────────────────────
      ⚠ 一樣放在驗簽之後 —— 沒有 LINE 帳號就發不出簡訊，
        否則這支就是一個「幫任何人付錢發簡訊」的按鈕。
      ⚠ 限流三道都在 `otp_request_tx` 裡（同號碼 60 秒／1 小時 5 則／
@@ -540,7 +543,68 @@ Deno.serve(async (req) => {
        回 `ok: false` 的話前端的 `callFn` 會把 data 換成 error 物件，
        而 `left`（還可以試幾次）就消失了 —— 客人只會看到
        「操作失敗，請再試一次」，那正是最沒用的一句話。 */
-    return json({ ok: true, verified: out.ok === true, reason: out.reason ?? null, left: out.left ?? null })
+    if (out.ok !== true) {
+      return json({ ok: true, verified: false, reason: out.reason ?? null, left: out.left ?? null })
+    }
+
+    /* ── 🎯 驗過了 → **這裡才決定要走哪一條** ──────────
+       這就是取代 `check_phone` 的那一段。差別是：
+       · 以前：**還沒證明任何事**就告訴你「這支號碼有人用」（死路 ＋ 查詢器）
+       · 現在：**證明你拿著這支手機之後**才回答，而且回答的是一條路不是一堵牆
+
+       ⚠ 只有註冊流程（`register` / `claim`）要分岔；
+         `change`（個人設定改手機）走的是 `set_phone`，不在這裡。 */
+    const purpose = body.purpose ?? 'register'
+    if (purpose === 'register' || purpose === 'claim') {
+      const c = await callRpc('claim_member_by_phone_tx', {
+        p_org_id: MIGI_ORG_ID, p_phone: body.phone ?? '',
+        p_line_user_id: sub, p_purpose: purpose,
+      })
+      const cl = c.out
+      if (cl?.ok === true) {
+        /* 認回舊帳號了 —— 頭像也順手存一下（失敗不影響，同註冊路徑）。 */
+        const avatarUrl = await saveLineAvatar(cl.member_id, lineBody?.picture)
+        return json({
+          ok: true, verified: true, claimed: true,
+          action: cl.action,                       // claimed / already_yours
+          member_id: cl.member_id, display_name: cl.display_name,
+          avatar_url: avatarUrl,
+        })
+      }
+      /* `not_found` = 這支號碼沒有人用 → **正常往下走註冊**，不是錯誤。
+         其餘（staff_required / line_bound_elsewhere / merge_required）
+         是「有帳號但不能自助給你」，原樣回給前端顯示。
+         ⚠ `not_verified` 理論上不會發生（上面剛驗過），
+           真的出現代表 15 分鐘的視窗算錯了 —— 當成擋下，不要靜靜放行。 */
+      if (cl?.reason && cl.reason !== 'not_found') {
+        return json({ ok: true, verified: true, claimed: false,
+          claim_blocked: cl.reason, message: cl.message ?? null })
+      }
+      if (!cl) {
+        console.error('[line-login] claim_member_by_phone_tx 沒有回應', c.status)
+        return json({ ok: true, verified: true, claimed: false,
+          claim_blocked: 'db_unreachable', message: '系統忙碌中，請稍後再試' })
+      }
+    }
+
+    return json({ ok: true, verified: true, claimed: false })
+  }
+
+  /* ── ②d 個人設定改手機 ────────────────────────────
+     ⚠ 這一支跟認領**刻意分開**，即使兩者都是「驗過手機就改綁定」：
+       認領是「把一個既有帳號的 LINE 換成我的」，
+       改手機是「把我這個帳號的號碼換掉」——
+       方向相反，而且錯的那一邊會把別人的帳號交出去。
+       **一支函式兩個方向**正是待辦 35 那個病（一個名字兩個意思）。 */
+  if (body.mode === 'set_phone') {
+    const s = await callRpc('set_member_phone_tx', {
+      p_org_id: MIGI_ORG_ID, p_line_user_id: sub, p_phone: body.phone ?? '',
+    })
+    if (!s.out) {
+      return json({ ok: false, reason: 'db_unreachable', message: '系統忙碌中，請稍後再試' }, 502)
+    }
+    // 業務結果（phone_taken / not_verified）一律 ok:true，理由同上
+    return json({ ok: true, ...s.out })
   }
 
   /* ── ②b 只同步頭像（頭像抽屜的「同步」按鈕）──────── */
