@@ -283,6 +283,21 @@ Deno.serve(async (req) => {
        同一個 LINE 1 小時 10 則），這裡不重複實作 —— 兩個地方算就會不一致。 */
   if (body.mode === 'otp_send') {
     const purpose = body.purpose ?? 'register'
+
+    /* 🎯 **驗證要不要做，由這裡決定，前端不判斷。**
+       簡訊商還沒接通 → 回 `otp_required: false`，前端直接跳過驗證那一步。
+       填好三個 secret 之後 → 驗證**自動上線，前端一個字都不用改、不用重新部署**。
+
+       🔴 **「沒設定」與「送失敗」是兩件不同的事，不可以混為一談：**
+       · 沒設定  → 這個系統還沒有簡訊能力 → 跳過（現在的狀態）
+       · 送失敗  → 有能力但這次沒送成 → **擋住**，不可以放行
+       混在一起的話，簡訊商哪天壞掉或欠費，驗證會**靜靜地整個消失**
+       而沒有任何人發現 —— 那是最糟的一種故障。 */
+    if (!Deno.env.get('SMS_PROVIDER') || !Deno.env.get('SMS_USER') || !Deno.env.get('SMS_PASS')) {
+      console.warn('[line-login] 簡訊商未設定，這次註冊跳過手機驗證')
+      return json({ ok: true, otp_required: false })
+    }
+
     let r: Response
     try {
       r = await db('rpc/otp_request_tx', {
@@ -305,7 +320,7 @@ Deno.serve(async (req) => {
          前端的 `callFn` 看到 `ok: false` 會把整個 data 換成一個 error 物件 ——
          那樣 `retry_after`（還要等幾秒）就消失了，客人只會看到
          一句「操作失敗」。同 `line_conflict` 那次的教訓。 */
-      return json({ ok: true, sent: false, reason: out.reason, retry_after: out.retry_after })
+      return json({ ok: true, otp_required: true, sent: false, reason: out.reason, retry_after: out.retry_after })
     }
 
     /* 🔴 **開頭的「【MIGI 咪吉麻將】」不可以拿掉。**
@@ -315,17 +330,20 @@ Deno.serve(async (req) => {
        ⚠ 也不要改成英文縮寫：規定要的是**看得懂是誰發的**。 */
     const sent = await sendSms(out.phone, `【MIGI 咪吉麻將】你的驗證碼是 ${out.code}，5 分鐘內有效。`)
 
-    /* 🔴 **簡訊商還沒接通時，把碼交給前端**（`dev_code`）。
-       這是一個旁路，而硬規則 5.7 說旁路一旦存在就會被忘記 ——
-       所以它**自帶到期日**（寫死在 `otp_request_tx` 裡的 2026-09-30），
-       時間到了資料庫就不再回 `dev_code`，這裡也就沒東西可傳。
-       ⚠ **不要在這裡自己判斷日期** —— 那等於多一個可以偷偷改的地方。
-         唯一的開關在資料庫函式裡，改它會留下一份 applied/ 的 SQL。
-       ⚠ 簡訊真的送出去了就**不回** dev_code —— 有簡訊就不需要旁路。 */
-    return json({
-      ok: true, sent,
-      ...(sent ? {} : { dev_code: out.dev_code ?? null, dev_until: out.dev_until ?? null }),
-    })
+    /* 🔴 **這裡沒有旁路，而且刻意不做。**
+       2026-08-30 曾經寫過一版「簡訊還沒接通就把碼顯示在畫面上」，
+       即使它自帶到期日、即使畫面上有紅色橫幅，仍然決定整段拿掉 ——
+       硬規則 5.7：**旁路一旦存在就會忘記拿掉**，而不存在的東西忘不掉。
+       → 現在只有兩種狀態：**還沒有簡訊能力（跳過驗證）** 或
+         **有能力（一定要驗過才能過）**，中間沒有第三種。
+
+       🔴 走到這裡代表簡訊商**已經設定好了**，所以送不出去就是失敗，
+         不可以放行 —— 放行等於「沒驗證也讓你過」，整套 OTP 就失效了。 */
+    if (!sent) {
+      console.error('[line-login] 簡訊送不出去', out.phone)
+      return json({ ok: true, otp_required: true, sent: false, reason: 'sms_failed' })
+    }
+    return json({ ok: true, otp_required: true, sent: true })
   }
 
   /* ── ②c 驗證碼 ────────────────────────────────────
