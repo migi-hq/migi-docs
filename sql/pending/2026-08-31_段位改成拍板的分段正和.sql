@@ -636,7 +636,17 @@ begin
 
     /* 🔴 **正對照**：白金以上沒有保護，一定要掉得出去。
        只驗「低段掉不動」的話，函式整支不寫入也會通過。
-       乙設 1450（白金熊 IV，band=mid），連兩將第 4 名 = −60 → 1390 = 金牌熊 II。 */
+
+       🎯 **這一格順便驗到一件更重要的事：band 會在一場之內重算。**
+       乙設 1450（白金熊 IV，band=mid），連兩將第 4 名：
+       ```
+       第 1 將  mid  −30 → 1420   ← 已經掉出白金，變成金牌
+       第 2 將  low  −20 → 1400   ← 🎯 吃的是低段的 −20，不是 −30
+       ```
+       ⚠ 我第一次寫這格時算成 `−30 × 2 = 1390` —— **那是把 band 當成整場固定的**，
+         而規格是「依**當下**的段位取點數表」。函式是對的，是測試算錯。
+       ⚠ 1400 仍然高於金牌下限 1270，所以這一格**沒有碰到夾子** ——
+         夾子由下一格（㉗）驗。 */
     insert into table_sessions (org_id, store_id, table_id, mode, status, ended_at)
     values (v_org, v_store, v_tbl, 'private', 'completed', now()) returning id into v_st;
     insert into session_players (org_id, session_id, member_id)
@@ -649,13 +659,19 @@ begin
         jsonb_build_object('member_id',c,'finish_rank',2),
         jsonb_build_object('member_id',d,'finish_rank',3)))
       from generate_series(1,2)));
-    v_out := v_out || E'\n' || '㉖ 正對照：白金連輸兩將 → 掉回金牌熊 II' || E'\t' ||
-      (select case when rating=1390 and rank='金牌熊 II'
-                   then '✅ 1390 · 金牌熊 II（白金以上要守）'
+    v_out := v_out || E'\n' || '㉖ 白金連輸兩將 → 1400（第 2 將已改吃低段點數）' || E'\t' ||
+      (select case when rating=1400 and rank='金牌熊 II'
+                   then '✅ 1400 · 金牌熊 II（−30 然後 −20，不是 −30 兩次）'
                    else '🔴 ' || rating || ' · ' || rank end from members where id=b);
 
     /* 🎯 第三格：掉進金牌之後**就受保護了** —— 保護是「當前階」不是「起始階」。
-       乙現在 1390（金牌），再連輸兩將 −40 → 夾在 1270（金牌熊 IV）。 */
+
+       🔴 **我第一版的這一格根本沒測到保護。** 起點寫 1400、連輸兩將 −40 = 1360，
+         而金牌下限是 1270 —— **離夾子還有 90 分，它從頭到尾沒作用**。
+         那一格通過與否跟保護完全無關（硬規則 3.55：測試通過但驗到的是別的東西）。
+       → 起點改成 **1290**（金牌熊 IV，離下限只有 20），連輸兩將 −40 → 1250
+         → **被夾回 1270**。這樣夾子才真的被踩到。 */
+    update members set rating = 1290, rank = public.rank_from_rating(1290) where id = b;
     insert into table_sessions (org_id, store_id, table_id, mode, status, ended_at)
     values (v_org, v_store, v_tbl, 'private', 'completed', now()) returning id into v_st;
     insert into session_players (org_id, session_id, member_id)
@@ -667,7 +683,7 @@ begin
         jsonb_build_object('member_id',c,'finish_rank',2),
         jsonb_build_object('member_id',d,'finish_rank',3)))
       from generate_series(1,2)));
-    v_out := v_out || E'\n' || '㉗ 掉進金牌後就受保護：1390 → 夾在 1270' || E'\t' ||
+    v_out := v_out || E'\n' || '㉗ 🛡 金牌 1290 連輸兩將 −40 → 夾回 1270（不是 1250）' || E'\t' ||
       (select case when rating=1270 and rank='金牌熊 IV'
                    then '✅ 1270 · 金牌熊 IV（自我維持，不用 peak_rating）'
                    else '🔴 ' || rating || ' · ' || rank end from members where id=b);
