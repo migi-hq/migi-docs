@@ -1,8 +1,8 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 135 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
-> 最後歸檔的是 `2026-08-31_段位改成拍板的分段正和.sql`）
+> **基準：`sql/applied/` 有 136 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
+> 最後歸檔的是 `2026-08-31_段位補下一大階與我的段位.sql`）
 >
 > 🔴 **2026-08-30 補記一次漂移**：本文件在此之前**完全沒有 `phone_otps`、
 > `members.phone_verified_at`、`otp_*` 那一整批** —— 也就是 08-30 上午的
@@ -27,7 +27,7 @@
 
 ## 怎麼知道它過期了（硬規則 1.7）
 
-比對現在 `sql/applied/` 的檔案數與上面的基準（**135**）—— **不同就是過期**。
+比對現在 `sql/applied/` 的檔案數與上面的基準（**136**）—— **不同就是過期**。
 這個檢查不需要資料庫。
 
 ⚠ **但它只能證明「確定過期」，不能證明「還是新的」。**
@@ -534,7 +534,10 @@ apply_session_rounds_tx(p_session_id, p_rounds)     🔴 只給 service_role
 reset_season_ratings_tx(org, season, drop_tiers=2)  🔴 只給 service_role
   先記冠軍 → 所有人降 2 大階（360 分）→ 夾在 910　｜　同一季只能結一次
 member_rank_tx(member_id) → text  anon ✅  含大師的對手多樣性判斷
-rank_detail_tx(rating)    → jsonb anon ✅  rank/tier/sub/band/tier_min/progress/to_next/at_top
+get_my_rank_tx(org, member) → jsonb anon ✅  成績頁 Hero 用（含大師的對手多樣性）
+rank_detail_tx(rating)    → jsonb anon ✅
+  小級：rank / tier / sub / band / tier_min / progress / to_next / at_top
+  大階：next_tier / to_next_tier / tier_progress   ← Hero 的進度條用這一組
 rank_from_rating(rating)  → text  anon ✅  只是取 rank_detail_tx 的 rank
 ```
 
@@ -555,6 +558,20 @@ rank_from_rating(rating)  → text  anon ✅  只是取 rank_detail_tx 的 rank
 ⚠ **階內仍然可以降小級**（I→II→III→IV）。
 ⚠ **band 會在一場之內重算** —— 白金掉到金牌之後，下一將吃的是低段的 −20 不是 −30。
 ⚠ **大階寬度從主檔算，不要寫死 180** —— 每階 45 一定會調。
+
+### 🎯 小級與大階是兩組數字，不要混用
+
+| | 用在哪 |
+|---|---|
+| **小級**（`progress` / `to_next`） | 標題的「金牌熊 **II**」—— 動得比較頻繁，細顆粒回饋 |
+| **大階**（`tier_progress` / `to_next_tier`） | **成績頁 Hero 的進度條與副標** |
+
+🔴 **進度條一定要用大階**：獎勵是小熊，而**小熊只在大階換** ——
+  進度條填滿卻什麼都沒發生，是最糟的一種回饋。
+⚠ **進度條與副標必須同一個維度**，一個講小級一個講大階的話，
+  條滿了字還說「還差 90 分」，那看起來就是壞的。
+⚠ `next_tier` **要看全部的階**（含 `auto=false` 的大師熊）——
+  客人爬到鑽石 I 之後仍然要看得到「大師熊」這個目標。
 
 ### 🎯 認領的分級（`claim_member_by_phone_tx`）
 
