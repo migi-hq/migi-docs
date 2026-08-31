@@ -1,8 +1,8 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 134 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
-> 最後歸檔的是 `2026-08-31_名次到積分到段位.sql`）
+> **基準：`sql/applied/` 有 135 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
+> 最後歸檔的是 `2026-08-31_段位改成拍板的分段正和.sql`）
 >
 > 🔴 **2026-08-30 補記一次漂移**：本文件在此之前**完全沒有 `phone_otps`、
 > `members.phone_verified_at`、`otp_*` 那一整批** —— 也就是 08-30 上午的
@@ -27,7 +27,7 @@
 
 ## 怎麼知道它過期了（硬規則 1.7）
 
-比對現在 `sql/applied/` 的檔案數與上面的基準（**134**）—— **不同就是過期**。
+比對現在 `sql/applied/` 的檔案數與上面的基準（**135**）—— **不同就是過期**。
 這個檢查不需要資料庫。
 
 ⚠ **但它只能證明「確定過期」，不能證明「還是新的」。**
@@ -131,15 +131,19 @@
 | `orders` | id! │ org_id! │ store_id! │ member_id │ table_id │ **session_id** │ status!=open │ **channel!=counter** │ total_points!=0 │ deleted_at │ created_at! │ updated_at! │ **created_by** │ **updated_by** │ order_no │ subtotal!=0 │ coupon_discount!=0 │ tier_discount!=0 │ payable!=0 │ points_used!=0 │ cash_due!=0 │ tier_at_order │ **idempotency_key** │ wallet_txn_id │ paid_at │ entity_id │ is_test!=false │ tier_discount_pct │ txn_no |
 | `orgs` | id! │ name! │ plan!=self │ deleted_at │ created_at! │ updated_at! │ created_by │ updated_by │ 🎯 **live_from**（2026-08-28 新增） |
 | `phone_otps` | 🆕 2026-08-30。id! │ org_id! │ phone! │ code_hash! │ purpose! │ line_user_id │ attempts!=0 │ sent_at!=now() │ expires_at! │ verified_at │ consumed_at |
-| `rank_tiers` | 🆕 2026-08-31 段位區間主檔。code!（PK）│ label! │ min_rating! │ sub_count!=4 │ **auto!=true** │ sort! │ note。<br>6 列：銅 800／銀 1200／金 1400／白金 1600／鑽石 1800／大師 2000。<br>⚠ **大師熊 `auto=false`** —— 文件明訂要 norm（official 賽事），分數到了也只到鑽石熊 I。<br>⚠ RLS 啟用、**0 條 policy**：只被 `rank_detail_tx`（DEFINER）讀。 |
+| `rank_tiers` | 🆕 2026-08-31 段位區間主檔。code!（PK）│ label! │ min_rating! │ sub_count!=4 │ **auto!=true** │ **band!='low'** │ sort! │ note。<br>6 列：銅 **910**／銀 1090／金 1270／白金 1450／鑽石 1630／大師 1810（**每階 45 × 4 = 180**）。<br>⚠ **大師熊 `auto=false`** —— 要「最近 50 場 ≥20 個不同對手」，分數到了也只到鑽石熊 I。<br>⚠ `band` 決定順位點：low（銅銀金）/ mid（白金鑽石）/ top（大師）。<br>⚠ RLS 啟用、**0 條 policy**：只被 `rank_detail_tx`（DEFINER）讀。 |
+| `rank_points` | 🆕 2026-08-31 順位點主檔。band! │ place!（PK 兩欄）│ points!。<br>12 列，**分段正和**：low `+30/+15/0/−20`（**+25**）／mid `+30/+10/−10/−30`（0）／top `+30/+5/−20/−40`（**−25**）。 |
+| `season_champions` | 🆕 2026-08-31。season!（PK）│ org_id! │ member_id │ rating │ awarded_at!。<br>🔴 **降階之前先記冠軍** —— 降完就再也算不出來了（不可回溯）。<br>⚠ 沒有人到大師時 `member_id` 是 **null**（誠實的「本季從缺」）。 |
 
 > 🆕 **2026-08-31 段位那一批新增的欄位**
-> · `members.rating!=1000` / `rating_games!=0` / **`peak_rating!=1000`**（生涯最高，只增不減）
+> · `members.rating!=1000` / `rating_games!=0`
 > · `session_players.rating_after`（那一場打完幾分，走勢圖用）
+> 🔴 ~~`members.peak_rating`~~ **同日建了又刪掉**：歸零／降階設計不需要它，
+>   而降階保護也不需要（規則是「不掉階」的話，當前分數本身就記著他到過哪一階）。
 > 🔴 **小級（I–IV）沒有自己的門檻欄位** —— 由 `[min_rating, 下一階 min_rating)`
 > 平均切四段算出來。另外存一份就是第二個真相來源。
-> ⚠ **分數下限 800**（低於一律當 800）。代價是**零和被打破**：
-> 有人被夾住時那一場總分會多一點。刻意換來的 —— 不夾的話掉進深坑爬不回來。
+> **IV 最低、I 最高**（銅牌 IV 910 ／ III 955 ／ **II 1000 起始** ／ I 1045）。
+> ⚠ **分數下限 910**（＝銅牌 IV，最低那一階的 `min_rating`）。
 
 > 🔴 **`members.phone_verified_at`（2026-08-30 起才真的有人寫）** ——
 > 欄位早就在，但在 `otp_consume_tx` 出現之前**掃全庫 0 支函式會寫它**。
@@ -516,23 +520,41 @@ register_member_tx(...)                                           → 🔴 2026-
 
 ### 🆕 段位（2026-08-31）
 
+> 🔴 **規則以《決策紀錄》第二十三節為準。** 這一段只寫「資料庫裡實際是什麼」。
+> ⚠ 2026-08-31 當天做過兩版：先是我憑對 LOL 的印象做的 Elo 版（已作廢），
+>   當天改成拍板的**分段正和**。`apply_session_results_tx` 已刪除。
+
 ```
-apply_session_results_tx(p_session_id, p_results)   🔴 只給 service_role
-  p_results = [{"member_id":"…","finish_rank":1}, …]
-  寫 finish_rank/rating_after → 多人 Elo 算分 → 更新 rating/peak_rating/rank
+apply_session_rounds_tx(p_session_id, p_rounds)     🔴 只給 service_role
+  p_rounds = [ [ {"member_id":"…","finish_rank":1}, …四人 ], …一將一個陣列 ]
+  一將一將依序套用 → 寫 finish_rank/score_points/rating_after → 更新 rating/rank
+  ⚠ 未滿 2 將 → too_few_rounds　｜　不是四人 → need_four_players
   ⚠ 冪等：任一人已有 finish_rank → already_applied（重按不會再扣一次分）
   ⚠ 名次必須剛好是 1..n（不接受並列、不接受跳號）
-rank_detail_tx(rating)  → jsonb  anon ✅   rank/tier/sub/progress/to_next/at_top
-rank_from_rating(rating)→ text   anon ✅   只是取 rank_detail_tx 的 rank
+reset_season_ratings_tx(org, season, drop_tiers=2)  🔴 只給 service_role
+  先記冠軍 → 所有人降 2 大階（360 分）→ 夾在 910　｜　同一季只能結一次
+member_rank_tx(member_id) → text  anon ✅  含大師的對手多樣性判斷
+rank_detail_tx(rating)    → jsonb anon ✅  rank/tier/sub/band/tier_min/progress/to_next/at_top
+rank_from_rating(rating)  → text  anon ✅  只是取 rank_detail_tx 的 rank
 ```
 
 🔴 **名次只給 service_role**：那是店員登記的**事實**，不是客人可以宣告的。
   讓前端叫得動就等於「自己填自己第一名」（同待辦 40 的稱號那個病）。
-  ⏳ 店員登入（待辦 20）做好之後 POS 包一層 DEFINER 呼叫。
+  ⏳ 店員登入（待辦 20）做好之後 POS 包一層 DEFINER 呼叫；
+  名次的最終來源是**電子計分**（決策紀錄二十四）。
 
-**Elo**：兩兩對戰取平均，`Δ = K × Σ(S−E) / (人數−1)`，
-K = 32（前 20 場）／16（之後）。三人局四人局同一條式子。
-⚠ **先全部算完再寫** —— 不然名次填寫的順序會改變結果。
+### 🔴 兩條容易搞混的降階規則
+
+| | 銅／銀／金 | 白金以上 |
+|---|---|---|
+| **賽季中** | 🛡 **不掉階**（扣分後夾在當前階的下限） | ✅ 會掉 |
+| **賽季末** | ✅ **降 2 大階** | ✅ 降 2 大階 |
+
+🎯 **賽季中的保護不需要 `peak_rating`** —— 規則是「不掉階」的話，
+  當前分數本身就記著他到過哪一階（因為他掉不出去），夾在當前階下限即可自我維持。
+⚠ **階內仍然可以降小級**（I→II→III→IV）。
+⚠ **band 會在一場之內重算** —— 白金掉到金牌之後，下一將吃的是低段的 −20 不是 −30。
+⚠ **大階寬度從主檔算，不要寫死 180** —— 每階 45 一定會調。
 
 ### 🎯 認領的分級（`claim_member_by_phone_tx`）
 
