@@ -161,6 +161,8 @@ begin
     'tier',     t.label,
     'sub',      v_sub,
     'band',     t.band,
+    -- 🎯 這一階的下限。低段的降階保護就是夾在這個值上（見 ⑥）
+    'tier_min', t.min_rating,
     'rating',   v,
     'progress', least(100, greatest(0, round((v - lo) / step * 100)))::int,
     -- 至頂時是 null 不是 0 —— 0 會被畫成「就快到了」
@@ -233,7 +235,7 @@ as $$
 declare
   v_org uuid; v_rounds int; v_n int; r jsonb; e jsonb;
   v_ids uuid[]; v_ranks int[]; i int;
-  v_band text; v_pts int; v_new int;
+  v_band text; v_pts int; v_new int; v_floor int;
   v_total jsonb := '{}'::jsonb;   -- member_id → 本場累計得點
 begin
   select org_id into v_org from table_sessions
@@ -283,9 +285,11 @@ begin
           'member_id', v_ids[i]);
       end if;
 
-      /* 🔴 依**當下**的段位取 band —— 所以要在迴圈裡查，不能先撈一次。 */
-      select (public.rank_detail_tx(m.rating) ->> 'band') into v_band
-        from members m where m.id = v_ids[i] and m.org_id = v_org and m.deleted_at is null;
+      /* 🔴 依**當下**的段位取 band 與該階下限 —— 要在迴圈裡查，不能先撈一次。 */
+      select (d ->> 'band'), (d ->> 'tier_min')::int, m.rating
+        into v_band, v_floor, v_new
+        from members m, lateral (select public.rank_detail_tx(m.rating) as d) x
+       where m.id = v_ids[i] and m.org_id = v_org and m.deleted_at is null;
       if v_band is null then
         return jsonb_build_object('ok', false, 'reason', 'member_not_found',
           'member_id', v_ids[i]);
@@ -294,10 +298,33 @@ begin
       select points into v_pts from rank_points
        where band = v_band and place = v_ranks[i];
 
+      v_new := v_new + v_pts;
+
+      /* ── 🛡 低段的降階保護（銅／銀／金**不掉階**）────────
+         使用者 2026-08-29 拍板：「銅／銀不降」再**放寬到金牌不降**，
+         只有白金以上會掉。
+
+         🔴 **這一條一度在文件裡消失。** 改成「每半年歸零」那一版寫了
+           「不需要保護機制」—— 但那句話把**兩種保護混成一種**：
+           · 賽季降階保護 → 歸零之後確實不需要（大家都歸零）
+           · **平時降階保護 → 跟歸零完全無關，是被誤刪的**
+         ⚠ **低段正和 ≠ 不會掉**：銅銀金的第 4 名還是 −20，連輸就會掉階。
+           正和只是說「平均會往上」。
+         📌 而決策紀錄結尾那句「白金那條線是**平時會掉**的起點」一直都在 ——
+           文件自己前後矛盾，是那一句才對。
+
+         🎯 **不需要 `peak_rating`**：規則是「不降階」的話，
+           **當前分數本身就記著他到過哪一階**（因為他掉不出去）。
+           夾在當前階的下限 → 下次再掉還是那個值，自我維持。
+         ⚠ **階內仍然可以降小級**（IV→III→II→I）——
+           那正是原始設計說「保護底線 = 金牌 I」的意思，不是完全不動。 */
+      if v_band = 'low' then
+        v_new := greatest(v_new, v_floor);
+      end if;
+
       update members
-         set rating = rating + v_pts, rating_games = rating_games + 1
-       where id = v_ids[i]
-      returning rating into v_new;
+         set rating = v_new, rating_games = rating_games + 1
+       where id = v_ids[i];
 
       v_total := jsonb_set(v_total, array[v_ids[i]::text],
         to_jsonb(coalesce((v_total ->> v_ids[i]::text)::int, 0) + v_pts));
@@ -533,6 +560,65 @@ begin
     v_out := v_out || E'\n' || '⑱ 重按一次（該擋）' || E'\t' ||
       case when r->>'reason'='already_applied' then '✅ already_applied'
            else '🔴 ' || coalesce(r->>'reason','又算了一次！') end;
+
+    ---- 🛡 降階保護（該擋）＋ 正對照（該掉）--------------
+    /* 甲設成 920（銅牌熊 I，只比下限 910 高 10），連兩將第 4 名 = −40。
+       🛡 保護 → 夾在 910，不會掉出銅牌。 */
+    insert into table_sessions (org_id, store_id, table_id, mode, status, ended_at)
+    values (v_org, v_store, v_tbl, 'private', 'completed', now()) returning id into v_st;
+    insert into session_players (org_id, session_id, member_id)
+      select v_org, v_st, x from unnest(array[a,b,c,d]) x;
+    update members set rating = 920,  rank = public.rank_from_rating(920)  where id = a;
+    update members set rating = 1000, rank = public.rank_from_rating(1000) where id in (b,c,d);
+    r := public.apply_session_rounds_tx(v_st, (
+      select jsonb_agg(jsonb_build_array(
+        jsonb_build_object('member_id',a,'finish_rank',4),
+        jsonb_build_object('member_id',b,'finish_rank',1),
+        jsonb_build_object('member_id',c,'finish_rank',2),
+        jsonb_build_object('member_id',d,'finish_rank',3)))
+      from generate_series(1,2)));
+    v_out := v_out || E'\n' || '㉕ 🛡 銅牌連輸兩將：920 −40 → 夾在 910' || E'\t' ||
+      (select case when rating=910 and rank='銅牌熊 I'
+                   then '✅ 910 · 銅牌熊 I（掉不出去）'
+                   else '🔴 ' || rating || ' · ' || rank end from members where id=a);
+
+    /* 🔴 **正對照**：白金以上沒有保護，一定要掉得出去。
+       只驗「低段掉不動」的話，函式整支不寫入也會通過。
+       乙設 1450（白金熊 I，band=mid），連兩將第 4 名 = −60 → 1390 = 金牌熊 III。 */
+    insert into table_sessions (org_id, store_id, table_id, mode, status, ended_at)
+    values (v_org, v_store, v_tbl, 'private', 'completed', now()) returning id into v_st;
+    insert into session_players (org_id, session_id, member_id)
+      select v_org, v_st, x from unnest(array[a,b,c,d]) x;
+    update members set rating = 1450, rank = public.rank_from_rating(1450) where id = b;
+    r := public.apply_session_rounds_tx(v_st, (
+      select jsonb_agg(jsonb_build_array(
+        jsonb_build_object('member_id',b,'finish_rank',4),
+        jsonb_build_object('member_id',a,'finish_rank',1),
+        jsonb_build_object('member_id',c,'finish_rank',2),
+        jsonb_build_object('member_id',d,'finish_rank',3)))
+      from generate_series(1,2)));
+    v_out := v_out || E'\n' || '㉖ 正對照：白金連輸兩將 → 掉回金牌熊 III' || E'\t' ||
+      (select case when rating=1390 and rank='金牌熊 III'
+                   then '✅ 1390 · 金牌熊 III（白金以上要守）'
+                   else '🔴 ' || rating || ' · ' || rank end from members where id=b);
+
+    /* 🎯 第三格：掉進金牌之後**就受保護了** —— 保護是「當前階」不是「起始階」。
+       乙現在 1390（金牌），再連輸兩將 −40 → 夾在 1270（金牌熊 I）。 */
+    insert into table_sessions (org_id, store_id, table_id, mode, status, ended_at)
+    values (v_org, v_store, v_tbl, 'private', 'completed', now()) returning id into v_st;
+    insert into session_players (org_id, session_id, member_id)
+      select v_org, v_st, x from unnest(array[a,b,c,d]) x;
+    r := public.apply_session_rounds_tx(v_st, (
+      select jsonb_agg(jsonb_build_array(
+        jsonb_build_object('member_id',b,'finish_rank',4),
+        jsonb_build_object('member_id',a,'finish_rank',1),
+        jsonb_build_object('member_id',c,'finish_rank',2),
+        jsonb_build_object('member_id',d,'finish_rank',3)))
+      from generate_series(1,2)));
+    v_out := v_out || E'\n' || '㉗ 掉進金牌後就受保護：1390 → 夾在 1270' || E'\t' ||
+      (select case when rating=1270 and rank='金牌熊 I'
+                   then '✅ 1270 · 金牌熊 I（自我維持，不用 peak_rating）'
+                   else '🔴 ' || rating || ' · ' || rank end from members where id=b);
 
     ---- 賽季歸零 -----------------------------------------
     r := public.reset_season_ratings_tx(v_org, '_TEST_SEASON');
