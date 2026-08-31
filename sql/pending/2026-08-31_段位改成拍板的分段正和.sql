@@ -16,10 +16,11 @@
    |---|---|---|
    | 算法 | **分段正和**（固定點數表） | 🔴 兩兩 Elo |
    | 每階 | **45** | 🔴 200／銅牌 400 |
-   | 起始 1000 | **銅牌熊 III** | 🔴 銅牌熊 II |
-   | 小級方向 | **I 最低、IV 最高** | 🔴 I 最高 |
+   | 起始 1000 | **銅牌熊 II** | 銅牌熊 II（區間不同但巧合同名） |
+   | 小級方向 | **IV 最低、I 最高** | ✅ 同（2026-08-31 使用者更正過一次，見 ④） |
    | peak_rating | **不需要** | 🔴 加了 |
-   | 賽季 | **6 個月全歸零** | 🔴 沒有 |
+   | 賽季 | **6 個月降 2 大階** | 🔴 沒有 |
+   | 🛡 降階保護 | 賽季中**銅銀金不掉階**；賽季末**所有人都降** | 🔴 沒有 |
    | 大師門檻 | **最近 50 場 ≥20 個不同對手** | 🔴 用了被推翻的 norm |
    | 計次 | **一將計一次**，未滿 2 將不計 | 🔴 一場一次 |
 
@@ -36,20 +37,25 @@
    ============================================================ */
 
 -- ── ① 拿掉上一份多加的 peak_rating ────────────────────
-/* 🔴 歸零設計不需要它（決策紀錄 ④）。累積感交給**頭像圖鑑與稱號**（⑤）——
+/* 🔴 決策紀錄 ④ 明文說不需要它。累積感交給**頭像圖鑑與稱號**（⑤）——
    「這季掉回銅牌，但鑽石熊頭像永遠是我的。」
+   ⚠ 而降階保護也**不需要它**：規則是「不掉階」的話，
+     當前分數本身就記著他到過哪一階（見 ⑥ 的說明）。
    ⚠ 留著比刪掉糟：一個沒有規則會維護的欄位，遲早有人拿它當真。 */
 alter table members drop column if exists peak_rating;
 
 
 -- ── ② 段位主檔改成拍板的級距 ──────────────────────────
-/* 決策紀錄 ③：每階 **45**，起始 1000 = **銅牌熊 III**
+/* 決策紀錄 ③：每階 **45**，起始 1000 = **銅牌熊 II**
+   ⚠ **IV 最低、I 最高**（2026-08-31 使用者更正）——
+     決策紀錄 ③ 的表把欄位排成 `I|II|III|IV` 對應升冪的分數，
+     那是排版不是規則。分數界線一個字都沒動。
    ```
-   銅牌  I 910   II 955   III 1000  IV 1045
-   銀牌  I 1090  II 1135  III 1180  IV 1225
-   金牌  I 1270  II 1315  III 1360  IV 1405
-   白金  I 1450  II 1495  III 1540  IV 1585
-   鑽石  I 1630  II 1675  III 1720  IV 1765
+   銅牌  IV 910   III 955   II 1000   I 1045      ← 起始
+   銀牌  IV 1090  III 1135  II 1180   I 1225
+   金牌  IV 1270  III 1315  II 1360   I 1405
+   白金  IV 1450  III 1495  II 1540   I 1585      ← 零和分水嶺
+   鑽石  IV 1630  III 1675  II 1720   I 1765
    大師  1810+
    ```
    ⚠ 為什麼是 45 而不是 40／50：看「一週一次 · 平均實力」那一群（最多的客人）——
@@ -66,7 +72,8 @@ alter table rank_tiers add constraint rank_tiers_band_chk
 
 -- 重設六列（上一份的區間整組不對）
 update rank_tiers set min_rating =  910, band = 'low', sub_count = 4, auto = true,
-       note = '入門。起始 1000 = 銅牌熊 III'                       where code = 'bronze';
+       note = '入門。起始 1000 = 銅牌熊 II。🛡 賽季中不掉階（銀金同）'
+                                                                    where code = 'bronze';
 update rank_tiers set min_rating = 1090, band = 'low', sub_count = 4, auto = true,
        note = null                                                  where code = 'silver';
 update rank_tiers set min_rating = 1270, band = 'low', sub_count = 4, auto = true,
@@ -151,9 +158,17 @@ begin
   lo   := t.min_rating + (idx - 1) * step;
   hi   := lo + step;
 
-  -- 🔴 I 最低、IV 最高（決策紀錄 二十三 ③）
+  /* 🔴 **IV 最低、I 最高**（2026-08-31 使用者更正）。
+     ⚠ 決策紀錄 ③ 的區間表把欄位排成 `I | II | III | IV` 對應
+       `910 | 955 | 1000 | 1045`（升冪），讀起來像「I 最低」——
+       **那是排版，不是規則**。以《會員分級制度規格》的
+       「I 最高，如 鑽石熊 I > 鑽石熊 IV」為準。
+     ⇒ 連帶更正兩處：
+       · 起始 1000 = **銅牌熊 II**（③ 原本寫 III）
+       · 自動能到的最高小級 = **鑽石熊 I**（⑥ 原本寫「鑽石 IV = 第 20/24 階」）
+     📌 分數界線一個字都沒動 —— 那是每階 45 推導出來的，標籤只是叫法。 */
   v_sub := case when t.sub_count <= 1 then null
-                else (array['I','II','III','IV'])[idx] end;
+                else (array['IV','III','II','I'])[idx] end;
   v_top := (t.next_min is null and idx = t.sub_count);
 
   return jsonb_build_object(
@@ -361,11 +376,29 @@ end $$;
 drop function if exists public.apply_session_results_tx(uuid, jsonb);
 
 
--- ── ⑦ 賽季歸零（6 個月）────────────────────────────────
-/* 決策紀錄 ④：**全部歸零**回起始分，不是降 3 階。
-   ⑦：賽季第一名 → **雀神熊稱號 ＋ 頭像，永久保留**。
+-- ── ⑦ 賽季結算：降 2 大階（6 個月）────────────────────
+/* 🔴 **2026-08-31 使用者更正：不是全部歸零，是降 2 大階。**
+   ```
+   降 2 大階 = 2 × 180 = 360 分     下限 910（銅牌熊 IV）
+     大師 1810 → 1450  白金 IV     ✅ 這就是「大師變白金」
+     鑽石 I    → 1405  金牌 I
+     白金 I    → 1225  銀牌 I
+     金牌 I    → 1045  銅牌 I
+     銀牌以下  → 910   銅牌 IV（夾在下限）
+   ```
+   ⚠ **所有人都降**（使用者選的），包含銅／銀／金。
+     🔴 那跟 ②b 的「平時降階保護」**不衝突，是兩條不同的規則**：
+       · 平時：銅銀金**不掉階**
+       · 賽季末：**所有人**降 2 大階
+     決策紀錄 #4292 那一版本來就是這個結構（兩欄分開）。
 
-   🔴 冠軍**必須在歸零之前記下來** —— 歸零之後就再也算不出來了。
+   🎯 這個設計實際上是「**高段位保留一部分成果、低段位等於重來**」：
+     銀牌以下的人會被 910 的下限接住，所以不會「一季一季往下掉」——
+     他只是不跨季累積，而那正是歸零本來要達成的事。
+     ✅ 同時解掉「永久累積讓新人追不上」，又給老手一點頭香。
+
+   ⑦：賽季第一名 → **雀神熊稱號 ＋ 頭像，永久保留**。
+   🔴 冠軍**必須在降階之前記下來** —— 降完就再也算不出來了。
      那是硬規則 5.6 的「不可回溯」那一格，跟稽核欄位同一類。 */
 create table if not exists season_champions (
   season      text primary key,          -- 例 '2026H1'
@@ -378,12 +411,12 @@ alter table season_champions enable row level security;
 
 create or replace function public.reset_season_ratings_tx(
   p_org_id uuid,
-  p_season text,          -- 例 '2026H1'
-  p_start  integer default 1000
+  p_season text,                    -- 例 '2026H1'
+  p_drop_tiers integer default 2    -- 降幾個**大階**（每大階 4 小級 × 45 = 180）
 ) returns jsonb
 language plpgsql security definer set search_path to 'public'
 as $$
-declare v_champ uuid; v_rating int; v_n int;
+declare v_champ uuid; v_rating int; v_n int; v_drop int; v_floor int;
 begin
   if exists (select 1 from season_champions where season = p_season) then
     return jsonb_build_object('ok', false, 'reason', 'season_already_closed');
@@ -403,18 +436,35 @@ begin
   insert into season_champions (season, org_id, member_id, rating)
   values (p_season, p_org_id, v_champ, v_rating);
 
+  /* 大階寬度 = 下一階的下限 − 這一階的下限。
+     ⚠ **從主檔算，不要寫死 180** —— 每階 45 是可以調的（③ 說它一定會調），
+       寫死的話調完之後賽季降階會悄悄變成錯的數字。 */
+  select coalesce(min(next_min - min_rating), 180) into v_drop
+    from (select min_rating, lead(min_rating) over (order by min_rating) as next_min
+            from rank_tiers where auto) x
+   where next_min is not null;
+  v_drop := v_drop * p_drop_tiers;
+
+  select min(min_rating) into v_floor from rank_tiers where auto;
+
+  /* 🔴 **所有人都降**（含銅銀金）—— 平時的降階保護在這裡不適用，
+     那是兩條不同的規則。銀牌以下會被下限接住，所以不會無限往下。
+     ⚠ `rating_games` 一起歸零：K 值那套是「這一季打過幾場」。 */
   update members
-     set rating = p_start, rating_games = 0, rank = public.rank_from_rating(p_start)
+     set rating       = greatest(v_floor, rating - v_drop),
+         rating_games = 0,
+         rank         = public.rank_from_rating(greatest(v_floor, rating - v_drop))
    where org_id = p_org_id and deleted_at is null;
   get diagnostics v_n = row_count;
 
   return jsonb_build_object('ok', true, 'season', p_season,
-    'champion', v_champ, 'champion_rating', v_rating, 'reset_members', v_n);
+    'champion', v_champ, 'champion_rating', v_rating,
+    'dropped', v_drop, 'floor', v_floor, 'affected_members', v_n);
 end $$;
 
 
 -- ── ⑧ 把現有的人對齊新級距 ────────────────────────────
-/* 上一份把大家設成「銅牌熊 II」（舊區間）。新規格 1000 = **銅牌熊 III**。 */
+/* 上一份用的是舊區間（每階 200／銅牌 400）。新規格 1000 = **銅牌熊 II**。 */
 update members set rank = public.rank_from_rating(rating)
  where deleted_at is null and rank is distinct from public.rank_from_rating(rating);
 
@@ -443,24 +493,26 @@ declare
 begin
   begin
     ---- 級距（照決策紀錄 ③ 逐格對）-----------------------
-    v_out := v_out || E'\n' || '① 起始 1000 → 銅牌熊 III' || E'\t' ||
-      case when public.rank_from_rating(1000)='銅牌熊 III' then '✅ ' else '🔴 ' end
+    v_out := v_out || E'\n' || '① 起始 1000 → 銅牌熊 II' || E'\t' ||
+      case when public.rank_from_rating(1000)='銅牌熊 II' then '✅ ' else '🔴 ' end
       || public.rank_from_rating(1000);
-    v_out := v_out || E'\n' || '② 910 → 銅牌熊 I（I 是最低）' || E'\t' ||
-      case when public.rank_from_rating(910)='銅牌熊 I' then '✅ ' else '🔴 ' end
+    /* 🔴 這兩格就是「IV 最低、I 最高」的方向驗證。
+       方向寫反的話兩格會同時翻過來 —— 所以兩格都要，一格不夠。 */
+    v_out := v_out || E'\n' || '② 910 → 銅牌熊 IV（IV 是最低）' || E'\t' ||
+      case when public.rank_from_rating(910)='銅牌熊 IV' then '✅ ' else '🔴 ' end
       || public.rank_from_rating(910);
-    v_out := v_out || E'\n' || '③ 1045 → 銅牌熊 IV（IV 是最高）' || E'\t' ||
-      case when public.rank_from_rating(1045)='銅牌熊 IV' then '✅ ' else '🔴 ' end
+    v_out := v_out || E'\n' || '③ 1045 → 銅牌熊 I（I 是最高）' || E'\t' ||
+      case when public.rank_from_rating(1045)='銅牌熊 I' then '✅ ' else '🔴 ' end
       || public.rank_from_rating(1045);
-    v_out := v_out || E'\n' || '④ 1450 → 白金熊 I（零和分水嶺）' || E'\t' ||
-      case when public.rank_from_rating(1450)='白金熊 I' then '✅ ' else '🔴 ' end
+    v_out := v_out || E'\n' || '④ 1450 → 白金熊 IV（零和分水嶺）' || E'\t' ||
+      case when public.rank_from_rating(1450)='白金熊 IV' then '✅ ' else '🔴 ' end
       || public.rank_from_rating(1450);
-    v_out := v_out || E'\n' || '⑤ 1765 → 鑽石熊 IV（第 20/24 階）' || E'\t' ||
-      case when public.rank_from_rating(1765)='鑽石熊 IV' then '✅ ' else '🔴 ' end
+    v_out := v_out || E'\n' || '⑤ 1765 → 鑽石熊 I（自動能到的最高）' || E'\t' ||
+      case when public.rank_from_rating(1765)='鑽石熊 I' then '✅ ' else '🔴 ' end
       || public.rank_from_rating(1765);
-    /* 🔴 正對照的反面：分數到 1810 但沒有 20 個不同對手 → 仍然是鑽石 IV */
-    v_out := v_out || E'\n' || '⑥ 2000 分但沒對手多樣性 → 卡鑽石 IV' || E'\t' ||
-      case when public.rank_from_rating(2000)='鑽石熊 IV' then '✅ ' else '🔴 ' end
+    /* 🔴 正對照的反面：分數到 1810 但沒有 20 個不同對手 → 仍然是鑽石 I */
+    v_out := v_out || E'\n' || '⑥ 2000 分但沒對手多樣性 → 卡鑽石 I' || E'\t' ||
+      case when public.rank_from_rating(2000)='鑽石熊 I' then '✅ ' else '🔴 ' end
       || public.rank_from_rating(2000);
     v_out := v_out || E'\n' || '⑦ 1450 的 band 是 mid（零和）' || E'\t' ||
       case when public.rank_detail_tx(1450)->>'band'='mid' then '✅ mid'
@@ -515,7 +567,7 @@ begin
            else '🔴 ' || coalesce(r->>'reason','竟然通過了') end;
 
     ---- 正常：3 將（該通過）------------------------------
-    /* 甲每將都第 1 → 3×30 = +90 → 1090 = 銀牌熊 I
+    /* 甲每將都第 1 → 3×30 = +90 → 1090 = 銀牌熊 IV
        丁每將都第 4 → 3×(−20) = −60 → 940 = 銅牌熊 I
        ⚠ 都在低段（low），所以每將總和 +25 → 三將整桌多 75 分。
          **那不是 bug，是拍板的「低段正和」。** */
@@ -529,12 +581,12 @@ begin
     v_out := v_out || E'\n' || '⑬ 三將結算（該通過）' || E'\t' ||
       case when r->>'ok'='true' then '✅ 通過' else '🔴 ' || coalesce(r->>'reason','?') end;
 
-    v_out := v_out || E'\n' || '⑭ 甲 +90 → 1090 銀牌熊 I' || E'\t' ||
-      (select case when rating=1090 and rank='銀牌熊 I'
+    v_out := v_out || E'\n' || '⑭ 甲 +90 → 1090 銀牌熊 IV' || E'\t' ||
+      (select case when rating=1090 and rank='銀牌熊 IV'
                    then '✅ 1090 · ' || rank
                    else '🔴 ' || rating || ' · ' || rank end from members where id=a);
-    v_out := v_out || E'\n' || '⑮ 丁 −60 → 940 銅牌熊 I' || E'\t' ||
-      (select case when rating=940 and rank='銅牌熊 I'
+    v_out := v_out || E'\n' || '⑮ 丁 −60 → 940 銅牌熊 IV' || E'\t' ||
+      (select case when rating=940 and rank='銅牌熊 IV'
                    then '✅ 940 · ' || rank
                    else '🔴 ' || rating || ' · ' || rank end from members where id=d);
     /* 🔴 正對照：低段是**正和**，所以整桌總分要比開打前多 75，不是持平。
@@ -578,13 +630,13 @@ begin
         jsonb_build_object('member_id',d,'finish_rank',3)))
       from generate_series(1,2)));
     v_out := v_out || E'\n' || '㉕ 🛡 銅牌連輸兩將：920 −40 → 夾在 910' || E'\t' ||
-      (select case when rating=910 and rank='銅牌熊 I'
-                   then '✅ 910 · 銅牌熊 I（掉不出去）'
+      (select case when rating=910 and rank='銅牌熊 IV'
+                   then '✅ 910 · 銅牌熊 IV（掉不出去）'
                    else '🔴 ' || rating || ' · ' || rank end from members where id=a);
 
     /* 🔴 **正對照**：白金以上沒有保護，一定要掉得出去。
        只驗「低段掉不動」的話，函式整支不寫入也會通過。
-       乙設 1450（白金熊 I，band=mid），連兩將第 4 名 = −60 → 1390 = 金牌熊 III。 */
+       乙設 1450（白金熊 IV，band=mid），連兩將第 4 名 = −60 → 1390 = 金牌熊 II。 */
     insert into table_sessions (org_id, store_id, table_id, mode, status, ended_at)
     values (v_org, v_store, v_tbl, 'private', 'completed', now()) returning id into v_st;
     insert into session_players (org_id, session_id, member_id)
@@ -597,13 +649,13 @@ begin
         jsonb_build_object('member_id',c,'finish_rank',2),
         jsonb_build_object('member_id',d,'finish_rank',3)))
       from generate_series(1,2)));
-    v_out := v_out || E'\n' || '㉖ 正對照：白金連輸兩將 → 掉回金牌熊 III' || E'\t' ||
-      (select case when rating=1390 and rank='金牌熊 III'
-                   then '✅ 1390 · 金牌熊 III（白金以上要守）'
+    v_out := v_out || E'\n' || '㉖ 正對照：白金連輸兩將 → 掉回金牌熊 II' || E'\t' ||
+      (select case when rating=1390 and rank='金牌熊 II'
+                   then '✅ 1390 · 金牌熊 II（白金以上要守）'
                    else '🔴 ' || rating || ' · ' || rank end from members where id=b);
 
     /* 🎯 第三格：掉進金牌之後**就受保護了** —— 保護是「當前階」不是「起始階」。
-       乙現在 1390（金牌），再連輸兩將 −40 → 夾在 1270（金牌熊 I）。 */
+       乙現在 1390（金牌），再連輸兩將 −40 → 夾在 1270（金牌熊 IV）。 */
     insert into table_sessions (org_id, store_id, table_id, mode, status, ended_at)
     values (v_org, v_store, v_tbl, 'private', 'completed', now()) returning id into v_st;
     insert into session_players (org_id, session_id, member_id)
@@ -616,19 +668,48 @@ begin
         jsonb_build_object('member_id',d,'finish_rank',3)))
       from generate_series(1,2)));
     v_out := v_out || E'\n' || '㉗ 掉進金牌後就受保護：1390 → 夾在 1270' || E'\t' ||
-      (select case when rating=1270 and rank='金牌熊 I'
-                   then '✅ 1270 · 金牌熊 I（自我維持，不用 peak_rating）'
+      (select case when rating=1270 and rank='金牌熊 IV'
+                   then '✅ 1270 · 金牌熊 IV（自我維持，不用 peak_rating）'
                    else '🔴 ' || rating || ' · ' || rank end from members where id=b);
 
-    ---- 賽季歸零 -----------------------------------------
+    ---- 賽季降階 -----------------------------------------
+    /* 甲設 1810（大師分數）、乙 1585（白金 I）、丙 1090（銀牌 IV）
+       降 2 大階 = −360，下限 910：
+         甲 1810 → 1450  白金熊 IV   ← 🎯 這就是「大師變白金」
+         乙 1585 → 1225  銀牌熊 I
+         丙 1090 →  910  銅牌熊 IV（被下限接住） */
+    update members set rating=1810, rank=public.rank_from_rating(1810) where id=a;
+    update members set rating=1585, rank=public.rank_from_rating(1585) where id=b;
+    update members set rating=1090, rank=public.rank_from_rating(1090) where id=c;
+
     r := public.reset_season_ratings_tx(v_org, '_TEST_SEASON');
-    v_out := v_out || E'\n' || '⑲ 賽季歸零（該通過）' || E'\t' ||
-      case when r->>'ok'='true' then '✅ 重置 ' || (r->>'reset_members') || ' 人'
+    v_out := v_out || E'\n' || '⑲ 賽季降階（該通過）' || E'\t' ||
+      case when r->>'ok'='true'
+           then '✅ 降 ' || (r->>'dropped') || ' 分 · ' || (r->>'affected_members') || ' 人'
            else '🔴 ' || coalesce(r->>'reason','?') end;
-    v_out := v_out || E'\n' || '⑳ 歸零後大家都回 1000 · 銅牌熊 III' || E'\t' ||
-      (select case when count(*) filter (where rating<>1000 or rank<>'銅牌熊 III')=0
-                   then '✅ 全部歸零' else '🔴 有人沒歸零' end
-         from members where org_id=v_org and deleted_at is null);
+
+    v_out := v_out || E'\n' || '⑳ 大師 1810 → 白金熊 IV（降 2 大階）' || E'\t' ||
+      (select case when rating=1450 and rank='白金熊 IV'
+                   then '✅ 1450 · 白金熊 IV'
+                   else '🔴 ' || rating || ' · ' || rank end from members where id=a);
+
+    /* 🔴 **正對照**：下限只能接住掉到底的人，不可以把高段位也夾平。
+       只驗「丙被接住」的話，函式寫成「全部設成 910」也會通過。 */
+    v_out := v_out || E'\n' || '⑳b 白金 I 1585 → 銀牌熊 I（不是被夾平）' || E'\t' ||
+      (select case when rating=1225 and rank='銀牌熊 I'
+                   then '✅ 1225 · 銀牌熊 I'
+                   else '🔴 ' || rating || ' · ' || rank end from members where id=b);
+
+    v_out := v_out || E'\n' || '⑳c 銀牌 1090 → 被下限接住 910' || E'\t' ||
+      (select case when rating=910 and rank='銅牌熊 IV'
+                   then '✅ 910 · 銅牌熊 IV（不會無限往下）'
+                   else '🔴 ' || rating || ' · ' || rank end from members where id=c);
+
+    /* ⚠ 大階寬度是**從主檔算的**，不是寫死 180 —— 每階 45 一定會調。
+       驗它算出來是 360（2 大階），寫死的話這一格不會變，但改了 45 之後就錯了。 */
+    v_out := v_out || E'\n' || '⑳d 降的分數是從主檔算的（2×180=360）' || E'\t' ||
+      case when (r->>'dropped')::int = 360 then '✅ 360'
+           else '🔴 ' || coalesce(r->>'dropped','?') end;
     /* 🔴 本季沒有人到大師 → 冠軍該是 null（誠實的「從缺」），不是隨便挑一個最高分的。 */
     v_out := v_out || E'\n' || '㉑ 沒人到大師 → 冠軍從缺' || E'\t' ||
       (select case when member_id is null then '✅ null（從缺）'
