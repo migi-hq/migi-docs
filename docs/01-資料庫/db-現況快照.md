@@ -1,8 +1,8 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 133 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
-> 最後歸檔的是 `2026-08-30_個人設定顯示完整手機.sql`）
+> **基準：`sql/applied/` 有 134 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
+> 最後歸檔的是 `2026-08-31_名次到積分到段位.sql`）
 >
 > 🔴 **2026-08-30 補記一次漂移**：本文件在此之前**完全沒有 `phone_otps`、
 > `members.phone_verified_at`、`otp_*` 那一整批** —— 也就是 08-30 上午的
@@ -27,7 +27,7 @@
 
 ## 怎麼知道它過期了（硬規則 1.7）
 
-比對現在 `sql/applied/` 的檔案數與上面的基準（**133**）—— **不同就是過期**。
+比對現在 `sql/applied/` 的檔案數與上面的基準（**134**）—— **不同就是過期**。
 這個檢查不需要資料庫。
 
 ⚠ **但它只能證明「確定過期」，不能證明「還是新的」。**
@@ -131,6 +131,15 @@
 | `orders` | id! │ org_id! │ store_id! │ member_id │ table_id │ **session_id** │ status!=open │ **channel!=counter** │ total_points!=0 │ deleted_at │ created_at! │ updated_at! │ **created_by** │ **updated_by** │ order_no │ subtotal!=0 │ coupon_discount!=0 │ tier_discount!=0 │ payable!=0 │ points_used!=0 │ cash_due!=0 │ tier_at_order │ **idempotency_key** │ wallet_txn_id │ paid_at │ entity_id │ is_test!=false │ tier_discount_pct │ txn_no |
 | `orgs` | id! │ name! │ plan!=self │ deleted_at │ created_at! │ updated_at! │ created_by │ updated_by │ 🎯 **live_from**（2026-08-28 新增） |
 | `phone_otps` | 🆕 2026-08-30。id! │ org_id! │ phone! │ code_hash! │ purpose! │ line_user_id │ attempts!=0 │ sent_at!=now() │ expires_at! │ verified_at │ consumed_at |
+| `rank_tiers` | 🆕 2026-08-31 段位區間主檔。code!（PK）│ label! │ min_rating! │ sub_count!=4 │ **auto!=true** │ sort! │ note。<br>6 列：銅 800／銀 1200／金 1400／白金 1600／鑽石 1800／大師 2000。<br>⚠ **大師熊 `auto=false`** —— 文件明訂要 norm（official 賽事），分數到了也只到鑽石熊 I。<br>⚠ RLS 啟用、**0 條 policy**：只被 `rank_detail_tx`（DEFINER）讀。 |
+
+> 🆕 **2026-08-31 段位那一批新增的欄位**
+> · `members.rating!=1000` / `rating_games!=0` / **`peak_rating!=1000`**（生涯最高，只增不減）
+> · `session_players.rating_after`（那一場打完幾分，走勢圖用）
+> 🔴 **小級（I–IV）沒有自己的門檻欄位** —— 由 `[min_rating, 下一階 min_rating)`
+> 平均切四段算出來。另外存一份就是第二個真相來源。
+> ⚠ **分數下限 800**（低於一律當 800）。代價是**零和被打破**：
+> 有人被夾住時那一場總分會多一點。刻意換來的 —— 不夾的話掉進深坑爬不回來。
 
 > 🔴 **`members.phone_verified_at`（2026-08-30 起才真的有人寫）** ——
 > 欄位早就在，但在 `otp_consume_tx` 出現之前**掃全庫 0 支函式會寫它**。
@@ -504,6 +513,26 @@ register_member_tx(...)                                           → 🔴 2026-
   而且它本身是一個「有 LINE 就能一直問某支號碼是不是會員」的查詢器。
   ⚠ 先留著不刪：它是**唯一**「不會順手建立帳號」的手機查詢，
   日後 POS 幫客人註冊時很可能會用到。**但下次盤點死碼時要重新問一次。**
+
+### 🆕 段位（2026-08-31）
+
+```
+apply_session_results_tx(p_session_id, p_results)   🔴 只給 service_role
+  p_results = [{"member_id":"…","finish_rank":1}, …]
+  寫 finish_rank/rating_after → 多人 Elo 算分 → 更新 rating/peak_rating/rank
+  ⚠ 冪等：任一人已有 finish_rank → already_applied（重按不會再扣一次分）
+  ⚠ 名次必須剛好是 1..n（不接受並列、不接受跳號）
+rank_detail_tx(rating)  → jsonb  anon ✅   rank/tier/sub/progress/to_next/at_top
+rank_from_rating(rating)→ text   anon ✅   只是取 rank_detail_tx 的 rank
+```
+
+🔴 **名次只給 service_role**：那是店員登記的**事實**，不是客人可以宣告的。
+  讓前端叫得動就等於「自己填自己第一名」（同待辦 40 的稱號那個病）。
+  ⏳ 店員登入（待辦 20）做好之後 POS 包一層 DEFINER 呼叫。
+
+**Elo**：兩兩對戰取平均，`Δ = K × Σ(S−E) / (人數−1)`，
+K = 32（前 20 場）／16（之後）。三人局四人局同一條式子。
+⚠ **先全部算完再寫** —— 不然名次填寫的順序會改變結果。
 
 ### 🎯 認領的分級（`claim_member_by_phone_tx`）
 
