@@ -203,6 +203,19 @@ migi github/           ← Claude Code 的 project folder 選這層
      **同時印「明確有沒有」與「PUBLIC 有沒有」**，
      否則收錯方向時看到的症狀跟沒收一模一樣。
 
+   ### 🔴 2.6c `create extension` 一律寫 `with schema extensions`
+   （2026-09-01 踩到，踩坑第 30 條）
+   ```sql
+   create extension if not exists btree_gist with schema extensions;
+   ```
+   不寫 schema → 進 `public` → **整包函式吃上面那條 default privileges**。
+   實例：`btree_gist` 帶了 **188 支**進 `public`，**全部明確授權給 anon**，
+   `public` 的函式數 157 → 347。
+   ✅ 這個專案的慣例本來就對（`pgcrypto`／`uuid-ossp`／`pg_stat_statements`
+     都在 `extensions`），是我沒跟。
+   🎯 **它是被硬規則 1.6 抓到的** —— 那一步抓到的不是「文件過期」，
+     是**一個沒有任何症狀的授權變動**。
+
 3. **不要線上猜欄位名稱或約束值。** 動任何 RPC / schema 之前，先讀 `docs/` 下的權威文件，
    或用唯讀查詢把現況撈出來確認。猜錯的成本遠高於多問一次。
 

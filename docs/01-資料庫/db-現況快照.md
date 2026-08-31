@@ -1,9 +1,9 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 139 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
-> 最後歸檔的是 `2026-09-01_賽季表.sql`）
-> **當下規模（2026-09-01 用 MCP 量的）：函式 159 · 資料表 44 · 檢視表 22 · RLS policy 28**
+> **基準：`sql/applied/` 有 140 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
+> 最後歸檔的是 `2026-09-01_btree_gist搬去extensions.sql`）
+> **當下規模（2026-09-01 實測）：函式 159 · 資料表 44 · 檢視表 22 · RLS policy 28**
 > ⚠ 這四個數字是**給下一個人比對用的** —— 對不上就是這份文件過期了，
 >   而那個檢查**只要一句 SQL，不需要讀完整份文件**。
 >
@@ -12,8 +12,12 @@
 > 原因是賽季那份寫了 `create extension if not exists btree_gist;`
 > **沒指定 schema** → 進了 `public` → **帶 188 支函式進來**，
 > 而且依硬規則 2.6b 的 default privileges，那 188 支**全部明確授權給 anon**。
-> ✅ 已搬到 `extensions`（`2026-09-01_btree_gist搬去extensions.sql`），
+> ✅ **已搬到 `extensions` 並實測 7/7 通過**（`2026-09-01_btree_gist搬去extensions.sql`），
 > 這個專案其他可搬的擴充（pgcrypto／uuid-ossp／pg_stat_statements）本來就在那裡。
+> ⚠ **只搬 schema，沒有收那 188 個 anon 授權** —— 它們是 GiST 的型別支援函式，
+>   索引掃描時由索引機制自己呼叫，收掉可能讓寫入 `rank_seasons` 失敗
+>   **而症狀出現在完全無關的地方**。收益不成比例。
+> 📌 **日後 `create extension` 一律寫 `with schema extensions`。**
 > 🎯 **這是硬規則 1.6 第一次真的抓到東西** ——
 >   而它抓到的不是「文件過期」，是**一個沒有人會發現的授權變動**。
 >
