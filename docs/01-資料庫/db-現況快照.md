@@ -1,11 +1,21 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 138 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
-> 最後歸檔的是 `2026-08-31_牌局紀錄補當時的分數.sql`）
-> **當下規模（2026-08-31 用 MCP 量的）：函式 157 · 資料表 43 · 檢視表 22 · RLS policy 28**
+> **基準：`sql/applied/` 有 139 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
+> 最後歸檔的是 `2026-09-01_賽季表.sql`）
+> **當下規模（2026-09-01 用 MCP 量的）：函式 159 · 資料表 44 · 檢視表 22 · RLS policy 28**
 > ⚠ 這四個數字是**給下一個人比對用的** —— 對不上就是這份文件過期了，
 >   而那個檢查**只要一句 SQL，不需要讀完整份文件**。
+>
+> 🔴 **2026-09-01 踩到一次，記在這裡因為它會再發生**：
+> 依這條規則重跑之後，`public` 的函式數從 **157 變成 347**。
+> 原因是賽季那份寫了 `create extension if not exists btree_gist;`
+> **沒指定 schema** → 進了 `public` → **帶 188 支函式進來**，
+> 而且依硬規則 2.6b 的 default privileges，那 188 支**全部明確授權給 anon**。
+> ✅ 已搬到 `extensions`（`2026-09-01_btree_gist搬去extensions.sql`），
+> 這個專案其他可搬的擴充（pgcrypto／uuid-ossp／pg_stat_statements）本來就在那裡。
+> 🎯 **這是硬規則 1.6 第一次真的抓到東西** ——
+>   而它抓到的不是「文件過期」，是**一個沒有人會發現的授權變動**。
 >
 > 🔴 **2026-08-30 補記一次漂移**：本文件在此之前**完全沒有 `phone_otps`、
 > `members.phone_verified_at`、`otp_*` 那一整批** —— 也就是 08-30 上午的
@@ -138,7 +148,8 @@
 | `phone_otps` | 🆕 2026-08-30。id! │ org_id! │ phone! │ code_hash! │ purpose! │ line_user_id │ attempts!=0 │ sent_at!=now() │ expires_at! │ verified_at │ consumed_at |
 | `rank_tiers` | 🆕 2026-08-31 段位區間主檔。code!（PK）│ label! │ min_rating! │ sub_count!=4 │ **auto!=true** │ **band!='low'** │ sort! │ note。<br>6 列：銅 **910**／銀 1090／金 1270／白金 1450／鑽石 1630／大師 1810（**每階 45 × 4 = 180**）。<br>⚠ **大師熊 `auto=false`** —— 要「最近 50 場 ≥20 個不同對手」，分數到了也只到鑽石熊 I。<br>⚠ `band` 決定順位點：low（銅銀金）/ mid（白金鑽石）/ top（大師）。<br>⚠ RLS 啟用、**0 條 policy**：只被 `rank_detail_tx`（DEFINER）讀。 |
 | `rank_points` | 🆕 2026-08-31 順位點主檔。band! │ place!（PK 兩欄）│ points!。<br>12 列，**分段正和**：low `+30/+15/0/−20`（**+25**）／mid `+30/+10/−10/−30`（0）／top `+30/+5/−20/−40`（**−25**）。 |
-| `season_champions` | 🆕 2026-08-31。season!（PK）│ org_id! │ member_id │ rating │ awarded_at!。<br>🔴 **降階之前先記冠軍** —— 降完就再也算不出來了（不可回溯）。<br>⚠ 沒有人到大師時 `member_id` 是 **null**（誠實的「本季從缺」）。 |
+| `season_champions` | 🆕 2026-08-31。season! │ org_id! │ member_id │ rating │ awarded_at!。<br>🔴 **降階之前先記冠軍** —— 降完就再也算不出來了（不可回溯）。<br>⚠ 沒有人到大師時 `member_id` 是 **null**（誠實的「本季從缺」）。<br>✅ **2026-09-01 改 PK 為 `(org_id, season)`** —— 原本是 `(season)` 一欄，<br>兩個 org 不可能在同一季各有冠軍，而那張表**明明有 `org_id`**。<br>表當時是空的所以零成本。<br>✅ 同日加外鍵 `(org_id, season) → rank_seasons(org_id, code)`：<br>季別字串從「流程規範」變成**資料庫規則**。 |
+| `rank_seasons` | 🆕 2026-09-01 賽季起訖。code! │ org_id! │ label! │ starts_at! │ ends_at! │ created_at!。**PK (org_id, code)**。<br>2 列：`2026H2` 2026 秋季賽（07-01 → 2027-01-01）／`2027H1` 2027 春季賽。<br>🔴 **`ends_at` 不含**（半開區間），所以 07-01 結束與 07-01 開始不算重疊。<br>🔴 **`rank_seasons_no_overlap`：`exclude using gist (org_id =, tstzrange &&)`**<br>—— 兩季重疊 = 「現在第幾季」有兩個答案。<br>⚠ 需要 **`btree_gist`**（`org_id WITH =` 要它；gist 原生只認範圍型別）。<br>⚠ RLS 啟用、**0 條 policy**，比照 `rank_tiers`。<br>⚠ **季別名稱與切點是資料不是程式碼** —— 改名／改切點就是一句 UPDATE。 |
 
 > 🆕 **2026-08-31 段位那一批新增的欄位**
 > · `members.rating!=1000` / `rating_games!=0`
@@ -555,8 +566,22 @@ apply_session_rounds_tx(p_session_id, p_rounds)     🔴 只給 service_role
   ⚠ 名次必須剛好是 1..n（不接受並列、不接受跳號）
 reset_season_ratings_tx(org, season, drop_tiers=2)  🔴 只給 service_role
   先記冠軍 → 所有人降 2 大階（360 分）→ 夾在 910　｜　同一季只能結一次
+  ✅ 2026-09-01：季別不在 rank_seasons → season_not_found
+     （在此之前 p_season 是**呼叫端隨手打的字串**，打錯不會有人知道）
 member_rank_tx(member_id) → text  anon ✅  含大師的對手多樣性判斷
+  ✅ 2026-09-01 視窗從「最近 50 場」換成「**上次歸零之後**」（＝本季）
+  ⚠ 過濾的是**我那一列**的 settled_at，不是對手那一列的
+  🔴 它**自己會退化**，這是刻意的：
+     有當季 → 當季開始｜沒當季但有過去的季 → 最後一季 ends_at｜一季都沒有 → 退回最近 50 場
+     寫死「本季，沒有就不給大師」會在忘記建下一季時**靜靜把大師降成鑽石**
 get_my_rank_tx(org, member) → jsonb anon ✅  成績頁 Hero 用（含大師的對手多樣性）
+  ✅ 2026-09-01 多回 `season`（code/label/starts_at/ends_at/days_left），
+     **未定位的人也有** —— 那顆膠囊跟他有沒有段位無關
+  ⚠ 沒有涵蓋現在的季別時 `season` 是 **null**，前端就不畫膠囊。
+     **不要退回上一季** —— 客人沒有辦法知道那一季已經結束了
+current_season_tx(org)        → jsonb 🔴 anon 與 PUBLIC 都收掉，只給 service_role
+rating_window_start_tx(org)   → timestamptz 🔴 同上
+  ⚠ 兩支都只被 DEFINER 函式從內部呼叫（呼叫端權限不會被檢查，所以不用授權）
 rank_detail_tx(rating)    → jsonb anon ✅
   小級：rank / tier / sub / band / tier_min / progress / to_next / at_top
   大階：next_tier / to_next_tier / tier_progress   ← Hero 的進度條用這一組
