@@ -1,8 +1,11 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 136 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
-> 最後歸檔的是 `2026-08-31_段位補下一大階與我的段位.sql`）
+> **基準：`sql/applied/` 有 138 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
+> 最後歸檔的是 `2026-08-31_牌局紀錄補當時的分數.sql`）
+> **當下規模（2026-08-31 用 MCP 量的）：函式 157 · 資料表 43 · 檢視表 22 · RLS policy 28**
+> ⚠ 這四個數字是**給下一個人比對用的** —— 對不上就是這份文件過期了，
+>   而那個檢查**只要一句 SQL，不需要讀完整份文件**。
 >
 > 🔴 **2026-08-30 補記一次漂移**：本文件在此之前**完全沒有 `phone_otps`、
 > `members.phone_verified_at`、`otp_*` 那一整批** —— 也就是 08-30 上午的
@@ -14,7 +17,9 @@
 > `orgs.live_from` 新欄位、`v_real_*` 從 5 個變 12 個、
 > `set_my_profile_basics_tx` 與 `migi_norm_phone` 兩支新函式、`members_phone_chk`、
 > `register_member_tx` 的暱稱正規化與 `display_name_reserved`、
-> **簡訊驗證整批（`phone_otps` ＋ 8 支函式 ＋ `phone_verified_at`）**。
+> **簡訊驗證整批（`phone_otps` ＋ 8 支函式 ＋ `phone_verified_at`）**、
+> **段位整批（`rank_tiers` / `rank_points` / `season_champions` ＋ `members.rank` 可為 null
+> ＋ `get_my_games_tx` 補 `my_rating_after` / `settled_at`）**。
 > 來源：`sql/checks/2026-08-28_現況全匯出.sql`（pg_proc / pg_class / pg_constraint / pg_index / information_schema）
 
 ## 怎麼用這份
@@ -137,7 +142,15 @@
 
 > 🆕 **2026-08-31 段位那一批新增的欄位**
 > · `members.rating!=1000` / `rating_games!=0`
-> · `session_players.rating_after`（那一場打完幾分，走勢圖用）
+> · `session_players.rating_after`（那一場打完幾分）
+>   ✅ **2026-08-31 起真的有讀者**：`get_my_games_tx` 回傳它，
+>     成績頁的段位走勢圖（`migi-web/src/lib/ranktrend.jsx`）畫的就是這一欄。
+>   🔴 **老實記一筆**：建立當天我在檔頭寫「成績頁要畫段位走勢圖就需要它」——
+>     **那時候沒有任何人說過要做走勢圖**，我是從對 LOL 的印象推出一個需求，
+>     再拿那個需求去合理化一個欄位。那正是「建了沒人讀」，而我一邊引用
+>     那條規則一邊犯它。當天使用者問「我們有段位走勢圖嗎？」才發現。
+>   📌 它撐得住的理由**不是**「圖需要它」，而是**不可回溯**：
+>     不記的話，日後想在牌局紀錄上顯示「那場你還是銀牌熊」永遠做不到。
 > 🔴 ~~`members.peak_rating`~~ **同日建了又刪掉**：歸零／降階設計不需要它，
 >   而降階保護也不需要（規則是「不掉階」的話，當前分數本身就記著他到過哪一階）。
 > 🔴 **小級（I–IV）沒有自己的門檻欄位** —— 由 `[min_rating, 下一階 min_rating)`
@@ -468,7 +481,16 @@ register_member_tx(p_org_id, p_display_name, p_phone, p_line_user_id, p_home_sto
       members_display_name_chk，客人看到「資料有誤」而永遠註冊不了。
 rebind_line_user_tx(p_member_id, p_new_line_user_id, p_staff_id, p_reason)
   ⚠ 這是**店員的補救工具**不是註冊流程的一部分（簽名有 p_staff_id 就是證據）
-get_my_profile_tx / get_wallet_tx / get_my_orders_tx / get_my_games_tx
+get_my_profile_tx / get_wallet_tx / get_my_orders_tx
+
+get_my_games_tx(p_org_id, p_member_id, p_limit = 20)
+  DEFINER · STABLE · language=sql · anon ✅
+  ⚠ 只回 `table_sessions.status = 'completed'` 且我坐過的場次
+  ✅ 2026-08-31 補回傳兩欄（簽名不變）：
+    `my_rating_after`（那一場結算後的段位分數）
+    `settled_at`（結算時間 —— **不是 `ended_at`**，收桌與結算是兩個動作）
+    → 成績頁的**段位走勢圖**唯一的資料來源（`lib/ranktrend.jsx`）
+  ⚠ M4／電子計分之前這兩欄**全部是 null**，那是預期的不是壞掉
 set_my_nickname_tx / set_my_avatar_tx / set_my_title_tx / set_my_about_tx
 set_my_sched_tx / set_my_style_tx / set_my_baby_tile_tx / set_my_see_score_tx
 set_my_home_store_tx / set_my_birthday_tx / set_my_availability_tx / get_my_availability_tx
