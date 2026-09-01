@@ -1,8 +1,8 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 143 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
-> 最後歸檔的是 `2026-09-01_銅牌熊III改成10.sql`）
+> **基準：`sql/applied/` 有 144 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
+> 最後歸檔的是 `2026-09-01_牌咖補上次同桌.sql`）
 >
 > ✅ **2026-09-01：`players` 一個 key 兩種形狀已全部收完**（待辦 35）。
 > `list_tables_tx` 與 `list_match_queues_tx` 只回 **`player_count`**（數字）；
@@ -497,7 +497,22 @@ send_table_invite_tx / respond_table_invite_tx / list_queue_tags_tx
 ### 社交
 
 ```
-send_buddy_invite_tx / respond_buddy_invite_tx / remove_buddy_tx / list_buddies_tx
+send_buddy_invite_tx / respond_buddy_invite_tx / remove_buddy_tx
+
+list_buddies_tx(p_org_id, p_member)  DEFINER · anon ✅
+  ✅ 2026-09-01 補 `last_played_at`（簽名不變）—— 牌咖卡的「上次同桌」。
+  ⚠ **從 `session_players` 即時算，`mahjong_buddies` 沒有這個欄位、也不該加**
+    （同待辦 1 的 B 案：存計數欄位會出現「欄位與事實對不上而且無從得知
+    哪邊才對」，退款／作廢／補登漏一次回沖就永久偏差）。
+  🔴 **不加 `finish_rank is not null` 的條件** —— 同桌是**事實**，
+    輸贏才需要結算。加了的話這一格在 M5 之前永遠是空的，而且沒有症狀。
+  🗑 **刻意不回傳 `win_count` / `loss_count`**：牌咖卡的「勝 / 負」那一格
+    2026-09-01 拿掉了（電子計分之前每一格都會是 `0 / 0`）。
+    📌 定義當天有拍板：**分數比對方高就是勝**（+20 對 +10 記一勝）。
+      要加回來時 `loss` 一定要**後端各自數**，不可以用「同桌次數 − 勝」
+      —— 那會把**平手**與**未結算**的場次全部算成輸。
+    ⚠ 那是**對戰成績**不是勝率；成績頁的「各級距勝率」沒有對手可以比，
+      **仍然沒有定義**。
 list_recent_players_tx / like_player_tx / _blocked_between
 block_member_tx / unblock_member_tx / list_blocks_tx
 list_notifications_tx / mark_notifs_read_tx / unread_count_tx
