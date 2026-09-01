@@ -1,8 +1,14 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 140 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
-> 最後歸檔的是 `2026-09-01_btree_gist搬去extensions.sql`）
+> **基準：`sql/applied/` 有 141 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
+> 最後歸檔的是 `2026-09-01_桌況收掉players.sql`）
+>
+> ✅ **2026-09-01：`players` 一個 key 兩種形狀已全部收完**（待辦 35）。
+> `list_tables_tx` 與 `list_match_queues_tx` 只回 **`player_count`**（數字）；
+> `get_my_games_tx` 與 `get_my_active_queue_tx` 的 `players` 是**陣列**，不變。
+> ⚠ `pos_add_queue_member_tx` 的 `players` 仍在（一次性操作結果，刻意不動）。
+> 🎯 **要回「有哪些人」請叫 `player_names`，不要再用 `players`。**
 > **當下規模（2026-09-01 實測）：函式 159 · 資料表 44 · 檢視表 22 · RLS policy 28**
 > ⚠ 這四個數字是**給下一個人比對用的** —— 對不上就是這份文件過期了，
 >   而那個檢查**只要一句 SQL，不需要讀完整份文件**。

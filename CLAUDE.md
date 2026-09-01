@@ -530,6 +530,15 @@ migi github/           ← Claude Code 的 project folder 選這層
     // 白名單只放讀取類，其餘回 403 並記錄
     if (m && !/^(get_|list_|has_|calc_)/.test(m[1])) { … return 403 }
     ```
+    🔴 **2026-09-01 踩到一個順序問題：攔截器裝在 `location.reload()` 之前
+      等於沒裝。** reload 會把 `window.fetch` 還原，而那一次載入
+      **正是最需要保護的時刻**（App 開機會呼叫最多東西）。
+      ⚠ 而且**它不會有任何症狀** —— 攔截器「裝好了」的訊息照樣印出來。
+    → **正確順序：先 `navigate`／reload，再裝攔截器，然後才操作。**
+      ⚠ 真的順序做錯了：用 `updated_at` 事後查一次
+      （那天查了七張表全部 0 列，POS 桌況確實只呼叫 `list_*`）——
+      **但那是事後查證不是事前防護，不要拿它當通過。**
+
     🎯 為什麼是這個而不是「我會小心」：
     · **不進產品碼** → 不可能被部署出去（避開硬規則 5.7「一旦存在就會忘記拿掉」）
     · **fail closed** → 忘了裝只是失去保護，不會弄壞東西
@@ -2275,7 +2284,20 @@ migi github/           ← Claude Code 的 project folder 選這層
     ⚠ **這一項的急迫性綁在自動帶桌真的開始運作那一天** ——
       而目前 `open_method='auto'` 的場次是 **0**，一次都還沒發生過。
 
-35. 🔴 **`players` 一個 key 兩種形狀**（2026-08-28 從錯誤儀表挖出來的）。
+35. ~~🔴 **`players` 一個 key 兩種形狀**~~ → ✅ **2026-09-01 全部收完。**
+    最後一步是 `list_tables_tx` 的 contract（`2026-09-01_桌況收掉players.sql`，10/10 全過）。
+    驗收那一格是「**還有哪些函式回數字版 `players`** → 一支都沒有」，
+    同時正對照「陣列版的兩支沒被誤傷」。
+    ✅ 收完後實機看過 POS 桌況：使用 2/14、A1 四人、A2「1 人 · 差 3 位」，
+      `player_count` 一切正常。
+    ⚠ **`pos_add_queue_member_tx` 的 `players` 仍在，那是刻意的** ——
+      它回的是「加入之後現在幾人」，是一次性操作結果不是清單欄位。
+    🎯 **今後的通則：一個名字一個意思。**
+      要回「有哪些人」就叫 `player_names`（比照 `queue_members`）。
+
+    以下保留當時的分析。
+
+    🔴 **`players` 一個 key 兩種形狀**（2026-08-28 從錯誤儀表挖出來的）。
     ```
     list_match_queues_tx     'players' = count(*)      ← 數字
     get_my_active_queue_tx   'players' = [...]         ← 陣列
