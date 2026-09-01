@@ -1,15 +1,15 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 144 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
-> 最後歸檔的是 `2026-09-01_牌咖補上次同桌.sql`）
+> **基準：`sql/applied/` 有 145 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
+> 最後歸檔的是 `2026-09-01_牌咖補常一起打.sql`）
 >
 > ✅ **2026-09-01：`players` 一個 key 兩種形狀已全部收完**（待辦 35）。
 > `list_tables_tx` 與 `list_match_queues_tx` 只回 **`player_count`**（數字）；
 > `get_my_games_tx` 與 `get_my_active_queue_tx` 的 `players` 是**陣列**，不變。
 > ⚠ `pos_add_queue_member_tx` 的 `players` 仍在（一次性操作結果，刻意不動）。
 > 🎯 **要回「有哪些人」請叫 `player_names`，不要再用 `players`。**
-> **當下規模（2026-09-01 實測）：函式 159 · 資料表 45 · 檢視表 22 · RLS policy 28**
+> **當下規模（2026-09-01 實測）：函式 160 · 資料表 45 · 檢視表 22 · RLS policy 28**
 > ⚠ 這四個數字是**給下一個人比對用的** —— 對不上就是這份文件過期了，
 >   而那個檢查**只要一句 SQL，不需要讀完整份文件**。
 >
@@ -315,7 +315,7 @@ update orgs set live_from = '<真實客人開始使用的時間>';
 | `members.members_phone_chk` | NULL 或 `= migi_norm_phone(phone)`（2026-08-28 新增）—— **等於強制只收 09 開頭 10 碼**，市話與國際格式在寫入時就被擋 |
 | `members.members_inv_type_chk` | member / mobile / citizen / donate / company / paper |
 | `member_tiers.member_tiers_pct_chk` | 0 <= discount_pct <= 100 |
-| `member_availability.*_slot_check` | **morning / afternoon / evening / late** |
+| `member_availability.*_slot_check` | **morning / afternoon / evening / late**<br>🔴 **幾點到幾點的定義在 `migi_slot_of(ts)`**（2026-09-01 建，全系統唯一一份）：<br>`late 00–06`／`morning 06–12`／`afternoon 12–18`／`evening 18–24`（**台北時間**）。<br>⚠ M3 的推斷引擎要用**同一支**，不要再寫一份「晚上是幾點」<br>—— 那就是同一個名字兩種意思（同待辦 35 那個病）。<br>⚠ 該函式 anon 與 PUBLIC 都收掉了，只給 service_role（只被 DEFINER 內部呼叫）。 |
 | `member_availability.*_preference_check` | **often / sometimes / never** |
 | `member_availability.*_source_check` | **stated / inferred** |
 | `member_availability.*_weekday_check` | 0–6 |
@@ -506,6 +506,16 @@ list_buddies_tx(p_org_id, p_member)  DEFINER · anon ✅
     哪邊才對」，退款／作廢／補登漏一次回沖就永久偏差）。
   🔴 **不加 `finish_rank is not null` 的條件** —— 同桌是**事實**，
     輸贏才需要結算。加了的話這一格在 M5 之前永遠是空的，而且沒有症狀。
+  ✅ 2026-09-01 再補 `play_pattern`（**常一起打**，取代牌咖卡的「段位」那一格）。
+    回**結構** `{weekday, slot, n}` 不回句子 —— 組字是顯示規則，不住在資料庫裡。
+    🔴 **門檻是「眾數要過半」不是「≥ 2 次」**：
+      週六 2 次／週日 2 次會讓 `≥2` 宣稱「常在週六」，而一半的場次不是週六。
+      **「最多的那一個」不等於「常」。**
+    兩層退化：`(星期,時段)` 過半 → 給星期｜只有 `時段` 過半 → `weekday: null`｜
+      都沒過半 → **整個回 null**（前端顯示 `—`）。另加總同桌 ≥ 3 場。
+    🔒 **只統計「查看者自己也坐過」的場次** —— 那是兩人共同的事實，
+      不是對他的側寫（硬規則 26 的界線：行為推斷只有總部看得到）。
+      ⚠ 日後想加「他通常幾點來」就越線了。
   🗑 **刻意不回傳 `win_count` / `loss_count`**：牌咖卡的「勝 / 負」那一格
     2026-09-01 拿掉了（電子計分之前每一格都會是 `0 / 0`）。
     📌 定義當天有拍板：**分數比對方高就是勝**（+20 對 +10 記一勝）。
