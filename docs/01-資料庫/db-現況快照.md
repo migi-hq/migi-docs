@@ -1,8 +1,8 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 145 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
-> 最後歸檔的是 `2026-09-01_牌咖補常一起打.sql`）
+> **基準：`sql/applied/` 有 146 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
+> 最後歸檔的是 `2026-09-01_回傳is_test給前端.sql`）
 >
 > ✅ **2026-09-01：`players` 一個 key 兩種形狀已全部收完**（待辦 35）。
 > `list_tables_tx` 與 `list_match_queues_tx` 只回 **`player_count`**（數字）；
@@ -544,7 +544,28 @@ register_member_tx(p_org_id, p_display_name, p_phone, p_line_user_id, p_home_sto
       members_display_name_chk，客人看到「資料有誤」而永遠註冊不了。
 rebind_line_user_tx(p_member_id, p_new_line_user_id, p_staff_id, p_reason)
   ⚠ 這是**店員的補救工具**不是註冊流程的一部分（簽名有 p_staff_id 就是證據）
-get_my_profile_tx / get_wallet_tx / get_my_orders_tx
+get_wallet_tx / get_my_orders_tx
+
+get_my_profile_tx(p_org_id, p_member_id)  DEFINER · STABLE · anon ✅
+  ✅ **2026-09-01 補兩個埋點用的欄位**（簽名不變，待辦 37）：
+  | 欄位 | 回答什麼 | 誰決定 |
+  |---|---|---|
+  | `is_test` | **這個人**是不是測試帳號 | 🔴 **人**（`members.is_test` DEFAULT **false**） |
+  | `live` | **整間店**上線了沒有 | ✅ **事實**（`orgs.live_from` 有值**且已到**） |
+
+  🔴 **只有 `is_test` 不夠**：它預設 `false` ⇒ **新的測試帳號預設會被當成
+    真實客人**，而且沒有症狀。2026-08-29 真的發生了（創辦人用 LIFF
+    註冊出 `山劍八舞澤`，而前端那份寫死的 uuid 清單不知道）。
+  🎯 **`live` 不是猜的是定義**：`live_from` 是 null 就是還沒開店 ⇒
+    那時沒有任何人是真實客人。12 支 `v_real_*` 一直用同一個事實。
+  ⇒ 前端判準是 `!live || is_test`：上線前**沒有人需要記得標記任何帳號**。
+  ⚠ **兩個都要在這一支回**，不能只放在 `register_member_tx`：
+    創辦人是**註冊完約一小時後**才被標成測試的
+    （`app_events` 裡 2 筆 false、632 筆 true，分界在 8/29 07:00）——
+    只存註冊當下的值等於沒修。同 CLAUDE.md 的快取鐵律：
+    **只能有一個寫入點，而且要會自我校正。**
+  ⚠ 前端 `App.jsx` 開機也拉一次 —— 在此之前 `fetchMyProfile()`
+    只在配桌／個人設定／獎勵頁 mount 時跑，而**預設落地頁是錢包**。
 
 get_my_games_tx(p_org_id, p_member_id, p_limit = 20)
   DEFINER · STABLE · language=sql · anon ✅

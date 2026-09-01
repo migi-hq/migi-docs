@@ -300,12 +300,30 @@ begin
          from (select public.register_member_tx(v_org,'測乙客',null,'U_test_b') as x) t);
 
     ---- ⑧ 授權 -----------------------------------------
-    v_out := v_out || E'\n' || '⑧ 正對照：兩支的授權沒被動到' || E'\t' ||
-      (select case when count(*) filter (where has_anon) = 2
-                   then '✅ 兩支的 anon 都還在'
-                   else '🔴 只有 ' || count(*) filter (where has_anon) || ' 支' end
-         from (select exists (select 1 from aclexplode(p.proacl) a
-                               where a.grantee='anon'::regrole::oid and a.privilege_type='EXECUTE') as has_anon
+    /* 🔴 **兩支的授權本來就不一樣，不可以一起驗「都有 anon」。**
+       · `get_my_profile_tx` → anon ✅（前端直接呼叫）
+       · `register_member_tx` → **只有 service_role**
+         —— 2026-08-30 刻意收掉 anon 與 PUBLIC（待辦 36）：
+         在那之前**知道一支手機號碼就能拿到別人的 `member_id`**，
+         再用它叫 `get_wallet_tx` 看餘額與完整消費明細，
+         **完全不需要 LINE**。現在只有 Edge Function 叫得動。
+       ⚠ 我第一版寫成「兩支都要有 anon」，它紅了 —— **而函式是對的**。
+         2026-09-01 這是第四次期望值算錯。**紅的時候先懷疑期望值。**
+       🎯 所以這一格改成驗**真正該驗的事**：
+         `CREATE OR REPLACE` 有沒有把 8/30 那個安全性修正洗掉。 */
+    v_out := v_out || E'\n' || '⑧ 正對照：兩支的授權維持原樣（不是「都有 anon」）' || E'\t' ||
+      (select case when bool_and(case proname
+                                   when 'get_my_profile_tx'  then has_anon
+                                   when 'register_member_tx' then (not has_anon and not has_public)
+                                 end)
+                   then '✅ profile 有 anon ／ register 只剩 service_role（8/30 的修正還在）'
+                   else '🔴 ' || string_agg(proname || ':' ||
+                          case when has_anon then 'anon' when has_public then 'PUBLIC' else 'service_role only' end, '　') end
+         from (select p.proname,
+                 exists (select 1 from aclexplode(p.proacl) a
+                          where a.grantee='anon'::regrole::oid and a.privilege_type='EXECUTE') as has_anon,
+                 exists (select 1 from aclexplode(p.proacl) a
+                          where a.grantee=0 and a.privilege_type='EXECUTE') as has_public
                  from pg_proc p where p.pronamespace='public'::regnamespace
                   and p.proname in ('register_member_tx','get_my_profile_tx')) z);
 

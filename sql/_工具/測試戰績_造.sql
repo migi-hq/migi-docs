@@ -47,7 +47,8 @@ declare
   v_sids  uuid[] := array['d0000000-0000-0000-0000-000000000001'::uuid,
                           'd0000000-0000-0000-0000-000000000002'::uuid,
                           'd0000000-0000-0000-0000-000000000003'::uuid];
-  v_pool uuid[]; v_store uuid; v_tbl uuid; v_sid uuid; g int;
+  v_pool uuid[]; v_old uuid[]; v_reset uuid[];
+  v_store uuid; v_tbl uuid; v_sid uuid; g int;
   v_others uuid[]; v_rest int[]; v_row jsonb; r jsonb; v_name text;
 begin
   v_my_place := greatest(1, least(4, v_my_place));   -- 打錯數字不要炸，夾住就好
@@ -59,8 +60,12 @@ begin
   end if;
 
   /* 🔴 **只挑測試帳號當對手。** 寫死 id 會漂（見檔頭），
-     而 `is_test` 是資料庫自己的事實。 */
-  select array_agg(id order by created_at) into v_pool
+     而 `is_test` 是資料庫自己的事實。
+     ⚠ **`order by created_at, id` —— 第二個欄位不能省。**
+       測試03 與測試04 是同一秒建立的，只用 `created_at` 排序
+       **每次跑可能挑到不同的三個人**（2026-09-01 真的發生了：
+       第一次是測試04、第二次變測試03）。 */
+  select array_agg(id order by created_at, id) into v_pool
     from members
    where org_id = v_org and deleted_at is null and is_test and id <> v_me;
   if coalesce(array_length(v_pool, 1), 0) < 3 then
@@ -78,8 +83,31 @@ begin
   if v_tbl is null then raise exception '這間門市沒有桌子，換一間'; end if;
 
   ---- 先清掉上次造的（讓這支可以重複跑）--------------
+  /* 🔴 **2026-09-01 修：刪場次不夠，分數也要歸零。**
+     第一版只刪 session，但 `members.rating` 留著 ⇒
+     `apply_session_rounds_tx` 從**現值**繼續加：
+     ```
+     第一次   60 → 120 → 180
+     第二次  240 → 300 → 360   ← 從 180 接著加
+     ```
+     檔頭寫「可以重複跑」是假的。 */
+  select array_agg(distinct member_id) into v_old
+    from session_players where session_id = any(v_sids);
+
   delete from session_players where session_id = any(v_sids);
   delete from table_sessions   where id        = any(v_sids);
+
+  /* 把「上次造的那些人」與「這次要造的這些人」一起歸零。
+     ⚠ 兩組都要：換了 `v_me` 或對手池變了的話，
+       只歸零其中一組會留下一個分數回不去的帳號。
+     🔴 **但只在「他沒有別的已結算場次」時才歸零** ——
+       同 `測試戰績_清.sql` 的守則：硬歸零是不可逆的。 */
+  v_reset := coalesce(v_old, '{}'::uuid[]) || array[v_me] || v_pool[1:3];
+  update members m
+     set rating = 0, rating_games = 0, rank = null
+   where m.id = any(v_reset)
+     and not exists (select 1 from session_players sp
+                      where sp.member_id = m.id and sp.finish_rank is not null);
 
   for g in 1 .. greatest(1, least(3, v_games)) loop
     v_sid := v_sids[g];
@@ -124,10 +152,15 @@ begin
 end $$;
 
 -- ── 結果（重新整理成績頁就看得到）──────────────────────
-/* 🔴 這裡也不寫死 id —— 直接看「那三場裡有誰」。
-   第一版寫死一組 id，結果它印出來的四個人**跟實際造的那四個不是同一組**，
-   而數字看起來完全正常。 */
-select m.display_name as 會員,
+/* 🔴 這裡也不寫死 id —— 第一版寫死一組，印出來的四個人
+   **跟實際造的那四個不是同一組**，而數字看起來完全正常。
+
+   ⚠ **印「所有測試帳號」不是只印參加的那四個**，與 `測試戰績_清.sql` 一致 ——
+     這樣才看得出「**誰沒被動到**」。
+     📌 2026-09-01 使用者問「為什麼造是 4 筆清是 5 筆」，就是因為
+       兩支的範圍不一樣。同一件事的兩支工具，輸出形狀要一樣。 */
+select case when p.member_id is not null then '✅ 這次有打' else '—' end as 參與,
+       m.display_name as 會員,
        m.phone        as 手機,
        m.rating       as 分數,
        coalesce(m.rank, '尚未定位') as 段位,
@@ -136,8 +169,11 @@ select m.display_name as 會員,
           from session_players sp join table_sessions s on s.id = sp.session_id
          where sp.member_id = m.id and sp.rating_after is not null) as 走勢
   from members m
- where m.id in (select distinct member_id from session_players
-                 where session_id in ('d0000000-0000-0000-0000-000000000001',
-                                      'd0000000-0000-0000-0000-000000000002',
-                                      'd0000000-0000-0000-0000-000000000003'))
- order by m.rating desc;
+  left join (select distinct member_id from session_players
+              where session_id in ('d0000000-0000-0000-0000-000000000001',
+                                   'd0000000-0000-0000-0000-000000000002',
+                                   'd0000000-0000-0000-0000-000000000003')) p
+    on p.member_id = m.id
+ where m.org_id = '11111111-1111-1111-1111-111111111111'
+   and m.deleted_at is null and m.is_test
+ order by m.rating desc, m.created_at;
