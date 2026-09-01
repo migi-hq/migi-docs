@@ -2,15 +2,25 @@
    造測試戰績（成績頁看得到段位與走勢圖）　常駐工具 · MIGI
    ⚠ 清除用同一個資料夾的 `測試戰績_清.sql`。
 
+   ── 🔴 2026-09-01 修過一次：不要寫死會員 id ──────────
+   第一版把四個會員 id 直接抄自 CLAUDE.md 的
+   「創辦人 = `d73fdac2…`」—— **那句話已經漂掉了**：
+   ```
+   d73fdac2…  測試測試測試測試測試測試  phone 0910000001  ← 測試01
+   69016205…  山劍八舞澤               phone 0910768736  ← 🎯 創辦人在這裡
+   ```
+   結果那一版**造了三場給錯的人**，而畫面上什麼都沒變。
+   🎯 教訓同硬規則 3：**文件不是線上鏡像，會員 id 更是**。
+   → 現在只留一個參數，其餘三人**從資料庫撈**。
+
    ── 🔴 這支是真的寫進正式資料庫 ──────────────────────
    沒有 staging（硬規則 5.7 明講不做），所以：
-   · 只動**五個測試帳號**（全部 `is_test = true`），不碰任何真實客人
+   · **只挑 `is_test = true` 的帳號**，不可能碰到真實客人
    · 三張場次用**固定的 UUID**（`d0000000-…-0001/2/3`）——
      清除腳本靠這三個 id 認回來，**不會誤刪別的東西**
    · 可以重複跑：再跑一次會先清掉自己上次造的
 
-   ── 造出什麼 ────────────────────────────────────────
-   三場 2 將的牌局，創辦人（測試01）三場都第 1：
+   ── 造出什麼（v_my_place = 1 時）────────────────────
    ```
    第 1 場（🎓 定位賽）  +30 × 2 =  60  →  銅牌熊 II
    第 2 場（低段）       +30 × 2 = 120  →  銅牌熊 II
@@ -18,31 +28,45 @@
    ```
    🎯 **三場是刻意的**：
    · 1 場 → Hero 有段位了，但走勢圖會說「**再打一場就看得到走勢**」
-     （一個點不是一條線）
-   · 3 場 → 走勢圖畫得出來，而且**跨過銅→銀的橫帶**，看得到升階那條線
-   ⚠ 想只看一場的樣子：把下面的 `v_games` 改成 1。
-   ⚠ 想看輸的樣子：把 `v_my_place` 改成 4（定位賽 +5×2=10 → 銅牌熊 III，
-     第二場開始第 4 名扣 20 → 會掉回銅牌熊 IV 的下限 0）。
+   · 3 場 → 走勢圖畫得出來，而且**跨過銅→銀的橫帶**，看得到升階
+   ⚠ 想看輸的樣子：`v_my_place` 改 4
+     （定位賽 +5×2=10 → 銅牌熊 III；第二場開始第 4 名扣 20 → 被夾在 0）
    ============================================================ */
 
 do $$
 declare
-  ---- 🔧 可以改的兩個參數 ────────────────────────────
-  v_games    int := 3;    -- 造幾場（1～3）
-  v_my_place int := 1;    -- 創辦人的名次（1～4）
+  ---- 🔧 唯一要確認的參數：這是誰的帳號 ─────────────
+  --    預設 = 綁了 LINE 的那個（App 登入的就是它）
+  --    ⚠ 換人之前先用下面那句確認 id：
+  --      select id, display_name, phone from members where is_test;
+  v_me       uuid := '69016205-afde-4036-95a6-5893c9d0e5fe';  -- 山劍八舞澤
+  v_games    int  := 3;    -- 造幾場（1～3）
+  v_my_place int  := 1;    -- 我的名次（1～4）
   ---------------------------------------------------
   v_org   uuid := '11111111-1111-1111-1111-111111111111';
-  v_me    uuid := 'd73fdac2-d6b9-4b8a-bcff-b19c2786056f';  -- 測試01（創辦人）
-  v_p2    uuid := '218378e1-fb6c-43fb-b642-99fdbf5c52b1';  -- 測試02
-  v_p3    uuid := 'd0db928e-5a75-4535-90d4-93ede67790a8';  -- 測試03
-  v_p4    uuid := '526aa8b9-cc93-4327-b878-6d21d399af8e';  -- 測試04
   v_sids  uuid[] := array['d0000000-0000-0000-0000-000000000001'::uuid,
                           'd0000000-0000-0000-0000-000000000002'::uuid,
                           'd0000000-0000-0000-0000-000000000003'::uuid];
-  v_store uuid; v_tbl uuid; v_sid uuid; g int; v_others uuid[]; v_rest int[];
-  v_row jsonb; r jsonb;
+  v_pool uuid[]; v_store uuid; v_tbl uuid; v_sid uuid; g int;
+  v_others uuid[]; v_rest int[]; v_row jsonb; r jsonb; v_name text;
 begin
   v_my_place := greatest(1, least(4, v_my_place));   -- 打錯數字不要炸，夾住就好
+
+  select display_name into v_name from members
+   where id = v_me and org_id = v_org and deleted_at is null;
+  if v_name is null then
+    raise exception '找不到這個會員（%）—— 先跑 select id, display_name, phone from members where is_test;', v_me;
+  end if;
+
+  /* 🔴 **只挑測試帳號當對手。** 寫死 id 會漂（見檔頭），
+     而 `is_test` 是資料庫自己的事實。 */
+  select array_agg(id order by created_at) into v_pool
+    from members
+   where org_id = v_org and deleted_at is null and is_test and id <> v_me;
+  if coalesce(array_length(v_pool, 1), 0) < 3 then
+    raise exception '測試帳號不夠三個對手（只有 %）', coalesce(array_length(v_pool,1),0);
+  end if;
+
   select id into v_store from stores
    where org_id = v_org and name like '%高雄自由%' and deleted_at is null limit 1;
   if v_store is null then
@@ -62,7 +86,7 @@ begin
 
     /* ⚠ 直接建成 `completed` —— `uq_sessions_open_table` 是部分索引
        （`where status='open'`），所以不會鎖住那張桌。
-       ⚠ `ended_at` 一場往前推幾天，走勢圖才有先後順序（它依 `ended_at` 排）。 */
+       ⚠ `ended_at` 一場往前推幾天，走勢圖才有先後（它依 `ended_at` 排）。 */
     insert into table_sessions (id, org_id, store_id, table_id, mode, status,
                                 game_type, flower, planned_rounds,
                                 activated_at, ended_at)
@@ -72,16 +96,14 @@ begin
             now() - ((4 - g) || ' days')::interval);
 
     insert into session_players (org_id, session_id, member_id)
-      select v_org, v_sid, x from unnest(array[v_me, v_p2, v_p3, v_p4]) x;
+      select v_org, v_sid, x from unnest(array[v_me] || v_pool[1:3]) x;
 
-    /* 其餘三人依場次輪流，不要每一場都是同一個人墊底 */
-    v_others := case g when 1 then array[v_p2, v_p3, v_p4]
-                       when 2 then array[v_p3, v_p4, v_p2]
-                       else        array[v_p4, v_p2, v_p3] end;
+    -- 其餘三人依場次輪流，不要每一場都是同一個人墊底
+    v_others := case g when 1 then array[v_pool[1], v_pool[2], v_pool[3]]
+                       when 2 then array[v_pool[2], v_pool[3], v_pool[1]]
+                       else        array[v_pool[3], v_pool[1], v_pool[2]] end;
 
-    /* 組出 2 將的名次陣列。⚠ 名次必須剛好是 1..4（不接受並列、跳號），
-       否則 `apply_session_rounds_tx` 會回 `bad_ranks`。
-       我固定在 `v_my_place`，其他三人依序補上剩下的名次。 */
+    /* ⚠ 名次必須剛好是 1..4（不接受並列、跳號），否則回 `bad_ranks`。 */
     select array_agg(x order by x) into v_rest
       from unnest(array[1,2,3,4]) x where x <> v_my_place;
 
@@ -97,21 +119,25 @@ begin
       raise exception '第 % 場結算失敗：%', g, r::text;
     end if;
   end loop;
+
+  raise notice '✅ 已幫「%」造了 % 場', v_name, greatest(1, least(3, v_games));
 end $$;
 
 -- ── 結果（重新整理成績頁就看得到）──────────────────────
+/* 🔴 這裡也不寫死 id —— 直接看「那三場裡有誰」。
+   第一版寫死一組 id，結果它印出來的四個人**跟實際造的那四個不是同一組**，
+   而數字看起來完全正常。 */
 select m.display_name as 會員,
+       m.phone        as 手機,
        m.rating       as 分數,
        coalesce(m.rank, '尚未定位') as 段位,
        m.rating_games as 打過幾將,
-       (select count(*) from session_players sp
-         where sp.member_id = m.id and sp.finish_rank is not null) as 已結算場次,
        (select string_agg(sp.rating_after::text, ' → ' order by s.ended_at)
           from session_players sp join table_sessions s on s.id = sp.session_id
          where sp.member_id = m.id and sp.rating_after is not null) as 走勢
   from members m
- where m.id in ('d73fdac2-d6b9-4b8a-bcff-b19c2786056f',
-                '218378e1-fb6c-43fb-b642-99fdbf5c52b1',
-                'd0db928e-5a75-4535-90d4-93ede67790a8',
-                '526aa8b9-cc93-4327-b878-6d21d399af8e')
+ where m.id in (select distinct member_id from session_players
+                 where session_id in ('d0000000-0000-0000-0000-000000000001',
+                                      'd0000000-0000-0000-0000-000000000002',
+                                      'd0000000-0000-0000-0000-000000000003'))
  order by m.rating desc;
