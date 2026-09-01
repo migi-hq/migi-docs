@@ -1,15 +1,15 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 141 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
-> 最後歸檔的是 `2026-09-01_桌況收掉players.sql`）
+> **基準：`sql/applied/` 有 143 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
+> 最後歸檔的是 `2026-09-01_銅牌熊III改成10.sql`）
 >
 > ✅ **2026-09-01：`players` 一個 key 兩種形狀已全部收完**（待辦 35）。
 > `list_tables_tx` 與 `list_match_queues_tx` 只回 **`player_count`**（數字）；
 > `get_my_games_tx` 與 `get_my_active_queue_tx` 的 `players` 是**陣列**，不變。
 > ⚠ `pos_add_queue_member_tx` 的 `players` 仍在（一次性操作結果，刻意不動）。
 > 🎯 **要回「有哪些人」請叫 `player_names`，不要再用 `players`。**
-> **當下規模（2026-09-01 實測）：函式 159 · 資料表 44 · 檢視表 22 · RLS policy 28**
+> **當下規模（2026-09-01 實測）：函式 159 · 資料表 45 · 檢視表 22 · RLS policy 28**
 > ⚠ 這四個數字是**給下一個人比對用的** —— 對不上就是這份文件過期了，
 >   而那個檢查**只要一句 SQL，不需要讀完整份文件**。
 >
@@ -156,13 +156,18 @@
 | `orders` | id! │ org_id! │ store_id! │ member_id │ table_id │ **session_id** │ status!=open │ **channel!=counter** │ total_points!=0 │ deleted_at │ created_at! │ updated_at! │ **created_by** │ **updated_by** │ order_no │ subtotal!=0 │ coupon_discount!=0 │ tier_discount!=0 │ payable!=0 │ points_used!=0 │ cash_due!=0 │ tier_at_order │ **idempotency_key** │ wallet_txn_id │ paid_at │ entity_id │ is_test!=false │ tier_discount_pct │ txn_no |
 | `orgs` | id! │ name! │ plan!=self │ deleted_at │ created_at! │ updated_at! │ created_by │ updated_by │ 🎯 **live_from**（2026-08-28 新增） |
 | `phone_otps` | 🆕 2026-08-30。id! │ org_id! │ phone! │ code_hash! │ purpose! │ line_user_id │ attempts!=0 │ sent_at!=now() │ expires_at! │ verified_at │ consumed_at |
-| `rank_tiers` | 🆕 2026-08-31 段位區間主檔。code!（PK）│ label! │ min_rating! │ sub_count!=4 │ **auto!=true** │ **band!='low'** │ sort! │ note。<br>6 列：銅 **910**／銀 1090／金 1270／白金 1450／鑽石 1630／大師 1810（**每階 45 × 4 = 180**）。<br>⚠ **大師熊 `auto=false`** —— 要「最近 50 場 ≥20 個不同對手」，分數到了也只到鑽石熊 I。<br>⚠ `band` 決定順位點：low（銅銀金）/ mid（白金鑽石）/ top（大師）。<br>⚠ RLS 啟用、**0 條 policy**：只被 `rank_detail_tx`（DEFINER）讀。 |
-| `rank_points` | 🆕 2026-08-31 順位點主檔。band! │ place!（PK 兩欄）│ points!。<br>12 列，**分段正和**：low `+30/+15/0/−20`（**+25**）／mid `+30/+10/−10/−30`（0）／top `+30/+5/−20/−40`（**−25**）。 |
+| `rank_tiers` | 🆕 2026-08-31 段位區間主檔。code!（PK）│ label! │ min_rating! │ **auto!=true** │ **band!='low'** │ sort! │ note。<br>✅ **2026-09-01 全面改成從 0 起算**：銅 **0**／銀 145／金 325／白金 505／鑽石 685／大師 865。<br>⚠ **銅牌大階寬 145，其餘 180** —— 銅牌的第一小階只要 10 分（見 `rank_sub_levels`）。<br>🔴 `sub_count` **已移除**（2026-09-01）：小階門檻改成資料，它從此沒有人讀，而且會誤導。<br>⚠ **大師熊 `auto=false`** —— 要「本季 ≥20 個不同對手」，**分數再高也只到鑽石熊 I**。<br>🔴 因此 `rank_detail_tx` / `rank_from_rating` **永遠不會回「大師熊」**，只有 `member_rank_tx` 會。<br>⚠ `band` 決定順位點：low（銅銀金）/ mid（白金鑽石）/ top（大師）。<br>⚠ RLS 啟用、**0 條 policy**：只被 DEFINER 函式讀。 |
+| `rank_sub_levels` | 🆕 2026-09-01 小階門檻。tier_code!（FK）│ sub!（IV/III/II/I）│ **offset_pts!** │ sort!。PK (tier_code, sub)。20 列（大師熊 0 列）。<br>🔴 **存的是「距離大階下限幾分」不是絕對值** —— `rank_tiers.min_rating` 仍是唯一真相，**兩者不可能對不起來**。<br>銅牌 `0/10/55/100`（間距 10/45/45）；其餘四階 `0/45/90/135`。<br>🎯 **它取代了「區間平均切四段」那個算法** —— 銅牌 145÷4=36 會算成 0/36/72/108，不是 0/10/55/100。<br>🎯 收益當天就兌現：銅牌 III 從 5 改 10 時**一支函式都不用動**。 |
+| `rank_points` | 🆕 2026-08-31 順位點主檔。band! │ place!（PK 兩欄）│ points!。**band 沒有 CHECK，只有 PK** ⇒ 加一組是免費的。<br>**16 列**，**分段正和**：low `+30/+15/0/−20`（**+25**）／mid `+30/+10/−10/−30`（0）／top `+30/+5/−20/−40`（**−25**）。<br>✅ **2026-09-01 新增 `placement`（定位賽）`+30/+15/+10/+5`** —— 四組裡唯一**沒有負數**的，那正是它存在的理由。<br>🔴 **只在「人生第一場」套用**，第二場就回到 low（第 4 名扣 20）。<br>⚠ 判準是「有沒有結算過的場次」，**不是 `rating_games = 0`**（那個每季歸零，而且逐將遞增）。 |
 | `season_champions` | 🆕 2026-08-31。season! │ org_id! │ member_id │ rating │ awarded_at!。<br>🔴 **降階之前先記冠軍** —— 降完就再也算不出來了（不可回溯）。<br>⚠ 沒有人到大師時 `member_id` 是 **null**（誠實的「本季從缺」）。<br>✅ **2026-09-01 改 PK 為 `(org_id, season)`** —— 原本是 `(season)` 一欄，<br>兩個 org 不可能在同一季各有冠軍，而那張表**明明有 `org_id`**。<br>表當時是空的所以零成本。<br>✅ 同日加外鍵 `(org_id, season) → rank_seasons(org_id, code)`：<br>季別字串從「流程規範」變成**資料庫規則**。 |
 | `rank_seasons` | 🆕 2026-09-01 賽季起訖。code! │ org_id! │ label! │ starts_at! │ ends_at! │ created_at!。**PK (org_id, code)**。<br>2 列：`2026H2` 2026 秋季賽（07-01 → 2027-01-01）／`2027H1` 2027 春季賽。<br>🔴 **`ends_at` 不含**（半開區間），所以 07-01 結束與 07-01 開始不算重疊。<br>🔴 **`rank_seasons_no_overlap`：`exclude using gist (org_id =, tstzrange &&)`**<br>—— 兩季重疊 = 「現在第幾季」有兩個答案。<br>⚠ 需要 **`btree_gist`**（`org_id WITH =` 要它；gist 原生只認範圍型別）。<br>⚠ RLS 啟用、**0 條 policy**，比照 `rank_tiers`。<br>⚠ **季別名稱與切點是資料不是程式碼** —— 改名／改切點就是一句 UPDATE。 |
 
 > 🆕 **2026-08-31 段位那一批新增的欄位**
-> · `members.rating!=1000` / `rating_games!=0`
+> · `members.rating!=0` / `rating_games!=0`
+>   ✅ **2026-09-01 預設從 1000 改成 0** —— 起點就是銅牌熊 IV。
+>   🎯 **0 分比 1000 分好懂**：沒有人需要解釋「為什麼我一開始有 1000 分」。
+>   ⚠ 改的當天全部重設為 0，因為**有段位的 0 人、有名次的 `session_players` 0 列**
+>     —— 一場計分的牌局都還沒發生過。電子計分上線後就沒有這個機會了。
 > · `session_players.rating_after`（那一場打完幾分）
 >   ✅ **2026-08-31 起真的有讀者**：`get_my_games_tx` 回傳它，
 >     成績頁的段位走勢圖（`migi-web/src/lib/ranktrend.jsx`）畫的就是這一欄。
@@ -174,10 +179,22 @@
 >     不記的話，日後想在牌局紀錄上顯示「那場你還是銀牌熊」永遠做不到。
 > 🔴 ~~`members.peak_rating`~~ **同日建了又刪掉**：歸零／降階設計不需要它，
 >   而降階保護也不需要（規則是「不掉階」的話，當前分數本身就記著他到過哪一階）。
-> 🔴 **小級（I–IV）沒有自己的門檻欄位** —— 由 `[min_rating, 下一階 min_rating)`
-> 平均切四段算出來。另外存一份就是第二個真相來源。
-> **IV 最低、I 最高**（銅牌 IV 910 ／ III 955 ／ **II 1000 起始** ／ I 1045）。
-> ⚠ **分數下限 910**（＝銅牌 IV，最低那一階的 `min_rating`）。
+> 🔴 ~~小級（I–IV）沒有自己的門檻欄位，由區間平均切四段算出來~~
+>   → **2026-09-01 改成 `rank_sub_levels`**。那個算法表達不出「銅牌第一階只要 10 分」
+>   （145÷4=36），而那一條正是「打完第一場一定升級」的來源。
+>   ⚠ 存**位移**不存絕對值，所以沒有第二個真相來源。
+> **IV 最低、I 最高**（銅牌 IV **0** ／ III **10** ／ II 55 ／ I 100）。
+> ⚠ **分數下限 0**（＝銅牌 IV，最低那一階的 `min_rating`，由 `min(min_rating) where auto` 算出來）。
+>
+> 🛡 **平時的降階保護（銅／銀／金）夾的是「大階」下限，不是小階：**
+> ```
+> 金牌熊 I 460 ── 連輸 ──> 440 → 420 → … → 325
+>                                            ↑ 金牌熊 IV，卡在這裡
+> ```
+> ⇒ **會掉分、會掉小階、不會掉大階。** 銅 0 ／ 銀 145 ／ 金 325 就是各自的地板。
+> ⚠ 白金以上**沒有**這個 clamp —— 那條線就是「平時開始會掉」的起點。
+> ⚠ 賽季末降 2 大階是**另一種降階**（`reset_season_ratings_tx`），保護不管用。
+>   文件曾經把這兩種混成一種，導致平時保護被誤刪過一次。
 
 > 🔴 **`members.phone_verified_at`（2026-08-30 起才真的有人寫）** ——
 > 欄位早就在，但在 `otp_consume_tx` 出現之前**掃全庫 0 支函式會寫它**。
@@ -571,11 +588,23 @@ register_member_tx(...)                                           → 🔴 2026-
 apply_session_rounds_tx(p_session_id, p_rounds)     🔴 只給 service_role
   p_rounds = [ [ {"member_id":"…","finish_rank":1}, …四人 ], …一將一個陣列 ]
   一將一將依序套用 → 寫 finish_rank/score_points/rating_after → 更新 rating/rank
+  🎓 **人生第一場走 `placement` band**（2026-09-01）：+30/+15/+10/+5，不會扣分
+     ⚠ 判準：`not exists (有別的 session 的 finish_rank)`，**不是 `rating_games = 0`**
+       · `rating_games` 每季歸零 ⇒ 會變成每季送一次
+       · 它逐將遞增 ⇒ 同一場的第 2 將就不算了，承諾只兌現一半
+     ⚠ `finish_rank` 是整場收尾才寫的 ⇒ 判斷不會被這一場自己汙染
+  🛡 銅／銀／金夾在**大階**下限（會掉小階、不會掉大階）
   ⚠ 未滿 2 將 → too_few_rounds　｜　不是四人 → need_four_players
   ⚠ 冪等：任一人已有 finish_rank → already_applied（重按不會再扣一次分）
   ⚠ 名次必須剛好是 1..n（不接受並列、不接受跳號）
 reset_season_ratings_tx(org, season, drop_tiers=2)  🔴 只給 service_role
-  先記冠軍 → 所有人降 2 大階（360 分）→ 夾在 910　｜　同一季只能結一次
+  先記冠軍 → 所有人降 2 大階 → 夾在下限 0　｜　同一季只能結一次
+  🔴 **2026-09-01 起不能再寫死 360** —— 那個寫法能成立是因為六個大階以前都 180 寬，
+     現在銅牌是 145。改成 **`目前大階的 min − 往下 N 階的 min`**，依他當下的段位算。
+     ```
+     鑽石 I 820 → 685−325=360 → 460 = 金牌 I     ✅ 真的降兩階
+     銀牌 IV 145 → 只剩一階可降 → 145−0=145 → 0   ✅ 夾在下限
+     ```
   ✅ 2026-09-01：季別不在 rank_seasons → season_not_found
      （在此之前 p_season 是**呼叫端隨手打的字串**，打錯不會有人知道）
 member_rank_tx(member_id) → text  anon ✅  含大師的對手多樣性判斷
