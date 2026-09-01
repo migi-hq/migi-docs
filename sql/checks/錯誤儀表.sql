@@ -163,6 +163,31 @@ select 序, 項目, 內容 from (
                   where p.pronamespace = 'public'::regnamespace and p.prokind = 'f') s)
 
   union all
+  /* ⑧ 最近有沒有新會員。
+        🔴 **這一段的存在是因為 2026-09-01 漏了一次**：
+          創辦人 8/29 用 LIFF 註冊出一個全新帳號（`山劍八舞澤`），
+          而 `analytics.js` 那份寫死的測試帳號清單不知道 ——
+          他在 App 上的每一個動作都不算測試。
+          🟢 當時零影響（`toGA4` 是 false），但那正是待辦 37 的形狀。
+
+        🎯 **判準很簡單：真實客人還沒出現**（`orgs.live_from` 是 null）。
+          所以**現在任何一個新會員，不是你在測試，就是第一個真客人** ——
+          兩種都值得在 session 開頭看到一眼。
+        ⚠ `is_test = false` 的新會員**不一定是錯的** ——
+          上線之後那就是正常的。這一格是**提醒**不是告警。
+        ⏳ 上線（設好 `live_from`）之後這一段就沒有意義了，那時可以拿掉。 */
+  select 8, '⑧ 近 14 天的新會員（上線前：不是你在測試就是第一個真客人）',
+         coalesce((select string_agg(
+                     to_char(created_at,'MM-DD') || '　' || display_name ||
+                     '　' || case when is_test then 'is_test ✅' else '🔴 is_test = false' end ||
+                     case when line_user_id is not null then '　LINE ✅' else '' end,
+                     E'\n' order by created_at desc)
+                     from members
+                    where deleted_at is null
+                      and created_at > now() - interval '14 days'),
+                  '✅ 近 14 天沒有新會員')
+
+  union all
   select 5, '⑤ 測試標記（修好前的歷史資料仍標成營運）',
          (select 'is_test=true ' || count(*) filter (where is_test)::text ||
                  '　is_test=false ' || count(*) filter (where not is_test)::text ||
