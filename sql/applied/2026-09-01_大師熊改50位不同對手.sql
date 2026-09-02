@@ -193,9 +193,16 @@ begin
 
     ---- 正對照：分數不夠的人不受影響 --------------------
     v_out := v_out || E'\n' || '⑥ 正對照：分數不夠的人根本不看對手數' || E'\t' ||
-      case when public.rank_from_rating(500) = '白金熊 IV'
-           then '✅ 白金熊 IV（500 分那一段完全沒動）'
-           else '🔴 ' || public.rank_from_rating(500) end;
+      /* 🔴 **期望值我第一版寫錯了**（硬規則 3.56，2026-09-01 第五次）：
+         我寫 `500 → 白金熊 IV`，實際是**金牌熊 I** ——
+         銅牌熊 III 從 5 改成 10 那一次，**每個大階邊界都 +5**，
+         白金熊 IV 現在是 **505** 不是 500，而我用了改之前的數字。
+         ⚠ 這正是 3.56 說的「門檻類的期望值一律當場查」。
+         ✅ 改成驗**邊界前後兩個值**，比單點更能證明分界沒跑掉。 */
+      case when public.rank_from_rating(504) = '金牌熊 I'
+            and public.rank_from_rating(505) = '白金熊 IV'
+           then '✅ 504 金牌熊 I ／ 505 白金熊 IV（那一段完全沒動）'
+           else '🔴 ' || public.rank_from_rating(504) || ' ／ ' || public.rank_from_rating(505) end;
     v_out := v_out || E'\n' || '⑦ 正對照：授權沒被動到' || E'\t' ||
       (select case when count(*) filter (where has_anon) = 2 then '✅ 兩支的 anon 都在'
                    else '🔴 只有 ' || count(*) filter (where has_anon) || ' 支' end
