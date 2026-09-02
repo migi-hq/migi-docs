@@ -1,15 +1,15 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 146 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
-> 最後歸檔的是 `2026-09-01_回傳is_test給前端.sql`）
+> **基準：`sql/applied/` 有 148 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
+> 最後歸檔的是 `2026-09-02_Hero顯示對手進度與賽季改名.sql`）
 >
 > ✅ **2026-09-01：`players` 一個 key 兩種形狀已全部收完**（待辦 35）。
 > `list_tables_tx` 與 `list_match_queues_tx` 只回 **`player_count`**（數字）；
 > `get_my_games_tx` 與 `get_my_active_queue_tx` 的 `players` 是**陣列**，不變。
 > ⚠ `pos_add_queue_member_tx` 的 `players` 仍在（一次性操作結果，刻意不動）。
 > 🎯 **要回「有哪些人」請叫 `player_names`，不要再用 `players`。**
-> **當下規模（2026-09-01 實測）：函式 160 · 資料表 45 · 檢視表 22 · RLS policy 28**
+> **當下規模（2026-09-02 實測）：函式 161 · 資料表 45 · 檢視表 22 · RLS policy 28**
 > ⚠ 這四個數字是**給下一個人比對用的** —— 對不上就是這份文件過期了，
 >   而那個檢查**只要一句 SQL，不需要讀完整份文件**。
 >
@@ -160,6 +160,7 @@
 | `rank_sub_levels` | 🆕 2026-09-01 小階門檻。tier_code!（FK）│ sub!（IV/III/II/I）│ **offset_pts!** │ sort!。PK (tier_code, sub)。20 列（大師熊 0 列）。<br>🔴 **存的是「距離大階下限幾分」不是絕對值** —— `rank_tiers.min_rating` 仍是唯一真相，**兩者不可能對不起來**。<br>銅牌 `0/10/55/100`（間距 10/45/45）；其餘四階 `0/45/90/135`。<br>🎯 **它取代了「區間平均切四段」那個算法** —— 銅牌 145÷4=36 會算成 0/36/72/108，不是 0/10/55/100。<br>🎯 收益當天就兌現：銅牌 III 從 5 改 10 時**一支函式都不用動**。 |
 | `rank_points` | 🆕 2026-08-31 順位點主檔。band! │ place!（PK 兩欄）│ points!。**band 沒有 CHECK，只有 PK** ⇒ 加一組是免費的。<br>**16 列**，**分段正和**：low `+30/+15/0/−20`（**+25**）／mid `+30/+10/−10/−30`（0）／top `+30/+5/−20/−40`（**−25**）。<br>✅ **2026-09-01 新增 `placement`（定位賽）`+30/+15/+10/+5`** —— 四組裡唯一**沒有負數**的，那正是它存在的理由。<br>🔴 **只在「人生第一場」套用**，第二場就回到 low（第 4 名扣 20）。<br>⚠ 判準是「有沒有結算過的場次」，**不是 `rating_games = 0`**（那個每季歸零，而且逐將遞增）。 |
 | `season_champions` | 🆕 2026-08-31。season! │ org_id! │ member_id │ rating │ awarded_at!。<br>🔴 **降階之前先記冠軍** —— 降完就再也算不出來了（不可回溯）。<br>⚠ 沒有人到大師時 `member_id` 是 **null**（誠實的「本季從缺」）。<br>✅ **2026-09-01 改 PK 為 `(org_id, season)`** —— 原本是 `(season)` 一欄，<br>兩個 org 不可能在同一季各有冠軍，而那張表**明明有 `org_id`**。<br>表當時是空的所以零成本。<br>✅ 同日加外鍵 `(org_id, season) → rank_seasons(org_id, code)`：<br>季別字串從「流程規範」變成**資料庫規則**。 |
+| `rank_tiers.min_opponents` | 🆕 2026-09-01。**本季要遇過幾個不同對手才給這個段位**；null = 沒有這個條件。<br>只有 `master` 有值：**50**（2026-09-01 從 20 改成 50）。<br>🔴 **它是資料不是程式碼**：`member_rank_tx` 讀它，`list_rank_tiers_tx` 回傳它，<br>前端三處文案（級距表底下、教學第 5 步 ×2）全部從主檔拿。<br>⚠ 改之前那個數字同時寫在四個地方，而它一天內就改過一次。 |
 | `rank_seasons` | 🆕 2026-09-01 賽季起訖。code! │ org_id! │ label! │ starts_at! │ ends_at! │ created_at!。**PK (org_id, code)**。<br>2 列：`2026H2` 2026 秋季賽（07-01 → 2027-01-01）／`2027H1` 2027 春季賽。<br>🔴 **`ends_at` 不含**（半開區間），所以 07-01 結束與 07-01 開始不算重疊。<br>🔴 **`rank_seasons_no_overlap`：`exclude using gist (org_id =, tstzrange &&)`**<br>—— 兩季重疊 = 「現在第幾季」有兩個答案。<br>⚠ 需要 **`btree_gist`**（`org_id WITH =` 要它；gist 原生只認範圍型別）。<br>⚠ RLS 啟用、**0 條 policy**，比照 `rank_tiers`。<br>⚠ **季別名稱與切點是資料不是程式碼** —— 改名／改切點就是一句 UPDATE。 |
 
 > 🆕 **2026-08-31 段位那一批新增的欄位**
@@ -653,15 +654,29 @@ reset_season_ratings_tx(org, season, drop_tiers=2)  🔴 只給 service_role
      ```
   ✅ 2026-09-01：季別不在 rank_seasons → season_not_found
      （在此之前 p_season 是**呼叫端隨手打的字串**，打錯不會有人知道）
-member_rank_tx(member_id) → text  anon ✅  含大師的對手多樣性判斷
-  ✅ 2026-09-01 視窗從「最近 50 場」換成「**上次歸零之後**」（＝本季）
+member_opponents_tx(member_id) → int  🔴 anon 與 PUBLIC 都收掉，只給 service_role
+  🆕 2026-09-02。**「本季不同對手數」全系統唯一的一份定義。**
+  🔴 在此之前那段查詢**只寫在 `member_rank_tx` 裡**，而 Hero 也要同一個數字
+    ⇒ 複製一份就是兩份「本季」的定義（而它 9/1 才剛從「最近 50 場」改成「本季」）。
+  ✅ 2026-09-01 視窗＝「**上次歸零之後**」（＝本季）
   ⚠ 過濾的是**我那一列**的 settled_at，不是對手那一列的
   🔴 它**自己會退化**，這是刻意的：
      有當季 → 當季開始｜沒當季但有過去的季 → 最後一季 ends_at｜一季都沒有 → 退回最近 50 場
      寫死「本季，沒有就不給大師」會在忘記建下一季時**靜靜把大師降成鑽石**
+  ⚠ 那個 fallback 的 `limit 50` 是**視窗大小**，跟門檻 `min_opponents`
+    **是兩件事**，數字剛好一樣是巧合。
+
+member_rank_tx(member_id) → text  anon ✅  含大師的對手多樣性判斷
+  ✅ 2026-09-02 起只問 `member_opponents_tx` 的結果，不自己查
 get_my_rank_tx(org, member) → jsonb anon ✅  成績頁 Hero 用（含大師的對手多樣性）
   ✅ 2026-09-01 多回 `season`（code/label/starts_at/ends_at/days_left），
      **未定位的人也有** —— 那顆膠囊跟他有沒有段位無關
+  ✅ **2026-09-02 多回 `opponents` / `opponents_need`，但只在鑽石熊 I 以上**。
+     🎯 在爬到那裡之前，大師熊的條件完全不影響他 ——
+       提早顯示只是一個看不懂而且令人焦慮的數字（「不同對手 0 / 50」）。
+     ⚠ 門檻是**算出來的**（最高 auto 階 ＋ 它最後一個小級的位移 = 820），
+       **不要寫死** —— 那個數字 9/1 才因為銅牌熊調整而從 815 變過一次。
+     ⚠ 前端靠「這兩個鍵在不在」決定顯不顯示，**不自己判斷段位**
   ⚠ 沒有涵蓋現在的季別時 `season` 是 **null**，前端就不畫膠囊。
      **不要退回上一季** —— 客人沒有辦法知道那一季已經結束了
 current_season_tx(org)        → jsonb 🔴 anon 與 PUBLIC 都收掉，只給 service_role
