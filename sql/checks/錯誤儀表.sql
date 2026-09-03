@@ -25,6 +25,33 @@
    · ①② 是**新東西**（近 7 天）—— 有東西就要看
    · ③④ 是全期統計 —— 用來判斷「這是新問題還是老朋友」
    · ⑤ 是資料品質，不是錯誤
+
+   ── 🔴 2026-09-04：①③ 開始過濾「開發期的 HMR 噪音」──────────
+   `npm run dev` 連的是正式資料庫（硬規則 11.6），而改程式時 HMR
+   會產生一堆暫態錯誤（`X is not defined`、
+   `Cannot access 'y' before initialization`）——
+   **那是編輯過程不是產品問題。**
+   🔴 實測：近 30 天 88 筆錯誤裡 **74 筆是這種**，也就是唯一的監控面
+     有 84% 是雜訊，而真的問題被埋在裡面。
+   ✅ **寫入端已經擋掉**（`migi-web/main.jsx`＋`ErrorBoundary.jsx`、
+     `migi-pos/lib/analytics.js`＋`main.jsx` 都加了 `import.meta.env.DEV` 守衛）。
+   🔴 **但歷史那 80 筆改不掉** —— `trg_app_events_no_mutate`
+     連 UPDATE 與 DELETE 都擋。所以 ①③ 要在讀取端過濾。
+   ⚠ 過濾條件只認**這一族的訊息形狀**，不是「所有含 not defined 的」——
+     真的產品錯誤也可能長這樣（例如漏了 import 就上線）。
+     🎯 判準：`is not defined` / `before initial` 這兩個字串在**正式版**
+       幾乎不可能出現（build 會先擋下來，硬規則 11），所以拿它們當標記
+       是安全的。要是哪天真的漏了一個上線，那也**應該**被當成噪音濾掉之後
+       靠 ② 的事件量與客訴發現 —— 不要為了這個把 84% 的雜訊放回來。
+
+   ── 📌 一個教訓（2026-09-04）───────────────────────────
+   我當天沒跑這一支，而是**隨手改了一份查詢** —— 那份只讀
+   `props->>'msg'`，於是 60 筆用 `props->>'message'` 的完全沒被算到，
+   我因此以為「儀表有 bug」。**儀表本來就 `coalesce` 兩個鍵（見 ① 第 40 行）。**
+   🎯 **有現成工具就跑現成的。** 即興的查詢沒有人審過。
+   （寫入端 2026-09-04 已統一成 `msg`，但歷史那 60 筆是 `message`
+     且改不掉 —— 所以 `coalesce` 要一直留著。同 `wallet_txns.type`
+     那個「歷史值凍結、只讀不寫」的做法。）
    ============================================================ */
 
 select 序, 項目, 內容 from (
@@ -43,6 +70,9 @@ select 序, 項目, 內容 from (
                          from app_events
                         where event in ('app_error','pos_error')
                           and created_at > now() - interval '7 days'
+                          -- 🔴 濾掉開發期 HMR 噪音（見檔頭）。歷史那 80 筆改不掉。
+                          and coalesce(props->>'msg', props->>'message', '')
+                              !~* '(is not defined|before initial)'
                         group by 1,2,3
                         order by max(created_at) desc
                         limit 15) s),
@@ -76,6 +106,9 @@ select 序, 項目, 內容 from (
                               min(created_at) as mn, max(created_at) as mx
                          from app_events
                         where event in ('app_error','pos_error')
+                          -- 同 ①：濾掉開發期 HMR 噪音
+                          and coalesce(props->>'msg', props->>'message', '')
+                              !~* '(is not defined|before initial)'
                         group by 1,2 order by count(*) desc limit 10) s),
                   '（沒有錯誤紀錄）')
 
@@ -110,7 +143,7 @@ select 序, 項目, 內容 from (
           **四個數字一個都沒動** —— 而那是一次真正的安全性變更。
           → 所以第 ⑦ 段數的是**授權**：明確授權 anon 的支數，
             以及「只靠 PUBLIC 進來」的支數（**那個應該永遠是 0**）。 */
-  select 6, '⑥ 結構物件數 vs baseline（2026-08-29：表39 函式138 索引81 policy28）',
+  select 6, '⑥ 結構物件數 vs baseline（2026-09-04：表46 函式163 索引85 policy28）',
          (select '表 ' || (select count(*)::text from pg_class c
                             join pg_namespace n on n.oid=c.relnamespace
                            where n.nspname='public' and c.relkind='r')
@@ -126,9 +159,9 @@ select 序, 項目, 內容 from (
                                  where schemaname='public')
               || case when (select count(*) from pg_class c
                              join pg_namespace n on n.oid=c.relnamespace
-                            where n.nspname='public' and c.relkind='r') = 39
+                            where n.nspname='public' and c.relkind='r') = 46
                        and (select count(*) from pg_proc p
-                             where p.pronamespace='public'::regnamespace and p.prokind='f') = 138
+                             where p.pronamespace='public'::regnamespace and p.prokind='f') = 163
                        and (select count(*) from pg_policies where schemaname='public') = 28
                       then E'\n  ✅ 與 baseline 相同'
                       else E'\n  ⚠ 與 baseline 不同 —— 重跑 sql/checks/匯出完整結構baseline.sql'
@@ -143,13 +176,13 @@ select 序, 項目, 內容 from (
         ⚠ 「只靠 PUBLIC」那個數字**應該永遠是 0** ——
           不是 0 就代表有人新建了函式而沒有明確決定它的授權範圍，
           **而新函式預設是 PUBLIC 可執行**（＝任何人叫得動）。 */
-  select 7, '⑦ 函式授權 vs baseline（2026-08-29：明確 anon 124、只靠 PUBLIC 0）',
+  select 7, '⑦ 函式授權 vs baseline（2026-09-04：明確 anon 130、只靠 PUBLIC 0）',
          (select '明確授權 anon ' || count(*) filter (where anon明確)::text
               || '　只靠 PUBLIC ' || count(*) filter (where public有 and not anon明確)::text
               || '　兩者都沒有 ' || count(*) filter (where not anon明確 and not public有)::text
               || case when count(*) filter (where public有 and not anon明確) > 0
                       then E'\n  🔴 有函式只靠 PUBLIC 進來 —— 那不是決定，是預設值。逐支確認要不要給 anon'
-                      when count(*) filter (where anon明確) <> 124
+                      when count(*) filter (where anon明確) <> 130
                       then E'\n  ⚠ 明確授權的支數變了 —— 重跑 sql/checks/匯出完整結構baseline.sql'
                       else E'\n  ✅ 與 baseline 相同' end
             from (select
