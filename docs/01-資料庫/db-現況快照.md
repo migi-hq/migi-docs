@@ -1,15 +1,25 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 148 個檔案**（依檔名排序最後一個是 `門市真實資料.sql`；
-> 最後歸檔的是 `2026-09-02_Hero顯示對手進度與賽季改名.sql`）
+> **基準：`sql/applied/` 有 147 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`，
+> 全部檔案 149 個；最後歸檔的是 `2026-09-03_成績頁統計.sql`）
 >
+> 🔴 **2026-09-03 更正一個會讓人誤判的寫法**：上一版寫「148 個檔案」而且
+> 說「依檔名排序最後一個是 `門市真實資料.sql`」，**兩個都會誤導**：
+> · 148 是**全部檔案**（含 `M1_儲值EdgeFunction.ts` / `M1_計費邏輯測試.py`），
+>   而人比對時多半只會數 `*.sql` —— 兩邊差 2，看起來像過期但其實沒有
+> · 「依檔名排序最後一個」**取決於排序規則**（PowerShell 的中文排序與
+>   git／VS Code 不同），同一個資料夾會得到不同答案
+> → 從現在起記 **`.sql` 的數量**，並直接寫**最後歸檔的檔名**（那個沒有歧義）。
+>
+
 > ✅ **2026-09-01：`players` 一個 key 兩種形狀已全部收完**（待辦 35）。
 > `list_tables_tx` 與 `list_match_queues_tx` 只回 **`player_count`**（數字）；
 > `get_my_games_tx` 與 `get_my_active_queue_tx` 的 `players` 是**陣列**，不變。
 > ⚠ `pos_add_queue_member_tx` 的 `players` 仍在（一次性操作結果，刻意不動）。
 > 🎯 **要回「有哪些人」請叫 `player_names`，不要再用 `players`。**
-> **當下規模（2026-09-02 實測）：函式 161 · 資料表 45 · 檢視表 22 · RLS policy 28**
+> **當下規模（2026-09-03 實測）：函式 162 · 資料表 45 · 檢視表 22 · RLS policy 28**
+> （`public` 沒有任何擴充套件 —— 都在 `extensions`，見下面 btree_gist 那一段）
 > ⚠ 這四個數字是**給下一個人比對用的** —— 對不上就是這份文件過期了，
 >   而那個檢查**只要一句 SQL，不需要讀完整份文件**。
 >
@@ -576,6 +586,36 @@ get_my_games_tx(p_org_id, p_member_id, p_limit = 20)
     `settled_at`（結算時間 —— **不是 `ended_at`**，收桌與結算是兩個動作）
     → 成績頁的**段位走勢圖**唯一的資料來源（`lib/ranktrend.jsx`）
   ⚠ M4／電子計分之前這兩欄**全部是 null**，那是預期的不是壞掉
+
+get_my_stats_tx(p_org_id, p_member_id)                    ★ 2026-09-03 新增
+  DEFINER · STABLE · language=plpgsql · anon ✅
+  → { ok, season_from,
+      season: { games, avg_rank, national_rank, national_total, stakes[] },
+      all:    { games, avg_rank,                                stakes[] } }
+  成績頁的 KPI 四格（平均順位／全國排名）與各積分級距勝率，
+  以及「查看歷史累積數據」那個切換 —— **本季與歷史一次回兩份**。
+
+  🎯 **勝 ＝ `session_players.score_points > 0`（桌上積分為正）**
+    🔴 **不是 `rating`／MIGI 段位積分** —— 拿 rating 判斷會變成
+      「只要沒掉段就算贏」，意思完全不同。
+    ⚠ `> 0` 不是 `>= 0`，剛好打平不算贏。期望值約 50% 不是四人桌的 25%。
+  ⚠ **本季用 `rating_window_start_tx(org)`**，不要再寫第二份「本季」。
+    它回 null（一季都沒建）時本季＝全部，兩份會一樣。
+  ⚠ `stakes` **只回打過的**，長度隨人而異，而且本季與歷史的長度**不一樣**
+    （本季沒打過但以前打過的只出現在 `all`）。
+  🔴 **`all` 刻意沒有 `national_rank`** —— `rating` 每季歸零（換季降 2 個段位），
+    「歷代總排名」在這個制度下沒有意義。前端那一格改放「打了幾場」。
+  🔴 **全國排名的母體 = 本季打過至少一場已結算牌局 ＋ `is_test = false`。**
+    不能拿全部會員排：`members.rating` 是 `NOT NULL DEFAULT 0`，
+    沒打過的人也有 0 分，那樣分母會變成「開過帳號的人數」。
+    ⚠ 所以**測試帳號自己永遠回 null**，而今天所有帳號都是測試帳號
+      ⇒ 這一格現在一定是 `—`。**那是對的不是壞了。**
+  🔴 **胡牌率／放槍率不在這裡，而且今天做不出來**：
+    2026-09-03 掃過 `information_schema.tables`，符合
+    `hand|round|tile|replay|discard|win|record` 的表**一張都沒有** ——
+    不是「還沒排到」是**沒有任何來源**。要等牌譜辨識（M5+）。
+  ⚠ **為什麼不讓前端拿 `get_my_games_tx` 自己加總**：那支有 `p_limit`，
+    前 N 筆的平均不是本季平均，**而且畫面上看不出來**（同待辦 1 的累積消費）。
 set_my_nickname_tx / set_my_avatar_tx / set_my_title_tx / set_my_about_tx
 set_my_sched_tx / set_my_style_tx / set_my_baby_tile_tx / set_my_see_score_tx
 set_my_home_store_tx / set_my_birthday_tx / set_my_availability_tx / get_my_availability_tx

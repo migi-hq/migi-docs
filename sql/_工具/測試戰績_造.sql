@@ -48,6 +48,14 @@ declare
                           'd0000000-0000-0000-0000-000000000002'::uuid,
                           'd0000000-0000-0000-0000-000000000003'::uuid];
   v_pool uuid[]; v_old uuid[]; v_reset uuid[];
+  /* 🔴 2026-09-03 補：**每一場給不同的積分級距**。
+     在此之前這支工具完全不寫 `stake_level_id` ⇒ 成績頁的
+     「各積分級距勝率」只會出現一行「未設定」——
+     `get_my_stats_tx` 那樣處理是對的（**場數對不起來比多一行更難查**），
+     但那代表**這個功能永遠測不到真正要看的東西**。
+   ⚠ 級距一樣從主檔撈不寫死（同對手池的理由）。不足三個就重複用，
+     少於一個就留 null（那時「未設定」那條路正好被驗到）。 */
+  v_stakes uuid[];
   v_store uuid; v_tbl uuid; v_sid uuid; g int;
   v_others uuid[]; v_rest int[]; v_row jsonb; r jsonb; v_name text;
 begin
@@ -71,6 +79,14 @@ begin
   if coalesce(array_length(v_pool, 1), 0) < 3 then
     raise exception '測試帳號不夠三個對手（只有 %）', coalesce(array_length(v_pool,1),0);
   end if;
+
+  /* 積分級距：照主檔 `sort_order` 取前三個，每一場一個。
+     ⚠ 不要 `order by random()` —— 重跑會得到不一樣的級距，
+       而這支工具的重點之一就是**重跑要得到同一個結果**。 */
+  select array_agg(id order by sort_order, id) into v_stakes
+    from (select id, sort_order from stake_levels
+           where org_id = v_org and deleted_at is null and is_active
+           order by sort_order, id limit 3) z;
 
   select id into v_store from stores
    where org_id = v_org and name like '%高雄自由%' and deleted_at is null limit 1;
@@ -117,9 +133,14 @@ begin
        ⚠ `ended_at` 一場往前推幾天，走勢圖才有先後（它依 `ended_at` 排）。 */
     insert into table_sessions (id, org_id, store_id, table_id, mode, status,
                                 game_type, flower, planned_rounds,
+                                stake_level_id,
                                 activated_at, ended_at)
     values (v_sid, v_org, v_store, v_tbl, 'matched', 'completed',
             '台麻', '無花', 2,
+            /* 每場一個不同級距 —— 沒有級距主檔時是 null（走「未設定」那條）。
+               ⚠ 用取模而不是 `v_stakes[g]`：只有 1～2 個級距時也不會變成 null。 */
+            case when coalesce(array_length(v_stakes,1),0) = 0 then null
+                 else v_stakes[((g - 1) % array_length(v_stakes,1)) + 1] end,
             now() - ((4 - g) || ' days')::interval - interval '2 hours',
             now() - ((4 - g) || ' days')::interval);
 
