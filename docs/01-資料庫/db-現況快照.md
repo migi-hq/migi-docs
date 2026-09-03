@@ -1,8 +1,8 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 149 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`，
-> 全部檔案 151 個；最後歸檔的是 `2026-09-03_勝率停用與麻將足跡.sql`）
+> **基準：`sql/applied/` 有 150 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`，
+> 全部檔案 152 個；最後歸檔的是 `2026-09-03_賽季名次快照與最高全國排名.sql`）
 >
 > 🔴 **2026-09-03 更正一個會讓人誤判的寫法**：上一版寫「148 個檔案」而且
 > 說「依檔名排序最後一個是 `門市真實資料.sql`」，**兩個都會誤導**：
@@ -18,7 +18,7 @@
 > `get_my_games_tx` 與 `get_my_active_queue_tx` 的 `players` 是**陣列**，不變。
 > ⚠ `pos_add_queue_member_tx` 的 `players` 仍在（一次性操作結果，刻意不動）。
 > 🎯 **要回「有哪些人」請叫 `player_names`，不要再用 `players`。**
-> **當下規模（2026-09-03 實測）：函式 162 · 資料表 45 · 檢視表 22 · RLS policy 28**
+> **當下規模（2026-09-03 實測）：函式 163 · 資料表 46 · 檢視表 22 · RLS policy 28**
 > （`public` 沒有任何擴充套件 —— 都在 `extensions`，見下面 btree_gist 那一段）
 > ⚠ 這四個數字是**給下一個人比對用的** —— 對不上就是這份文件過期了，
 >   而那個檢查**只要一句 SQL，不需要讀完整份文件**。
@@ -593,7 +593,53 @@ get_my_stats_tx(p_org_id, p_member_id)                    ★ 2026-09-03 新增
       season: { games, avg_rank, ranks, national_rank, national_total,
                 opp_rating, opp_rank, stakes[] },
       all:    { games, avg_rank, ranks, stakes[],
-                minutes, peak_rating, peak_rank, stores, opponents } }
+                minutes, peak_rating, peak_rank, stores, opponents,
+                best_rank } }
+
+### 🔴 賽季名次快照（2026-09-03）—— 排名只能有一個定義
+```
+season_standings(org_id, season, member_id, rating, rank_no, games, recorded_at)
+  PK (org_id, season, member_id) ＋ ix_season_standings_member (org_id, member_id, rank_no)
+  RLS 開著、**0 條 policy** —— 跟 rank_tiers / rank_points / rank_seasons /
+  season_champions 一致：誰都不能直接讀，只有 DEFINER 函式讀得到
+  （它裝的是全體會員的分數與名次）
+
+season_rank_rows_tx(p_org_id, p_from, p_to = null)
+  → setof (member_id, rating, rank_no, games)
+  DEFINER · STABLE · 🔴 **anon 與 PUBLIC 都收掉了**（只有 service_role）
+```
+🎯 **`get_my_stats_tx` 的即時排名與 `reset_season_ratings_tx` 的名次快照
+  都呼叫 `season_rank_rows_tx`。** 各寫一份的症狀是
+  「他看到自己第 3 名，歷史卻記成第 5 名」—— **而且不會報錯**。
+  （同 `migi_slot_of()` / `rating_window_start_tx()` 那兩次的做法。）
+
+⚠ **`reset_season_ratings_tx` 的順序有兩個不能反的地方**：
+  ① 先記冠軍 ② **再存名次快照** ③ 才降 2 大階。
+  🔴 快照寫在降階之後，存下來的就是**新一季的起點**而不是那一季的成績 ——
+    而那個錯誤在畫面上完全看不出來。
+  ⚠ 快照的上限用那一季的 `ends_at` 不是 `now()` ——
+    結算晚了幾天的話，那幾天的牌局屬於**下一季**。
+
+⚠ **冠軍 ≠ 榜首，兩者刻意不同**：
+  `season_champions` 要求「**是大師熊**」（含 50 位不同對手），
+  `season_standings` 第 1 名只看**分數最高**。
+  ⇒ **沒有人到大師熊的那一季，冠軍是 null 但榜首有人。**
+    那是對的：雀神熊是頒給達標者的，排行榜是排所有人的。
+  ✅ `season_champions.member_id` 是 nullable，所以「沒有冠軍」插得進去。
+
+✅ **大師熊以上段位分沒有上限**（2026-09-03 實測 900 → 960）——
+  `apply_session_rounds_tx` 只有下限（低段 `greatest(v_new, v_floor)`），
+  **沒有任何 `least(...)`**。所以拿段位分排名在榜首附近依然分得出高下。
+  🔴 哪天有人加了封頂，排行榜會靜靜變成一堆並列而**不會報錯** ——
+    那支 SQL 的驗證段第 ⑩ 格就是在守這件事。
+
+⚠ **驗證段要插 `rank_seasons` 必須避開現有賽季的區間**（2026-09-03 炸過一次）：
+  `EXCLUDE USING gist (org_id WITH =, tstzrange(starts_at, ends_at) WITH &&)`。
+  現有只有 2026H2（2026-07-01 → 2027-01-01）與 2027H1（→ 2027-07-01），
+  所以測試用 **2020 年**那一段。
+  ✅ 那次炸掉**沒有留下任何測試資料** —— `begin…exception` 的子交易會把
+    任何例外回滾到儲存點，而 DDL 在 DO 區塊外面所以照樣提交。
+    **這個樣板是 fail-safe 的。**
 
   ### 🎯 分工原則（2026-09-03 盤點後定的，兩邊都不要放同一種東西）
   ```
@@ -655,6 +701,15 @@ get_my_stats_tx(p_org_id, p_member_id)                    ★ 2026-09-03 新增
     ⚠ 取對手**當時的** `rating_after`，**不是**他們現在的 `members.rating`
       —— 後者會一直漂，今天算出來的數字下週就變了，而那一季的事實不該變。
     ⚠ 不含自己（驗證段有正對照：把自己算進去會從 50 變成 137）。
+
+  · **`best_rank`（最高全國排名，`all` 底下）** ★ 2026-09-03
+    ```
+    best_rank = min(season_standings 各季名次, 本季目前名次)
+    ```
+    🎯 **含「本季目前」是刻意的** —— 只看已結算賽季的話，正在第 1 名的人
+      會看到 `—`，而「最高」問的是「你到過最好的位置」。
+    ⚠ 測試帳號回 **null**（不列入榜單），所以今天每個人都是 null ——
+      **那是對的不是壞了**。
 
   · **足跡四項（`all` 底下）**：`minutes`（累積分鐘）、
     `peak_rating` ＋ `peak_rank`（生涯最高）、`stores`、`opponents`。
