@@ -16,20 +16,48 @@
    ── 🔴 這支是真的寫進正式資料庫 ──────────────────────
    沒有 staging（硬規則 5.7 明講不做），所以：
    · **只挑 `is_test = true` 的帳號**，不可能碰到真實客人
-   · 三張場次用**固定的 UUID**（`d0000000-…-0001/2/3`）——
-     清除腳本靠這三個 id 認回來，**不會誤刪別的東西**
+   · 九張場次用**固定的 UUID**（`d0000000-…-0001` ～ `-0009`）——
+     清除腳本靠這九個 id 認回來，**不會誤刪別的東西**
    · 可以重複跑：再跑一次會先清掉自己上次造的
 
-   ── 造出什麼（v_my_place = 1 時）────────────────────
+   ── 🔴 2026-09-03：從 3 場改成 9 場 ────────────────────
+   原因是**成績頁加了樣本數門檻**（`get_my_stats_tx` 的 `min_games = 5`）：
+   場數不足時勝率一律不顯示（那是刻意的 —— 「100% · 3 場」不是成績是噪音）。
+   ⇒ **3 場的測試資料再也看不到勝率與名次比率**，這支工具就測不到那兩塊了。
+   🎯 9 場一次跨過門檻，而且**每個級距也有機會過**（3 個級距 × 3 場）。
+
+   ── 🔴 同一批改的：名次會輪流，不再每場都同一名 ─────────
+   9 場全部同一個名次的話，「名次分布」只會有一根柱子 —— 而那一塊
+   **正是這次要驗的東西**。所以 `v_vary = true` 時名次從 `v_my_place`
+   開始輪流（1→2→3→4→1…）。
+   ⚠ 想回到「每場都同一名」就把 `v_vary` 設 false。
+
+   ── 造出什麼（v_my_place = 1、v_vary = true）──────────
    ```
-   第 1 場（🎓 定位賽）  +30 × 2 =  60  →  銅牌熊 II
-   第 2 場（低段）       +30 × 2 = 120  →  銅牌熊 II
-   第 3 場（低段）       +30 × 2 = 180  →  銀牌熊 IV   ← 跨大階，小熊會換
+   場次 名次  一將           分數     段位
+    1   1位  🎓定位賽 +30×2   60      銅牌熊 II
+    2   2位  低段     +15×2   90      銅牌熊 II
+    3   3位  低段       0×2   90      銅牌熊 II
+    4   4位  低段     −20×2   50      銅牌熊 III   ← 掉小級
+    5   1位  低段     +30×2  110      銅牌熊 I
+    6   2位  低段     +15×2  140      銅牌熊 I
+    7   3位  低段       0×2  140      銅牌熊 I
+    8   4位  低段     −20×2  100      銅牌熊 I
+    9   1位  低段     +30×2  160      銀牌熊 IV    ← 跨大階，小熊會換
    ```
-   🎯 **三場是刻意的**：
-   · 1 場 → Hero 有段位了，但走勢圖會說「**再打一場就看得到走勢**」
-   · 3 場 → 走勢圖畫得出來，而且**跨過銅→銀的橫帶**，看得到升階
-   ⚠ 想看輸的樣子：`v_my_place` 改 4
+   ✅ **這張表是 2026-09-03 用 `rank_points` ＋ `rank_from_rating()` 實際跑出來的**，
+     不是手算的（硬規則 3.56：期望值一律當場查）。
+   ⚠ 第 1 場**整場**走定位賽（不是只有第一將）—— 定位賽的判準是
+     「這是他第一個已結算的**場次**」。
+   🎯 這組資料同時餵飽四塊：
+   · **段位走勢圖** —— 有上有下，不是一條斜直線
+   · **名次分布** —— {1位 3, 2位 2, 3位 2, 4位 2}，四根柱子都有
+   · **各級距勝率** —— 3 個級距各 3 場（⚠ 各自仍未達門檻 5，見下）
+   · **平均得點／平均順位** —— 9 場都過門檻
+   ⚠ **級距那一塊每個級距只有 3 場**，所以仍會顯示「再 2 場看勝率」——
+     **那是對的**（門檻是按級距算的，不是按總場數）。想看到級距的百分比，
+     把 `v_stakes` 那段的 `limit 3` 改成 `limit 1`（九場集中在一個級距）。
+   ⚠ 想看輸的樣子：`v_vary` 設 false ＋ `v_my_place` 改 4
      （定位賽 +5×2=10 → 銅牌熊 III；第二場開始第 4 名扣 20 → 被夾在 0）
    ============================================================ */
 
@@ -40,13 +68,16 @@ declare
   --    ⚠ 換人之前先用下面那句確認 id：
   --      select id, display_name, phone from members where is_test;
   v_me       uuid := '69016205-afde-4036-95a6-5893c9d0e5fe';  -- 山劍八舞澤
-  v_games    int  := 3;    -- 造幾場（1～3）
-  v_my_place int  := 1;    -- 我的名次（1～4）
+  v_games    int  := 9;    -- 造幾場（1～9）。⚠ 少於 5 場的話勝率不會顯示（門檻）
+  v_my_place int  := 1;    -- 第 1 場的名次（1～4）
+  v_vary     bool := true; -- true = 名次輪流（1→2→3→4→1…）／false = 每場都同一名
   ---------------------------------------------------
+  v_max   constant int := 9;   -- 固定 UUID 有幾個，改這裡要連 `測試戰績_清.sql` 一起改
   v_org   uuid := '11111111-1111-1111-1111-111111111111';
-  v_sids  uuid[] := array['d0000000-0000-0000-0000-000000000001'::uuid,
-                          'd0000000-0000-0000-0000-000000000002'::uuid,
-                          'd0000000-0000-0000-0000-000000000003'::uuid];
+  /* 🔴 九個固定 UUID **用產生的不要手打** —— 手打九行是九個打錯字的機會，
+     而打錯的那一個會變成「清不掉的孤兒場次」（清除腳本認不得它）。 */
+  v_sids  uuid[];
+  v_place int;
   v_pool uuid[]; v_old uuid[]; v_reset uuid[];
   /* 🔴 2026-09-03 補：**每一場給不同的積分級距**。
      在此之前這支工具完全不寫 `stake_level_id` ⇒ 成績頁的
@@ -60,6 +91,10 @@ declare
   v_others uuid[]; v_rest int[]; v_row jsonb; r jsonb; v_name text;
 begin
   v_my_place := greatest(1, least(4, v_my_place));   -- 打錯數字不要炸，夾住就好
+  v_games    := greatest(1, least(v_max, v_games));
+
+  select array_agg(('d0000000-0000-0000-0000-' || lpad(i::text, 12, '0'))::uuid order by i)
+    into v_sids from generate_series(1, v_max) i;
 
   select display_name into v_name from members
    where id = v_me and org_id = v_org and deleted_at is null;
@@ -125,8 +160,13 @@ begin
      and not exists (select 1 from session_players sp
                       where sp.member_id = m.id and sp.finish_rank is not null);
 
-  for g in 1 .. greatest(1, least(3, v_games)) loop
+  for g in 1 .. v_games loop
     v_sid := v_sids[g];
+    /* 名次：`v_vary` 時從 `v_my_place` 開始輪流 1→2→3→4→1…
+       ⚠ 取模用 `(x - 1) % 4 + 1` 這個形狀 —— 直接 `% 4` 會得到 0，
+         而 0 不是合法名次（`apply_session_rounds_tx` 會回 `bad_ranks`）。 */
+    v_place := case when v_vary then ((v_my_place - 1 + (g - 1)) % 4) + 1
+                    else v_my_place end;
 
     /* ⚠ 直接建成 `completed` —— `uq_sessions_open_table` 是部分索引
        （`where status='open'`），所以不會鎖住那張桌。
@@ -141,23 +181,29 @@ begin
                ⚠ 用取模而不是 `v_stakes[g]`：只有 1～2 個級距時也不會變成 null。 */
             case when coalesce(array_length(v_stakes,1),0) = 0 then null
                  else v_stakes[((g - 1) % array_length(v_stakes,1)) + 1] end,
-            now() - ((4 - g) || ' days')::interval - interval '2 hours',
-            now() - ((4 - g) || ' days')::interval);
+            /* ⚠ 一場往前推一天，走勢圖才有先後（它依 `ended_at` 排）。
+               🔴 用 `v_games + 1 - g` 不要寫死 `4 - g` —— 場數改成 9 之後
+                 `4 - g` 在第 5 場就變成負數，**那會把場次排到未來**
+                 （而畫面上只會看到日期怪怪的，不會報錯）。 */
+            now() - ((v_games + 1 - g) || ' days')::interval - interval '2 hours',
+            now() - ((v_games + 1 - g) || ' days')::interval);
 
     insert into session_players (org_id, session_id, member_id)
       select v_org, v_sid, x from unnest(array[v_me] || v_pool[1:3]) x;
 
-    -- 其餘三人依場次輪流，不要每一場都是同一個人墊底
-    v_others := case g when 1 then array[v_pool[1], v_pool[2], v_pool[3]]
-                       when 2 then array[v_pool[2], v_pool[3], v_pool[1]]
-                       else        array[v_pool[3], v_pool[1], v_pool[2]] end;
+    /* 其餘三人依場次輪流，不要每一場都是同一個人墊底。
+       ⚠ 用取模而不是 `case g when 1/2/3` —— 場數改成 9 之後
+         那個 case 的 `else` 會讓第 3 場之後**全部套同一個排列**。 */
+    v_others := array[v_pool[((g - 1) % 3) + 1],
+                      v_pool[( g      % 3) + 1],
+                      v_pool[((g + 1) % 3) + 1]];
 
     /* ⚠ 名次必須剛好是 1..4（不接受並列、跳號），否則回 `bad_ranks`。 */
     select array_agg(x order by x) into v_rest
-      from unnest(array[1,2,3,4]) x where x <> v_my_place;
+      from unnest(array[1,2,3,4]) x where x <> v_place;
 
     v_row := jsonb_build_array(
-      jsonb_build_object('member_id', v_me,        'finish_rank', v_my_place),
+      jsonb_build_object('member_id', v_me,        'finish_rank', v_place),
       jsonb_build_object('member_id', v_others[1], 'finish_rank', v_rest[1]),
       jsonb_build_object('member_id', v_others[2], 'finish_rank', v_rest[2]),
       jsonb_build_object('member_id', v_others[3], 'finish_rank', v_rest[3])
@@ -169,7 +215,8 @@ begin
     end if;
   end loop;
 
-  raise notice '✅ 已幫「%」造了 % 場', v_name, greatest(1, least(3, v_games));
+  raise notice '✅ 已幫「%」造了 % 場（名次%）', v_name, v_games,
+    case when v_vary then '輪流' else '固定第 ' || v_my_place || ' 名' end;
 end $$;
 
 -- ── 結果（重新整理成績頁就看得到）──────────────────────
@@ -190,10 +237,11 @@ select case when p.member_id is not null then '✅ 這次有打' else '—' end 
           from session_players sp join table_sessions s on s.id = sp.session_id
          where sp.member_id = m.id and sp.rating_after is not null) as 走勢
   from members m
+  /* ⚠ 九個 id 一樣用產生的，不要手打九行（同上面那段的理由）。 */
   left join (select distinct member_id from session_players
-              where session_id in ('d0000000-0000-0000-0000-000000000001',
-                                   'd0000000-0000-0000-0000-000000000002',
-                                   'd0000000-0000-0000-0000-000000000003')) p
+              where session_id in (
+                select ('d0000000-0000-0000-0000-' || lpad(i::text, 12, '0'))::uuid
+                  from generate_series(1, 9) i)) p
     on p.member_id = m.id
  where m.org_id = '11111111-1111-1111-1111-111111111111'
    and m.deleted_at is null and m.is_test
