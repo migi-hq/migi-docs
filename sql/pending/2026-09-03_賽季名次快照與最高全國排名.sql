@@ -457,11 +457,31 @@ begin
            else '🔴 ' || coalesce(j->'all'->>'best_rank','null') end;
 
     ---- 結算一季 ---------------------------------------
-    /* 用一個**過去**的賽季來測 —— 現在這一季還沒結束，
-       而 `reset_season_ratings_tx` 不檢查「是否已到期」（那是排程的事）。 */
+    /* 🔴 **第一版在這裡炸了，記下來因為它會再發生**：
+         原本插的區間是 `now() − 2 天 → now() + 1 天`，
+         而 `rank_seasons` 有
+         `EXCLUDE USING gist (org_id WITH =, tstzrange(starts_at, ends_at) WITH &&)`
+         —— 它跟現有的 **2026H2（2026-07-01 → 2027-01-01）重疊**，
+         直接拋 `conflicting key value violates exclusion constraint`。
+       ⚠ **驗證段要插 `rank_seasons` 就必須避開所有現有賽季的區間。**
+         現有只有 2026H2 與 2027H1（→ 2027-07-01），所以 **2020 年整段是空的**。
+       🎯 順帶一個好消息：那次炸掉**沒有留下任何測試資料** ——
+         `raise` 與任何例外都會把 `begin…exception` 這個子交易回滾到儲存點，
+         而 DDL 在 DO 區塊外面所以照樣提交。**這個樣板是 fail-safe 的。** */
     v_season := '_migi_test_season';
     insert into rank_seasons (org_id, code, label, starts_at, ends_at)
-      values (v_org, v_season, '測試季', now() - interval '2 days', now() + interval '1 day');
+      values (v_org, v_season, '測試季',
+              '2020-01-01 00:00+08'::timestamptz, '2020-07-01 00:00+08'::timestamptz);
+
+    /* 🔴 **那一季裡也要有牌局**，否則名次快照會是空的（0 列）——
+         而「回 0 列」同時是「正確地沒有人符合」與「查詢寫壞了」的症狀
+         （硬規則 3.55）。上面 ③④⑤ 用的是**本季**的場次，不在這個視窗裡。 */
+    insert into table_sessions (org_id, store_id, table_id, mode, status, ended_at)
+      values (v_org, v_store, v_tbl, 'private','completed', '2020-03-01 12:00+08')
+      returning id into s;
+    insert into session_players (org_id, session_id, member_id, finish_rank, settled_at)
+      values (v_org,s,a,1,'2020-03-01 12:00+08'), (v_org,s,b,2,'2020-03-01 12:00+08'),
+             (v_org,s,c,3,'2020-03-01 12:00+08'), (v_org,s,d,4,'2020-03-01 12:00+08');
 
     r := public.reset_season_ratings_tx(v_org, v_season, 2);
     v_out := v_out || E'\n' || '⑥ 結算成功且寫了 3 列名次' || E'\t' ||
@@ -480,7 +500,9 @@ begin
         where org_id = v_org and season = v_season and member_id = a);
 
     /* 冠軍：這一季沒有人是大師熊（最高 400）⇒ champion 是 null，
-       但 standings 有第 1 名。**兩者刻意不同，不要驗相等。** */
+       但 standings 有第 1 名。**兩者刻意不同，不要驗相等。**
+       ✅ 2026-09-03 查證 `season_champions.member_id` 是 **nullable**，
+         所以「沒有冠軍」那一列插得進去（不然這一格會炸在 23502）。 */
     v_out := v_out || E'\n' || '⑧ 🎯 沒人到大師熊 → 冠軍 null，但榜首有人' || E'\t' ||
       case when (r->>'champion') is null
            then '✅ champion=null／榜首=測甲（雀神是頒給達標者，榜單是排所有人）'
