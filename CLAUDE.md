@@ -1921,6 +1921,37 @@ migi github/           ← Claude Code 的 project folder 選這層
         · 同待辦 29 ②「staff 要能一人多列」
       ⚠ 那是**授予最高權限**的動作：綁下去之後，拿到那個 LINE 帳號的人就是 hq／owner。
         等真的要用 POS 時再做，不要現在先建。
+    ### ✅ 2026-09-04：前後端都做完了，等實機登入一次
+    | | |
+    |---|---|
+    | LIFF app（POS） | ✅ `2011312117-wvXRpNJm`（`MIGI POS`，同 channel 第二個） |
+    | Edge Function | ✅ `staff-login`（已部署，Verify JWT **開著**） |
+    | POS 前端 | ✅ `lib/line.js` ＋ `LoginPage.jsx` ＋ `App.jsx` 拆兩層 |
+    | Cloudflare 環境變數 | ✅ `VITE_LIFF_ID` 已設（⚠ **要重新 build 才生效**） |
+    | 實機登入 | ⏳ **還沒**（硬規則 7：沒看到回傳就不算完成） |
+
+    🔴 **`App.jsx` 拆成 `App`（登入閘門）＋ `PosApp`（原本的內容）不是為了好看**：
+      沒登入就**完全不 mount `PosApp`**，因為它裡面有 5 秒輪詢桌況、
+      載主檔、載門市清單 —— 只是 early return 的話那些 effect 照樣在跑，
+      等於**沒登入的畫面在背景一直打 RPC**。
+    ⚠ `PosApp` 定義在**模組層**不是 `App` 的函式體裡（硬規則 3.86）。
+
+    🔴 **交班登出一定要 `liff.logout()`**：只清 Supabase session 的話，
+      下一個店員按登入會**直接用上一個人的 LINE 帳號**，而畫面上完全看不出來
+      ⇒ `updated_by` 全部記成上一班的人。**比沒有登入更糟** ——
+      它看起來有稽核，而稽核是錯的。
+
+    ### ⏳ 「按登入直接跳 QR」—— 參數存在，但代價是回到 OAuth
+    ```
+    initial_amr_display=lineqr   預設顯示 QR 登入（而不是 email）
+    switch_amr=false             連「改用 email 登入」的切換鈕都藏起來
+    ```
+    🔴 **但 `liff.login()` 帶不了它們**（簽名只有 `{ redirectUri }`）。
+    要用就得自己組 authorize URL → 拿 `code` → **用 channel secret 換 id_token**
+    ⇒ 多一個 secret、一個 Callback URL、Edge Function 多一段、前端多一段 callback。
+    **大約 100 行，為了省一次點擊。**
+    🎯 **先實機看一次再決定** —— LINE 的桌面登入頁可能本來就是 QR 優先。
+
     - ✅ **2026-09-04 查證後改規劃：POS 也走 LIFF，不走 OAuth callback。**
       LINE 官方文件明寫 LIFF 在**外部瀏覽器**也能拿 id_token：
       ```
@@ -3177,9 +3208,12 @@ migi github/           ← Claude Code 的 project folder 選這層
 （那是設計上的空不是 bug）。
 
 ## PENDING
-- 店員登入未做，`staffId` 一律傳 null，`App.jsx` 還有 `const STAFF = "小美"` 寫死。
-  ⚠ 後果不只是「不知道是誰」：`table_sessions` 98/98、`orders` 150/150 的
-  `updated_by` **全部是 null**，出事完全查不到經手人；而且交班日結沒有意義。
+- ✅ ~~店員登入未做，`staffId` 一律傳 null，`App.jsx` 還有 `const STAFF = "小美"` 寫死~~
+  → **2026-09-04 前後端都做完了**（`migi-pos` 89b148b），詳見待辦 20。
+  ⏳ **只差實機登入一次** —— 本機測不了（`liff.login()` 會導到 `pos.migi.tw`），
+  而硬規則 7 說沒看到回傳就不算完成。
+  📌 那一行寫死的代價不只是「不知道是誰」：在此之前
+  `table_sessions` 98/98、`orders` 150/150 的 `updated_by` **全部是 null**。
 - ✅ ~~LINE Developers 帳號未申請~~ → **2026-08-28 已建立**：
   Business ID（`admin@migi.tw`）→ Provider **`MIGI 咪吉麻將`** →
   一個 **LINE Login** channel（同名）→ LIFF app（Full／`https://app.migi.tw`／
