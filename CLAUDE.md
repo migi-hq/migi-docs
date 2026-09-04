@@ -1994,6 +1994,46 @@ migi github/           ← Claude Code 的 project folder 選這層
       只驗「擋住了」的話，一支永遠回 `forbidden` 的實作也會全綠。
     → **找不到樣本時要出聲**，不要 `if ... then` 安靜跳過。
 
+    ### ✅ 最後一塊：14 支營運函式改吃 `current_staff()`（2026-09-04，5/5）
+    登入通了之後 `updated_by` 記的**還是前端說的值**（POS 送的 `staffId`
+    來自 localStorage，店員可以改成別人）—— 那**比沒有稽核更糟**。
+
+    🎯 **做法：覆寫參數，函式體一行都不動。**
+    14 支全是 plpgsql，所以在 `begin` 之後插一行：
+    ```sql
+    p_staff_id := (select staff_id from public.current_staff());
+    ```
+    ⇒ 其餘部分照舊用 `p_staff_id`，**前端也一行不用改**（照樣送，函式忽略）。
+    ⚠ 那份 SQL **不冪等**（重跑會再插一行，guard ② 會擋下）——
+      要驗證請跑 `sql/checks/2026-09-04_補驗操作者身分.sql`。
+
+    🔴 **最關鍵的一行：查不到要 null，不是報錯。**
+      那 14 支裡**有些會員 App 也會叫**（`topup_tx` 這一族），
+      改成「必須是店員」會讓**會員儲值當場壞掉**。
+      ```
+      有 staff 身分 → 真實 staff_id    （POS）
+      沒有          → null              （會員 App，跟以前一樣）
+      ```
+
+    ### 🔴 而這一批的除錯過程本身是硬規則 3.56 的完美案例
+    驗證段 ④⑤ 紅了（`updated_by` 是 null），我**一路懷疑錯的東西**：
+    身分解析 → 插入位置 → 甚至寫了一支診斷 SQL 去拆 `current_staff()`，
+    **而那支診斷全綠**（印出「咖勁凱（owner）」）。
+
+    🎯 真正的錯在**期望值**：`open_session_tx` 寫的是
+    **`opened_by_staff_id` / `promoted_by_staff_id`**，
+    而我去查 `updated_by` —— **那個欄位它從來不寫**。
+    📌 順帶更正 CLAUDE.md 的一句敘述：「`table_sessions` 98/98 的
+      `updated_by` 全是 null」**沒錯**，但**它不是 `p_staff_id` 該去的地方**。
+
+    ⚠ 同一份 SQL 我**猜錯了四次**，每一次都是沒查就寫：
+    | 猜的 | 實際 |
+    |---|---|
+    | 相鄰的 `E'...'` 會自動接起來 | 🔴 **不會** —— 要用 `\|\|`。而錯誤訊息指向**下一行** |
+    | `mode = 'match'` | `'matched'` |
+    | `open_method = 'staff'` | `'manual'`／`'auto'` |
+    | 寫進 `updated_by` | `opened_by_staff_id` |
+
     ### 🔴 LINE 的桌面登入頁**預設是 email 不是 QR**（實機確認）
     ```
     預設      電子郵件帳號 ＋ 密碼
