@@ -127,6 +127,68 @@ revoke execute on function public.grant_staff_tx(uuid, uuid, text, text) from an
 grant  execute on function public.grant_staff_tx(uuid, uuid, text, text) to authenticated, service_role;
 
 
+-- ── 店員清單（給 migi-admin 的店員管理頁）──────────────
+/* 🎯 **為什麼需要一支 RPC 而不是直接查表**：
+   migi-admin 有真的身分（Email Auth ＋ hq），所以 `staff` / `members`
+   它**直接查得到**（今天收緊成 `can('ops.read')` / `can('member.read')`，
+   而 hq 兩個都有）。
+   🔴 **唯一查不到的是「最後登入」** —— 那在 `auth.users`，
+     不在 `public` schema，前端拿不到。
+   而那一欄正是世界級後台**真正認真做**的三件事之一：
+
+   | | 為什麼重要 |
+   |---|---|
+   | 停用要立刻生效 | ✅ `revoke_staff_tx` |
+   | 誰在什麼時候做了什麼 | ✅ 2026-09-04 做完（`opened_by_staff_id` 等） |
+   | **最後一次登入** | 🎯 **抓殭屍帳號** —— 離職半年沒人記得收回的那種 |
+
+   ⚠ 它回答一個很實際的問題：**「這個帳號還有人在用嗎？」**
+     那正是離職沒收回時**唯一會露出馬腳的地方**。 */
+create or replace function public.list_staff_tx(p_org_id uuid)
+returns jsonb
+language plpgsql stable security definer set search_path to 'public'
+as $function$
+begin
+  /* ⚠ 這支會回傳**員工的真實姓名與手機** —— 那是人事資料，
+     所以跟 `staff` 表的讀取用同一個權限碼。 */
+  if not public.can('ops.read') then
+    return jsonb_build_object('ok', false, 'reason', 'forbidden');
+  end if;
+
+  return jsonb_build_object('ok', true, 'rows', coalesce((
+    select jsonb_agg(x order by x.role_sort, x.name)
+      from (
+        select s.id as staff_id, s.name, s.role, s.store_id,
+               st.name as store_name,
+               s.member_id,
+               m.display_name as nickname,
+               m.phone,
+               m.line_user_id is not null as has_line,
+               s.created_at,
+               /* 🔴 `auth.users` 只有 DEFINER 進得到 —— 那是這支存在的理由。
+                  ⚠ 兩條路都要看：LINE 那條走 `members.line_user_id`
+                    對應到 auth user 的 `app_metadata.line_user_id`；
+                    Email 那條直接是 `staff.auth_uid`。 */
+               (select u.last_sign_in_at from auth.users u
+                 where u.id = s.auth_uid) as last_sign_in_at,
+               case s.role when 'owner' then 1 when 'hq' then 2
+                           when 'manager' then 3 else 4 end as role_sort
+          from staff s
+          left join members m on m.id = s.member_id and m.deleted_at is null
+          left join stores  st on st.id = s.store_id
+         where s.org_id = p_org_id and s.deleted_at is null
+      ) x), '[]'::jsonb));
+end $function$;
+
+comment on function public.list_staff_tx(uuid) is
+  '店員清單（migi-admin 用）。🎯 存在的唯一理由是 last_sign_in_at —— '
+  'auth.users 不在 public schema，前端查不到，而那一欄是抓殭屍帳號的關鍵。';
+
+revoke execute on function public.list_staff_tx(uuid) from public;
+revoke execute on function public.list_staff_tx(uuid) from anon;
+grant  execute on function public.list_staff_tx(uuid) to authenticated, service_role;
+
+
 -- ══════════════════════════════════════════════════════
 -- 🔴 把下面這個名字改成你的真實姓名，再執行
 -- ══════════════════════════════════════════════════════

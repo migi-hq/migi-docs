@@ -1,8 +1,8 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 158 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`，
-> 全部檔案 160 個；最後歸檔的是 `2026-09-04_操作者身分改從JWT取.sql`）
+> **基準：`sql/applied/` 有 159 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`，
+> 全部檔案 161 個；最後歸檔的是 `2026-09-05_店員用真實姓名.sql`）
 > ✅ `sql/pending/` **是空的**
 >
 > 🔴 **2026-09-03 更正一個會讓人誤判的寫法**：上一版寫「148 個檔案」而且
@@ -19,7 +19,17 @@
 > `get_my_games_tx` 與 `get_my_active_queue_tx` 的 `players` 是**陣列**，不變。
 > ⚠ `pos_add_queue_member_tx` 的 `players` 仍在（一次性操作結果，刻意不動）。
 > 🎯 **要回「有哪些人」請叫 `player_names`，不要再用 `players`。**
-> **當下規模（2026-09-04 實測）：函式 168 · 資料表 46 · 檢視表 22 · RLS policy 29**
+> **當下規模（2026-09-05 實測）：函式 169 · 資料表 46 · 檢視表 22 · RLS policy 29**
+> （帶 `can()` 的 policy 20 · 明確授權 anon 的函式 129 · **只靠 PUBLIC 的 0**）
+>
+> ⚠ **「只靠 PUBLIC 0」不等於「PUBLIC 都收乾淨了」** —— 實際上
+> **124 支函式 PUBLIC 仍然有 EXECUTE**，只是它們同時也明確授權給 anon。
+> 🔴 所以要真的關掉一支給前端的函式，**兩行都要寫**（硬規則 2.6／2.6b）：
+> ```sql
+> revoke execute on function f(...) from public;   -- 舊的走這條
+> revoke execute on function f(...) from anon;     -- 新建的走這條
+> ```
+> 只收一邊**不會報錯，也不會有效果** —— 兩個方向我在 2026-08-29 各踩過一次。
 >
 > 📌 **會員合併（`member_merges` ＋ `merge_members_tx`）當天建了又移除了。**
 > 🔴 它一度處在**最糟的狀態**：第一次跑時驗證段炸在第 ③ 格，
@@ -1115,7 +1125,18 @@ get_staff_by_line_tx(p_org_id, p_line_user_id)
   ⚠ 刻意**不回傳 `auth_uid`** —— 那是另一條登入路徑（Email）的憑據。
   🎯 授權收得夠緊的實證：用 MCP（`supabase_read_only_user`）呼叫它會拿到
     `permission denied` —— **連唯讀的 DB user 都叫不動**。
-grant_staff_tx(p_member_id, p_store_id, p_role) / revoke_staff_tx(p_staff_id)
+grant_staff_tx(p_member_id, p_store_id, p_role, p_name) / revoke_staff_tx(p_staff_id)
+  🔴 **2026-09-05 加了 `p_name`，而且它是必填的**（不給回 `name_required`）。
+    在此之前這支拿 `members.display_name`（LINE 暱稱）當預設值填進 `staff.name`
+    ⇒ **POS 側邊欄顯示的是客人看到的暱稱，不是員工的真實姓名**。
+  🔴 而且舊版是 `name = coalesce(name, v_name)`（已經有名字就不改）
+    ⇒ **「改名」這個動作在這支函式裡做不到**。現在直接用傳進來的值。
+  ⚠ **不給預設值是刻意的** —— 「店員叫什麼」不該有一個猜出來的答案。
+list_staff_tx(p_org_id)   ← 2026-09-05 新增，`can('ops.read')`
+  🎯 **存在的唯一理由是 `last_sign_in_at`** —— 它在 `auth.users`，
+    不在 `public` schema，所以前端查不到。
+    而那一欄是**抓殭屍帳號**（離職半年沒人記得收回）唯一會露馬腳的地方。
+  📌 其餘欄位 migi-admin 本來就查得到（它有 Email Auth ＋ hq 身分）。
 next_doc_no(p_org_id, p_store_id, p_doc_type)
 log_app_event_tx(p_org_id, p_member_id, p_event, p_props, p_client_ts, p_store_id)
 dev_reset_test_data_tx(p_reset_balance) / dev_set_test_balance_tx(p_display_name, p_balance)
