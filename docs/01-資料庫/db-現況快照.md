@@ -1,9 +1,9 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 155 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`，
-> 全部檔案 157 個；最後歸檔的是 `2026-09-04_移除會員合併.sql`）
-> ⚠ `sql/pending/` 還有 1 份：`2026-09-04_身分解析包一層.sql`
+> **基準：`sql/applied/` 有 156 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`，
+> 全部檔案 158 個；最後歸檔的是 `2026-09-04_身分解析包一層.sql`）
+> ✅ `sql/pending/` **是空的**
 >
 > 🔴 **2026-09-03 更正一個會讓人誤判的寫法**：上一版寫「148 個檔案」而且
 > 說「依檔名排序最後一個是 `門市真實資料.sql`」，**兩個都會誤導**：
@@ -19,7 +19,7 @@
 > `get_my_games_tx` 與 `get_my_active_queue_tx` 的 `players` 是**陣列**，不變。
 > ⚠ `pos_add_queue_member_tx` 的 `players` 仍在（一次性操作結果，刻意不動）。
 > 🎯 **要回「有哪些人」請叫 `player_names`，不要再用 `players`。**
-> **當下規模（2026-09-04 實測）：函式 167 · 資料表 46 · 檢視表 22 · RLS policy 29**
+> **當下規模（2026-09-04 實測）：函式 168 · 資料表 46 · 檢視表 22 · RLS policy 29**
 >
 > 📌 **會員合併（`member_merges` ＋ `merge_members_tx`）當天建了又移除了。**
 > 🔴 它一度處在**最糟的狀態**：第一次跑時驗證段炸在第 ③ 格，
@@ -73,7 +73,7 @@
 
 ## 怎麼知道它過期了（硬規則 1.7）
 
-比對現在 `sql/applied/` 的 `.sql` 數與上面的基準（**155**）—— **不同就是過期**。
+比對現在 `sql/applied/` 的 `.sql` 數與上面的基準（**156**）—— **不同就是過期**。
 這個檢查不需要資料庫。
 
 ⚠ **2026-09-04 順手修掉一個諷刺的漂移**：這一行原本寫 **136**，而檔頭寫 150 ——
@@ -1084,6 +1084,20 @@ list_product_taxonomy_tx()      無參數
 list_topup_plans_tx(p_org_id, p_store_id)
 current_org_id() / current_member_id() / current_staff()
 migi_jwt_uuid()          STABLE · authenticated ✅ anon ❌ · 2026-09-04 新增
+migi_jwt_line_id()       STABLE · authenticated ✅ anon ❌ · 2026-09-04 新增
+  「這個 JWT 代表哪一個 LINE 帳號」。與 `migi_jwt_uuid()` 是**一對**，
+  合起來就是**身分解析那一層** —— 三支身分函式都只透過它們讀 JWT。
+  ① `app_metadata.line_user_id`（走 Supabase Auth 之後的形狀）
+  ② `sub` 不是 uuid ⇒ 它本身就是 LINE id（今天的形狀）
+  🔴 **一定要 `app_metadata` 不可以是 `user_metadata`** ——
+    後者**客戶端自己就能改**（`supabase.auth.updateUser({ data: … })`），
+    讀它等於「輸入任何 line_user_id 就能變成他」。
+    ⚠ 兩者在 JWT 裡長得幾乎一樣，**而其中一個是完整的身分偽造**。
+  ⚠ 用「不是 uuid」判斷而不是比對 `^U…` 的格式 ——
+    格式寫死會在 LINE 改格式那天壞掉，而症狀是**所有人都登不進去**。
+  🎯 為什麼現在就包：查出 Supabase 用 **ES256（非對稱）**
+    ⇒ Edge Function 不能自簽 JWT ⇒ 只能走 Supabase Auth
+    ⇒ **`sub` 一定會變成 uuid**。包了之後那個變動只要改這一支。
 can(p_perm text)         DEFINER · authenticated ✅ anon ❌ · 2026-09-04 新增
 has_store_access(p_store_id)   DEFINER · authenticated ✅ anon ❌
   🔴 2026-09-04 修：原本是 `cs.role = 'hq'`，**漏掉了 `owner`**

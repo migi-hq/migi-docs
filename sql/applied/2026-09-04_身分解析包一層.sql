@@ -240,15 +240,26 @@ begin
                  and pr.proname='migi_jwt_line_id') z);
 
     ---- ⑪ 🔴 掃全庫：還有誰直接讀 sub -------------------
-    /* 🎯 **包一層的意義在於「只有一個地方知道 sub 在哪」** ——
+    /* 🎯 **包一層的意義在於「只有那一層知道 sub 在哪」** ——
        所以要驗「沒有別人繞過它」。
        ⚠ 禁字用 `->> 'sub'` 而不是 `sub`（硬規則 3.5：
          禁字不能是註解裡會出現的詞，而 `sub` 到處都是）。
-       ⚠ `prokind='f'` 排除聚合，否則 `pg_get_functiondef` 會拋錯（硬規則 3.7）。 */
-    v_out := v_out || E'\n' || '⑪ 🎯 還有幾支函式直接讀 sub（應該只剩 1）' || E'\t' ||
-      (select case when count(*) = 1 and max(p.proname) = 'migi_jwt_line_id'
-                   then '✅ 只有 migi_jwt_line_id'
-                   else '⚠ ' || count(*) || ' 支：' || string_agg(p.proname, '／') end
+       ⚠ `prokind='f'` 排除聚合，否則 `pg_get_functiondef` 會拋錯（硬規則 3.7）。
+
+       🔴 **2026-09-04：期望值第一版寫「應該只剩 1」，那是錯的**
+         （硬規則 3.56 第五次 —— 而且又是「數量」那一類）。
+         `migi_jwt_uuid()` **當然也讀 `sub`** —— 它的工作就是
+         「把 sub 轉成 uuid」。⇒ **正確答案是 2，而且它們是一對**：
+         · `migi_jwt_uuid()`    「這個 sub 是 uuid 嗎」
+         · `migi_jwt_line_id()` 「這個 JWT 代表哪個 LINE 帳號」
+         兩支合起來就是那一層，**都必須讀 sub**。
+       📌 所以這一格盯的是**第 3 支** —— 那才是繞過抽象的人。 */
+    v_out := v_out || E'\n' || '⑪ 🎯 還有幾支函式直接讀 sub（那一層本身是 2 支）' || E'\t' ||
+      (select case when count(*) = 2
+                     and bool_and(p.proname in ('migi_jwt_uuid', 'migi_jwt_line_id'))
+                   then '✅ 只有 migi_jwt_uuid ＋ migi_jwt_line_id'
+                   else '🔴 ' || count(*) || ' 支：' || string_agg(p.proname, '／')
+                        || ' —— 有人繞過那一層了' end
          from pg_proc p
         where p.pronamespace = 'public'::regnamespace
           and p.prokind = 'f'
