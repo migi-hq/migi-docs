@@ -1,8 +1,8 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 150 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`，
-> 全部檔案 152 個；最後歸檔的是 `2026-09-03_賽季名次快照與最高全國排名.sql`）
+> **基準：`sql/applied/` 有 151 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`，
+> 全部檔案 153 個；最後歸檔的是 `2026-09-04_守住JWT的uuid轉型與三條寫入policy.sql`）
 >
 > 🔴 **2026-09-03 更正一個會讓人誤判的寫法**：上一版寫「148 個檔案」而且
 > 說「依檔名排序最後一個是 `門市真實資料.sql`」，**兩個都會誤導**：
@@ -18,7 +18,7 @@
 > `get_my_games_tx` 與 `get_my_active_queue_tx` 的 `players` 是**陣列**，不變。
 > ⚠ `pos_add_queue_member_tx` 的 `players` 仍在（一次性操作結果，刻意不動）。
 > 🎯 **要回「有哪些人」請叫 `player_names`，不要再用 `players`。**
-> **當下規模（2026-09-03 實測）：函式 163 · 資料表 46 · 檢視表 22 · RLS policy 28**
+> **當下規模（2026-09-04 實測）：函式 165 · 資料表 46 · 檢視表 22 · RLS policy 29**
 > （`public` 沒有任何擴充套件 —— 都在 `extensions`，見下面 btree_gist 那一段）
 > ⚠ 這四個數字是**給下一個人比對用的** —— 對不上就是這份文件過期了，
 >   而那個檢查**只要一句 SQL，不需要讀完整份文件**。
@@ -49,7 +49,9 @@
 > `register_member_tx` 的暱稱正規化與 `display_name_reserved`、
 > **簡訊驗證整批（`phone_otps` ＋ 8 支函式 ＋ `phone_verified_at`）**、
 > **段位整批（`rank_tiers` / `rank_points` / `season_champions` ＋ `members.rank` 可為 null
-> ＋ `get_my_games_tx` 補 `my_rating_after` / `settled_at`）**。
+> ＋ `get_my_games_tx` 補 `my_rating_after` / `settled_at`）**、
+> **成績整批（`get_my_stats_tx` / `season_standings` / `season_rank_rows_tx`）**、
+> **`migi_jwt_uuid` ＋ `can` 兩支新函式 ＋ 三條寫入 policy 收緊（見下面「身分與權限」）**。
 > 來源：`sql/checks/2026-08-28_現況全匯出.sql`（pg_proc / pg_class / pg_constraint / pg_index / information_schema）
 
 ## 怎麼用這份
@@ -62,8 +64,13 @@
 
 ## 怎麼知道它過期了（硬規則 1.7）
 
-比對現在 `sql/applied/` 的檔案數與上面的基準（**136**）—— **不同就是過期**。
+比對現在 `sql/applied/` 的 `.sql` 數與上面的基準（**151**）—— **不同就是過期**。
 這個檢查不需要資料庫。
+
+⚠ **2026-09-04 順手修掉一個諷刺的漂移**：這一行原本寫 **136**，而檔頭寫 150 ——
+**同一份文件裡的兩個數字互相矛盾，而它們是同一個東西。**
+🔴 那正是「靠記得更新」失敗的樣子：檔頭每次都改，這一行沒人想到要改。
+→ 從現在起兩個地方都要動（**檔頭與這裡**），或者哪天把這一行改成引用檔頭。
 
 ⚠ **但它只能證明「確定過期」，不能證明「還是新的」。**
 直接在 Dashboard 手改、沒留檔案的東西抓不到 ——
@@ -86,6 +93,74 @@
 | `charge_private_tx` | 同上 | 同上 |
 | `checkout_tx` | INVOKER、anon=✅ | ⚠ **有授權但不該被直接呼叫** —— RLS 會濾成「什麼都沒發生而且不報錯」。授權存在本身就是危險（有人會叫） |
 | `_charge_core`／`charge_fnb_tx`／`reverse_txn_tx` | INVOKER、anon=✅ | 同上，都是內部函式卻對 anon 開著 |
+
+---
+
+## 🔴 身分與權限：`sub` 被當成兩種東西（2026-09-04）
+
+### 地雷本身
+
+`auth.uid()` 的定義是把 JWT 的 `sub` **cast 成 uuid**：
+```sql
+(nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')::uuid
+```
+而系統裡 `sub` **有兩種來源**：
+
+| 路徑 | `sub` 是什麼 |
+|---|---|
+| 總部（Supabase Auth Email，`admin@migi.tw`） | **uuid** → 比對 `staff.auth_uid` |
+| 會員／店員（LINE） | **`U4af49806…`** → 比對 `members.line_user_id` |
+
+🔴 而 `current_org_id()` 的 `coalesce` **第一行就叫 `auth.uid()`**
+⇒ `sub` 是 LINE id 時它**不是回 null，是拋錯**：
+```
+invalid input syntax for type uuid: "U4af4980629abc..."
+```
+28 條 RLS policy 全部依賴這支函式 ⇒ **發出第一張會員／店員 JWT 的那一刻，
+每一次查詢都會炸。**
+
+⚠ **今天不是活著的 bug**：Edge Function `line-login` **沒有發任何 Supabase JWT**
+（它在伺服器端驗完 LINE 的 id_token 後直接呼叫 `register_member_tx`）。
+→ 這是**地雷不是火災**，它會在待辦 14／20 上線的那一刻引爆。
+
+✅ **2026-09-04 已修**：新增 `migi_jwt_uuid()`（像 uuid 才轉，不像回 null），
+`current_org_id()` 與 `current_staff()` 改用它。**語意完全不變，兩條路都在。**
+⚠ 用 `CASE` 不是 `AND` —— **Postgres 不保證 `AND` 的求值順序**，
+  寫成 `where sub ~ '…' and auth_uid = sub::uuid` 仍然可能先做 cast。
+📌 只有那兩支函式用到 `auth.uid()`，**沒有任何 RLS policy 直接用**。
+
+### 29 條 policy 的分布
+
+| | 條數 | |
+|---|---|---|
+| 公開主檔（`using true`） | 4 | `member_tiers`／`product_taxonomy`／`queue_tags`／`topup_plans` —— 本來就該全 org 可讀 |
+| **`ALL`（含寫入）** | **3** | ✅ 2026-09-04 已收緊到總部（見下） |
+| `SELECT` ＋ org | 22 | ⏳ 待辦 21 第 ③ 步，尚未逐條檢視 |
+
+### 三條寫入 policy（2026-09-04 收緊）
+
+```sql
+for all to authenticated
+using (org_id = current_org_id() and can('product.write'))   -- products
+using (org_id = current_org_id() and can('order.write'))     -- order_items / order_payments
+```
+🔴 **不能直接刪** —— `migi-admin/src/lib/products.js` 有 5 處直接
+`.from('products')` 寫入，而 migi-admin 用的是真的 Supabase Auth。
+**那條 policy 是承重的**，所以是**限縮角色**不是移除。
+
+⚠ `order_payments` **原本只有那一條 policy**，所以同批**先補了
+`order_payments_read_org`（SELECT）** 才收緊寫入 ——
+不然會連讀取一起關掉（過度阻擋跟沒擋一樣糟）。
+`products`（`products_org`）與 `order_items`（`oi_org`）各自另有 SELECT policy。
+
+### `can()` 為什麼不是 `is_hq()`
+
+待辦 29 ①：**判斷點一律呼叫 `can('動詞.名詞')`，不要比對 role 字串** ——
+即使今天的實作就是一行 `role in ('hq','owner')`。
+重點是**「權限怎麼決定」與「誰有權限」從第一天就分家**：
+日後換成查 `role_permissions` 表時，**所有呼叫點一行都不用改**。
+⚠ `authenticated` 的 EXECUTE **必須留著** —— policy 運算式是用**查詢者的身分**
+執行的，收掉會讓那三條 policy 拋 permission denied（**不是擋住，是壞掉**）。
 
 ---
 
@@ -941,6 +1016,8 @@ list_member_tiers_tx()          無參數
 list_product_taxonomy_tx()      無參數
 list_topup_plans_tx(p_org_id, p_store_id)
 current_org_id() / current_member_id() / current_staff() / has_store_access(p_store_id)
+migi_jwt_uuid()          STABLE · authenticated ✅ anon ❌ · 2026-09-04 新增
+can(p_perm text)         DEFINER · authenticated ✅ anon ❌ · 2026-09-04 新增
 grant_staff_tx(p_member_id, p_store_id, p_role) / revoke_staff_tx(p_staff_id)
 next_doc_no(p_org_id, p_store_id, p_doc_type)
 log_app_event_tx(p_org_id, p_member_id, p_event, p_props, p_client_ts, p_store_id)

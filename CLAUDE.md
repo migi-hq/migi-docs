@@ -1850,10 +1850,45 @@ migi github/           ← Claude Code 的 project folder 選這層
         危險是**開 JWT 那天有人加了一條寬鬆的 policy**，
         而那一刻沒有任何東西會提醒他。）
 
+    0. ✅ **`current_org_id()` 不再對 LINE 的 `sub` 拋錯**（2026-09-04，11/11 全過）。
+       🔴 **這一項在盤點時才發現，而它比那三條 policy 嚴重得多。**
+       `auth.uid()` 的定義是把 `sub` **cast 成 uuid**，而 `current_org_id()` 的
+       `coalesce` **第一行就叫它** —— 會員／店員那條路的 `sub` 是 `U4af49806…`
+       ⇒ **不是回 null，是拋 `invalid input syntax for type uuid`**。
+       29 條 policy 全靠這支函式 ⇒ **發出第一張會員 JWT 的那一刻，
+       每一次查詢都會炸。**
+       ⚠ 今天不是活著的 bug（`line-login` 沒發任何 Supabase JWT）——
+         **它是地雷不是火災**，會在最不想除錯的那一刻引爆。
+       ✅ 修法：`migi_jwt_uuid()`（像 uuid 才轉，不像回 null），
+         `current_org_id()` 與 `current_staff()` 改用它。**語意不變，兩條路都在。**
+       ⚠ 用 `CASE` 不是 `AND` —— **Postgres 不保證 `AND` 的求值順序**。
+       🎯 同一族的病第四次：`players` 一個 key 兩種形狀、`wallet_txns.type`
+         一欄兩義、`score_points` 一個名字兩個意思，**這次在身分層**。
+
     1. **逐條檢視那 24 條 org 級 policy**，決定每一條要不要再加
        門市限制（`has_store_access()`）或角色限制。
        ⚠ 不是全部都要收緊 —— `list_stores_tx` 那類本來就該全 org 可讀。
          **要的是「每一條都被看過並做了決定」**，不是「一律加嚴」。
+
+       ✅ **2026-09-04 盤點完，實際是 29 條不是 24 條**（文件又漂了）：
+       | | 條數 | |
+       |---|---|---|
+       | 公開主檔（`using true`） | 4 | `member_tiers`／`product_taxonomy`／`queue_tags`／`topup_plans` —— 本來就該全 org 可讀 ✅ |
+       | **`ALL`（含寫入）** | **3** | ✅ **已收緊到總部**（2026-09-04） |
+       | `SELECT` ＋ org | 22 | ⏳ 還沒逐條看 —— 那是第 ③ 步 |
+
+       ✅ **三條寫入 policy 已限縮**（`products` / `order_items` / `order_payments`）：
+       ```sql
+       for all to authenticated
+       using (org_id = current_org_id() and can('product.write'))
+       ```
+       🔴 **不能直接刪** —— `migi-admin/src/lib/products.js` 有 5 處直接
+         `.from('products')` 寫入，而 migi-admin 用的是真的 Supabase Auth。
+         **那條 policy 是承重的**，所以是限縮角色不是移除。
+       ⚠ `order_payments` **原本只有那一條**，所以同批**先補了一條 SELECT**
+         才收緊寫入 —— 不然會連讀取一起關掉（同硬規則 3.55：
+         **過度阻擋跟沒擋一樣糟**）。
+       ✅ **`can()` 也在這批建好了**（待辦 29 ①）。
     2. **敏感表清單至少涵蓋**：`app_events`、`orders`、`topup_orders`、
        `wallet_txns`、`members`、`member_interactions`、`member_blocks`。
        🔴 `app_events` 特別要收 —— 使用者拍板「只有總部分析數據的人看得到」
@@ -1868,6 +1903,22 @@ migi github/           ← Claude Code 的 project folder 選這層
        🔴 **不可以只讀 policy 定義就宣告安全** —— RLS 的實際效果取決於
          policy 組合、`current_org_id()` 的回傳、以及 SECURITY DEFINER
          函式繞過的路徑。**只有真的用那個身分查一次算數**（同硬規則 7）。
+
+       ✅ **2026-09-04 對那三條寫入 policy 做到了**，範本可直接沿用：
+       ```sql
+       perform set_config('request.jwt.claims',
+         '{"sub":"…","role":"authenticated"}', true);
+       set local role authenticated;      -- 🔴 真的換身分，不是讀定義
+       update products set updated_at = now() where id = v_pid;
+       get diagnostics v_n = row_count;
+       reset role;                        -- ⚠ 一定要還原
+       ```
+       實測：**總部身分改到 1 列（✅ migi-admin 沒被打壞）、
+       非總部身分改到 0 列（✅ 真的擋住了）**。
+       🔴 **兩格缺一不可**：只驗「總部改得動」的話，一條**沒收緊**的 policy
+         也會讓它變綠；只驗「別人改不動」的話，**整條刪掉**也會變綠。
+       ⚠ 整段包在 `raise exception 'migi_rollback'` 裡，一列都沒真的寫進去
+         （沒有 staging，硬規則 5.7）。
 
 22. ✅ **快速結帳與會員查詢的前端 —— 已完成**（2026-09-04 端到端驗證）。
    🔴 **這一條在文件裡標了 ⏳ 十天，而它其實早就做完了。**
@@ -2192,6 +2243,15 @@ migi github/           ← Claude Code 的 project folder 選這層
        重點是**「權限怎麼決定」與「誰有權限」從第一天就分家** ——
        之後換成查 `role_permissions` 表時，所有呼叫點一行都不用改。
        （同 `member_tiers` 的教訓：折扣率原本寫在兩支函式各一份 case。）
+
+       ✅ **`can(p_perm text)` 已建立**（2026-09-04，DEFINER）。
+       第一批呼叫點是三條寫入 policy：`product.write` / `order.write`。
+       ⚠ **`authenticated` 的 EXECUTE 必須留著** —— policy 運算式是用
+         **查詢者的身分**執行的，收掉會讓那三條 policy 拋 permission denied
+         （**不是擋住，是壞掉**）。anon 與 PUBLIC 都已收掉（硬規則 2.6b 兩個方向）。
+       ⚠ **目前只有兩個權限碼，不要先列一整張表** —— 那是憑空想像。
+         今天所有碼的答案都一樣（總部才有），所以 `can()` 裡**沒有 `case p_perm`**；
+         等真的出現「店長可以但店員不行」的碼再分岔。
 
     **② `staff` 要能一人多列**（A 店店長兼總部採購）。
        ✅ **2026-08-26 查證：可以，但條件比我第一次說的精確** ——
