@@ -47,7 +47,19 @@ migi github/           ← Claude Code 的 project folder 選這層
 - 前端：React 18 + Vite
 - 後端：Supabase（Postgres + RLS + RPC）
 - 部署：GitHub push → Cloudflare Pages 自動 build
-  - POS：`pos.migi.tw` / `migi-pos.pages.dev`
+
+  | repo | 正式網址 |
+  |---|---|
+  | `migi-pos` | **`pos.migi.tw`**（／`migi-pos.pages.dev`） |
+  | `migi-web` | **`app.migi.tw`** ← LIFF endpoint 指這裡 |
+  | `migi-admin` | **`hq.migi.tw`** |
+
+  🔴 **2026-09-05 才補上後兩列** —— 在此之前這裡只有 POS 一行，
+    而 `hq.migi.tw` **在整個 docs／CLAUDE.md 裡一次都沒出現過**。
+    ⚠ 那不是小事：LINE Login 的 **Callback URL 白名單要逐字填這些網址**，
+      而「後台的網址是什麼」查不到就只能問人。
+  ⚠ 白名單填的是 **origin**：不帶路徑、不帶結尾斜線
+    （前端送的是 `window.location.origin`，LINE 會逐字比對）。
 - 三端共用同一個 Supabase 專案與同一套資料表，改 schema 前要想清楚會不會影響另外兩端
 
 ## 硬規則（違反過，不要再犯）
@@ -3443,6 +3455,24 @@ migi github/           ← Claude Code 的 project folder 選這層
 （那是設計上的空不是 bug）。
 
 ## PENDING
+
+- 🔴 **LINE Login channel 的 Callback URL 要加 `https://hq.migi.tw`**（2026-09-05）。
+  總部後台 2026-09-05 改成 LINE 登入（與 POS 共用同一支 Edge Function
+  `staff-login`、同一個 channel），但白名單裡目前**只有 `https://pos.migi.tw`**。
+  ```
+  developers.line.biz → 咪吉有限公司 → MIGI 咪吉麻將（LINE Login）
+    → LINE Login 分頁 → Callback URL
+    ＋ https://hq.migi.tw          ← 加這一行
+  ```
+  🔴 **沒加的症狀是「跳到 LINE、回來說登入失敗」** ——
+    而錯誤在 LINE 那邊不在程式裡，看起來會很像程式壞了。
+  ⚠ 要**逐字一致**：不帶路徑、不帶結尾斜線（前端送的是
+    `window.location.origin`，LINE 逐字比對）。
+  ⚠ 所以 `http://localhost:5175` 也登不進去 —— **本機請用 Email 那條備援**，
+    不要為了測試把 localhost 加進白名單。
+  ✅ 總部的 Email 帳號（`admin@migi.tw`）**刻意保留**當 break-glass：
+    LINE 登入必須先通過「你是不是店員」那道查詢，所以你被誤刪、
+    LINE 帳號被盜、LINE 中斷時，那是唯一的門。
 - ✅ ~~店員登入未做，`staffId` 一律傳 null，`App.jsx` 還有 `const STAFF = "小美"` 寫死~~
   → **2026-09-04 前後端都做完並實機登入成功**（22:29），詳見待辦 20。
   ✅ **2026-09-05 補完最後一哩：POS 顯示真實姓名，而且總部有畫面可以設定。**
