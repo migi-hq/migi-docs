@@ -105,12 +105,66 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   if (req.method !== 'POST') return json({ ok: false, reason: 'method_not_allowed' }, 405)
 
-  let body: { id_token?: string; mode?: string }
+  let body: { id_token?: string; mode?: string; code?: string; redirect_uri?: string }
   try { body = await req.json() } catch {
     return json({ ok: false, reason: 'bad_json', message: '請求格式錯誤' }, 400)
   }
 
-  const idToken = (body.id_token ?? '').trim()
+  let idToken = (body.id_token ?? '').trim()
+
+  /* ── OAuth 那條路：先用 `code` 換 `id_token` ────────────
+     🎯 **改動只有這一段** —— 換到 id_token 之後就併回下面的既有流程
+       （驗簽 → 查 staff → 建 auth user → generate_link），一行都不用改。
+
+     🔴 **為什麼從 LIFF 改成 OAuth**（2026-09-04，同日改兩次）：
+       LIFF 的 `liff.login()` **帶不了 `initial_amr_display=lineqr`**
+       ⇒ LINE 的桌面登入頁預設顯示 email＋密碼，而很多店員
+         **從來沒設過 LINE 密碼**（手機號＋簡訊註冊的）
+       ⇒ 那一頁對他們是**一條死路**，第一次還會以為自己需要密碼。
+     ⚠ 我當天先改成 LIFF，理由是「工作量少一半」——
+       **而那個判準漏掉了登入體驗**。純 OAuth 本來就是待辦 20 的原始規劃。
+
+     ⚠ `redirect_uri` **必須跟 authorize 時送的完全一致**（LINE 會比對），
+       所以由前端送過來而不是寫死在這裡 ——
+       寫死的話 preview 網域就永遠登不進去。 */
+  if (!idToken && body.code) {
+    const secret = Deno.env.get('LINE_CHANNEL_SECRET')
+    if (!secret) {
+      /* 🔴 講清楚是哪個 secret 沒設。不然這個症狀（登入到一半失敗）
+         會讓人去查 LINE 後台，而問題在 Edge Function 的 Secrets 裡。 */
+      console.error('[staff-login] 沒有設 LINE_CHANNEL_SECRET')
+      return json({ ok: false, reason: 'no_channel_secret', message: '伺服器設定不完整，請找工程師' }, 500)
+    }
+    let tokRes: Response
+    try {
+      tokRes = await fetch('https://api.line.me/oauth2/v2.1/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code: body.code,
+          redirect_uri: body.redirect_uri ?? '',
+          client_id: LINE_CHANNEL_ID,
+          client_secret: secret,
+        }),
+      })
+    } catch (e) {
+      console.error('[staff-login] 換 token 連線失敗', e)
+      return json({ ok: false, reason: 'line_unreachable', message: '連不上 LINE，請稍後再試' }, 502)
+    }
+    const tok = await tokRes.json().catch(() => null)
+    if (!tokRes.ok || !tok?.id_token) {
+      /* ⚠ 最常見的三個原因，log 出來省得猜：
+         ① `redirect_uri` 跟 authorize 時不一致
+         ② Callback URL 沒加進 channel 的白名單
+         ③ `code` 用過了（它是一次性的） */
+      console.warn('[staff-login] 換 token 失敗', tokRes.status, tok)
+      return json({ ok: false, reason: 'code_exchange_failed',
+        message: 'LINE 授權已失效，請重新登入' }, 401)
+    }
+    idToken = tok.id_token
+  }
+
   if (!idToken) return json({ ok: false, reason: 'id_token_required', message: '缺少 LINE 授權資訊' }, 400)
 
   const probe = body.mode === 'probe'
