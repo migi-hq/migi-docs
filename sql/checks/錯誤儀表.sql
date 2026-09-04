@@ -143,7 +143,7 @@ select 序, 項目, 內容 from (
           **四個數字一個都沒動** —— 而那是一次真正的安全性變更。
           → 所以第 ⑦ 段數的是**授權**：明確授權 anon 的支數，
             以及「只靠 PUBLIC 進來」的支數（**那個應該永遠是 0**）。 */
-  select 6, '⑥ 結構物件數 vs baseline（2026-09-04：表47 函式168 索引86 policy29 帶can20）',
+  select 6, '⑥ 結構物件數 vs baseline（2026-09-04：表46 函式167 索引85 policy29 帶can20）',
          (select '表 ' || (select count(*)::text from pg_class c
                             join pg_namespace n on n.oid=c.relnamespace
                            where n.nspname='public' and c.relkind='r')
@@ -173,9 +173,9 @@ select 序, 項目, 內容 from (
                       else '' end
               || case when (select count(*) from pg_class c
                              join pg_namespace n on n.oid=c.relnamespace
-                            where n.nspname='public' and c.relkind='r') = 47
+                            where n.nspname='public' and c.relkind='r') = 46
                        and (select count(*) from pg_proc p
-                             where p.pronamespace='public'::regnamespace and p.prokind='f') = 168
+                             where p.pronamespace='public'::regnamespace and p.prokind='f') = 167
                        and (select count(*) from pg_policies where schemaname='public') = 29
                       then E'\n  ✅ 與 baseline 相同'
                       else E'\n  ⚠ 與 baseline 不同 —— 重跑 sql/checks/匯出完整結構baseline.sql'
@@ -268,24 +268,27 @@ select 序, 項目, 內容 from (
             /* 🎯 合併工具的截止點就是 ①（見 db-現況快照與上線清單 ⑥.5）。
                   ⚠ 跑之前先重跑 `2026-09-04_合併會員前的盤點.sql` ——
                     每加一張帶 member_id 的表，那份 SQL 就少搬一個欄位。 */
-            /* 🔴 **這一格有兩個問題要回答，不是一個**：
-                  ① 合併函式上線了沒
-                  ② **它還搬得完嗎** —— 每加一張帶 member_id 的表，
-                    `merge_members_tx` 就少搬一個欄位，**而它不會報錯，
-                    只會把資料留在死帳號上**。
-               🎯 2026-09-04 的實證：CLAUDE.md 記「23 個外鍵」，實查 **25** ——
-                 差額全是同一週自己新建的 `season_standings` / `season_champions`。
-                 ⚠ **沒有任何東西提醒過我**，是動手寫的時候才發現的。
-               → 所以這裡盯外鍵數。不同就是「那支函式已經漏了」。 */
-            select 4, case when to_regclass('public.member_merges') is null
-                   then '⏸ ④ 會員合併還沒跑（sql/pending/2026-09-04_會員合併.sql）'
-                   when (select count(*) from pg_constraint
-                          where contype='f' and confrelid='public.members'::regclass) <> 25
+            /* ④ 會員合併 —— **刻意不上線，等觸發條件**（2026-09-04 決定）。
+               🔴 **它不是「還沒做」，是「做好了放著」**：
+                 實作在 `sql/_設計稿未落地/2026-09-04_會員合併.sql`，
+                 觸發條件是「第一個不是自己人的會員出現」（第 ⑧ 段在盯）
+                 或設 `live_from` 那天。
+               ⚠ 今天用不到的理由很硬：**5 個會員裡只有 1 個綁了 LINE**
+                 ⇒ 重複帳號的前提（兩個都走過 LINE 註冊）**不成立**。
+
+               🎯 **但這一格仍然要留著，因為它在盯一個會漂的數字：**
+                 那份實作**明寫要搬 25 個欄位**，而每加一張帶 `member_id`
+                 的表就少搬一個 —— **不會報錯，只會把資料留在死帳號上**。
+               📌 實證：CLAUDE.md 記「23 個外鍵」，2026-09-04 實查 **25** ——
+                 差額全是同一週自己新建的 `season_standings` / `season_champions`，
+                 而**沒有任何東西提醒過我**。 */
+            select 4, case when (select count(*) from pg_constraint
+                                  where contype='f' and confrelid='public.members'::regclass) <> 25
                    then '🔴 ④ 指向 members 的外鍵變成 ' ||
                         (select count(*)::text from pg_constraint
                           where contype='f' and confrelid='public.members'::regclass) ||
-                        ' 個（合併函式只搬 25 個）—— 重跑 checks/2026-09-04_合併會員前的盤點.sql'
-                   else '✅ ④ 會員合併已上線，外鍵仍是 25 個' end
+                        ' 個（合併稿只搬 25 個）—— 動它之前先重跑 checks/2026-09-04_合併會員前的盤點.sql'
+                   else '⏸ ④ 會員合併：稿在 _設計稿未落地/，外鍵仍是 25 個（等第一個真客人）' end
             union all
             select 5, case when exists (select 1 from staff where member_id is not null and deleted_at is null)
                    then '✅ ⑤ 有店員綁了會員（LINE 登入那條路）'
