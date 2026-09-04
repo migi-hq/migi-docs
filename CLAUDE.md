@@ -608,6 +608,27 @@ migi github/           ← Claude Code 的 project folder 選這層
       （那天查了七張表全部 0 列，POS 桌況確實只呼叫 `list_*`）——
       **但那是事後查證不是事前防護，不要拿它當通過。**
 
+    ### 🔴 第二個陷阱：**收拾要整個收，不要收一半**（2026-09-05 踩到）
+    驗完之後我把攔截器記錄用的陣列刪掉，**卻沒有還原 `window.fetch`**：
+    ```js
+    delete window.__blocked;        // ← 只做了這個
+    // window.fetch 還掛著攔截器，而它第一行就是 window.__blocked.push(...)
+    ```
+    ⇒ 使用者接著看到 **`TypeError: Cannot read properties of undefined
+      (reading 'push')`** —— 而那個訊息**完全指不到真正的原因**，
+      看起來像是新寫的那一頁有 bug。
+    🎯 實際上 `migi-admin/src` 裡**一個 `.push(` 都沒有** ——
+      grep 一次就證明了（同硬規則 3.5：先懷疑儀器再懷疑資料）。
+
+    → **還原的順序跟安裝相反，而且不可以只做一半**：
+    ```
+    ① 記錄先讀出來（要留就先複製）
+    ② reload  ← 🎯 這一步才是真的還原 window.fetch
+    ③ 最後才清 localStorage 那類跨 reload 的東西
+    ```
+    ⚠ **最可靠的還原是 reload，不是手動 assign** ——
+      手動還原要記得每一個被動過的全域，而 reload 一次全部歸零。
+
     🎯 為什麼是這個而不是「我會小心」：
     · **不進產品碼** → 不可能被部署出去（避開硬規則 5.7「一旦存在就會忘記拿掉」）
     · **fail closed** → 忘了裝只是失去保護，不會弄壞東西
