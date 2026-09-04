@@ -1928,7 +1928,81 @@ migi github/           ← Claude Code 的 project folder 選這層
     | Edge Function | ✅ `staff-login`（已部署，Verify JWT **開著**） |
     | POS 前端 | ✅ `lib/line.js` ＋ `LoginPage.jsx` ＋ `App.jsx` 拆兩層 |
     | Cloudflare 環境變數 | ✅ `VITE_LIFF_ID` 已設（⚠ **要重新 build 才生效**） |
-    | 實機登入 | ⏳ **還沒**（硬規則 7：沒看到回傳就不算完成） |
+    | 實機登入 | ✅ **2026-09-04 22:29 成功** —— 側邊欄顯示「咖勁凱 · 老闆」 |
+
+    ### ✅ 實機登入後查證到的（資料庫端）
+    ```
+    auth.users            1 → 2
+    新帳號                line-u368caa…@staff.migi.invalid
+    app_metadata          ✅ 有 line_user_id（身分解析的關鍵）
+    staff 的 auth_uid     1/2 → 2/2   ← 創辦人那列綁上了
+    ```
+    🎯 **`auth_uid` 綁上代表 `current_staff()` 的第一個條件成立**
+      （`s.auth_uid = migi_jwt_uuid()`）⇒ **走的是總部那條已經在跑的路**，
+      不是新開一條。
+
+    🔴 **一個 GoTrue 的行為要記著**：我在 Edge Function 送
+      `app_metadata: { provider: 'line' }`，但存進去變成 **`email`** ——
+      **GoTrue 自己覆寫了它**（因為那個 user 是用 email 建立的）。
+      ⚠ 無害（`line_user_id` 與 `migi_role` 都正確存進去了），
+        但**不要依賴 `app_metadata.provider`**，那一格由 GoTrue 管理。
+
+    ### 🔴 登入上線當天挖到的洞：「登入有擋，但成為店員沒有擋」
+    使用者問「任何人都能用 LINE 登入嗎？應該要由總部設定後才能登入？」
+    → 登入**本身**有擋（`get_staff_by_line_tx` 查不到就 403）✅
+    → 但「**成為店員**」那一步完全沒擋 🔴
+
+    🎯 **掃全庫用了一個很精準的判準：簽名裡有 `p_staff_id` 的函式** ——
+      那表示它設計上是店員操作，而店員操作不該讓 anon 叫。
+      **18 支裡 15 支 anon 叫得動、全部零權限檢查。**
+
+    ⚠ **但它們不是同一類，不可以一起收**：
+    | | 現況 | 判斷 |
+    |---|---|---|
+    | **A 營運函式** ×12<br>`open_session_tx`／`checkout_tx`／`topup_tx`／`settle_session_tx`… | anon ✅ 零檢查 | 🟡 **現況的必然** —— POS 用 anon key，而在店員登入之前**沒有身分可以檢查**。**收了會當場打壞收銀機**。那是待辦 14 的範圍 |
+    | **B `rebind_line_user_tx`** | anon ✅ 零檢查 | 🔴 **真的洞** |
+    | **C `grant_staff_tx`／`revoke_staff_tx`** | anon ❌ authenticated ✅ 零檢查 | 🔴 **提權** |
+
+    ✅ **B、C 已修**（`2026-09-04_堵住換綁與提權.sql`，9/9 全過）。
+
+    🔴 **B 有多嚴重**：
+    ```
+    rebind_line_user_tx(受害者的 member_id, 我的 line_user_id, null)
+    → 那個帳號的 LINE 變成我的 → 我登入就是他（錢包、消費、段位全部）
+    ```
+    函式體只檢查「新 id 非空、member 存在、新 id 沒被別人用」——
+    **`p_staff_id` 只寫進 log，完全不驗證**。
+    ⚠ 門檻只有「要知道對方的 `member_id`」，而 2026-08-30 才剛收掉洩漏它的路徑。
+      🎯 **而同一天建排行榜時差點又漏了** —— 第一版想回 `member_id`。
+        **那兩件事合起來就是災難。**
+
+    ### 🎯 修法的通則：身分不可以由呼叫端宣告
+    **只收緊授權還不夠。** 就算收成 `authenticated`，登入的店員仍然可以
+    **填別人的 `staff_id` 假造稽核** —— 而那比沒有稽核更糟
+    （它看起來有，而且指向錯的人）。
+    ⇒ **拿掉 `p_staff_id`，改從 `current_staff()` 取。**
+    📌 跟 `set_member_phone_tx` 不收 `p_member_id` 是同一個道理（待辦 36）。
+    ✅ 驗證第 ⑦ 格印出 **`by MIGI 總部管理員`** —— 那個名字是**解析出來的**。
+
+    ### ⚠ 驗證段的一個新形狀：取樣錯，那一格會「不出現」而不是變紅
+    第一次跑時 ⑦⑧ **安靜地沒出現**，而我一度以為「7 格全過」。
+    原因是一句 `order by created_at limit 1` 同時當成兩個測試的樣本，
+    取到最早的會員（測試01）——**而它的 `line_user_id` 是 null**
+    ⇒ `if v_line is not null` 整段跳過。
+    🎯 **這比硬規則 3.56（期望值錯）更早一步：取樣就錯了。**
+    ⚠ 而沒出現的那兩格正是「**該通的有沒有通**」（硬規則 3.55）——
+      只驗「擋住了」的話，一支永遠回 `forbidden` 的實作也會全綠。
+    → **找不到樣本時要出聲**，不要 `if ... then` 安靜跳過。
+
+    ### 🔴 LINE 的桌面登入頁**預設是 email 不是 QR**（實機確認）
+    ```
+    預設      電子郵件帳號 ＋ 密碼
+    QR        使用其他方式登入 → 「透過行動條碼登入」   ← 要多點一下
+    ```
+    ⚠ 而 CLAUDE.md 記過「很多人是手機號＋簡訊註冊的，**從來沒設過 LINE 密碼**」
+      ⇒ 對那些店員來說**預設看到的是一條死路**，第一次還會以為自己需要密碼。
+    🎯 ⇒ 下面那個 `initial_amr_display=lineqr` 的 100 行**是值得做的**，
+      只是**不急** —— 整條路先通了才有優化的意義。
 
     🔴 **`App.jsx` 拆成 `App`（登入閘門）＋ `PosApp`（原本的內容）不是為了好看**：
       沒登入就**完全不 mount `PosApp`**，因為它裡面有 5 秒輪詢桌況、
