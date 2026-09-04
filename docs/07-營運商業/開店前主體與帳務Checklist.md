@@ -83,18 +83,31 @@
 
 > 原則:個人信箱只是「啟動的鑰匙」,用完功成身退;真正的帳號鑰匙圈最後落在 `admin@`(綁職能不綁人,開 2FA)。
 
-- [ ] 先辦 **Google Workspace**(`migi.com.tw` 信箱)
-- [ ] **`info@migi.com.tw`** — 對外總機(官網、名片、IG bio 留這個)
-- [ ] **`admin@migi.com.tw`** — 註冊一切平台帳號的鑰匙圈(LINE/IG/Supabase…)
-- [ ] **`jim@migi.com.tw`** — 你個人信箱(內部溝通)
-- [ ] **`no-reply@migi.com.tw`** — 系統自動信(App/LINE 通知、驗證,只發不收;App 上線時用)
+🔴 **2026-09-04 更正網域：一律 `migi.tw`，不是 `migi.com.tw`。**
+這一節原本兩個網域混用（上面第 78／80 行寫 `migi.tw`，下面這幾行寫
+`migi.com.tw`）—— 而**實際在用的是 `migi.tw`**：
+`admin@migi.tw` 已經是 GitHub 的 **Primary 且已驗證**信箱、
+Supabase Auth 的唯一帳號（2026-07-12 建立並登入過）、以及 Git 的 commit 身分。
+⚠ 這種矛盾很危險：照著下面開了 `@migi.com.tw`，就會有**兩套信箱**，
+而既有平台帳號全綁在 `@migi.tw` 上 —— 那不會報錯，只會愈來愈亂。
+
+- [ ] 先辦 **Google Workspace**(`migi.tw` 信箱)
+- [ ] **`info@migi.tw`** — 對外總機(官網、名片、IG bio 留這個)
+- [ ] **`admin@migi.tw`** — 註冊一切平台帳號的鑰匙圈(LINE/IG/Supabase…) ✅ **已在用**
+- [ ] **`jim@migi.tw`** — 你個人信箱(內部溝通)
+- [ ] **`no-reply@migi.tw`** — 系統自動信(App/LINE 通知、驗證,只發不收;App 上線時用)
+- [ ] 🔴 **`privacy@migi.tw`** — **別名,轉寄到 `info@`**。隱私權政策上要印的就是它。
+      理由見 `docs/09-環境流程/個資盤點與隱私權政策要點.md`:
+      個資法的查閱請求有 **15 日**法定期限,放進 `info@` 會被行銷信淹沒;
+      而且**政策上印的地址日後極難改**(名片、官網、LINE 後台、App 內),
+      用別名等於保留「日後換人看」的彈性而不用改政策。
 
 ### 展店/加盟階段再加(用別名免費加)
-- [ ] **`partner@migi.com.tw`** — 加盟/聯名/系統授權洽談(IP 事業特別需要)
-- [ ] **`service@migi.com.tw`** — 客服(會員問題)
-- [ ] **`billing@migi.com.tw`** — 帳務(加盟拆帳、對帳)
-- [ ] **`pr@migi.com.tw`** — 媒體公關(賽事/明星曝光,記者習慣找 pr@)
-- [ ] **`jobs@migi.com.tw`** — 徵才
+- [ ] **`partner@migi.tw`** — 加盟/聯名/系統授權洽談(IP 事業特別需要)
+- [ ] **`service@migi.tw`** — 客服(會員問題)
+- [ ] **`billing@migi.tw`** — 帳務(加盟拆帳、對帳)
+- [ ] **`pr@migi.tw`** — 媒體公關(賽事/明星曝光,記者習慣找 pr@)
+- [ ] **`jobs@migi.tw`** — 徵才
 
 ### 品牌帳號註冊
 - [ ] 用 `admin@` 註冊以下**全部**(不要用私人 Gmail):

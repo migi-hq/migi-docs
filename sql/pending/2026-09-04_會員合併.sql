@@ -547,25 +547,32 @@ begin
     v_out := v_out || E'\n' || '② 🎯 p_confirm 不是 ''MERGE'' 會被擋' || E'\t' || v_txt;
 
     ---- 🎯 正對照 ③：同場次衝突會被擋（檯費收兩次）--------
-    if v_store is not null then
-      insert into table_sessions (org_id, store_id, table_id, status)
-        select v_org, v_store, t.id, 'open' from tables t where t.store_id = v_store limit 1
-        returning id into v_sess;
-      if v_sess is not null then
-        insert into session_players (org_id, session_id, member_id)
-          values (v_org, v_sess, v_a), (v_org, v_sess, v_b);
-        begin
-          v_r := public.merge_members_tx(v_org, v_a, v_b, null, 'MERGE');
-          v_txt := '🔴 竟然通過了 —— 檯費收兩次會被默默合併掉';
-        exception when others then
-          v_txt := case when sqlerrm like 'same_session_conflict%' then '✅ 擋住了'
-                        else '🔴 ' || sqlerrm end;
-        end;
-        v_out := v_out || E'\n' || '③ 🎯 同場次都入座過會被擋（＝檯費收兩次）' || E'\t' || v_txt;
-        -- 清掉，讓後面的正式合併跑得下去
-        delete from session_players where session_id = v_sess;
-        delete from table_sessions where id = v_sess;
-      end if;
+    /* 🔴 **2026-09-04 這裡炸過一次**：原本自己 `insert into table_sessions`，
+       漏了 `mode`（NOT NULL 無預設）⇒
+       `null value in column "mode" violates not-null constraint`。
+       🎯 正解不是把 `mode` 補上，是**根本不要自己造場次** ——
+         資料庫裡已經有 108 場，借一場來用就好。
+       ⇒ **少一個對 schema 的依賴**：日後 `table_sessions` 再加一個必填欄位，
+         這段測試不會跟著壞。
+       ⚠ 借的是既有場次，但塞進去的是**這次造的兩個假會員**，
+         而且整段會回滾 —— 不會汙染那一場。 */
+    select id into v_sess from table_sessions where org_id = v_org limit 1;
+    if v_sess is not null then
+      insert into session_players (org_id, session_id, member_id)
+        values (v_org, v_sess, v_a), (v_org, v_sess, v_b);
+      begin
+        v_r := public.merge_members_tx(v_org, v_a, v_b, null, 'MERGE');
+        v_txt := '🔴 竟然通過了 —— 檯費收兩次會被默默合併掉';
+      exception when others then
+        v_txt := case when sqlerrm like 'same_session_conflict%' then '✅ 擋住了'
+                      else '🔴 ' || sqlerrm end;
+      end;
+      v_out := v_out || E'\n' || '③ 🎯 同場次都入座過會被擋（＝檯費收兩次）' || E'\t' || v_txt;
+      -- 只刪這次塞進去的兩列，讓後面的正式合併跑得下去
+      delete from session_players
+       where session_id = v_sess and member_id in (v_a, v_b);
+    else
+      v_out := v_out || E'\n' || '③ 同場次擋牆' || E'\t' || '⚠ 沒有任何場次，跳過';
     end if;
 
     ---- 🎯 真的合併一次 -----------------------------------
