@@ -300,6 +300,39 @@ select 序, 項目, 內容 from (
             order by ord) y)
 
   union all
+  /* ⑩ 帳號救援這條路還活著嗎。
+        🔴 **這一段在盯一個沒有症狀的單點依賴。**
+        客人換了 LINE 帳號時，唯一的自助救援是
+        `claim_member_by_phone_tx`，而它的擋牆是「**最近驗證過手機**」
+        ⇒ **沒有簡訊能力，整條救援路就斷了**。
+
+        ⚠ 斷掉的症狀是：**所有換了 LINE 的客人都救不回來，
+          而且沒有人會發現** —— 除非有客人打電話來抱怨。
+          簡訊商欠費、token 過期、帳戶停用，任何一個都會造成這件事。
+        🎯 那正是硬規則 5.5 的形狀：需要有人維護的東西，
+          要先確認「壞掉的時候有人會知道」。
+
+        ⚠ **這是資訊格不是告警格**（同第 ⑧ 段）：
+          上線前本來就沒什麼人在驗手機，回 0 是正常的。
+          真正要看的是**送出與成功的落差** ——
+          「發很多、成功很少」＝簡訊沒送到（而 Edge Function 那邊
+          只會在 log 裡留一行，沒有人在看）。
+        📌 `sent_at` 有值就是發出去了；`verified_at` 有值才是驗過。 */
+  select 10, '⑩ 帳號救援（換 LINE 靠自助認領，而它需要簡訊）',
+         (select '近 30 天：發出 ' || count(*) filter (where sent_at > now() - interval '30 days')
+              || ' 筆　驗證成功 ' || count(*) filter (where verified_at is not null and sent_at > now() - interval '30 days')
+              || E'\n  最後一次成功：'
+              || coalesce(to_char(max(verified_at) at time zone 'Asia/Taipei', 'MM-DD HH24:MI'), '（從來沒有）')
+              || '　累計 ' || count(*) || ' 筆'
+              || case
+                   when count(*) filter (where sent_at > now() - interval '30 days') = 0
+                     then E'\n  ⚠ 近 30 天沒有人驗手機 —— 上線前正常，上線後要留意'
+                   when count(*) filter (where verified_at is not null and sent_at > now() - interval '30 days') = 0
+                     then E'\n  🔴 有發出但**一次都沒成功** —— 簡訊可能根本沒送到'
+                   else '' end
+            from phone_otps)
+
+  union all
   select 5, '⑤ 測試標記（修好前的歷史資料仍標成營運）',
          (select 'is_test=true ' || count(*) filter (where is_test)::text ||
                  '　is_test=false ' || count(*) filter (where not is_test)::text ||

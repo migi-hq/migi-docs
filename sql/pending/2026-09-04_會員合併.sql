@@ -108,9 +108,26 @@
    | `drop` 有**已開立**發票 | 法律文件不能改開給別人（待辦 15 的硬條件 ①） |
    | 兩人在**同一場次**都有 `session_players` | 🔴 同一個人分飾兩角 ⇒ **檯費收了兩次**。那不只是資料問題，**是要不要退款的問題** —— 不該由一支函式決定 |
 
-   **餘額用重算不用相加。**
-   `wallet_txns` **沒有觸發器同步餘額**，所以「相加」是假設兩邊 `balance` 都對。
-   搬完流水後呼叫 `fix_wallet_balance_tx(org, keep)` 重算 —— **能重算就不要相加**。
+   **🔴 點數用雙分錄，不搬帳本。**（2026-09-04 實測撞牆後改的）
+   第一版寫 `update wallet_txns set member_id = …`，而那張表有
+   `trg_txn_no_update` / `trg_txn_no_delete`：
+   > 「wallet_txns 為 append-only 帳本，不可 UPDATE/DELETE；
+   >   退款請新增 reversal 分錄」
+
+   ⚠ CLAUDE.md **早就記過**「`wallet_txns` 是 append-only」——
+     我讀過那句話，卻**沒有把它套用到「合併要搬 25 個欄位」上**。
+     🎯 那是硬規則 3 的另一種形狀：**知道那個事實，卻沒有連到這裡。**
+
+   🎯 **而觸發器逼我做對了**：帳本不能改寫歷史，那正是它存在的意義。
+   ```
+   loser  記一筆轉出（負）      winner 記一筆轉入（正）
+   ```
+   兩邊歷史都留著、兩邊餘額都對、而且**可稽核**。
+   ✅ 順帶消滅兩個原本要處理的問題：`wallets_pkey` 不會衝突（不用刪錢包），
+     而客人在明細裡會看到「帳號合併 · 由舊帳號轉入 300 點」——
+     **比默默搬過來更清楚**。
+   ⚠ 兩邊都用 `fix_wallet_balance_tx` **重算**（`wallet_txns` 沒有觸發器
+     同步餘額，相加是「假設兩邊都對」）。
 
    **搬 `line_user_id`，不搬歷史；順序是：搬 rows → 軟刪 loser → 才寫 line_user_id。**
    ✅ `uq_members_line_user` 的 `WHERE deleted_at IS NULL` 讓順序做錯會**被擋下來**，
@@ -386,18 +403,61 @@ begin
   update staff                 set member_id = p_keep_id where member_id = p_drop_id;
   get diagnostics v_n = row_count; v_moved := v_moved || jsonb_build_object('staff', v_n);
 
-  update wallet_txns           set member_id = p_keep_id where member_id = p_drop_id;
-  get diagnostics v_n = row_count; v_moved := v_moved || jsonb_build_object('wallet_txns', v_n);
+  ---- ⑤ 錢包：**雙分錄**，不搬流水 ---------------------
+  /* 🔴 **`wallet_txns` 是 append-only，搬不動。**（2026-09-04 實測撞牆）
+     ```
+     trg_txn_no_update / trg_txn_no_delete → block_txn_mutation()
+     「wallet_txns 為 append-only 帳本，不可 UPDATE/DELETE；
+       退款請新增 reversal 分錄」
+     ```
+     ⚠ CLAUDE.md **早就記過**「`wallet_txns` 是 append-only」——
+       我讀過那句話，但**沒有把它套用到「合併要搬 25 個欄位」上**。
+       🎯 那是硬規則 3 的另一種形狀：**知道那個事實，卻沒有連到這裡。**
 
-  ---- ⑤ 錢包：搬完流水後**重算**，不相加 ----------------
-  /* 🔴 `wallets` 的 PK 是 `member_id`，兩邊各有一列 ⇒ 不能直接 update。
-     ⚠ 而且 `wallet_txns` **沒有觸發器同步餘額**（CLAUDE.md 記過），
-       所以「兩邊 balance 相加」是**假設兩邊都對**。流水已經全部搬過來了，
-       **重算才是唯一不需要假設的做法**。 */
-  delete from wallets where member_id = p_drop_id;
-  get diagnostics v_n = row_count; v_notes := v_notes || jsonb_build_object('刪除_drop錢包', v_n);
+     🎯 **而觸發器逼我做對了。** 帳本不能改寫歷史，那正是它存在的意義。
+       合併帳號的正確會計處理是**雙分錄**：
+       ```
+       loser  記一筆轉出（負）   winner 記一筆轉入（正）
+       ```
+       兩邊的歷史都留著、兩邊的餘額都對、而且**可稽核**。
 
-  v_bal := public.fix_wallet_balance_tx(p_org_id, p_keep_id);
+     ✅ 順帶消滅了兩個原本要處理的問題：
+     · `wallets_pkey (member_id)` 根本不會衝突（兩個不同 member）
+       ⇒ **不需要刪 drop 的錢包**，餘額歸 0 就好
+     · 客人在明細裡會看到「帳號合併 · 由舊帳號轉入 300 點」——
+       那**比默默搬過來更清楚**
+
+     ⚠ 代價：drop 的**點數流水**留在死帳號上。
+       但**消費紀錄（`orders`）有搬**（那張表不是 append-only），
+       所以「我買過什麼」看得到，「點數怎麼進出的」以兩筆分錄交代。
+
+     ⚠ `counter_account = 'member_wallet'` —— 對方帳戶就是另一個會員錢包，
+       而那個值這張表本來就在用（另兩個是 `liability` / `promo_expense`）。
+     ⚠ `idempotency_key` 用 `merge-<drop>-out/in`：
+       **同一個合併不會被記兩次**（雖然 `uq_member_merges_dropped` 已經擋了一層）。 */
+  select coalesce(sum(amount), 0) into v_n
+    from wallet_txns
+   where member_id = p_drop_id and org_id = p_org_id and status = 'completed';
+
+  if v_n > 0 then
+    insert into wallet_txns (org_id, member_id, type, amount, counter_account,
+                             idempotency_key, note)
+    values (p_org_id, p_drop_id, 'adjust', -v_n, 'member_wallet',
+            'merge-' || p_drop_id::text || '-out',
+            '帳號合併：餘額轉出至 ' || p_keep_id::text),
+           (p_org_id, p_keep_id, 'adjust',  v_n, 'member_wallet',
+            'merge-' || p_drop_id::text || '-in',
+            '帳號合併：由 ' || p_drop_id::text || ' 轉入');
+    v_notes := v_notes || jsonb_build_object('雙分錄轉移點數', v_n);
+  else
+    v_notes := v_notes || jsonb_build_object('雙分錄轉移點數', 0);
+  end if;
+
+  /* 兩邊都重算。⚠ `wallet_txns` **沒有觸發器同步餘額**（CLAUDE.md 記過），
+     所以一定要重算 —— 相加是「假設兩邊 balance 都對」。 */
+  v_bal := jsonb_build_object(
+    'keep', public.fix_wallet_balance_tx(p_org_id, p_keep_id),
+    'drop', public.fix_wallet_balance_tx(p_org_id, p_drop_id));
   v_notes := v_notes || jsonb_build_object('重算後餘額', v_bal);
 
   ---- ⑥ App 狀態：titles 聯集、bear 保留 keep 的 ---------
@@ -582,6 +642,19 @@ begin
     exception when others then v_txt := '🔴 ' || sqlerrm; end;
     v_out := v_out || E'\n' || '④ 🎯 正式合併' || E'\t' || v_txt;
 
+    /* 🔴 **④ 失敗就不要往下驗**（2026-09-04 學到的）。
+       第一次跑時 ④ 炸了（`wallet_txns` append-only），而後面
+       **⑤⑥⑦ 照樣顯示 ✅** —— 因為它們在「合併根本沒發生」的情況下
+       **也會通過**：`member_id = A and buddy_id = C` 本來就只有 1 筆。
+       🎯 那正是硬規則 3.55：**那三格分辨不出「去重成功」與「什麼都沒做」。**
+       ⚠ 而綠色的勾比沒有訊息更危險 —— 它會讓人以為那幾項驗過了。 */
+    if v_txt not like '✅%' then
+      perform set_config('migi.mrg',
+        v_out || E'\n' || '⑤–⑯ 後續驗證' || E'\t' ||
+        '⏹ **跳過** —— 合併失敗，後面每一格都會在「什麼都沒發生」時假通過', true);
+      raise exception 'migi_rollback';
+    end if;
+
     ---- 逐項驗收 -----------------------------------------
     select count(*) into v_n from mahjong_buddies
      where member_id = v_a and buddy_id = v_a;
@@ -604,21 +677,45 @@ begin
       case when v_n = 1 and v_bal = 300 then '✅ 1 筆 · 300 分'
            else '🔴 ' || v_n || ' 筆 · ' || coalesce(v_bal, -1) || ' 分' end;
 
+    /* 測試資料：A 有 topup 100；B 有 topup 250 ＋ spend −50（＝200）。
+       雙分錄之後 A 應該是 300、B 應該是 0。 */
     select balance into v_bal from wallets where member_id = v_a;
-    v_out := v_out || E'\n' || '⑨ 🎯 餘額是**重算**出來的（100＋250－50）' || E'\t' ||
+    v_out := v_out || E'\n' || '⑨ 🎯 存活者餘額 = 100 ＋ 轉入的 200' || E'\t' ||
       case when v_bal = 300 then '✅ 300' else '🔴 ' || coalesce(v_bal, -1) end;
 
-    select count(*) into v_n from wallets where member_id = v_b;
-    v_out := v_out || E'\n' || '⑩ drop 的錢包已刪除' || E'\t' ||
-      case when v_n = 0 then '✅' else '🔴 還在' end;
+    select balance into v_bal from wallets where member_id = v_b;
+    v_out := v_out || E'\n' || '⑩ 🎯 被併掉的餘額歸 0（錢包**留著**，可稽核）' || E'\t' ||
+      case when v_bal = 0 then '✅ 0'
+           when v_bal is null then '🔴 錢包被刪了 —— 帳本對不回去'
+           else '🔴 ' || v_bal end;
+
+    /* 🔴 **守恆**：這一格才是雙分錄的重點。
+       只驗「A 變 300」的話，一支「把 B 的餘額憑空加給 A」也會通過 ——
+       而那會讓全站的點數總額憑空增加。 */
+    select coalesce(sum(balance), -1) into v_bal from wallets
+     where member_id in (v_a, v_b);
+    v_out := v_out || E'\n' || '⑩.5 🎯 兩邊加起來守恆（合併前也是 300）' || E'\t' ||
+      case when v_bal = 300 then '✅ 300 —— 點數沒有憑空增減'
+           else '🔴 ' || v_bal end;
 
     select jsonb_array_length(titles) into v_n from member_app_state where member_id = v_a;
     v_out := v_out || E'\n' || '⑪ 🎯 稱號是聯集且去重（新手上路＋三屆雀神＝2）' || E'\t' ||
       case when v_n = 2 then '✅ 2 個' else '🔴 ' || coalesce(v_n, -1) || ' 個' end;
 
+    /* 🔴 **期望值改了**：原本寫「流水全部搬走（drop 剩 0 筆）」，
+       而那是**錯的期望** —— `wallet_txns` 是 append-only，搬不動也不該搬。
+       ⇒ drop 原本 2 筆 ＋ 轉出 1 筆 = **3 筆，而且它們必須留著**。
+       🎯 同硬規則 3.56：**驗證段紅了，先懷疑期望值。**
+         第一次跑時這一格是紅的，而錯的是我對「合併該做什麼」的理解。 */
     select count(*) into v_n from wallet_txns where member_id = v_b;
-    v_out := v_out || E'\n' || '⑫ 流水全部搬走（drop 剩 0 筆）' || E'\t' ||
-      case when v_n = 0 then '✅' else '🔴 還有 ' || v_n || ' 筆' end;
+    v_out := v_out || E'\n' || '⑫ 🎯 被併掉的帳本**留著**（2 筆原始 ＋ 1 筆轉出）' || E'\t' ||
+      case when v_n = 3 then '✅ 3 筆 —— append-only 沒有被破壞'
+           else '🔴 ' || v_n || ' 筆' end;
+
+    select count(*) into v_n from wallet_txns
+     where member_id = v_a and note like '帳號合併%';
+    v_out := v_out || E'\n' || '⑫.5 🎯 存活者收到轉入分錄（客人看得到來源）' || E'\t' ||
+      case when v_n = 1 then '✅ 1 筆' else '🔴 ' || v_n || ' 筆' end;
 
     select line_user_id into v_txt from members where id = v_a;
     v_out := v_out || E'\n' || '⑬ 🎯 line_user_id 搬到存活者' || E'\t' ||
