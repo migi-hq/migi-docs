@@ -235,6 +235,56 @@ select 序, 項目, 內容 from (
                   '✅ 近 14 天沒有新會員')
 
   union all
+  /* ⑨ 上線清單還剩幾項。
+        🔴 **這一段存在是因為「我會提醒你」不是一個機制。**
+          CLAUDE.md 硬規則 1.6 記過「靠『記得更新』已經被證明行不通一次了」，
+          硬規則 12 記過「排程要有人看告警，而那個人不存在」——
+          兩條的解法都一樣：**綁在一個一定會發生的動作上**。
+          而這份儀表就是那個動作（每次 session 開始跑）。
+
+        🔴 更根本的問題：**「上線」沒有明確的觸發點。**
+          你不會某天宣布「今天上線」—— 你會是**某天第一個真客人走進來**，
+          而那一刻沒有任何東西會響。第 ⑧ 段就是在盯那件事。
+
+        📄 完整說明在 `docs/09-環境流程/上線當天要設的東西.md`，
+          這裡只印**還沒做的**與**查得到的**。
+        ⚠ 有兩項 SQL 看不到（在前端與 LINE 後台），所以固定列出來提醒 ——
+          **看不到不等於不用做**，那正是最容易漏的兩項。 */
+  select 9, '⑨ 上線清單（📄 docs/09-環境流程/上線當天要設的東西.md）',
+         (select string_agg(項, E'\n') from (
+            select 1 as ord, case when (select live_from from orgs where id='11111111-1111-1111-1111-111111111111'::uuid) is null
+                   then '🔴 ① orgs.live_from 還沒設 —— 每一支 v_real_* 都回 0 列（設計上的空，不是 bug）'
+                   else '✅ ① live_from = ' || (select live_from::date::text from orgs where id='11111111-1111-1111-1111-111111111111'::uuid) end as 項
+            union all
+            select 2, case when exists (select 1 from members where is_test and line_user_id is not null and deleted_at is null)
+                   then '🟡 ② 自己人的 is_test 還是 true（' ||
+                        (select count(*)::text from members where is_test and deleted_at is null) ||
+                        ' 個）—— 🔴 跟 ① 是同一個動作的兩半'
+                   else '✅ ② 沒有 is_test 的帳號了' end
+            union all
+            select 3, case when exists (select 1 from rank_seasons where now() >= starts_at and now() < ends_at)
+                   then '✅ ③ 賽季涵蓋今天' else '🔴 ③ 今天不在任何賽季裡 —— 段位分不會結算' end
+            union all
+            /* 🎯 合併工具的截止點就是 ①（見 db-現況快照與上線清單 ⑥.5）。
+                  ⚠ 跑之前先重跑 `2026-09-04_合併會員前的盤點.sql` ——
+                    每加一張帶 member_id 的表，那份 SQL 就少搬一個欄位。 */
+            select 4, case when to_regclass('public.member_merges') is not null
+                   then '✅ ④ 會員合併已上線'
+                   else '⏸ ④ 會員合併還沒跑（sql/pending/2026-09-04_會員合併.sql）—— 跟 ① 同一天' end
+            union all
+            select 5, case when exists (select 1 from staff where member_id is not null and deleted_at is null)
+                   then '✅ ⑤ 有店員綁了會員（LINE 登入那條路）'
+                   else '⏳ ⑤ 沒有任何 staff 綁會員 —— 店員登入還沒有人能登（待辦 20）' end
+            union all
+            /* 🔴 這兩項 SQL 查不到，但**看不到不等於不用做**。 */
+            select 6, '⏳ ⑥ LINE 官方帳號（Messaging API）—— SQL 查不到，見待辦 38'
+            union all
+            select 7, '⏳ ⑦ 隱私權政策頁 —— 🔴 法規要求（你收手機、生日、消費紀錄）'
+            union all
+            select 8, '⏳ ⑧ GA4/Meta 的 toGA4 還是 false —— ✅ 前置條件（待辦 37）已完成，隨時可開'
+            order by ord) y)
+
+  union all
   select 5, '⑤ 測試標記（修好前的歷史資料仍標成營運）',
          (select 'is_test=true ' || count(*) filter (where is_test)::text ||
                  '　is_test=false ' || count(*) filter (where not is_test)::text ||
