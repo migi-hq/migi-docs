@@ -1921,6 +1921,20 @@ migi github/           ← Claude Code 的 project folder 選這層
         · 同待辦 29 ②「staff 要能一人多列」
       ⚠ 那是**授予最高權限**的動作：綁下去之後，拿到那個 LINE 帳號的人就是 hq／owner。
         等真的要用 POS 時再做，不要現在先建。
+    - ✅ **2026-09-04 查證後改規劃：POS 也走 LIFF，不走 OAuth callback。**
+      LINE 官方文件明寫 LIFF 在**外部瀏覽器**也能拿 id_token：
+      ```
+      liff.login() → 使用者登入 → liff.init() → liff.getIDToken()
+      ```
+      （原文：「If the user starts the LIFF app in an external browser,
+        the LIFF SDK will get an ID token when these steps are satisfied.」）
+      🎯 ⇒ **POS 不需要 Channel Secret、不需要 callback 端點** ——
+        只要在**現有的 channel 底下**再開一個 LIFF app，
+        endpoint 指向 `pos.migi.tw`、scope 勾 `openid`。**工作量少一半。**
+      ⚠ **不要開新 channel** —— 一個 channel 可以有多個 LIFF app，
+        開新的只是多一組要維護的設定與同意畫面。
+      ⚠ 下面那段「一般 OAuth web flow」是舊規劃，保留供對照。
+
     - 🔴 **整條路卡在 LINE Developers 帳號還沒申請**（見 PENDING）。
       **三端都是 LINE Login** —— LIFF 不是另一種登入方式，
       它是掛在 LINE Login channel 底下的一種**執行環境**：
@@ -3102,26 +3116,22 @@ migi github/           ← Claude Code 的 project folder 選這層
       驗完新手機、沒人用、就直接建了。**他不知道自己剛剛製造了第二個帳號。**
     🎯 攔在那一步之前，就永遠走不到合併 —— 而**攔截比收拾便宜一個量級**。
 
-    ### 兩塊，可以分開做
+    ### 兩塊
     | | 依賴 | 狀態 |
     |---|---|---|
-    | **① migi-web 的入口** | 🟢 無 | ✅ **2026-09-04 完成**（`migi-web` ed89165） |
+    | ① migi-web 的入口 | 🟢 無 | 🔴 **做了又移除 —— 使用者決定不要**（2026-09-04） |
     | ② POS 的 rebind UI | 🔴 店員登入（`p_staff_id`） | ⏳ `rebind_line_user_tx` **函式早就在了**，缺的只是畫面 |
 
-    ✅ **①：個人設定 → 帳號區，在手機那幾列之後**（實機驗過，零寫入）。
-    ⚠ **不要做成註冊流程裡的一個問題** —— 那會對每一個新客增加摩擦，
-      而九成以上的人是新客。放設定頁，**老客人會來找、新客人不會點**。
-    ⚠ 放「帳號」區不是「其他」區：它跟綁定 LINE、手機號碼是同一件事
-      （**我是誰**），不是雜項。
+    🔴 **① 已移除。** 做法是個人設定 → 帳號區一列「以前在 MIGI 有帳號？」→
+      單按鈕彈窗說明帶什麼去櫃檯。實機驗過可用，但**使用者判斷不需要**。
+    ⚠ **不要再自己加回去** —— 要做的話先問。
+    📌 順手加的 `askConfirm({ single })` 也一起移除了（沒有呼叫點就是
+      「建了沒人讀」）；只留 `whiteSpace: 'pre-line'`，因為那修的是
+      **既有的限制**（`body` 想分兩段時 `\n` 會被 HTML 摺掉），
+      與那個功能無關。
 
-    🎯 **順手給 `askConfirm` 加了 `single: true`（只畫一顆按鈕）** ——
-      有些彈窗是**說明不是選擇**，畫成「取消｜確定」會逼客人在
-      兩個意思一樣的東西之間選，而且「取消」**暗示了一個他其實沒有的退路**。
-      🔴 這個 App 在此之前只能用 toast 講這類事，但 **toast 三秒就消失** ——
-        而「記得帶什麼去櫃檯」正是需要留在畫面上讓人讀完的。
-      📌 `關於 MIGI` / `隱私權政策` 那兩列日後也會用到它。
-    ⚠ 同時加了 `whiteSpace: 'pre-line'` —— `body` 裡的 `\n`
-      原本會被 HTML 摺成空白，**兩段會黏在一起**。
+    ⚠ 下面那段「憑什麼相信是同一個人」的判準**仍然有效** ——
+      不管入口在哪裡，客人走到櫃檯之後要問的東西是一樣的。
 
     ### 🔴 走到櫃檯之後，憑什麼相信「這是同一個人」
     系統證明不了（兩條線索都斷了），只剩「他知道的事」。
@@ -3169,6 +3179,20 @@ migi github/           ← Claude Code 的 project folder 選這層
   ⚠ Privacy policy URL／Terms of use URL 先留空（optional）——
     🔴 **上線前必須有隱私權政策頁**：你要收手機、生日、消費紀錄，
     那是**法規要求**不是 LINE 的要求。App 裡那兩列現在還是「即將推出」的 toast。
+  🔴 **2026-09-04 更正：Provider 名稱不是 `MIGI 咪吉麻將`。**
+  實際的 LINE Developers 主控台（截圖確認）：
+  ```
+  Provider : 咪吉有限公司          ← 客人在授權畫面看到的是這個
+  Channel  : MIGI 咪吉麻將（LINE Login · Published）
+  ```
+  ⚠ 上面那句「保險做法：Provider 與 channel 取同一個名字」**沒有照做** ——
+    而待辦 38 查證過**客人看到的是 Provider 名稱**
+    ⇒ 客人按授權時看到的是「**咪吉有限公司**」，不是品牌名。
+  🎯 那正是當初預料到的取捨（法人名 vs 品牌名）：
+    法人名比較正式、日後申請**認證 provider** 時對得上登記名稱；
+    但客人看到一個沒聽過的公司名，第一次授權會多一秒猶豫。
+  ⚠ **要改的話現在最便宜** —— 未認證的 provider 改名不用送審。
+
   ✅ **LIFF ID `2011312117-Zuul0Ndo`**，前端已接（`lib/line.js` ＋ step 0 改寫）。
   ✅ **Edge Function `line-login` 已部署**（`supabase/functions/line-login/index.ts`），
     secret `LINE_CHANNEL_ID = 2011312117`（SHA256 比對確認過值正確）。
