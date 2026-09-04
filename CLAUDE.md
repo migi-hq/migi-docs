@@ -3134,6 +3134,10 @@ migi github/           ← Claude Code 的 project folder 選這層
       先做完這一項。寫在這裡就是機制本身（同硬規則 12）。
 
 38. 🔴 **官方帳號（Messaging API）開通時的清單**（2026-08-28 立，開之前先讀這條）。
+
+    📄 **照著做的順序：`docs/09-環境流程/LINE官方帳號開通步驟.md`**（2026-09-04 建）
+    ⚠ 下面這一段是**脈絡與理由**，實際操作時看那一份 ——
+      因為這裡是一段長文，而**漏掉的通常是 `Add friend option` 那一格**。
     2026-08-28 已建立：Provider `MIGI 咪吉麻將` ＋ 一個 **LINE Login** channel ＋ LIFF app。
     **官方帳號刻意還沒開** —— 它是另一種 channel（Messaging API），要另外建。
 
