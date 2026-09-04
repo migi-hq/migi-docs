@@ -28,6 +28,16 @@ tokencheck.py —— 抓「本來有 token 卻寫死」的樣式值
 """
 import io, os, re, sys
 
+# 🔴 Windows 的主控台預設是 cp950，編不了 emoji（🔴 ✅ 那些）——
+#   而這支的每一行輸出都有。症狀是**跑到最後一行才崩**：
+#     UnicodeEncodeError: 'cp950' codec can't encode character '\U0001f534'
+#   ⚠ 更麻煩的是它讓**離開碼變成 1 而原因不是「有發現」** ——
+#     接進 CI 或 pre-commit 的話會永遠是紅的，而且理由是錯的。
+#   📌 2026-09-05 才發現，也就是這支從 2026-08-29 建立起就沒有印完過。
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
 # ── token 對照表（來源：migi-assets/tokens.json）──
 # ⚠ 只列「值能唯一對應」的。--sp-* 刻意不列：它是 4px 格線，
 #   而最常用的 gap 是 10px（77 次）根本不在格線上 —— 那是設計問題不是寫死問題。

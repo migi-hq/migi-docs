@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MIGI 登入版型五案</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Special+Gothic+Expanded+One&display=swap" rel="stylesheet">
+<style>
+/* 🔴 這份是**原型**，token 值是從 @migi/assets/dist/tokens.css 抄下來的快照
+   （2026-09-05）。它不是產品碼，不會被 tokencheck 掃到，
+   也**不可以**當成第二份 token 定義 —— 決定要哪一案之後，
+   實作一律回到 var(--) 去寫。 */
+:root{
+  --brand:#FAD6DC; --brand-tint:#FFF6F8; --brand-light:#FFE7EE;
+  --ink:#2E2B2C; --accent:#C2607A; --gold:#E8B89B;
+  --gray-1:#7A7572; --gray-2:#9A9491; --hint:#B4AEA9;
+  --gray-3:#ECEAE9; --gray-4:#F2F0EE; --white:#FFFFFF;
+  --field-bg:#F8F7F6; --field-bd:#ECE7E4; --page-bg:#F6F5F4;
+  --danger:#B23B3B; --ok:#63B58C;
+  --milktea:#EFE3DA; --milktea-ink:#7A5C42;
+  --r-pill:999px; --r-lg:16px; --r-card:14px; --r-field:12px; --r-sm:8px;
+  --xxxs:11px; --xxs:12px; --xs:13px; --s:14px; --m:15px; --l:16px;
+  --xl:18px; --xxl:22px; --h:38px;
+  --shadow-sm:0 2px 8px rgba(46,43,44,.08);
+  --shadow-card:0 8px 30px rgba(46,43,44,.12);
+  --font-sans:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  --lh-tight:1.3; --lh-body:1.6;
+  --line:#06C755; --line-dk:#04A344;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);background:#EFEDEB;color:var(--ink);line-height:var(--lh-body);padding:32px 20px 80px}
+.wrap{max-width:1120px;margin:0 auto}
+h1{font-size:26px;font-weight:800;letter-spacing:1px;margin-bottom:6px}
+.sub{font-size:var(--s);color:var(--gray-1);margin-bottom:8px}
+.warn{font-size:var(--xs);color:var(--gray-1);background:#fff;border-left:3px solid var(--accent);padding:11px 14px;border-radius:var(--r-sm);margin:16px 0 34px;line-height:1.75}
+.case{background:#fff;border-radius:var(--r-lg);padding:22px 22px 26px;margin-bottom:26px;box-shadow:var(--shadow-sm)}
+.chead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+.cno{font-size:var(--xxs);font-weight:800;color:#fff;background:var(--ink);border-radius:var(--r-pill);padding:3px 9px;letter-spacing:.5px}
+.cname{font-size:var(--xl);font-weight:800}
+.cref{font-size:var(--xs);color:var(--gray-2)}
+.cwhy{font-size:var(--xs);color:var(--gray-1);line-height:1.8;margin:8px 0 16px}
+.cwhy b{color:var(--ink)}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 0}
+.tag{font-size:var(--xxxs);padding:3px 9px;border-radius:var(--r-pill);background:var(--gray-4);color:var(--gray-1)}
+.tag.good{background:#E7F5EE;color:#2F7355}
+.tag.bad{background:#FBEAEA;color:var(--danger)}
+
+/* 預覽框：固定 880×420，內容用 flex 置中 */
+.frame{width:100%;height:420px;border:1px solid var(--gray-3);border-radius:var(--r-card);overflow:hidden;position:relative}
+.mark{font-family:'Special Gothic Expanded One',var(--font-sans);font-weight:400;line-height:var(--lh-tight)}
+.linebtn{background:var(--line);color:#fff;border:none;border-radius:var(--r-field);font-weight:700;font-family:inherit;cursor:pointer}
+
+/* A 極簡置中 */
+.a{background:var(--field-bg);display:flex;align-items:center;justify-content:center}
+.a .col{width:340px;text-align:center}
+.a .mark{font-size:var(--h)}
+.a .s{font-size:var(--l);font-weight:700;color:var(--gray-1);margin-top:6px}
+.a .linebtn{width:100%;margin-top:40px;padding:15px 0;font-size:var(--l)}
+.a .alt{display:block;margin-top:30px;font-size:var(--xxs);color:var(--gray-2);text-decoration:underline;text-underline-offset:3px}
+
+/* B 深色 */
+.b{background:#17161A;display:flex;align-items:center;justify-content:center}
+.b .col{width:340px;text-align:center}
+.b .mark{font-size:var(--h);color:#fff}
+.b .s{font-size:var(--l);font-weight:700;color:#8B8790;margin-top:6px}
+.b .linebtn{width:100%;margin-top:40px;padding:15px 0;font-size:var(--l)}
+.b .alt{display:block;margin-top:30px;font-size:var(--xxs);color:#6E6A73;text-decoration:underline;text-underline-offset:3px}
+
+/* C 左右分割 */
+.c{display:flex}
+.c .left{width:44%;background:linear-gradient(150deg,var(--brand) 0%,var(--brand-light) 55%,var(--milktea) 100%);padding:38px 34px;display:flex;flex-direction:column;justify-content:space-between}
+.c .left .mark{font-size:32px}
+.c .kick{font-size:var(--xl);font-weight:800;line-height:1.5;margin-top:14px}
+.c .foot{font-size:var(--xxs);color:var(--milktea-ink)}
+.c .right{flex:1;background:#fff;display:flex;align-items:center;justify-content:center;padding:30px}
+.c .right .box{width:300px}
+.c .t{font-size:var(--xxl);font-weight:800}
+.c .d{font-size:var(--xs);color:var(--gray-1);margin-top:6px}
+.c .linebtn{width:100%;margin-top:26px;padding:14px 0;font-size:var(--m)}
+.c .alt{display:block;margin-top:20px;font-size:var(--xxs);color:var(--gray-2);text-decoration:underline;text-underline-offset:3px;text-align:center}
+
+/* D 卡片 + SSO 優先 */
+.d{background:var(--page-bg);display:flex;align-items:center;justify-content:center}
+.d .card{width:360px;background:#fff;border-radius:var(--r-lg);box-shadow:var(--shadow-card);padding:30px 28px 26px;text-align:center}
+.d .mark{font-size:30px}
+.d .s{font-size:var(--xs);color:var(--gray-2);margin-top:4px;letter-spacing:1px}
+.d .linebtn{width:100%;margin-top:24px;padding:13px 0;font-size:var(--m)}
+.d .or{display:flex;align-items:center;gap:10px;margin:18px 0 16px;color:var(--hint);font-size:var(--xxs)}
+.d .or::before,.d .or::after{content:"";flex:1;height:1px;background:var(--gray-3)}
+.d .inp{width:100%;border:1px solid var(--gray-3);border-radius:var(--r-field);padding:11px 13px;font-size:var(--s);color:var(--hint);text-align:left;margin-bottom:10px}
+.d .ghost{width:100%;border:1px solid var(--gray-3);background:var(--gray-4);color:var(--gray-1);border-radius:var(--r-field);padding:11px 0;font-size:var(--xs);font-weight:700}
+
+/* E 平板收銀（超大觸控） */
+.e{background:var(--field-bg);display:flex;flex-direction:column;padding:34px 40px}
+.e .top{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.e .mark{font-size:52px}
+.e .s{font-size:var(--xl);font-weight:700;color:var(--gray-1);margin-top:8px}
+.e .linebtn{width:100%;padding:26px 0;font-size:20px;border-radius:var(--r-lg)}
+.e .hint{text-align:center;font-size:var(--xs);color:var(--hint);margin-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>MIGI 登入版型 · 五案</h1>
+  <p class="sub">2026-09-05 · 用 <code>@migi/assets</code> 的實際 token 值繪製</p>
+
+  <div class="warn" style="border-left-color:var(--danger)">
+    🔴 <b>2026-09-05 更正：這一頁原本建在一個錯的前提上。</b><br>
+    我照 CLAUDE.md 待辦 10 寫的「POS 是平板、店員站著用食指點」設計了 E 案，
+    而<b>店裡那台 POS 其實是一般電腦、滑鼠鍵盤操作</b>（平板是次要，要能用但不是主力）。<br>
+    ⚠ 那個前提在文件裡<b>看起來跟其他事實一模一樣</b> —— 沒標「待查證」，也沒人記得是誰寫的。<br>
+    ✅ 下面每一案的敘述已經按更正後的前提改過；<b>E 案保留</b>，因為它示範的
+    「一套尺寸能不能同時服務滑鼠與手指」仍然是要回答的問題。
+  </div>
+
+  <div class="warn">
+    <b>兩個畫面的限制不同，但沒有你想的那麼不同。</b><br>
+    <b>POS</b>＝店裡的電腦、滑鼠操作、<b>交班時每天要按好幾次</b>、<b>平板也要能用</b>。<br>
+    <b>總部後台</b>＝桌機、一天登入一次、而且多一條 Email 備援要放。<br>
+    🔴 <b>不要用寬度做斷點切兩套版型</b>：1024px 的平板與 1024px 的筆電視窗
+    <b>寬度一模一樣</b>，而它們的差別是「手指還是滑鼠」。
+    真正對應的訊號是 <code>@media (pointer: coarse)</code> —— 但如果一套尺寸兩邊都好，<b>連偵測都不需要</b>。
+  </div>
+
+  <!-- ── A ─────────────────────────────────────────── -->
+  <div class="case">
+    <div class="chead"><span class="cno">A</span><span class="cname">極簡置中</span>
+      <span class="cref">參考：Stripe Dashboard · Vercel · Google 帳戶</span></div>
+    <p class="cwhy">
+      <b>世界級為什麼這樣做：</b>登入頁的唯一工作是「讓你離開它」。Stripe 與 Vercel 把品牌表達全部讓給登入後的畫面，
+      這一頁只留字標、一句定位、一顆按鈕。<b>沒有卡片、沒有陰影、沒有插圖</b> —— 因為每一個元素都在跟那顆按鈕搶注意力。<br>
+      <b>對 MIGI：</b>這就是<b>現在這一版</b>。它的問題不是難看，是<b>沒有記憶點</b> —— 而收銀機每天要看好幾次。
+    </p>
+    <div class="frame a">
+      <div class="col">
+        <div class="mark">MIGI</div>
+        <div class="s">店員登入</div>
+        <button class="linebtn">使用 LINE 登入</button>
+        <span class="alt">LINE 登不進去？改用 Email</span>
+      </div>
+    </div>
+    <div class="tags"><span class="tag good">最少決策</span><span class="tag good">兩端都能用</span><span class="tag bad">沒有品牌記憶點</span></div>
+  </div>
+
+  <!-- ── B ─────────────────────────────────────────── -->
+  <div class="case">
+    <div class="chead"><span class="cno">B</span><span class="cname">深色</span>
+      <span class="cref">參考：Linear · GitHub（登入）· Notion 深色</span></div>
+    <p class="cwhy">
+      <b>世界級為什麼這樣做：</b>Linear 用深色宣示「這是給專業使用者的工具」，而且深色底能讓單一彩色按鈕變成畫面上唯一的亮點。<br>
+      <b>對 MIGI 的真實優點：</b><b>店裡光線暗</b>時白底平板是一片刺眼的光。這一案在深夜的牌館比 A 舒服得多。<br>
+      🔴 <b>但代價很大：</b>MIGI 的品牌是粉色與奶茶色，深色把它整個關掉了；而且<b>登入後的畫面是亮的</b> ——
+      一按下去畫面從全黑跳到全白，那一下很痛。要做就得整個 POS 一起深色，那是另一個量級的工程。
+    </p>
+    <div class="frame b">
+      <div class="col">
+        <div class="mark">MIGI</div>
+        <div class="s">店員登入</div>
+        <button class="linebtn">使用 LINE 登入</button>
+        <span class="alt">LINE 登不進去？改用 Email</span>
+      </div>
+    </div>
+    <div class="tags"><span class="tag good">暗處不刺眼</span><span class="tag bad">與品牌色斷開</span><span class="tag bad">登入後會有明暗落差</span></div>
+  </div>
+
+  <!-- ── C ─────────────────────────────────────────── -->
+  <div class="case">
+    <div class="chead"><span class="cno">C</span><span class="cname">左右分割</span>
+      <span class="cref">參考：Shopify · Square Dashboard · Toast</span></div>
+    <p class="cwhy">
+      <b>世界級為什麼這樣做：</b>Shopify 與 Square 賣的是「開店這件事」，所以左半用來講一句話，右半才是表單。
+      <b>它解決的是「登入頁那一大片空白」</b> —— 桌機上 A 案的兩側是純浪費。<br>
+      <b>對 MIGI：</b>左半正好可以放品牌色與段位熊，是五案裡<b>品牌感最強</b>的。<br>
+      ⚠ 但它是<b>桌機版型</b>：平板直立時左半要塌掉，而塌掉之後就變成 A 案。⇒ <b>適合總部後台，不適合 POS。</b>
+    </p>
+    <div class="frame c">
+      <div class="left">
+        <div class="mark">MIGI</div>
+        <div>
+          <div class="kick">開桌、配桌、結帳<br>都在同一台平板上</div>
+        </div>
+        <div class="foot">咪吉麻將 · 總部後台</div>
+      </div>
+      <div class="right">
+        <div class="box">
+          <div class="t">登入</div>
+          <div class="d">用你的 LINE 帳號進入後台</div>
+          <button class="linebtn">使用 LINE 登入</button>
+          <span class="alt">LINE 登不進去？改用 Email</span>
+        </div>
+      </div>
+    </div>
+    <div class="tags"><span class="tag good">品牌感最強</span><span class="tag good">桌機空間用得好</span><span class="tag bad">平板要塌成 A 案</span></div>
+  </div>
+
+  <!-- ── D ─────────────────────────────────────────── -->
+  <div class="case">
+    <div class="chead"><span class="cno">D</span><span class="cname">卡片 · SSO 優先</span>
+      <span class="cref">參考：Notion · Figma · Slack</span></div>
+    <p class="cwhy">
+      <b>世界級為什麼這樣做：</b>它們有<b>多種登入方式</b>（Google／Apple／SAML／Email），所以需要一個「主要 → 或 → 次要」的結構。
+      卡片與陰影把這一組選項圈成一件事。<br>
+      🔴 <b>對 MIGI 這是最誠實的一案，也可能是最不該選的：</b>MIGI <b>只有一種登入方式</b>。
+      畫一條「或」的分隔線，下面卻只有一個「平常不該用」的備援 —— <b>那等於把破窗鑰匙擺在門口</b>，
+      而 Email 那條路的原則正好相反：<b>越少人用它越好</b>。<br>
+      ⚠ 唯一該選它的時機：日後真的加了第二種登入（Apple／手機驗證碼）。
+    </p>
+    <div class="frame d">
+      <div class="card">
+        <div class="mark">MIGI</div>
+        <div class="s">總部後台</div>
+        <button class="linebtn">使用 LINE 登入</button>
+        <div class="or">或</div>
+        <div class="inp">user@example.com</div>
+        <div class="inp">••••••••</div>
+        <button class="ghost">Email 登入</button>
+      </div>
+    </div>
+    <div class="tags"><span class="tag good">日後加登入方式最好擴充</span><span class="tag bad">把備援變成常態選項</span><span class="tag bad">今天那條「或」是空的</span></div>
+  </div>
+
+  <!-- ── E ─────────────────────────────────────────── -->
+  <div class="case">
+    <div class="chead"><span class="cno">E</span><span class="cname">平板收銀（超大觸控）</span>
+      <span class="cref">參考：Square Register · Toast POS · 麥當勞 KIOSK</span></div>
+    <p class="cwhy">
+      <b>世界級為什麼這樣做：</b>收銀機的登入不是「網頁登入」，是<b>硬體介面</b>。
+      Square Register 的按鈕高度是手機 App 的兩倍以上，因為使用者<b>站著、可能戴手套、視線離螢幕 60 公分</b>。
+      而且交班時要按很多次，所以按鈕大 = 每天省下來的秒數。<br>
+      🔴 <b>對 MIGI：這一案的前提錯了</b> —— POS 是<b>滑鼠操作的電腦</b>，
+      不是站著用食指的平板。79px 的按鈕與 52px 的字標在桌機上只會顯得空洞。<br>
+      ✅ <b>但它留下一個真的問題：平板也要能用。</b>
+      而正解不是「做兩套」，是<b>一套尺寸站在交集</b> ——
+      A 的 51px 對滑鼠夠、對手指偏小；<b>56–60px 兩邊都好</b>，
+      成本是改一個數字。
+    </p>
+    <div class="frame e">
+      <div class="top">
+        <div class="mark">MIGI</div>
+        <div class="s">店員登入</div>
+      </div>
+      <button class="linebtn">使用 LINE 登入</button>
+      <div class="hint">交班請先登出，再由下一位掃碼</div>
+    </div>
+    <div class="tags"><span class="tag good">站著用最好按</span><span class="tag good">交班每天省秒數</span><span class="tag bad">桌機上很空</span></div>
+  </div>
+
+  <div class="warn" style="border-left-color:var(--ok)">
+    ✅ <b>更正後的建議：兩邊都用 A，只把按鈕從 51px 調到 56–60px。</b><br>
+    · <b>POS → A</b>：主力是滑鼠，51px 對滑鼠綽綽有餘；調高一點是為了<b>平板也要能用</b>，
+      而那是一個數字的成本，不是一套版型。<br>
+    · <b>後台 → A</b>：一天登入一次，Email 備援當附註掛在下面。<br>
+    🔴 <b>C 我改成不建議</b>：它的品牌區真正發揮作用的場景是 Shopify 那種
+    <b>要說服陌生人註冊</b>的登入頁，而 MIGI 的後台<b>沒有陌生人</b>。
+    而且選 C 就等於承諾寫第二套版型（窄視窗要塌成 A）——
+    <b>C ＝ A ＋ 一個斷點 ＋ 一張品牌區</b>，那是它的真實成本。<br>
+    🔴 <b>B 案不建議</b>：不是因為難看，是它<b>只做一半會更糟</b> ——
+      登入頁深色、登入後亮色，那個落差比一致的亮色更難受。要做就得整個 POS 一起。<br>
+    🔴 <b>D 案不建議</b>：MIGI 只有一種登入方式，畫一條「或」的分隔線
+      下面卻只有備援 —— <b>那等於把破窗鑰匙擺在門口</b>。<br><br>
+    🎯 <b>這一頁最大的產出不是版型，是那個被發現的錯誤前提。</b>
+    五案裡有一案（E）整個建在「POS 是平板」上，而那句話在文件裡躺著沒有人查證過。
+  </div>
+</div>
+</body>
+</html>

@@ -1501,10 +1501,45 @@ migi github/           ← Claude Code 的 project folder 選這層
 
     → 這直接決定待辦 1 的 `tile()` 怎麼寫：看關聯訂單的品項，不看 `wallet_txns.type`。
 
-10. **平板沒有按壓回饋** —— POS 的互動狀態只做了 hover（滑鼠移入變深灰框），
-    但**手指沒有 hover**。平板上點下去到畫面更新之間完全沒有回饋，
-    店員會不確定按到沒有而重複點。需要 `:active` 的按壓態，
-    而那會是這個 codebase 第一個元件 CSS class（目前全是 inline style）。
+10. **按壓回饋：hover 有了，`:active` 還沒有**（2026-09-05 重新界定）。
+
+    ### 🔴 先更正一個沒有人查證過的硬體前提
+    這一條原本寫「**POS 是平板**，手指沒有 hover」。
+    ✅ 實際上**店裡那台 POS 是一般電腦，滑鼠鍵盤操作**（使用者 2026-09-05 確認），
+    而**平板也要能用**（第二台、店長走動、臨時支援）。
+
+    ⚠ 我當天照著「平板」這個前提設計了一整個「超大觸控目標」的登入版型
+      （`docs/_資產/登入版型五案.html` 的 E 案），前提錯了整案就沒有意義。
+    🔴 **那個前提在 CLAUDE.md 裡看起來跟其他事實一模一樣** ——
+      沒有標「待查證」，也沒有人記得它是誰寫的。
+      → 同硬規則 3：猜錯的成本遠高於多問一次，
+        而這一次要問的不是資料庫，是**店裡到底放了什麼機器**。
+
+    ### 🎯 但結論不是「改成桌機版」，是**一套版型站在兩者的交集**
+    | | 滑鼠 | 手指 |
+    |---|---|---|
+    | `:hover` | ✅ 有用 | 不會觸發（**無害**） |
+    | `:active` | 不會有人注意 | ✅ **唯一的回饋** |
+
+    ⇒ **兩個都做，成本幾乎是零** —— 各自在對方的裝置上只是不發生。
+    🔴 **不要用寬度做斷點切兩套版型**：斷點判斷的是寬度，
+      而 1024px 的平板與 1024px 的筆電視窗**寬度一模一樣**。
+      真正對應的訊號是 `@media (pointer: coarse)`，但既然一套尺寸就能兩邊都好，
+      **連偵測都不需要**。
+    📌 按鈕尺寸同理：取兩者都能接受的值（56–60px 高），
+      不要為了平板做一套 79px、為了桌機做一套 51px。
+
+    ⏳ 要做的仍然是 `:active` 按壓態，而它會是這個 codebase 第一個元件 CSS class
+      （目前全是 inline style）—— 只是**優先度降低**：
+      主力裝置有 hover，所以它是「便宜的保險」不是「現在就痛」。
+
+    📌 受影響但**結論不變、只是理由要換**的：待辦 30（不做滾輪選擇器）、
+      待辦 39（POS 的 date/time 不急）。新理由都是
+      「POS 主力跑在**桌機瀏覽器**，長相與行為都比 LIFF WebView 可控」。
+
+    ⏳ **順帶浮出一件真的沒做的事**：既然主力是滑鼠鍵盤，
+      **鍵盤操作**（Enter 送出、Tab 順序、常用動作快捷鍵）才是這台機器的效率來源。
+      ⚠ 不要現在就設計快捷鍵表 —— 等實際看到店員在哪一步慢下來再定。
 
 11. **贈點目前可以立即消費，未確認是否符合預期** —— `topup_tx` 把本金與贈點
     都寫進 `wallets.balance`，現場儲值 1000 送 150，那 150 當下就能拿來折抵。
@@ -2170,7 +2205,7 @@ migi github/           ← Claude Code 的 project folder 選這層
       Provider（MIGI）
       └── LINE Login channel
           ├── LIFF app       → 會員 App（在 LINE App 內，liff.getIDToken()）
-          └── 一般 OAuth web → POS（平板瀏覽器，redirect → callback → 換 id_token）
+          └── 一般 OAuth web → POS（**桌機**瀏覽器，redirect → callback → 換 id_token）
       ```
 
       **兩條路徑的使用者體驗完全不同**（2026-08-28 查官方文件確認）：
@@ -2178,7 +2213,7 @@ migi github/           ← Claude Code 的 project folder 選這層
       | | 客人／店員看到什麼 |
       |---|---|
       | **LIFF（會員 App，在 LINE 內）** | 🔴 **什麼都看不到** —— 自動登入。<br>`the LIFF app can access user data without having to prompt users to log in`<br>→ **不需要登入按鈕，也畫不到同意畫面**（那是 LINE 自己算繪的） |
-      | **一般 OAuth（POS，平板瀏覽器）** | ✅ 需要真的「使用 LINE 登入」按鈕 → LINE 的同意畫面 → callback |
+      | **一般 OAuth（POS，桌機瀏覽器）** | ✅ 需要真的「使用 LINE 登入」按鈕 → LINE 的同意畫面 → callback |
 
       🔴 **所以 `migi-web` 現在那個 step 0「LINE 授權」畫面是開發期的替身，
         接上之後會整個消失** —— 客人點連結進來會直接看到暱稱那一步。
@@ -2436,7 +2471,7 @@ migi github/           ← Claude Code 的 project folder 選這層
     | 事件 | 回答什麼 |
     |---|---|
     | `pos_error` | 錯誤。`kind` 分 render／unhandled／window／rpc／**network** |
-    | `pos_version_stuck` / `pos_update_reload` | 這台平板卡在舊版 |
+    | `pos_version_stuck` / `pos_update_reload` | 這台機器卡在舊版 |
     | `pos_open_session` | 開桌（含牌規／模式 —— 那是**營運資訊**不是店員行為） |
     | `pos_checkout` | 結帳，**成功與失敗都記** |
     | `pos_carry` / `pos_settle` / `pos_void_session` | 帶桌／收桌／取消開桌 |
@@ -2453,7 +2488,7 @@ migi github/           ← Claude Code 的 project folder 選這層
       超過 → 插入失敗 → **而埋點是靜默的，那筆會直接消失**。
       `fit()` 逐層瘦身：先截字串，再由長到短丟非 meta 欄位。
 
-    **隱私**：現在**不帶任何個人身分**。`_did` 是這台平板的隨機 id，
+    **隱私**：現在**不帶任何個人身分**。`_did` 是這台機器的隨機 id，
     清 localStorage 就換一個 —— **夠用來除錯，不夠用來監控**。
     `rpc` 失敗只帶函式名與錯誤碼，**不帶 params**（裡面有會員 id、金額、手機）。
 
@@ -2473,7 +2508,7 @@ migi github/           ← Claude Code 的 project folder 選這層
       + `rpc()` 失敗 → 寫 `app_events`。`app_events.is_test` 已有
       `set_is_test_from_store()` 自動帶入，基礎建設是現成的。
     - **② 關鍵流程漏斗**（開桌設定 → 結帳 → 帶桌 → 收桌）：
-      ⚠ 要等店員登入，否則只知道「這台平板」不知道「這個人」。
+      ⚠ 要等店員登入，否則只知道「這台機器」不知道「這個人」。
     - **③ 功能使用率**：等功能變多才有意義。
 
     ✅ **政策已拍板（2026-08-25 使用者決定）：三層全做。**
@@ -2797,8 +2832,8 @@ migi github/           ← Claude Code 的 project folder 選這層
     ⚠ **但滾輪時間選擇器不要自己寫**：它解決的問題（拇指滑動選時間）
       原生已經做得很好，而 `ichip` 快捷（`+30 分` / `+1 小時` / `不限`）
       已覆蓋 90%。自己寫要處理慣性、吸附、無障礙 —— 投入大、收益小。
-    ⚠ 這一項是**會員 App 的事，不要搬進 POS**：POS 是平板、店員用食指點，
-      滾輪的價值（拇指滑動）在那裡不存在；而且滾輪永遠有一個當前值，
+    ⚠ 這一項是**會員 App 的事，不要搬進 POS**：POS 跑在**桌機瀏覽器**、
+      店員用滑鼠，滾輪的價值（拇指滑動）在那裡不存在；而且滾輪永遠有一個當前值，
       表達不出「還沒選」——那與「開桌設定五項不預選」的決定衝突。
 
 31. 🔴 **會員 App 有三顆膠囊在說謊（顯示寫死的假資料）**（2026-08-27 盤點）。
@@ -3319,7 +3354,7 @@ migi github/           ← Claude Code 的 project folder 選這層
     | migi-admin | 0 |
 
     ⚠ **`type="file"` 不用換** —— 那是「開啟系統選檔器」，本來就該是系統的。
-    ⚠ **POS 的 date/time 不急** —— 平板不是 LIFF WebView，長相可控得多；
+    ⚠ **POS 的 date/time 不急** —— 桌機瀏覽器不是 LIFF WebView，長相可控得多；
       而且 `ichip` 快捷（`+30 分`／`+1 小時`）已經覆蓋大部分情況（同待辦 30 的判斷）。
     ⏳ migi-web 的 `DateField` / `TimeField` 與 5 個 `<select>` 才是真的要換，
       理由同待辦 30：**LIFF 是 LINE 的 in-app WebView，原生選擇器兩個平台不一致**。
