@@ -1528,11 +1528,38 @@ migi github/           ← Claude Code 的 project folder 選這層
         —— **能重算就不要相加**。
     - `invoices` **0 筆** → 發票那條法律硬條件今天不咬。
 
-    ### 🔴 真正的工作量在 8 個含 member_id 的唯一約束（不在外鍵清單裡）
-    只改 `member_id` 會撞鍵，每一個都要決定「兩邊都有時怎麼併」：
-    `wallets_pkey` / `member_app_state_pkey` / `uq_buddies` /
-    `uq_session_player` / `uq_queue_member` / `uq_availability` /
-    `uq_staff_member_store`。
+    ### 🔴 2026-09-04 盤點：CLAUDE.md 這一段記的兩個數字都錯了
+    完整查證見 `sql/checks/2026-09-04_合併會員前的盤點.sql`。
+
+    **① 外鍵是 25 個不是 23，而且只有 16 個叫 `member_id`。**
+    🔴 「搬 rows（改 `member_id`）」這個計畫**會漏掉 9 個欄位**：
+    `blocked_id`／`blocker_id`／`buddy_id`／`invitee_id`／`inviter_id`／
+    `liker_id`／`target_id`／`opened_by`／`paid_by`。
+
+    **② 其中四對是自我參照，而且四對都有 `<>` 的 CHECK：**
+    ```
+    mahjong_buddies  CHECK (member_id  <> buddy_id)     ← 自己是自己的牌咖
+    member_blocks    CHECK (blocker_id <> blocked_id)
+    member_likes     CHECK (liker_id   <> target_id)
+    buddy_invites    CHECK (inviter_id <> invitee_id)
+    ```
+    🔴 **撞 CHECK 跟撞唯一鍵不一樣**：唯一鍵可以 `on conflict do nothing`，
+      CHECK 會讓**整個交易拋錯**。✅ 那算好事（fail loud），
+      但沒先刪掉「A 與 B 之間的關係」就是**合併永遠跑不完**。
+
+    **③ 唯一鍵是 8 個不是 7 —— 而差額是我自己造成的。**
+    多的是 `season_standings_pkey (org_id, season, member_id)`，
+    那是 **2026-09-03 我自己新建的表**。外鍵 23→25 也是同一批
+    （`season_standings` ＋ `season_champions`）。
+    🎯 **這就是「越晚做越貴」的實證**：每加一張帶 `member_id` 的表，
+      合併就多一個要處理的點，而**沒有任何東西會提醒你**。
+    → 所以真的要跑那份 SQL 之前，**先重跑一次盤點**。
+
+    ### 8 個含 member_id 的唯一約束（不在外鍵清單裡）
+    每一個都要決定「兩邊都有時怎麼併」：
+    `wallets_pkey` / `member_app_state_pkey` / `season_standings_pkey` /
+    `uq_buddies` / `uq_session_player` / `uq_queue_member` /
+    `uq_availability` / `uq_staff_member_store`。
     ⚠ 其中 **`uq_session_player (session_id, member_id)` 最刺**：
       兩個帳號在同一桌打過 = 同一個人分飾兩角，**檯費收了兩次**。
       那不只是資料問題，是要不要退款的問題。
@@ -1551,13 +1578,24 @@ migi github/           ← Claude Code 的 project folder 選這層
       漏一支就查到空的而且不報錯 —— 那比「建了沒人讀」更糟。
     - 留一份合併紀錄（誰併誰、何時、誰按的、搬了幾列）。**不可逆，要有確認步驟。**
 
-    ### ⏳ 為什麼工具現在不做
-    ① **現在不可能發生**：0 個會員綁 LINE、4 個測試帳號、LINE 還沒接。
-    ② `register_member_tx` 的 find-or-bind 已經是預防（手機對得上就綁不新建），
-       2026-08-26 又修掉它會謊報成功的洞 —— **那才是重複帳號最可能的入口**。
-       ⚠ 但**前端要真的送手機**，不然那條路永遠走不到。接 LINE 時必做。
-    ③ 🔴 **做出來也沒人能按**：合併是稽核級操作，必須記錄 `p_staff_id`，
-       而店員登入卡在 LINE Developers 帳號 —— 會是第 10 個「建了沒人讀」。
+    ### ⏳ 為什麼現在不上線（2026-09-04 重新評估，SQL 已寫好但標 ⏸）
+    ① 🔴 **今天不可能發生**：**真實客人 0 個**（5 個會員 = 4 測試 ＋ 創辦人）。
+       重複帳號的前提是有真實客人 —— **那個前提今天不成立。**
+    ② `register_member_tx` 的 find-or-bind 已經是預防，
+       2026-08-26 修掉謊報成功的洞、2026-08-30 堵掉 A3（手機對得上不再自動綁），
+       E（手機與 LINE 都換）也已經有**自助認領** `claim_member_by_phone_tx`。
+    ③ ~~做出來也沒人能按（需要 `p_staff_id`，店員登入卡在 LINE）~~
+       → **這個理由 2026-09-04 起不成立**：合併是**總部級**操作，
+         走 migi-admin 的 Email Auth，而那條路今天就通（`can()` 已建並實測）。
+       🔴 **不成立的是理由不是結論** —— 結論改由 ① 支撐。
+    ④ ⚠ 真正還缺的是**另外兩步**：合併要 ① 發現是同一個人
+       ② migi-admin 有一頁能按 ③ 執行 —— **前兩步都不存在**，
+       現在上線就是第 N 個「建了沒人讀」。
+
+    ✅ **SQL 已寫好**：`sql/pending/2026-09-04_會員合併.sql`（`member_merges` ＋
+      `merge_members_tx`，16 格驗證含四道擋牆的正對照）。
+    🎯 **觸發條件**：設 `orgs.live_from` 那天，或更早 ——
+      `members` 出現第一個不是自己人的帳號（錯誤儀表第 ⑧ 段在盯）。
 
     ⚠ **與待辦 14 的關係（順序不能反）**
     - JWT 解決的是「**你是不是你說的那個人**」；合併解決的是「**同一個人有兩個帳號**」。
@@ -1917,9 +1955,23 @@ migi github/           ← Claude Code 的 project folder 選這層
        ⚠ 所以「只有總部分析數據的人看得到」今天是靠**鎖死**達成的 ——
          真的要讓總部讀得到 `app_events`（做數據後台）時，
          那是**加一條 `can('analytics.read')`**，不是收緊。
-    4. **帳號合併機制先做好**（待辦 15）。
-       JWT 上線那一刻就是「LINE 帳號 ↔ member」正式綁定的時候，
-       那時若已有重複的 member，綁定會固定下來、之後更難拆。
+    4. ~~**帳號合併機制先做好**（待辦 15）。~~
+       → 🔴 **2026-09-04 降級：這一項不是 JWT 的阻擋條件，截止點是「上線當天」。**
+       原本的理由是「JWT 上線那一刻 LINE↔member 就固定下來，之後更難拆」，
+       但那個推論有一個缺口：
+       ```
+       綁定固定下來  ⇐ 有重複帳號  ⇐ **有真實客人**
+       ```
+       而今天**真實客人是 0 個**（5 個會員：4 個測試 ＋ 創辦人），
+       A3 的洞 2026-08-30 已堵，E 也已經有自助認領。
+       ⇒ **真正的截止點是「真實客人開始註冊」＝上線當天**，
+         而 JWT 會在上線之前做完 —— 原本那個截止點**過度保守**。
+       ⚠ 而且現在上線它會是第 N 個「建了沒人讀」：合併要三步
+         （① 發現是同一個人 ② migi-admin 有一頁能按 ③ 執行），
+         **前兩步都不存在**。
+       ✅ **SQL 已經寫好放在 `sql/pending/2026-09-04_會員合併.sql`（標了 ⏸ 暫緩）**，
+         觸發條件寫在檔頭：設 `live_from` 那天，或更早 ——
+         `members` 出現第一個不是自己人的帳號（錯誤儀表第 ⑧ 段在盯）。
     5. **驗證方式：拿一個真的測試 JWT 實際查一次**，確認查不到不該看的。
        🔴 **不可以只讀 policy 定義就宣告安全** —— RLS 的實際效果取決於
          policy 組合、`current_org_id()` 的回傳、以及 SECURITY DEFINER
