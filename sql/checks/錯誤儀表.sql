@@ -143,7 +143,7 @@ select 序, 項目, 內容 from (
           **四個數字一個都沒動** —— 而那是一次真正的安全性變更。
           → 所以第 ⑦ 段數的是**授權**：明確授權 anon 的支數，
             以及「只靠 PUBLIC 進來」的支數（**那個應該永遠是 0**）。 */
-  select 6, '⑥ 結構物件數 vs baseline（2026-09-04：表46 函式166 索引85 policy29 帶can20）',
+  select 6, '⑥ 結構物件數 vs baseline（2026-09-04：表47 函式168 索引86 policy29 帶can20）',
          (select '表 ' || (select count(*)::text from pg_class c
                             join pg_namespace n on n.oid=c.relnamespace
                            where n.nspname='public' and c.relkind='r')
@@ -173,9 +173,9 @@ select 序, 項目, 內容 from (
                       else '' end
               || case when (select count(*) from pg_class c
                              join pg_namespace n on n.oid=c.relnamespace
-                            where n.nspname='public' and c.relkind='r') = 46
+                            where n.nspname='public' and c.relkind='r') = 47
                        and (select count(*) from pg_proc p
-                             where p.pronamespace='public'::regnamespace and p.prokind='f') = 166
+                             where p.pronamespace='public'::regnamespace and p.prokind='f') = 168
                        and (select count(*) from pg_policies where schemaname='public') = 29
                       then E'\n  ✅ 與 baseline 相同'
                       else E'\n  ⚠ 與 baseline 不同 —— 重跑 sql/checks/匯出完整結構baseline.sql'
