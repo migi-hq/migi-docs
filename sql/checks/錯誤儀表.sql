@@ -143,7 +143,7 @@ select 序, 項目, 內容 from (
           **四個數字一個都沒動** —— 而那是一次真正的安全性變更。
           → 所以第 ⑦ 段數的是**授權**：明確授權 anon 的支數，
             以及「只靠 PUBLIC 進來」的支數（**那個應該永遠是 0**）。 */
-  select 6, '⑥ 結構物件數 vs baseline（2026-09-04：表46 函式165 索引85 policy29）',
+  select 6, '⑥ 結構物件數 vs baseline（2026-09-04：表46 函式165 索引85 policy29 帶can20）',
          (select '表 ' || (select count(*)::text from pg_class c
                             join pg_namespace n on n.oid=c.relnamespace
                            where n.nspname='public' and c.relkind='r')
@@ -157,6 +157,20 @@ select 序, 項目, 內容 from (
                                                 where con.conindid=x.indexrelid))
               || '　policy ' || (select count(*)::text from pg_policies
                                  where schemaname='public')
+              /* 🔴 **policy 的「條數」抓不到「條件被改鬆了」**（同下面那段對授權的說明）。
+                    2026-09-04 收緊 20 條 policy，四個數字**一個都沒動** ——
+                    因為那是 drop + create 同名，數量不變。
+                 → 所以這裡多數一個「帶 `can()` 的有幾條」：
+                    3 條寫入（products／order_items／order_payments）
+                    ＋ 17 條敏感讀取 = **20**。
+                 ⚠ 少了就是有人把權限判斷拿掉了，而**那不會有任何症狀** ——
+                    症狀是「開了 JWT 之後會員讀得到全 org 的手機與消費明細」。 */
+              || '　帶 can() ' || (select count(*)::text from pg_policies
+                                   where schemaname='public' and coalesce(qual,'') like '%can(%')
+              || case when (select count(*) from pg_policies
+                             where schemaname='public' and coalesce(qual,'') like '%can(%') <> 20
+                      then E'\n  🔴 帶 can() 的 policy 不是 20 條 —— 有人動了權限判斷'
+                      else '' end
               || case when (select count(*) from pg_class c
                              join pg_namespace n on n.oid=c.relnamespace
                             where n.nspname='public' and c.relkind='r') = 46

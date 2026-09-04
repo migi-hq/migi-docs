@@ -1,8 +1,8 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 151 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`，
-> 全部檔案 153 個；最後歸檔的是 `2026-09-04_守住JWT的uuid轉型與三條寫入policy.sql`）
+> **基準：`sql/applied/` 有 152 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`，
+> 全部檔案 154 個；最後歸檔的是 `2026-09-04_敏感表的讀取收緊到總部.sql`）
 >
 > 🔴 **2026-09-03 更正一個會讓人誤判的寫法**：上一版寫「148 個檔案」而且
 > 說「依檔名排序最後一個是 `門市真實資料.sql`」，**兩個都會誤導**：
@@ -64,7 +64,7 @@
 
 ## 怎麼知道它過期了（硬規則 1.7）
 
-比對現在 `sql/applied/` 的 `.sql` 數與上面的基準（**151**）—— **不同就是過期**。
+比對現在 `sql/applied/` 的 `.sql` 數與上面的基準（**152**）—— **不同就是過期**。
 這個檢查不需要資料庫。
 
 ⚠ **2026-09-04 順手修掉一個諷刺的漂移**：這一行原本寫 **136**，而檔頭寫 150 ——
@@ -129,13 +129,71 @@ invalid input syntax for type uuid: "U4af4980629abc..."
   寫成 `where sub ~ '…' and auth_uid = sub::uuid` 仍然可能先做 cast。
 📌 只有那兩支函式用到 `auth.uid()`，**沒有任何 RLS policy 直接用**。
 
-### 29 條 policy 的分布
+### 29 條 policy 的分布（2026-09-04 全部看過了）
 
 | | 條數 | |
 |---|---|---|
 | 公開主檔（`using true`） | 4 | `member_tiers`／`product_taxonomy`／`queue_tags`／`topup_plans` —— 本來就該全 org 可讀 |
-| **`ALL`（含寫入）** | **3** | ✅ 2026-09-04 已收緊到總部（見下） |
-| `SELECT` ＋ org | 22 | ⏳ 待辦 21 第 ③ 步，尚未逐條檢視 |
+| **`ALL`（含寫入）→ 總部** | **3** | `products`／`order_items`／`order_payments` |
+| **`SELECT` → 總部** | **17** | 個資 5 ＋ 錢 6 ＋ 營運 6（見下表） |
+| `SELECT` ＋ org（維持） | 5 | `products`／`stores`／`tables`／`stake_levels`／`orgs` |
+
+⇒ **帶 `can()` 的共 20 條**。錯誤儀表第 ⑥ 段會盯這個數字 ——
+🔴 **policy 的「條數」抓不到「條件被改鬆了」**（收緊那 20 條時，
+表／函式／索引／policy 四個數字**一個都沒動**）。
+
+### 🔒 46 張表全部開了 RLS，其中 20 張是 **0 policy**
+
+```
+app_events        app_notifications  buddy_invites     doc_counters
+invoices          legal_entities     match_queue_players  match_queues
+member_app_state  member_blocks      member_likes      phone_otps
+rank_points       rank_seasons       rank_sub_levels   rank_tiers
+recurring_tables  season_champions   season_standings  wallet_balance_audit
+```
+🎯 **0 policy 是這個系統裡最安全的狀態**（只有 DEFINER 進得去），
+不是「漏掉沒設」的意思。
+
+🔴 **這推翻了 CLAUDE.md 待辦 23.5 的一句話**，它寫：
+> 「`app_events` 的 RLS 是 `org_id = current_org_id()`；POS 用 anon 讀不到。
+>   ⚠ 待辦 14／20 上線那天這個保護就破。」
+
+**後半段是錯的** —— `app_events` 根本沒有 policy，**開 JWT 之後照樣讀不到**。
+📌 也就是「只有總部分析數據的人看得到」這個承諾，
+今天是靠**鎖死**達成的，不是靠「沒人有 session」。
+
+### 17 條收緊的讀取，三個權限碼
+
+| 碼 | 表 |
+|---|---|
+| `member.read` | `members`／`member_availability`／`member_interactions`（**店員備註**）／`mahjong_buddies`／`member_coupons` |
+| `finance.read` | `wallets`／`wallet_txns`／`orders`／`order_items`／`order_payments`／`topup_orders` |
+| `ops.read` | `table_sessions`／`session_players`／`staff`／`coupons`（**券的定義**）／`pricing_tiers`／`bonus_rules` |
+
+⚠ **今天這三個碼的答案完全一樣**（`can()` 一律看 hq/owner）——
+分成三個是因為「店長能看自己店的訂單，但不能看全部會員的手機」
+是必然會出現的區分，而到那天**只要改 `can()` 一支**（待辦 29 ①）。
+
+### 維持 org 級的 5 條是決定，不是漏掉
+
+`products` 🔴 **承重**（migi-admin 5 處直接查）；
+`stores`／`tables`／`stake_levels` 是店家公開資訊；
+`orgs` 的條件是 `id = current_org_id()`，已經是最緊的形狀。
+
+🎯 **收緊幾乎沒有風險，因為 2026-09-04 掃過三個 repo 的 `.from(`：
+整個系統只有 `migi-admin/src/lib/products.js` 直接查表**（`products` ×5），
+其餘全是 `Array.from` 或 `supabase.storage.from`（Storage 的 policy 在
+`storage` schema，與這 29 條無關）。
+📌 順帶挖到兩處註解，是硬規則 4 留下的疤：
+`migi-web/src/lib/avatar.js:187`「以前是 `supabase.from('members')`，
+**而它從來沒有運作過**」、`social.js:375`「兩份都是死的」。
+
+### ⚠ 已知代價（沒有症狀）
+
+收緊之後，新加的直接查表程式碼會**回空陣列而且不報錯**。
+而在此之前，**開了 JWT 的會員反而會讓那種寫法「看起來會動」**（因為他有 org）
+—— 那更糟：**一個只在某些身分下才會動的查詢。**
+→ 通則不變：**三端一律走 DEFINER RPC**（硬規則 4）。
 
 ### 三條寫入 policy（2026-09-04 收緊）
 

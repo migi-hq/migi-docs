@@ -1875,7 +1875,7 @@ migi github/           ← Claude Code 的 project folder 選這層
        |---|---|---|
        | 公開主檔（`using true`） | 4 | `member_tiers`／`product_taxonomy`／`queue_tags`／`topup_plans` —— 本來就該全 org 可讀 ✅ |
        | **`ALL`（含寫入）** | **3** | ✅ **已收緊到總部**（2026-09-04） |
-       | `SELECT` ＋ org | 22 | ⏳ 還沒逐條看 —— 那是第 ③ 步 |
+       | `SELECT` ＋ org | 22 | ✅ **已逐條看完並處理**（見第 ③ 步） |
 
        ✅ **三條寫入 policy 已限縮**（`products` / `order_items` / `order_payments`）：
        ```sql
@@ -1889,13 +1889,34 @@ migi github/           ← Claude Code 的 project folder 選這層
          才收緊寫入 —— 不然會連讀取一起關掉（同硬規則 3.55：
          **過度阻擋跟沒擋一樣糟**）。
        ✅ **`can()` 也在這批建好了**（待辦 29 ①）。
-    2. **敏感表清單至少涵蓋**：`app_events`、`orders`、`topup_orders`、
-       `wallet_txns`、`members`、`member_interactions`、`member_blocks`。
-       🔴 `app_events` 特別要收 —— 使用者拍板「只有總部分析數據的人看得到」
-         （待辦 23），而那個保證**目前是靠「所有人都讀不到」達成的**。
-    3. **`app_events` 的 policy 只開給 `staff.role in ('hq','owner')`。**
-       這需要待辦 29 的 `can()` 或至少 `current_staff()` 能用 ——
-       也就是待辦 20（店員登入）要先到位。
+    2. ✅ **敏感表的讀取已收緊到總部**（2026-09-04，補驗 ⑤–⑧ 全過）。
+       22 條 `SELECT` 逐條看過：**17 條收緊、5 條維持 org 級**
+       （`products` 🔴 承重／`stores`／`tables`／`stake_levels`／`orgs`）。
+       三個權限碼：`member.read`（個資 5 張）／`finance.read`（錢 6 張）／
+       `ops.read`（營運 6 張，含 `staff` 與券的定義）。
+       ⇒ **帶 `can()` 的共 20 條**（3 寫入 ＋ 17 讀取），錯誤儀表第 ⑥ 段盯著它。
+
+       🎯 **幾乎沒有風險，因為掃過三個 repo 的 `.from(`：整個系統只有
+         `migi-admin/src/lib/products.js` 直接查表**（`products` ×5），
+         其餘全是 `Array.from` 或 `supabase.storage.from`。
+         📌 順帶挖到兩處註解是硬規則 4 留下的疤：`avatar.js:187`
+           「以前是 `supabase.from('members')`，**而它從來沒有運作過**」。
+
+       ⚠ **已知代價（沒有症狀）**：日後新加的直接查表程式碼會**回空陣列不報錯**。
+         而在此之前，**開了 JWT 的會員反而會讓那種寫法「看起來會動」** ——
+         那更糟：**一個只在某些身分下才會動的查詢。**
+
+    3. 🔴 **`app_events` 那一條原本的敘述是錯的，2026-09-04 更正。**
+       CLAUDE.md（待辦 23.5）寫「`app_events` 的 RLS 是 `org_id = current_org_id()`，
+       **待辦 14／20 上線那天這個保護就破**」——
+       ✅ **實際上它開了 RLS 但 0 條 policy** ⇒ **開 JWT 之後照樣讀不到**。
+       而且它不孤單：**46 張表全部開了 RLS，其中 20 張是 0 policy**
+       （`app_notifications`／`member_blocks`／`member_likes`／`phone_otps`／
+        `invoices`／`match_queues`／`season_standings`… 等）。
+       🎯 **0 policy 是這個系統裡最安全的狀態**，不是漏掉的意思。
+       ⚠ 所以「只有總部分析數據的人看得到」今天是靠**鎖死**達成的 ——
+         真的要讓總部讀得到 `app_events`（做數據後台）時，
+         那是**加一條 `can('analytics.read')`**，不是收緊。
     4. **帳號合併機制先做好**（待辦 15）。
        JWT 上線那一刻就是「LINE 帳號 ↔ member」正式綁定的時候，
        那時若已有重複的 member，綁定會固定下來、之後更難拆。
@@ -2029,14 +2050,19 @@ migi github/           ← Claude Code 的 project folder 選這層
     ✅ **政策已拍板（2026-08-25 使用者決定）：三層全做。**
     > 「資料只有總部分析數據的人看得到。獎金計算日後討論，但數據還是要有。」
 
-    🔴 **但「只有總部看得到」目前是靠「所有人都讀不到」達成的，不是靠設計。**
-    `app_events` 的 RLS 是 `org_id = current_org_id()`；POS 用 anon 沒有
-    auth session → 回 null → 讀不到。寫入走 `log_app_event_tx`（DEFINER）不受影響。
-    ⚠ **待辦 14（會員 JWT）或待辦 20（店員登入）上線那天這個保護就破**：
-      那時 `current_org_id()` 會回傳 org，同一條 org 級 policy 會讓店員
-      甚至會員讀得到 `app_events`。同待辦 21。
-    → **要讓「只有總部」成為設計，需要一條比 org 級更嚴的 policy**
-      （例如只開給 `staff.role in ('hq','owner')`）。與待辦 14／21 同一批做。
+    🔴 ~~**但「只有總部看得到」目前是靠「所有人都讀不到」達成的，不是靠設計。**~~
+    ~~`app_events` 的 RLS 是 `org_id = current_org_id()`……待辦 14／20 上線那天這個保護就破~~
+    → ✅ **2026-09-04 查證後更正：那整段是錯的。**
+    `app_events` **開了 RLS 但 0 條 policy** ⇒ **不是** org 級，是**完全鎖死** ——
+    只有 SECURITY DEFINER 進得去（寫入走 `log_app_event_tx` 不受影響）。
+    ⇒ **開 JWT 之後照樣讀不到，保護不會破。**
+    📌 而且它不孤單：46 張表全部開了 RLS，**其中 20 張是 0 policy**。
+      🎯 **0 policy 是這個系統裡最安全的狀態**，不是漏掉的意思。
+    → 所以要做的**不是收緊而是「日後要開一條」**：總部做數據後台時
+      加 `can('analytics.read')`。**在那之前它是安全的。**
+    ⚠ 教訓同踩坑第 29 條：我當時**推論**它跟其他表一樣是 org 級，
+      沒有真的查 `pg_policies` —— 而那個推論讓一個**已經安全的東西**
+      在待辦清單裡躺了十天當成風險。**先查再說。**
 
     ⚠ 獎金計算「日後討論」不等於「不會發生」。埋的時候就要想到：
       事件的 `props` 一旦含了可辨識個人的欄位，事後無法回溯移除
