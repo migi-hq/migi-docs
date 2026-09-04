@@ -1963,12 +1963,24 @@ migi github/           ← Claude Code 的 project folder 選這層
       - 文字可改，但不可換行、必須清楚表達是用 LINE 登入
       - 素材與規範：https://developers.line.biz/en/docs/line-login/login-button/
 
-      ### 命名（2026-08-28 查官方文件）
+      ### 命名（2026-08-28 查官方文件，09-04 補 LIFF 那一列）
       | | 客人看得到嗎 | 限制 |
       |---|---|---|
       | **Business ID 的「姓名」** | ❌ | 那是**登入後台的人**的名字，不是品牌名。之後可改 |
       | **Provider 名稱** | 🔴 **會，顯示在授權畫面上** | 官方要求「反映真實的商業主體」；**認證 provider 改名要送審** |
       | **Channel 名稱** | 依官方文件**不顯示**給客人 | 🔴 **不可含「LINE」或近似字串** |
+      | **LIFF app name** | 🟡 只在 **LINE App 內部**兩處：<br>① 從一個 LIFF app 開另一個時的提示<br>② 多分頁檢視（multi-tab view）<br>**授權畫面與 LIFF browser 的 header 都不顯示** | 🔴 同樣**不可含「LINE」** |
+
+      📌 **所以 POS 那個 LIFF app 的名字幾乎不會被看到** —— 它走外部瀏覽器，
+        上面那兩個場景都在 LINE App 內。名字主要是給你在後台分辨用的。
+
+      ### ⚠ 兩個「掃 QR」是不同的東西（2026-09-04 澄清）
+      | | 是什麼 | 誰提供 |
+      |---|---|---|
+      | LIFF 設定裡的 **`Scan QR`** | 讓**你的網頁**呼叫 `liff.scanCode()` 開相機掃碼 | 你的 App |
+      | **登入時掃 QR** | LINE **登入頁**上那個 QR，用手機 LINE 掃就完成登入 | **LINE 自己**，與你的設定無關 |
+      ⇒ `Scan QR` 保持 Off **完全不影響登入**（而且 `liff.scanCode()`
+        在外部瀏覽器本來就不支援）。
 
       🔴 **客人在授權畫面看到的是 Provider 名稱，不是 channel 名稱**
         （我一度寫反過，已更正）。
