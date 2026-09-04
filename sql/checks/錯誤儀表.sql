@@ -143,7 +143,7 @@ select 序, 項目, 內容 from (
           **四個數字一個都沒動** —— 而那是一次真正的安全性變更。
           → 所以第 ⑦ 段數的是**授權**：明確授權 anon 的支數，
             以及「只靠 PUBLIC 進來」的支數（**那個應該永遠是 0**）。 */
-  select 6, '⑥ 結構物件數 vs baseline（2026-09-04：表46 函式165 索引85 policy29 帶can20）',
+  select 6, '⑥ 結構物件數 vs baseline（2026-09-04：表46 函式166 索引85 policy29 帶can20）',
          (select '表 ' || (select count(*)::text from pg_class c
                             join pg_namespace n on n.oid=c.relnamespace
                            where n.nspname='public' and c.relkind='r')
@@ -175,7 +175,7 @@ select 序, 項目, 內容 from (
                              join pg_namespace n on n.oid=c.relnamespace
                             where n.nspname='public' and c.relkind='r') = 46
                        and (select count(*) from pg_proc p
-                             where p.pronamespace='public'::regnamespace and p.prokind='f') = 165
+                             where p.pronamespace='public'::regnamespace and p.prokind='f') = 166
                        and (select count(*) from pg_policies where schemaname='public') = 29
                       then E'\n  ✅ 與 baseline 相同'
                       else E'\n  ⚠ 與 baseline 不同 —— 重跑 sql/checks/匯出完整結構baseline.sql'
@@ -190,13 +190,13 @@ select 序, 項目, 內容 from (
         ⚠ 「只靠 PUBLIC」那個數字**應該永遠是 0** ——
           不是 0 就代表有人新建了函式而沒有明確決定它的授權範圍，
           **而新函式預設是 PUBLIC 可執行**（＝任何人叫得動）。 */
-  select 7, '⑦ 函式授權 vs baseline（2026-09-04：明確 anon 130、只靠 PUBLIC 0）',
+  select 7, '⑦ 函式授權 vs baseline（2026-09-04：明確 anon 129、只靠 PUBLIC 0）',
          (select '明確授權 anon ' || count(*) filter (where anon明確)::text
               || '　只靠 PUBLIC ' || count(*) filter (where public有 and not anon明確)::text
               || '　兩者都沒有 ' || count(*) filter (where not anon明確 and not public有)::text
               || case when count(*) filter (where public有 and not anon明確) > 0
                       then E'\n  🔴 有函式只靠 PUBLIC 進來 —— 那不是決定，是預設值。逐支確認要不要給 anon'
-                      when count(*) filter (where anon明確) <> 130
+                      when count(*) filter (where anon明確) <> 129
                       then E'\n  ⚠ 明確授權的支數變了 —— 重跑 sql/checks/匯出完整結構baseline.sql'
                       else E'\n  ✅ 與 baseline 相同' end
             from (select
@@ -268,9 +268,24 @@ select 序, 項目, 內容 from (
             /* 🎯 合併工具的截止點就是 ①（見 db-現況快照與上線清單 ⑥.5）。
                   ⚠ 跑之前先重跑 `2026-09-04_合併會員前的盤點.sql` ——
                     每加一張帶 member_id 的表，那份 SQL 就少搬一個欄位。 */
-            select 4, case when to_regclass('public.member_merges') is not null
-                   then '✅ ④ 會員合併已上線'
-                   else '⏸ ④ 會員合併還沒跑（sql/pending/2026-09-04_會員合併.sql）—— 跟 ① 同一天' end
+            /* 🔴 **這一格有兩個問題要回答，不是一個**：
+                  ① 合併函式上線了沒
+                  ② **它還搬得完嗎** —— 每加一張帶 member_id 的表，
+                    `merge_members_tx` 就少搬一個欄位，**而它不會報錯，
+                    只會把資料留在死帳號上**。
+               🎯 2026-09-04 的實證：CLAUDE.md 記「23 個外鍵」，實查 **25** ——
+                 差額全是同一週自己新建的 `season_standings` / `season_champions`。
+                 ⚠ **沒有任何東西提醒過我**，是動手寫的時候才發現的。
+               → 所以這裡盯外鍵數。不同就是「那支函式已經漏了」。 */
+            select 4, case when to_regclass('public.member_merges') is null
+                   then '⏸ ④ 會員合併還沒跑（sql/pending/2026-09-04_會員合併.sql）'
+                   when (select count(*) from pg_constraint
+                          where contype='f' and confrelid='public.members'::regclass) <> 25
+                   then '🔴 ④ 指向 members 的外鍵變成 ' ||
+                        (select count(*)::text from pg_constraint
+                          where contype='f' and confrelid='public.members'::regclass) ||
+                        ' 個（合併函式只搬 25 個）—— 重跑 checks/2026-09-04_合併會員前的盤點.sql'
+                   else '✅ ④ 會員合併已上線，外鍵仍是 25 個' end
             union all
             select 5, case when exists (select 1 from staff where member_id is not null and deleted_at is null)
                    then '✅ ⑤ 有店員綁了會員（LINE 登入那條路）'

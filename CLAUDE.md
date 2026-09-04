@@ -1787,6 +1787,32 @@ migi github/           ← Claude Code 的 project folder 選這層
         看到它是 LEFT JOIN**。讀到了正確的線上版本卻照著過期文件下結論，
         正是硬規則 3 要防的形狀。SQL 已撤回。
 
+      ✅ **2026-09-04 做了：創辦人的 owner staff 列已建立**
+        （`2026-09-04_店員身分地基.sql`，10/10 全過）。
+        走 `grant_staff_tx(member, null, 'owner')`，不直接 INSERT。
+        驗證第 ② 格是**正對照**：總部那列 `role=hq · auth_uid 有值 ·
+        member_id=null` **原封不動**。
+
+      🔴 **同一批修掉一個沒有症狀的地雷：`has_store_access()` 漏了 `owner`。**
+        ```sql
+        where cs.role = 'hq' or cs.store_id = p_store_id   -- 舊版
+        ```
+        `staff_role_check` 允許四個值，它只認 `hq`
+        ⇒ **`role='owner'` ＋ `store_id=null` 的老闆什麼店都進不去**。
+        而且它跟同日建立的 `can()`（`role in ('hq','owner')`）
+        **對「誰是最高權限」的定義不一致** —— 這個專案一再記錄的病。
+        ✅ 修法不是「把 owner 加進去」（那是**第三份**定義），
+          是改呼叫 `can('store.all')` —— 從此只有一份。
+        ⚠ 它 **0 個 policy 在用**，所以改它零風險 ——
+          **但那也正是它能錯這麼久沒被發現的原因。**
+
+      ✅ **`get_staff_by_line_tx` 也在這批**（只給 service_role）——
+        給 Edge Function 問「這個 LINE 是哪位店員」。
+        🔴 不可以用 `current_staff()` 代替：那支讀 `auth.jwt()`，
+          而 Edge Function 手上只有驗過簽的 `sub`。
+        🎯 授權夠緊的實證：MCP 的唯讀 user 呼叫它會拿到 `permission denied`。
+
+      （以下是當初的規劃，保留供對照。）
       🎯 **日後若要讓創辦人用 LINE 登入 POS 並具有權限，正解是「另開一列 staff」**，
         不是改總部那一列：
         ```

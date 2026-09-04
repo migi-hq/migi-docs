@@ -1,8 +1,8 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 152 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`，
-> 全部檔案 154 個；最後歸檔的是 `2026-09-04_敏感表的讀取收緊到總部.sql`）
+> **基準：`sql/applied/` 有 153 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`，
+> 全部檔案 155 個；最後歸檔的是 `2026-09-04_店員身分地基.sql`）
 >
 > 🔴 **2026-09-03 更正一個會讓人誤判的寫法**：上一版寫「148 個檔案」而且
 > 說「依檔名排序最後一個是 `門市真實資料.sql`」，**兩個都會誤導**：
@@ -18,7 +18,7 @@
 > `get_my_games_tx` 與 `get_my_active_queue_tx` 的 `players` 是**陣列**，不變。
 > ⚠ `pos_add_queue_member_tx` 的 `players` 仍在（一次性操作結果，刻意不動）。
 > 🎯 **要回「有哪些人」請叫 `player_names`，不要再用 `players`。**
-> **當下規模（2026-09-04 實測）：函式 165 · 資料表 46 · 檢視表 22 · RLS policy 29**
+> **當下規模（2026-09-04 實測）：函式 166 · 資料表 46 · 檢視表 22 · RLS policy 29**
 > （`public` 沒有任何擴充套件 —— 都在 `extensions`，見下面 btree_gist 那一段）
 > ⚠ 這四個數字是**給下一個人比對用的** —— 對不上就是這份文件過期了，
 >   而那個檢查**只要一句 SQL，不需要讀完整份文件**。
@@ -1073,9 +1073,25 @@ list_stores_tx / get_store_detail_tx / get_order_tx
 list_member_tiers_tx()          無參數
 list_product_taxonomy_tx()      無參數
 list_topup_plans_tx(p_org_id, p_store_id)
-current_org_id() / current_member_id() / current_staff() / has_store_access(p_store_id)
+current_org_id() / current_member_id() / current_staff()
 migi_jwt_uuid()          STABLE · authenticated ✅ anon ❌ · 2026-09-04 新增
 can(p_perm text)         DEFINER · authenticated ✅ anon ❌ · 2026-09-04 新增
+has_store_access(p_store_id)   DEFINER · authenticated ✅ anon ❌
+  🔴 2026-09-04 修：原本是 `cs.role = 'hq'`，**漏掉了 `owner`**
+    （`staff_role_check` 允許 floor/manager/hq/owner）
+    ⇒ 一個 role='owner'、store_id=null 的老闆**什麼店都進不去**。
+  ✅ 修法不是「把 owner 也加進去」（那會是**第三份**「誰是最高權限」的定義），
+    而是改呼叫 `can('store.all')` —— 從此只有一份。
+  ⚠ 這條 **0 個 policy 在用**，所以改它零風險 ——
+    **但那也正是它能錯這麼久沒被發現的原因。**
+get_staff_by_line_tx(p_org_id, p_line_user_id)
+  DEFINER · **只有 service_role**（anon/PUBLIC/authenticated 全收）· 2026-09-04 新增
+  給 Edge Function 問「這個 LINE 是哪位店員」，形狀比照 `get_member_by_line_tx`。
+  🔴 **不可以用 `current_staff()` 代替** —— 那支讀 `auth.jwt()`，
+    而 Edge Function 手上只有驗過簽的 `sub`，沒有 JWT context。
+  ⚠ 刻意**不回傳 `auth_uid`** —— 那是另一條登入路徑（Email）的憑據。
+  🎯 授權收得夠緊的實證：用 MCP（`supabase_read_only_user`）呼叫它會拿到
+    `permission denied` —— **連唯讀的 DB user 都叫不動**。
 grant_staff_tx(p_member_id, p_store_id, p_role) / revoke_staff_tx(p_staff_id)
 next_doc_no(p_org_id, p_store_id, p_doc_type)
 log_app_event_tx(p_org_id, p_member_id, p_event, p_props, p_client_ts, p_store_id)
