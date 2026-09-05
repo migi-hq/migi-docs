@@ -64,8 +64,21 @@ select 序, 項目, 內容 from (
                      from (
                        select event as ev,
                               coalesce(props->>'kind','(無)') as knd,
+                              /* 🔴 `url` 一定要在這裡（2026-09-05 補）。
+                                 在此之前 `kind='resource'` 的 26 筆全部顯示
+                                 「**(無訊息)**」—— 而 `main.jsx:48` 明明有記 `url`，
+                                 **是儀表沒去讀它**（同硬規則 3.5：先懷疑儀器）。
+                                 ⚠ 那一格是這份儀表最糟的形狀：**反覆出現又無法解釋**，
+                                   而那正好會訓練人忽略它。
+                                 🎯 讀了 url 之後立刻可判讀：
+                                   `static.line-scdn.net/liff/...` = LIFF SDK 的可選擴充（無害）
+                                   `storage/.../member-avatars/...` = 頭像檔不存在
+                                   `app.migi.tw/assets/...` = 舊版 hash，舊分頁還開著
+                                 ⚠ **刻意不過濾那些已知無害的** —— 過濾掉的話，
+                                   真的發生 LIFF CDN 中斷時它會變成看不見。 */
                               left(coalesce(props->>'message', props->>'msg',
-                                            props->>'error', props->>'fn', '(無訊息)'), 80) as msg,
+                                            props->>'error', props->>'fn',
+                                            props->>'url', '(無訊息)'), 80) as msg,
                               count(*) as n, max(created_at) as mx
                          from app_events
                         where event in ('app_error','pos_error')
@@ -100,8 +113,9 @@ select 序, 項目, 內容 from (
                      E'\n' order by n desc)
                      from (
                        select coalesce(props->>'kind','(無)') as knd,
+                              -- ⚠ 同 ①：`url` 要讀，不然 resource 那類永遠是「(無訊息)」
                               left(coalesce(props->>'message', props->>'msg',
-                                            props->>'error','(無訊息)'), 70) as msg,
+                                            props->>'error', props->>'url', '(無訊息)'), 70) as msg,
                               count(*) as n,
                               min(created_at) as mn, max(created_at) as mx
                          from app_events
@@ -143,7 +157,7 @@ select 序, 項目, 內容 from (
           **四個數字一個都沒動** —— 而那是一次真正的安全性變更。
           → 所以第 ⑦ 段數的是**授權**：明確授權 anon 的支數，
             以及「只靠 PUBLIC 進來」的支數（**那個應該永遠是 0**）。 */
-  select 6, '⑥ 結構物件數 vs baseline（2026-09-04：表46 函式168 索引85 policy29 帶can20）',
+  select 6, '⑥ 結構物件數 vs baseline（2026-09-05：表46 函式169 索引85 policy29 帶can20）',
          (select '表 ' || (select count(*)::text from pg_class c
                             join pg_namespace n on n.oid=c.relnamespace
                            where n.nspname='public' and c.relkind='r')
@@ -175,7 +189,7 @@ select 序, 項目, 內容 from (
                              join pg_namespace n on n.oid=c.relnamespace
                             where n.nspname='public' and c.relkind='r') = 46
                        and (select count(*) from pg_proc p
-                             where p.pronamespace='public'::regnamespace and p.prokind='f') = 168
+                             where p.pronamespace='public'::regnamespace and p.prokind='f') = 169
                        and (select count(*) from pg_policies where schemaname='public') = 29
                       then E'\n  ✅ 與 baseline 相同'
                       else E'\n  ⚠ 與 baseline 不同 —— 重跑 sql/checks/匯出完整結構baseline.sql'
