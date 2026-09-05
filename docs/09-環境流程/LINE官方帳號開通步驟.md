@@ -28,17 +28,56 @@ LINE 的 `userId` 是 **per-Provider 不是 per-channel** ——
 
 ## 步驟
 
-### 1️⃣ 建立 Messaging API channel
+### 1️⃣ 建立官方帳號（🔴 2026-09-05 更正：流程跟這份文件原本寫的不一樣）
+
+🔴 **不能再從 LINE Developers Console 直接建 Messaging API channel。**
+實際點下去看到的是：
+
+> It's no longer possible to create Messaging API channels directly from
+> the LINE Developers Console. To create a Messaging API channel, create a
+> LINE Official Account using the Create a LINE Official Account button below,
+> and then enable the use of the Messaging API on the LINE Official Account Manager.
+
+⚠ 這份文件原本寫「`Create a new channel` → `Channel type: Messaging API`」——
+**那是舊流程**，照著做會走進死路。
+📌 順帶說明它為什麼會錯：那一段是 2026-09-04 憑對 LINE 後台的印象寫的，
+**沒有實際點過**。同硬規則 3：猜錯的成本遠高於多問一次。
+
+### 新的順序
 
 ```
-developers.line.biz → 咪吉有限公司 → Create a new channel
-  Channel type : Messaging API
-  Channel name : （不可含「LINE」或近似字串）
+① developers.line.biz → 咪吉有限公司 → Create a new channel → Messaging API
+   → 會看到上面那段說明 → 按綠色的「Create a LINE Official Account」
+② 跳到 LINE Official Account Manager（外部網站）→ 建立官方帳號
+③ 回到 LINE Official Account Manager → 設定 → Messaging API → **啟用**
+④ 啟用完，channel 才會出現在 LINE Developers Console 裡
 ```
 
-⚠ 這一次**是**要建新 channel（跟 LIFF 那次相反）——
-Messaging API 與 LINE Login 是**兩種不同的 channel**，
-不能像 LIFF 那樣掛在現有的底下。
+### 🔴 第 ③ 步會問你要掛在哪個 Provider —— **一定要選「咪吉有限公司」**
+
+**這是整份文件最關鍵的一格。**
+LINE 的 `userId` 是 **per-Provider 不是 per-channel**：
+
+```
+同一個 Provider  → 同一個人在所有 channel 拿到同一個 userId
+不同 Provider    → 同一個人會是兩個不同的值
+```
+
+而 `members.line_user_id` **只有一欄** ⇒ 選錯（或順手建了新的 Provider）的話，
+同一個客人在會員 App 與官方帳號會是兩個 id，
+**而且不會報錯，只是接不起來** —— 症狀是「推播永遠找不到人」。
+
+⚠ 那一步**沒有「之後再改」這個選項**：Provider 綁定後不能搬。
+
+### ⚠ 建立官方帳號時要填的（客人看得到的是這個）
+
+| 欄位 | 建議 | 為什麼 |
+|---|---|---|
+| **帳號名稱** | `MIGI 咪吉麻將` | 🔴 **客人在 LINE 聊天列表看到的就是這個**，跟 channel 名稱不同 |
+| 類別 | 娛樂／休閒 之類 | 影響 LINE 內部的分類，不影響功能 |
+| 地區 | 台灣 | |
+
+🔴 **帳號名稱不可含「LINE」或近似字串**（跟 channel 同一條規則）。
 
 ### 2️⃣ 記下官方帳號 ID
 
