@@ -3456,23 +3456,35 @@ migi github/           ← Claude Code 的 project folder 選這層
 
 ## PENDING
 
-- 🔴 **LINE Login channel 的 Callback URL 要加 `https://hq.migi.tw`**（2026-09-05）。
-  總部後台 2026-09-05 改成 LINE 登入（與 POS 共用同一支 Edge Function
-  `staff-login`、同一個 channel），但白名單裡目前**只有 `https://pos.migi.tw`**。
+- ✅ ~~**總部後台改用 LINE 登入**~~ → **2026-09-05 完成並實機登入成功**（02:31）。
+  與 POS 共用同一支 Edge Function `staff-login`、同一個 LINE Login channel，
+  Callback URL 已加 `https://hq.migi.tw`。
+
+  ### 資料庫端查證（硬規則 7）
   ```
-  developers.line.biz → 咪吉有限公司 → MIGI 咪吉麻將（LINE Login）
-    → LINE Login 分頁 → Callback URL
-    ＋ https://hq.migi.tw          ← 加這一行
+  role   owner
+  姓名   黃偉晉        ← staff.name（真實姓名）
+  暱稱   咖勁凱        ← members.display_name  🎯 兩者確實分開
+  auth   line-u368caa…@staff.migi.invalid     ← **與 POS 同一個身分**
+  app_metadata 有 line_user_id ✅              ← 不是 user_metadata
   ```
-  🔴 **沒加的症狀是「跳到 LINE、回來說登入失敗」** ——
-    而錯誤在 LINE 那邊不在程式裡，看起來會很像程式壞了。
-  ⚠ 要**逐字一致**：不帶路徑、不帶結尾斜線（前端送的是
-    `window.location.origin`，LINE 逐字比對）。
-  ⚠ 所以 `http://localhost:5175` 也登不進去 —— **本機請用 Email 那條備援**，
-    不要為了測試把 localhost 加進白名單。
-  ✅ 總部的 Email 帳號（`admin@migi.tw`）**刻意保留**當 break-glass：
-    LINE 登入必須先通過「你是不是店員」那道查詢，所以你被誤刪、
-    LINE 帳號被盜、LINE 中斷時，那是唯一的門。
+  🎯 `auth_帳號` 與 POS 相同 ⇒ 「LINE 帳號 ↔ Supabase user ↔ staff」
+    這條鏈**只有一份**，不是兩個 App 各長一條。
+    那正是當初堅持「**同一個 Provider**」的理由（`userId` 是 per-Provider）。
+
+  ✅ **Email 帳號（`admin@migi.tw`）刻意保留當 break-glass。**
+    LINE 登入必須先通過「你是不是店員」那道查詢，所以**你被誤刪、
+    LINE 帳號被盜、LINE 服務中斷**時，那是唯一的門。
+  ⚠ 前端的權限判斷用 `can('admin.access')` **不自己列 role** ——
+    `has_store_access()` 就是自己寫了第二份 `role='hq'` 而與 `can()` 不一致。
+  ⚠ `http://localhost:5175` **不在白名單也不要加**（那等於讓任何能跑本機的人
+    拿到 LINE 授權回呼）—— 本機進後台請用 Email 那條。
+
+  ### 📌 「最後登入」第一次真的說了話
+  Email 那個備援帳號顯示 **07-12（54 天前）**，在店員管理頁上會標紅。
+  ⚠ 而那是**永遠會紅的假警報** —— break-glass 帳號本來就該長期不登入。
+  🔴 現在可接受（紅色反而提醒你它是緊急帳號），但**紅字一旦變多，
+    這一格就要能豁免** —— 常態性的紅色會讓人學會忽略紅色。
 - ✅ ~~店員登入未做，`staffId` 一律傳 null，`App.jsx` 還有 `const STAFF = "小美"` 寫死~~
   → **2026-09-04 前後端都做完並實機登入成功**（22:29），詳見待辦 20。
   ✅ **2026-09-05 補完最後一哩：POS 顯示真實姓名，而且總部有畫面可以設定。**
