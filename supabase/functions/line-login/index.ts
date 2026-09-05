@@ -109,6 +109,95 @@ const db = (path: string, init: RequestInit = {}) =>
     },
   })
 
+/* 打 Supabase Auth 的管理 API（`db()` 只打 `/rest/v1/`）。 */
+const authApi = (path: string, init: RequestInit = {}) =>
+  fetch(`${SUPABASE_URL}/auth/v1/${path}`, {
+    ...init,
+    headers: {
+      apikey: SERVICE_KEY,
+      Authorization: `Bearer ${SERVICE_KEY}`,
+      'Content-Type': 'application/json',
+      ...(init.headers ?? {}),
+    },
+  })
+
+/* ── 發一張真的 Supabase session 給會員（2026-09-05）─────────
+   🔴 **這是待辦 14 的第一半。** 在此之前會員端用 anon key，
+     身分靠**前端送 `p_member_id`** ⇒ 知道任何一個會員 uuid
+     就能查他的錢包與完整消費明細（買了什麼、花多少、什麼時間在店裡）。
+
+   🎯 做法與 `staff-login` 完全相同，因為那條路已經實機驗證過：
+     LINE 驗簽 → 找／建 Supabase Auth user（`app_metadata` 帶 `line_user_id`）
+     → `generate_link` 拿一次性 `token_hash` → 前端 `verifyOtp` 換 session。
+
+   🔴 **`app_metadata` 不可以寫成 `user_metadata`** ——
+     後者客戶端自己就能改（`supabase.auth.updateUser({ data: … })`），
+     而 `migi_jwt_line_id()` 讀的就是這個 claim
+     ⇒ 寫錯的話等於「輸入任何 line_user_id 就能變成他」。
+
+   ⚠ **信箱網域刻意與店員分開**（`@member.` vs `@staff.`）：
+     同一個人可以同時是店員與會員（創辦人就是），而那**本來就是兩個身分**
+     —— 在 POS 是店員、在會員 App 是會員。
+     🎯 兩者的 `app_metadata.line_user_id` 相同 ⇒
+       `migi_jwt_line_id()` 對兩張 session 都回同一個 LINE id，
+       所以 `current_member_id()` 兩邊都解析得到同一個會員。
+     ⚠ 反過來**不成立**：`current_staff()` 的 Email 那條認的是
+       `staff.auth_uid`，而會員那張 auth user 不會被綁進 `staff`
+       ⇒ **會員 session 不會拿到店員權限**。
+
+   ⚠ 那個信箱**永遠不會被寄信**（用 `generate_link` 拿 token，不寄出），
+     `.invalid` 是 RFC 2606 保留給「保證不存在」的 TLD。
+
+   回傳 `null` 代表發不出來 —— 呼叫端要**當成非致命**：
+   🎯 那是刻意的。今天前端還是用 anon key 在跑，
+     session 只是「多一張」而不是「唯一的路」——
+     發不出來時 App 應該照常運作，而不是整個登不進去。
+     ⏳ 等 23 支 RPC 改成從 JWT 取身分之後，它才會變成必要的。 */
+async function issueMemberSession(sub: string): Promise<{ token_hash: string; otp_type: string } | null> {
+  const email = `line-${sub.toLowerCase()}@member.migi.invalid`
+  const meta = { app_metadata: { line_user_id: sub, migi_kind: 'member' } }
+
+  let userId: string | null = null
+  const created = await authApi('admin/users', {
+    method: 'POST',
+    body: JSON.stringify({ email, email_confirm: true, ...meta }),
+  }).then((r) => r.json().catch(() => null)).catch(() => null)
+
+  if (created?.id) {
+    userId = created.id
+  } else {
+    /* 已經存在（GoTrue 對重複 email 回 422）→ 查出來並**更新 app_metadata**。
+       ⚠ 一定要更新：日後若在 metadata 裡多帶東西，不更新就會一直用舊的。
+       ⚠ `filter` 是模糊查詢，用完整 email 比對回傳結果，
+         **不要相信它只回一筆**。 */
+    const list = await authApi(`admin/users?page=1&per_page=50&filter=${encodeURIComponent(email)}`)
+      .then((r) => r.json().catch(() => null)).catch(() => null)
+    const users = Array.isArray(list?.users) ? list.users : []
+    const hit = users.find((u: { email?: string }) => (u.email || '').toLowerCase() === email)
+    if (!hit?.id) {
+      console.error('[line-login] 建不了也找不到會員的 auth user')
+      return null
+    }
+    userId = hit.id
+    await authApi(`admin/users/${userId}`, { method: 'PUT', body: JSON.stringify(meta) })
+      .catch((e) => console.warn('[line-login] 更新 app_metadata 失敗', e))
+  }
+
+  const link = await authApi('admin/generate_link', {
+    method: 'POST',
+    body: JSON.stringify({ type: 'magiclink', email }),
+  }).then((r) => r.json().catch(() => null)).catch(() => null)
+
+  /* GoTrue 有兩種版本的形狀（頂層／`properties` 底下），兩個都接。
+     ⚠ 這**不是**「以防萬一」—— `staff-login` 的 probe 證實過官方文件沒寫清楚。 */
+  const token_hash = link?.hashed_token ?? link?.properties?.hashed_token ?? null
+  if (!token_hash) {
+    console.error('[line-login] generate_link 沒有 hashed_token')
+    return null
+  }
+  return { token_hash, otp_type: link?.verification_type ?? link?.properties?.verification_type ?? 'magiclink' }
+}
+
 /* ── 發簡訊 ────────────────────────────────────────────
    🎯 **整支函式就是簡訊商的接縫。** 換一家只要改這裡，
      其餘（限流、雜湊、嘗試次數、前端）一個字都不用動。
@@ -413,7 +502,30 @@ Deno.serve(async (req) => {
     }
     const out = await r.json().catch(() => null)
     if (!r.ok || !out) return json({ ok: false, reason: 'whoami_failed' }, 502)
-    return json({ ok: true, ...out })
+
+    /* ── 順便發一張 Supabase session（2026-09-05，待辦 14）──────
+       🎯 **放在 `whoami` 而不是新開一個端點**，理由是它已經是
+         「App 開機問我是誰」的那一步 —— 身分解析與發 session
+         本來就該在同一個地方，分開就會有「問過了但沒發到」的狀態。
+
+       ⚠ 只在**已經是會員**時發（`out.member_id` 有值）。
+         還沒註冊的人沒有 member 可以對應，session 發了也沒有意義
+         —— 註冊完成後 App 會再叫一次 `whoami`，那時才拿得到。
+
+       🔴 **發不出來不是致命的**（見 `issueMemberSession` 的註解）：
+         今天 RPC 還是信前端送的 `p_member_id`，session 只是「多一張」。
+         ⏳ 等 23 支 RPC 改成從 JWT 取身分之後，這裡才會變成必要的 ——
+           **而那是刻意的順序**：先讓 session 發得出來且前端拿得到，
+           確認沒問題，再把舊路關掉。反過來做會讓 App 當場全掛。 */
+    let session: { token_hash: string; otp_type: string } | null = null
+    if (out?.member_id) {
+      try {
+        session = await issueMemberSession(sub)
+      } catch (e) {
+        console.warn('[line-login] 發 session 失敗（不致命）', e)
+      }
+    }
+    return json({ ok: true, ...out, ...(session ?? {}) })
   }
 
   /* 小工具：叫一支 RPC，回 [成功?, 內容]。
