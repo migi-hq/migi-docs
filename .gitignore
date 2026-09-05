@@ -7,6 +7,8 @@
 /migi-web/
 /migi-admin/
 /migi-assets/
+# 官網（migi.tw）—— 2026-09-05 新增，第五個 repo
+/migi-site/
 
 # Claude Code 的本機設定（含個人權限選擇，不共用）
 /.claude/settings.local.json
