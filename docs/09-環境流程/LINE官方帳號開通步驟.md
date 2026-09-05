@@ -12,6 +12,25 @@
 
 ---
 
+## 🔴 截圖前先看一眼（2026-09-05 真的發生了）
+
+LINE Developers 的 **Basic settings** 頁面下方有兩樣東西：
+
+```
+Channel secret          ← 🔴 拿到它就能簽發 access token
+Channel access token    ← 🔴 拿到它就能用你的官方帳號發訊息
+```
+
+⚠ 2026-09-05 截圖問問題時**把 Channel secret 拍進去了**。
+🎯 補救很簡單（那一行右邊有 `Issue` 重新簽發，舊的立刻失效），
+而且**當下按零成本** —— 那個 channel 還沒有任何東西在用它。
+🔴 但如果是**已經接上 webhook 之後**才發現，換 secret 就要同步改設定，
+而漏改的症狀是「webhook 驗簽失敗」——**訊息安靜地不會進來**。
+
+→ **截圖那幾頁時先往上捲，或只框上半部。**
+
+---
+
 ## 🔴 開始之前：一個硬條件
 
 **Messaging API channel 必須建在同一個 Provider（`咪吉有限公司`）底下。**
