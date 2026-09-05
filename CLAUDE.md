@@ -53,6 +53,21 @@ migi github/           ← Claude Code 的 project folder 選這層
   | `migi-pos` | **`pos.migi.tw`**（／`migi-pos.pages.dev`） |
   | `migi-web` | **`app.migi.tw`** ← LIFF endpoint 指這裡 |
   | `migi-admin` | **`hq.migi.tw`** |
+  | **`migi-site`** | **`migi.tw`** ＋ `www.migi.tw` ← 🆕 官網（2026-09-05） |
+
+  🔴 **`migi-site` 是第五個 repo，而且部署設定跟另外三個不一樣**：
+  ```
+  Build command            留空      （另外三個是 npm run build）
+  Build output directory   /         （另外三個是 dist）
+  ```
+  它是**純靜態 HTML，沒有 build 步驟**。環境變數也不用設（不連 Supabase）。
+
+  ⚠ 它今天只有三頁：極簡首頁 ＋ 隱私權政策 ＋ 服務條款。
+    **政策放在 apex 是刻意的** —— 那個網址會被印在名片、填進 LINE 後台、
+    日後送廣告審核，而 `app.migi.tw` 是 LIFF endpoint，
+    綁在會員 App 的實作上，換架構就斷了。
+  📌 官網用 apex 不用子網域的完整理由見
+    `docs/09-環境流程/部署與環境設定.md` 第一節。
 
   🔴 **2026-09-05 才補上後兩列** —— 在此之前這裡只有 POS 一行，
     而 `hq.migi.tw` **在整個 docs／CLAUDE.md 裡一次都沒出現過**。
