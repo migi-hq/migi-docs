@@ -51,8 +51,7 @@ alter table public.session_players
   add column if not exists final_score integer;
 
 comment on column public.session_players.final_score is
-  '這一場的桌上最終積分（四家相加為 0）。null = 這桌不計積分（純娛樂）或還沒有資料。'
-  '⚠ 與 score_points 不同：那一欄裝的是段位分（M4 會正名為 rating_delta）。';
+  '這一場的桌上最終積分（四家相加為 0）。null = 這桌不計積分（純娛樂）或還沒有資料。 ⚠ 與 score_points 不同：那一欄裝的是段位分（M4 會正名為 rating_delta）。';
 
 /* ── ② 隨機名次的同時，給隨機的桌上積分 ─────────────────── */
 create or replace function public.placeholder_ranks_tx(p_session_id uuid)
@@ -139,7 +138,13 @@ begin
     update session_players sp
        set final_score = (v_score ->> sp.member_id::text)::int
      where sp.session_id = p_session_id
-       and v_score ? sp.member_id::text;
+       /* 🔴 **不要用 jsonb 的 `?` 運算子。** Supabase 的 SQL Editor
+          （以及很多 PG client）把 `?` 當成**參數佔位符**，語句邊界會被
+          弄亂 —— 2026-09-06 實際症狀是最後那句 `select ... as 驗證結果`
+          被切成兩半，報 `syntax error at or near "驗證結果"`，
+          而錯誤完全指不到真正的原因。
+        ⚠ 語意相同：這個 jsonb 的值一定是整數，不會是 JSON null。 */
+       and (v_score ->> sp.member_id::text) is not null;
   end if;
 
   return v_res;
