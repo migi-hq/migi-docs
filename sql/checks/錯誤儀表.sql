@@ -350,6 +350,48 @@ select 序, 項目, 內容 from (
             from phone_otps)
 
   union all
+  /* ⑪ 會員 App 開機拿不拿得到 Supabase session。
+        🔴 **這一格是待辦 14 收尾的通過條件，不是參考資訊。**
+
+        2026-09-05 把 21 支會員 RPC 改成「必須有 JWT」，結果 App
+        大面積停在讀取中，當天就回滾成相容模式（`coalesce`）。
+        回滾檔自己寫下了原因：
+        > 那份 SQL 的驗證段 8/8 全過，但驗的是「函式行為對不對」，
+        > **不是「真實使用者拿不拿得到 session」** —— 兩件事。
+
+        🎯 所以這一格把那個問不出來的問題變成一個數字。
+          **`ext` 的 `no_login` 是正常的**（一般瀏覽器還沒登入 LINE，
+          導去登入就解決）—— 真正的紅燈是
+          **`nth >= 2` 還在失敗**：導過一次回來仍然沒有 session。
+
+        ⚠ 回 0 筆**不等於通過** —— 也可能是根本沒有人開過 App
+          （同第 ⑧ 段的邏輯）。所以這裡把「最後一次」也印出來。
+        📌 埋點在 `migi-web/src/lib/line.js` 的 `probeSession()`，
+          測試帳號照樣寫入（`track()` 只擋 GA4／Meta）。 */
+  select 11, '⑪ 會員 App 拿到 session 了嗎（🔴 待辦 14 的通過條件）',
+         coalesce((
+           /* ⚠ 分兩層是**必要的**：`count(*)` 不能出現在 `group by` 的
+              運算式裡（`group by 1` 會拿到含聚合的那一欄，直接 42803）。 */
+           select string_agg(g.env || ' · ' || g.result
+                    || case when g.result <> 'ok' and g.maxnth >= 2
+                            then ' 🔴 導過登入還是失敗' else '' end
+                    || '：' || g.n || ' 次', E'\n  ' order by g.n desc)
+             from (
+               select coalesce(e.props ->> 'env', '?')    as env,
+                      coalesce(e.props ->> 'result', '?') as result,
+                      max(coalesce((e.props ->> 'nth')::int, 1)) as maxnth,
+                      count(*) as n
+                 from app_events e
+                where e.event = 'member_session'
+                  and e.created_at > now() - interval '7 days'
+                group by 1, 2
+             ) g
+         ), '（近 7 天沒有任何一筆 —— 可能是沒人開過 App，也可能是這版還沒部署）')
+         || E'\n  最後一次：'
+         || coalesce((select to_char(max(created_at) at time zone 'Asia/Taipei', 'MM-DD HH24:MI')
+                        from app_events where event = 'member_session'), '（從來沒有）')
+
+  union all
   select 5, '⑤ 測試標記（修好前的歷史資料仍標成營運）',
          (select 'is_test=true ' || count(*) filter (where is_test)::text ||
                  '　is_test=false ' || count(*) filter (where not is_test)::text ||
