@@ -1,9 +1,100 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 159 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`，
-> 全部檔案 161 個；最後歸檔的是 `2026-09-05_店員用真實姓名.sql`）
-> ✅ `sql/pending/` **是空的**
+> **基準：`sql/applied/` 有 176 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`；
+> 最後歸檔的是 `2026-09-06_配桌列表補自動旗標.sql`）
+>
+> 🎉 **2026-09-06：配桌整條路第一次從頭跑完** ——
+> 湊滿 → 自動配桌 → 佔桌 → POS 收四份檯費（100/100/90/95 = 385，
+> 等級折扣只折檯費那條規則同時被驗到）→ **開打 12:14 → 收桌 12:59**。
+> ✅ `activate_session_tx` 與 `settle_session_tx` 也都走過真的資料了。
+>
+> 🔴 那一天在配桌線上一共修了 **11 個 bug，沒有一個會報錯**。
+> 除了下面列的七個，還有：
+> · `create_match_queue_tx` 對 `play_at` **完全沒有驗證**（可以開一個
+>   開打時間在過去的房），且 `expires_at` 不看 `play_at`
+> · 🔴 **冪等鍵撞到已作廢的場次** ⇒ 一個房只要被取消開桌一次，
+>   就**永遠配不到新的桌**，而畫面上寫著「已成桌」
+>   （`uq_sessions_idem` 是 UNIQUE，所以修法只能在產生鑰匙的地方）
+> · 取消之後的房回到 `waiting` 而 `sweep_auto_seat_tx` **只掃 `matched`**
+>   ⇒ 滿的房再也不會被配桌
+> · 空桌回收用「桌建立 + 30 分」而不是「最晚開打 + 30 分」
+>   ⇒ 一張 11:45 才配到、局是 11:30 的桌被佔到 12:20
+>
+> ✅ 同日新增：`match_queues.auto_seat`（自動配桌只做一次，取消後改手動）
+> 與 **`pos_move_session_tx`（換桌）** —— 系統裡原本完全沒有換桌這個東西。
+> `pos_list_queues_tx` 同日補回 `auto_seat`（**23 個鍵**），
+> POS 才畫得出「這房要手動配桌」。
+>
+> ⚠ **兩支配桌 RPC 都不回 `table_label`**（`pos_seat_queue_tx` 回
+> `ok / already / reason / session_id / members`，`_try_auto_seat_tx`
+> 直接往上丟）—— 前端寫「已帶到 ${r.table_label}」會印出 `undefined`。
+> `no_free_table` 那一條**有** `next_free_table` / `next_free_at`。
+>
+> ✅ **2026-09-06：自動配桌整條路第一次跑通**（`open_method='auto'` 在
+> 這之前是 0 次）。四個測試帳號報名同一房 → `_finalize_queue_full_tx`
+> → `sweep_auto_seat_tx` → A3 桌被佔住、`activated_at` null（預留中）。
+> 🔴 同一次抓到**四個只有真的跑一次才會發現的 bug**，都已修：
+> · `get_my_active_queue_tx` 沒有 `seated` ⇒ 成桌後會員 App 的房間消失
+> · `pos_list_queues_tx` 的 seated 只活 10 分鐘 ⇒ 檯費沒收卡片就不見
+> · 同一支不放行 `matched` ⇒ POS 的「已滿 · 沒有空桌」永遠不會顯示
+> · 🔴 **`cleanup_empty_sessions_tx(30)` 會把配桌預留的桌清掉** ——
+>   自動配桌是「湊滿就佔桌」（可能空等兩小時），而配桌佔的桌
+>   在客人到店結帳前 `session_players` 永遠是 0
+>   ⇒ **每一張自動配到的桌都必定在 30 分鐘後被作廢，一次都成功不了**。
+>   實測 A3：00:25:37 建立 → 01:00:00 被排程作廢（沒有操作者）。
+>   ✅ 改成保留到 `play_at + 寬限`，回傳多一個 `held_for_queue` 讓保護看得見。
+> ⚠ 四個都**不會報錯**，只是東西不見或不出現。
+>
+> ✅ **第五個也修了**：桌被作廢時配桌房**不會被還原** ——
+> 房永遠停在 `seated`、桌沒了，客人的配桌畫面無聲消失。
+> 🎯 用**觸發器**（`trg_session_voided_release_queue`）不改函式，因為
+> 桌會變 `voided` 有兩條路（店員按取消／排程回收），改函式會漏掉第三條。
+> 兩種結局由「開打時間過了沒」決定：還沒到 → 房回 `waiting` ＋ 通知；
+> 過了寬限 → `expired` ＋ 標離開（比照 `sweep_expired_queues_tx`）。
+> ⚠ **寬限必須與 `cleanup_empty_sessions_tx` 一致（30 分）** ——
+> 不一致會變成「排程收桌 → 觸發器放回 waiting → 又配一張桌 → 又被收」的無限循環。
+> ⚠ 回 `waiting` 時**要延長 `expires_at`**，否則 `sweep_expired_queues_tx`
+> （每 5 分鐘）下一輪就把它判流局，客人回到排隊三分鐘又被踢掉。
+>
+> ✅ **第六個（使用者發現）**：`_check_join_conflict` 只掃 `waiting`／`matched`
+> ⇒ **成桌之後還能再開一桌**，而那支的規則本身寫著「同時只能參加一場」。
+> ⚠ **不能只是把 `seated` 加進去** —— 它是終點狀態，打完收桌之後房仍然是
+> `seated`，無條件擋會讓**打過一場的人從此永遠報不了名**。
+> ✅ 綁「那張桌還開著」（`migi_seat_is_live()`），與另外兩支同一個界線。
+> 📌 順帶補了原本漏掉的 `q.org_id = p_org_id` —— 舊版完全沒有比對 org。
+>
+> ✅ **第七個**：`get_my_active_queue_tx` 是 `order by joined_at desc`
+> ⇒ 一個人在兩個房時**必定顯示後加入的那個**，也就是**沒有桌的那個**
+> —— 客人已經被配到 A3 了，畫面卻寫「還差 2 位」。
+> 改成「**活著的房優先**」（seated › matched › waiting）。
+> 🎯 **修守衛不會修好已經產生的資料** —— 同一份還做了兩件一次性清理：
+> 釋放孤兒房（觸發器只對今後的作廢生效）、清掉重複的房籍
+> （`leave_reason='switched'`，CHECK 本來就允許的值）。
+>
+> 🎯 **「seated 且桌還開著」這個述詞現在出現在三支函式裡**，
+> 只有 `_check_join_conflict` 改用了 `migi_seat_is_live()`；
+> `get_my_active_queue_tx`（EXISTS 形）與 `pos_list_queues_tx`（已 join `ts`）
+> 還是各寫一份 —— **下次動那兩支時一起換掉**。
+> ⏳ `sql/pending/` 有 **1 份，而且刻意跑不動**：
+> `2026-09-05_測試世界與正式世界分開.sql`（第 ⓪ 段要求「至少一間正式門市」，
+> 今天 7 間全是 `is_test` ⇒ 上線當天標好真門市之後才跑）
+>
+> ✅ **2026-09-05：測試01～04 拿到合成的 `line_user_id`**（`TEST-01`…`TEST-04`）
+> ＋ 可用密碼登入的 auth user ⇒ **不需要 LINE 帳號也能測多人社交**。
+> 🎯 那不是 JWT 旁路（硬規則 5.7）—— 它們走的是跟真客人**完全一樣**的
+> `app_metadata.line_user_id → migi_jwt_line_id() → current_member_id()`，
+> 產品碼零改動，認證由 Supabase Auth 的密碼負責。
+> 📄 怎麼登入：`docs/09-環境流程/用測試帳號登入會員App.md`
+>
+> 📌 **2026-09-05 歸檔的兩份（待辦 14）只改函式內容、不動結構** ——
+> 實測 `函式 169 · 資料表 46 · 檢視表 22 · RLS policy 29` 與上一版**完全相同**，
+> 所以本檔其餘內容不受影響（硬規則 1.6 的重跑匯出這次沒有東西會變）。
+> 🔴 **但那 21 支會員 RPC 現在是「相容模式」，洞是開著的**：
+> `p_member_id := coalesce(current_member_id(), p_member_id)`
+> ⇒ 有 session 的走 JWT，沒有的仍然採信前端送的 id。
+> 待辦 14 的收尾就是把那個 `coalesce` 拿掉，而那要等
+> **每一條進入 App 的路都被實測過拿得到 session**（上次就是沒驗這一步才炸的）。
 >
 > 🔴 **2026-09-03 更正一個會讓人誤判的寫法**：上一版寫「148 個檔案」而且
 > 說「依檔名排序最後一個是 `門市真實資料.sql`」，**兩個都會誤導**：
