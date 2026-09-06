@@ -1,8 +1,19 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 183 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`；
-> 最後歸檔的是 `2026-09-06_桌取消不再通知客人.sql`）
+> **基準：`sql/applied/` 有 185 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`；
+> 最後歸檔的是 `2026-09-07_配桌歷史加分頁.sql`）
+>
+> 🔴 **`pos_list_queues_tx` 2026-09-07 改簽名**（DROP ＋ 重建 ＋ 補 GRANT）：
+> `(p_org, p_store, p_before timestamptz default null, p_limit int default 20)`
+> · 進行中的房（waiting／matched／seated+開著）**永遠全給，不分頁**
+>   —— 被截掉會出現「有一桌在等你結帳但它在第二頁」
+> · 已收桌的才分頁，`p_limit` 夾在 1..100，依 `ended_at desc`
+> · **時間窗口整個拿掉了**（先前是「只留今天」→「留 7 天」）——
+>   配桌是延續的，前兩位可能是上一班找到的、靠下一班完成，
+>   任何日／班的邊界都會把同一件事切成兩半
+> ⚠ 前端只用 `p_limit`（成長式 20→40→60）；`p_before` 留給日後
+>   migi-admin 的檔案庫（那一頁不輪詢，游標分頁才對）。**今天沒有呼叫點。**
 >
 > 🆕 **`session_players.final_score`**（2026-09-06 新增，integer nullable）
 > ＝ 這一場的**桌上積分**，四家相加為 0。
