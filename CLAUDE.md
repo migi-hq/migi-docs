@@ -444,6 +444,20 @@ migi github/           ← Claude Code 的 project folder 選這層
    ⚠ 檢查器 `pillcheck.py` 已加一段：每顆 `tone="plain"` 往上找最近的
      容器背景並**逐行印出讓人判讀**（不回傳是非題，同 3.5）。
 
+   **3.855 🔴 會員 App 的全螢幕切頁一定要 `createPortal(…, document.body)`。**
+   （2026-09-07 踩到，**只有手機會壞**）
+   `#ibody` 有 `-webkit-overflow-scrolling: touch`（`styles.css:51`），
+   而那在 iOS 會讓它變成 **`position: fixed` 子元素的定位基準** ——
+   切頁會被關在捲動容器裡：跟著內容捲、被裁切、位置錯。
+   🔴 **桌機 Chrome 完全沒有這個行為。** 那天我量到切頁
+     `375×812 @0,0`、chips 與下拉都在正確座標、SVG 也在 ——
+     **全部都對，而手機上是壞的**。
+   → 判準很簡單：**這個 App 每一個切頁都包 portal**
+     （`rewards.jsx:98`、`RankInfoPage`、`NotificationsSheet`、`DragSheet`），
+     照抄 markup 時**最外面那一層最容易漏**，因為它看起來只是包裝。
+   ⚠ 這是 3.85 的延伸但更難抓：3.85 說「畫出來才會發現」，
+     這一條說「**要在對的裝置上畫出來**」。
+
    **3.86 🔴 元件不可以定義在另一個元件的函式體裡。**（2026-08-28 實測抓到）
    React 是**用元件型別辨識元件**的。定義在函式體裡的話，每次 render
    都會產生一個新的函式（＝新的型別）→ React 認定「這是別的東西」→
