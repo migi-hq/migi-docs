@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MIGI 消費進度條 · 五案</title>
+<!--
+  2026-09-08　待辦 1 的 UI 選型。
+  ⚠ 顏色與字級全部用 @migi/assets 的 token 值（硬規則 13：不自己編色）。
+    這裡寫成字面值是因為原型頁不 import 套件，值與 tokens.css 逐字相同。
+  ⚠ 純 HTML/CSS、無 JS —— 預覽器對 file:// 只做靜態快照，<script> 不會執行。
+
+  五案不是五種配色，是**五個不同的答案**：
+    A 現行      「還差多少」
+    B 一句話    「升上去有什麼好處」   ← 不畫條
+    C 兩端錨點  「我在哪、要去哪」
+    D 分段四格  「整個制度長什麼樣」
+    E 卡片      「等級是一件值得看的事」
+-->
+<style>
+:root{
+  --brand:#FAD6DC; --brand-light:#FFE7EE; --brand-tint:#FFF6F8;
+  --ink:#2E2B2C; --accent:#C2607A; --gold:#E8B89B;
+  --gray-1:#7A7572; --gray-2:#9A9491; --hint:#B4AEA9;
+  --gray-3:#ECEAE9; --gray-4:#F2F0EE; --divider:#DED9D5;
+  --white:#fff; --field-bg:#F8F7F6; --page-bg:#F6F5F4;
+  --xxxs:11px; --xxs:12px; --xs:13px; --s:14px; --m:15px; --l:16px; --xl:18px; --xxl:22px; --h:38px;
+  --r-pill:999px; --r-lg:16px; --r-card:14px; --r-field:12px; --r-sm:8px;
+  --bw-hair:.5px; --bw-base:1px; --bw-thick:1.5px;
+  --font-sans:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page-bg);font-family:var(--font-sans);color:var(--ink);
+     padding:28px 16px 60px}
+.wrap{max-width:1180px;margin:0 auto}
+h1{font-size:var(--xxl);margin:0 0 6px}
+.sub{font-size:var(--xs);color:var(--gray-1);line-height:1.8;margin:0 0 26px;max-width:760px}
+.grid{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
+.case{background:var(--white);border:var(--bw-base) solid var(--gray-3);border-radius:var(--r-lg);
+      width:375px;overflow:hidden;box-shadow:0 2px 8px rgba(46,43,44,.06)}
+.case > header{padding:12px 16px;border-bottom:var(--bw-base) solid var(--gray-3);background:var(--field-bg)}
+.case h2{font-size:var(--m);margin:0}
+.case .q{font-size:var(--xxxs);color:var(--accent);margin-top:2px}
+.stage{padding:14px 0 16px}
+.note{padding:0 16px 14px;font-size:var(--xxxs);color:var(--gray-2);line-height:1.85}
+.note b{color:var(--ink)}
+.note .edge{display:block;margin-top:6px;padding-top:6px;border-top:var(--bw-hair) solid var(--divider)}
+
+/* 點數卡（複製自 wallet.jsx，讓五案站在真的脈絡上） */
+.card{margin:0 20px;background:var(--brand);border-radius:22px;padding:17px 18px 15px}
+.card .top{display:flex;justify-content:space-between;align-items:center}
+.card .t1{font-size:var(--s);font-weight:600}
+.pill{background:rgba(255,255,255,.55);border-radius:var(--r-pill);padding:4px 11px;font-size:var(--xxxs);font-weight:600}
+.card .amt{margin:6px 0 0;font-size:var(--h);font-weight:700;line-height:1}
+.card .amt span{font-size:var(--l);margin-left:4px}
+.card .btns{display:flex;gap:8px;margin-top:13px}
+.card .btns div{flex:1;text-align:center;padding:10px 0;border-radius:var(--r-pill);font-size:var(--m);font-weight:700}
+.b-dark{background:var(--ink);color:#fff}
+.b-light{background:rgba(255,255,255,.75)}
+
+/* 共用零件 */
+.row{padding:10px 20px 0}
+.line{display:flex;align-items:baseline;justify-content:space-between}
+.mut{font-size:var(--xxs);color:var(--gray-2)}
+.num{font-variant-numeric:tabular-nums}
+.track{height:6px;background:var(--gray-4);border-radius:var(--r-pill);overflow:hidden;margin-top:7px}
+.fill{height:6px;background:var(--accent);border-radius:var(--r-pill)}
+
+/* ── C：兩端錨點 ── */
+.anchor{display:flex;justify-content:space-between;font-size:var(--xxxs);margin-top:6px}
+.anchor .now{color:var(--ink);font-weight:700}
+.anchor .goal{color:var(--gray-2)}
+.trackC{position:relative;height:8px;background:var(--gray-4);border-radius:var(--r-pill);margin-top:5px}
+.fillC{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:var(--r-pill)}
+.dot{position:absolute;top:-3px;width:14px;height:14px;border-radius:50%;background:var(--white);
+     border:var(--bw-thick) solid var(--accent);transform:translateX(-50%)}
+
+/* ── D：分段四格 ── */
+.segs{display:flex;gap:4px;margin-top:7px}
+.seg{flex:1;height:7px;border-radius:var(--r-pill);background:var(--gray-4);position:relative;overflow:hidden}
+.seg.done{background:var(--accent)}
+.seg .part{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:var(--r-pill)}
+.segLabels{display:flex;gap:4px;margin-top:5px}
+.segLabels span{flex:1;font-size:9.5px;color:var(--gray-2);text-align:center;white-space:nowrap}
+.segLabels span.on{color:var(--ink);font-weight:700}
+
+/* ── E：卡片 ── */
+.tcard{margin:0 20px;background:var(--brand-tint);border:var(--bw-base) solid var(--brand);
+       border-radius:var(--r-card);padding:13px 15px}
+.tcard .h{display:flex;align-items:baseline;gap:7px}
+.tcard .name{font-size:var(--l);font-weight:700}
+.tcard .perk{font-size:var(--xxxs);color:var(--accent);font-weight:700;
+             background:var(--white);border-radius:var(--r-pill);padding:2px 8px}
+.tcard .goal{margin-left:auto;font-size:var(--xxxs);color:var(--gray-2)}
+.tcard .msg{font-size:var(--xxs);color:var(--gray-1);margin-top:9px;line-height:1.7}
+.tcard .msg b{color:var(--ink)}
+.pickbox{background:var(--white);border:var(--bw-thick) solid var(--brand);border-radius:var(--r-card);
+         padding:16px 18px;margin:26px 0 0;font-size:var(--xs);line-height:1.9;max-width:1180px}
+.pickbox h3{margin:0 0 8px;font-size:var(--l)}
+.pickbox code{background:var(--field-bg);padding:1px 5px;border-radius:4px;font-size:var(--xxs)}
+</style>
+
+<div class="wrap">
+<h1>消費進度條 · 五案</h1>
+<p class="sub">
+  同一組真實資料：<b>測試04</b>　累積消費 <b>$400</b>　目前 <b>珍珠奶茶</b>（不打折）
+  下一階 <b>焦糖布丁</b>（門檻 $6,000，95 折）　⇒ 還差 <b>$5,600</b>、進度 <b>7%</b>。<br>
+  五案不是五種配色，是<b>五個不同的答案</b>。每一案下面都寫了它在三種邊界狀況怎麼退化 ——
+  那三種是真的會發生的：<b>累積低於本階門檻</b>（進度是負的）、<b>已是最高自動階</b>、<b>店家指定</b>。
+</p>
+
+<div class="grid">
+
+<!-- ═══════════ A ═══════════ -->
+<section class="case">
+  <header><h2>A · 現行（已上線）</h2><div class="q">回答：「還差多少」</div></header>
+  <div class="stage">
+    <div class="card">
+      <div class="top"><p class="t1">我的點數</p><span class="pill">會員等級: 珍珠奶茶</span></div>
+      <p class="amt">0<span>點</span></p>
+      <div class="btns"><div class="b-dark">儲值</div><div class="b-light">點數紀錄</div></div>
+    </div>
+    <div class="row">
+      <div class="line">
+        <span class="mut">累積消費 <b style="color:var(--ink)" class="num">$400</b></span>
+        <span class="mut">距 <b style="color:var(--ink)">焦糖布丁</b> 還差 <b style="color:var(--accent)" class="num">$5,600</b></span>
+      </div>
+      <div class="track"><div class="fill" style="width:7%"></div></div>
+    </div>
+  </div>
+  <div class="note">
+    最輕、不搶版面，跟現有那張卡黏得很緊。<br>
+    🔴 但它<b>沒有講「升上去有什麼好處」</b> —— 對沒看過等級說明的人，
+    「$5,600」只是一個要花的錢，不是一個想要的東西。
+    <span class="edge">邊界：低於本階門檻 → 條 0%（已夾住）／最高階與店家指定 → 右邊換句話、不畫條。<b>三種都不會壞。</b></span>
+  </div>
+</section>
+
+<!-- ═══════════ B ═══════════ -->
+<section class="case">
+  <header><h2>B · 一句話（不畫條）</h2><div class="q">回答：「升上去有什麼好處」</div></header>
+  <div class="stage">
+    <div class="card">
+      <div class="top"><p class="t1">我的點數</p><span class="pill">會員等級: 珍珠奶茶</span></div>
+      <p class="amt">0<span>點</span></p>
+      <div class="btns"><div class="b-dark">儲值</div><div class="b-light">點數紀錄</div></div>
+    </div>
+    <div class="row">
+      <div style="background:var(--field-bg);border-radius:var(--r-field);padding:11px 13px">
+        <div style="font-size:var(--xs);line-height:1.75">
+          再消費 <b class="num" style="color:var(--accent)">$5,600</b> 升級
+          <b>焦糖布丁</b>，結帳 <b>95 折</b>
+        </div>
+        <div class="mut" style="margin-top:4px">目前累積 <span class="num">$400</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="note">
+    🎯 <b>唯一把「好處」講出來的一案。</b>「95 折」比「$5,600」有動機得多。<br>
+    ⚠ 沒有條 ⇒ 看不出「快到了還是剛開始」。$5,600 與 $200 長得一樣。
+    <span class="edge">邊界：最高階 →「已是最高等級，享 9 折」／店家指定 →「等級由店家指定」。
+    <b>三種都自然</b>，因為它本來就是一句話。</span>
+  </div>
+</section>
+
+<!-- ═══════════ C ═══════════ -->
+<section class="case">
+  <header><h2>C · 兩端錨點</h2><div class="q">回答：「我在哪、要去哪」</div></header>
+  <div class="stage">
+    <div class="card">
+      <div class="top"><p class="t1">我的點數</p><span class="pill">會員等級: 珍珠奶茶</span></div>
+      <p class="amt">0<span>點</span></p>
+      <div class="btns"><div class="b-dark">儲值</div><div class="b-light">點數紀錄</div></div>
+    </div>
+    <div class="row">
+      <div class="anchor"><span class="now">珍珠奶茶</span><span class="goal">焦糖布丁 · 95 折</span></div>
+      <div class="trackC">
+        <div class="fillC" style="width:7%"></div>
+        <div class="dot" style="left:7%"></div>
+      </div>
+      <div class="anchor" style="margin-top:6px">
+        <span class="mut num">$400</span>
+        <span class="mut num">$6,000</span>
+      </div>
+    </div>
+  </div>
+  <div class="note">
+    像段位條，<b>起點與終點都看得到</b>，位置感最強。跟成績頁的段位進度是同一個語彙。<br>
+    ⚠ 四行、最佔空間；而「$400 → $6,000」這個跨距在開幕初期<b>看起來很遠</b>。
+    <span class="edge">邊界：最高階時右錨點沒有東西可放 → 整塊要換版（不是換句話）。<b>三種裡最不好退化的一案。</b></span>
+  </div>
+</section>
+
+<!-- ═══════════ D ═══════════ -->
+<section class="case">
+  <header><h2>D · 分段四格</h2><div class="q">回答：「整個制度長什麼樣」</div></header>
+  <div class="stage">
+    <div class="card">
+      <div class="top"><p class="t1">我的點數</p><span class="pill">會員等級: 珍珠奶茶</span></div>
+      <p class="amt">0<span>點</span></p>
+      <div class="btns"><div class="b-dark">儲值</div><div class="b-light">點數紀錄</div></div>
+    </div>
+    <div class="row">
+      <div class="line">
+        <span class="mut">累積消費 <b style="color:var(--ink)" class="num">$400</b></span>
+        <span class="mut">還差 <b style="color:var(--accent)" class="num">$5,600</b></span>
+      </div>
+      <div class="segs">
+        <div class="seg"><div class="part" style="width:7%"></div></div>
+        <div class="seg"></div><div class="seg"></div><div class="seg"></div>
+      </div>
+      <div class="segLabels">
+        <span class="on">珍珠奶茶</span><span>焦糖布丁</span><span>提拉米蘇</span><span>主廚特調</span>
+      </div>
+    </div>
+  </div>
+  <div class="note">
+    一眼看到<b>整個階梯</b>，而且「還有三階」本身就是動機。<br>
+    🔴 但它把<b>主廚特調</b>畫成第四格 —— 而那是<b>邀請制，不靠消費取得</b>。
+    把它放在同一條路上是<b>一句錯的話</b>（客人會以為花錢就能到）。
+    <span class="edge">邊界：要把邀請制那一格另外處理（虛線／鎖頭），複雜度立刻上升。</span>
+  </div>
+</section>
+
+<!-- ═══════════ E ═══════════ -->
+<section class="case">
+  <header><h2>E · 獨立卡片</h2><div class="q">回答：「等級是一件值得看的事」</div></header>
+  <div class="stage">
+    <div class="card">
+      <div class="top"><p class="t1">我的點數</p><span class="pill">會員等級: 珍珠奶茶</span></div>
+      <p class="amt">0<span>點</span></p>
+      <div class="btns"><div class="b-dark">儲值</div><div class="b-light">點數紀錄</div></div>
+    </div>
+    <div style="height:12px"></div>
+    <div class="tcard">
+      <div class="h">
+        <span class="name">珍珠奶茶</span>
+        <span class="perk">不打折</span>
+        <span class="goal">下一階 焦糖布丁</span>
+      </div>
+      <div class="track" style="margin-top:10px"><div class="fill" style="width:7%"></div></div>
+      <div class="msg">
+        再消費 <b class="num">$5,600</b> 升級，結帳享 <b>95 折</b>
+        　<span class="mut">· 已累積 <span class="num">$400</span></span>
+      </div>
+    </div>
+  </div>
+  <div class="note">
+    份量最重，<b>把等級從「膠囊上的兩個字」變成一個區塊</b>；好處與進度都在。<br>
+    ⚠ 它會跟點數卡<b>爭主角</b> —— 錢包頁的第一眼應該是餘額。
+    而且粉底疊粉底，兩張卡的視覺重量太接近。
+    <span class="edge">邊界：三種都放得下（訊息那一行換句話即可）。</span>
+  </div>
+</section>
+
+</div>
+
+<div class="pickbox">
+  <h3>我的建議：<b>A ＋ B 的合體</b>（保留條，把「好處」加進去）</h3>
+  現行的 A 已經上線而且三種邊界都不會壞，缺的只有一件事 ——
+  <b>它沒講升上去有什麼好處</b>。而 B 證明那一句話塞得下。<br><br>
+  ⇒ 具體改動只有一行文案：<br>
+  <code>距 焦糖布丁 還差 $5,600</code> → <code>再 $5,600 升焦糖布丁 · 95 折</code><br><br>
+  🔴 <b>不建議 D</b>：它把<b>主廚特調</b>畫在同一條路上，而那是邀請制 ——
+  客人會以為花錢就能到，那是一句錯的話，比沒有進度條更糟。<br>
+  🔴 <b>不建議 C</b>：位置感最好，但「最高階」時右錨點沒東西可放，
+  三種邊界裡它最難退化，而那三種<b>都是真的會發生的資料</b>
+  （實測就有一位累積 507 卻是焦糖布丁）。<br>
+  ⚠ <b>E 留著當日後的選項</b> —— 如果之後等級要長出更多權益（生日招待、專屬周邊、優先配桌），
+  一行放不下時它就是答案。今天只有一個折扣，不值得為它開一張卡。
+</div>
+</div>
+</html>

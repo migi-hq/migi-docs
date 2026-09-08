@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MIGI 消費進度條 · A＋B 合體三版</title>
+<!--
+  2026-09-08　接續《消費進度條五案》。
+  使用者選了「A＋B 合體」＝ 保留進度條、把「升上去有什麼好處」講出來。
+  **文案已定，這一份選的是排版。**
+
+  ⚠ 三種邊界狀況（都是真的會發生的資料）在最下面一起看：
+    · 累積低於本階門檻（進度是負的 → 夾成 0）
+    · 已是最高的自動升等階
+    · 等級由店家指定（tier_override）
+  ⚠ 顏色與字級用 @migi/assets 的 token 值（硬規則 13）。
+-->
+<style>
+:root{
+  --brand:#FAD6DC; --brand-light:#FFE7EE; --brand-tint:#FFF6F8;
+  --ink:#2E2B2C; --accent:#C2607A;
+  --gray-1:#7A7572; --gray-2:#9A9491; --hint:#B4AEA9;
+  --gray-3:#ECEAE9; --gray-4:#F2F0EE; --divider:#DED9D5;
+  --white:#fff; --field-bg:#F8F7F6; --page-bg:#F6F5F4;
+  --xxxs:11px; --xxs:12px; --xs:13px; --s:14px; --m:15px; --l:16px; --xl:18px; --xxl:22px; --h:38px;
+  --r-pill:999px; --r-lg:16px; --r-card:14px; --r-field:12px;
+  --bw-hair:.5px; --bw-base:1px; --bw-thick:1.5px;
+  --font-sans:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page-bg);font-family:var(--font-sans);color:var(--ink);padding:26px 16px 60px}
+.wrap{max-width:1180px;margin:0 auto}
+h1{font-size:var(--xxl);margin:0 0 6px}
+.sub{font-size:var(--xs);color:var(--gray-1);line-height:1.85;margin:0 0 24px;max-width:800px}
+.grid{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
+.case{background:var(--white);border:var(--bw-base) solid var(--gray-3);border-radius:var(--r-lg);width:375px;overflow:hidden;box-shadow:0 2px 8px rgba(46,43,44,.06)}
+.case > header{padding:12px 16px;border-bottom:var(--bw-base) solid var(--gray-3);background:var(--field-bg)}
+.case h2{font-size:var(--m);margin:0}
+.case .q{font-size:var(--xxxs);color:var(--gray-2);margin-top:2px}
+.stage{padding:14px 0 16px}
+.note{padding:0 16px 14px;font-size:var(--xxxs);color:var(--gray-2);line-height:1.85}
+.note b{color:var(--ink)}
+
+.card{margin:0 20px;background:var(--brand);border-radius:22px;padding:17px 18px 15px}
+.card .top{display:flex;justify-content:space-between;align-items:center}
+.card .t1{font-size:var(--s);font-weight:600;margin:0}
+.pill{background:rgba(255,255,255,.55);border-radius:var(--r-pill);padding:4px 11px;font-size:var(--xxxs);font-weight:600}
+.card .amt{margin:6px 0 0;font-size:var(--h);font-weight:700;line-height:1}
+.card .amt span{font-size:var(--l);margin-left:4px}
+.card .btns{display:flex;gap:8px;margin-top:13px}
+.card .btns div{flex:1;text-align:center;padding:10px 0;border-radius:var(--r-pill);font-size:var(--m);font-weight:700}
+.b-dark{background:var(--ink);color:#fff}
+.b-light{background:rgba(255,255,255,.75)}
+
+.row{padding:10px 20px 0}
+.mut{font-size:var(--xxs);color:var(--gray-2)}
+.num{font-variant-numeric:tabular-nums}
+.track{height:6px;background:var(--gray-4);border-radius:var(--r-pill);overflow:hidden}
+.fill{height:6px;background:var(--accent);border-radius:var(--r-pill)}
+.act{font-size:var(--xxs);color:var(--gray-2)}
+.act b{color:var(--ink)}
+.act .amt{color:var(--accent);font-weight:700}
+.act .perk{color:var(--accent);font-weight:700}
+
+.edges{margin-top:28px;background:var(--white);border:var(--bw-base) solid var(--gray-3);border-radius:var(--r-lg);padding:18px 20px 22px}
+.edges h3{margin:0 0 4px;font-size:var(--l)}
+.edges .lead{font-size:var(--xs);color:var(--gray-1);line-height:1.8;margin:0 0 16px}
+.eg{display:flex;flex-wrap:wrap;gap:14px}
+.eb{width:340px;border:var(--bw-base) solid var(--gray-3);border-radius:var(--r-card);padding:12px 14px;background:var(--white)}
+.eb .tag{font-size:var(--xxxs);font-weight:700;color:var(--accent);margin-bottom:8px}
+.eb .why{font-size:var(--xxxs);color:var(--gray-2);line-height:1.8;margin-top:9px;padding-top:8px;border-top:var(--bw-hair) solid var(--divider)}
+.pick{margin-top:24px;background:var(--white);border:var(--bw-thick) solid var(--brand);border-radius:var(--r-card);padding:16px 18px;font-size:var(--xs);line-height:1.9}
+.pick h3{margin:0 0 8px;font-size:var(--l)}
+code{background:var(--field-bg);padding:1px 5px;border-radius:4px;font-size:var(--xxs)}
+</style>
+
+<div class="wrap">
+<h1>A＋B 合體 · 三種排版</h1>
+<p class="sub">
+  文案已定：<b>把「升上去有什麼好處」講出來</b>，同時保留進度條。<br>
+  同一組真實資料 —— 測試04：累積 <b>$400</b>、目前珍珠奶茶、下一階焦糖布丁（門檻 $6,000、<b>95 折</b>）、還差 <b>$5,600</b>、進度 <b>7%</b>。<br>
+  🔴 「95 折」來自 <code>list_member_tiers_tx</code> 的 <code>pct</code>（主檔）——
+  <b>主檔還沒載回來時那半句直接不顯示</b>，不可以猜。顯示一個猜的折數比不顯示更糟。
+</p>
+
+<div class="grid">
+
+<!-- ① 同一行 -->
+<section class="case">
+  <header><h2>① 同一行（最小改動）</h2><div class="q">只換右邊那句話，版面完全不動</div></header>
+  <div class="stage">
+    <div class="card">
+      <div class="top"><p class="t1">我的點數</p><span class="pill">會員等級: 珍珠奶茶</span></div>
+      <p class="amt">0<span>點</span></p>
+      <div class="btns"><div class="b-dark">儲值</div><div class="b-light">點數紀錄</div></div>
+    </div>
+    <div class="row">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10">
+        <span class="mut" style="flex:0 0 auto">累積 <b style="color:var(--ink)" class="num">$400</b></span>
+        <span class="act" style="text-align:right">再 <span class="amt num">$5,600</span> 升<b>焦糖布丁</b> · <span class="perk">95 折</span></span>
+      </div>
+      <div class="track" style="margin-top:7px"><div class="fill" style="width:7%"></div></div>
+    </div>
+  </div>
+  <div class="note">
+    ✅ 改動最小、跟現在一模一樣的高度。<br>
+    ⚠ 右邊那句在 375px 下**已經接近滿版** —— 等級名稱如果被總部改成更長的
+    （後台現在改得動），會擠。<b>而那是真的會發生的</b>。
+  </div>
+</section>
+
+<!-- ② 行動語獨佔一行 -->
+<section class="case">
+  <header><h2>② 行動語獨佔一行</h2><div class="q">把那句話放大成主角</div></header>
+  <div class="stage">
+    <div class="card">
+      <div class="top"><p class="t1">我的點數</p><span class="pill">會員等級: 珍珠奶茶</span></div>
+      <p class="amt">0<span>點</span></p>
+      <div class="btns"><div class="b-dark">儲值</div><div class="b-light">點數紀錄</div></div>
+    </div>
+    <div class="row">
+      <div style="font-size:var(--xs);line-height:1.5">
+        再 <b class="num" style="color:var(--accent)">$5,600</b> 升<b>焦糖布丁</b>，結帳 <b style="color:var(--accent)">95 折</b>
+      </div>
+      <div class="track" style="margin-top:8px"><div class="fill" style="width:7%"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:5px">
+        <span class="mut num">$400</span><span class="mut num">$6,000</span>
+      </div>
+    </div>
+  </div>
+  <div class="note">
+    ✅ 那句話有呼吸空間，**長等級名也不會擠**；條下方的 $400／$6,000 給了尺度感。<br>
+    ⚠ 多兩行（約 +34px）。而錢包頁第一屏本來就有卡片＋券＋最近消費。
+  </div>
+</section>
+
+<!-- ③ 條在上、話在下 -->
+<section class="case">
+  <header><h2>③ 條在上、話在下</h2><div class="q">先給進度感，再給理由</div></header>
+  <div class="stage">
+    <div class="card">
+      <div class="top"><p class="t1">我的點數</p><span class="pill">會員等級: 珍珠奶茶</span></div>
+      <p class="amt">0<span>點</span></p>
+      <div class="btns"><div class="b-dark">儲值</div><div class="b-light">點數紀錄</div></div>
+    </div>
+    <div class="row">
+      <div class="track"><div class="fill" style="width:7%"></div></div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:7px;gap:10">
+        <span class="act">再 <span class="amt num">$5,600</span> 升<b>焦糖布丁</b> · <span class="perk">95 折</span></span>
+        <span class="mut num" style="flex:0 0 auto">累積 $400</span>
+      </div>
+    </div>
+  </div>
+  <div class="note">
+    ✅ 條貼著粉卡，視覺上像是那張卡的延伸；行動語在下方，讀完條再讀理由。<br>
+    ⚠ 條上面沒有任何標籤 —— <b>不看下面那行就不知道那條在量什麼</b>。
+  </div>
+</section>
+</div>
+
+<!-- ══════ 三種邊界 ══════ -->
+<div class="edges">
+  <h3>三種邊界狀況（用 ① 的排版示範）</h3>
+  <p class="lead">
+    這三種<b>都是真的會發生的資料</b>，不是假想 ——
+    實測就有一位累積 <b>507</b> 卻已經是焦糖布丁（因為 <code>recalc_member_tier_tx</code> 只升不降）。
+    任何一案選定之後，這三格都要有一句對的話。
+  </p>
+  <div class="eg">
+
+    <div class="eb">
+      <div class="tag">① 累積低於本階門檻</div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10">
+        <span class="mut" style="flex:0 0 auto">累積 <b style="color:var(--ink)" class="num">$507</b></span>
+        <span class="act" style="text-align:right">再 <span class="amt num">$19,493</span> 升<b>提拉米蘇</b> · <span class="perk">9 折</span></span>
+      </div>
+      <div class="track" style="margin-top:7px"><div class="fill" style="width:0%"></div></div>
+      <div class="why">🔴 進度算出來是 <b>負的</b>（507 − 6,000）⇒ 必須<b>夾成 0</b>。
+        沒夾的話會畫出一條反向的長條。<b>已經在程式裡夾住了。</b></div>
+    </div>
+
+    <div class="eb">
+      <div class="tag">② 已是最高的自動升等階</div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10">
+        <span class="mut" style="flex:0 0 auto">累積 <b style="color:var(--ink)" class="num">$970</b></span>
+        <span class="act" style="text-align:right">已是最高等級 · 結帳 <span class="perk">9 折</span></span>
+      </div>
+      <div class="why">不畫條（沒有終點就沒有進度）。<br>
+        🎯 但<b>把「你現在享有 9 折」講出來</b> —— 否則這一行只剩一句「沒有下一階」，
+        對已經爬到頂的人是最沒有回報感的講法。</div>
+    </div>
+
+    <div class="eb">
+      <div class="tag">③ 等級由店家指定</div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10">
+        <span class="mut" style="flex:0 0 auto">累積 <b style="color:var(--ink)" class="num">$1,200</b></span>
+        <span class="act" style="text-align:right">主廚特調 · 結帳 <span class="perk">8 折</span></span>
+      </div>
+      <div class="why">主廚特調是<b>邀請制</b>，不靠累積取得 ⇒ 不畫條、也不講「還差多少」。<br>
+        ⚠ 刻意<b>不寫「由店家指定」</b> —— 那是內部語彙（<code>tier_override</code>），
+        對客人只要說他有什麼就好。</div>
+    </div>
+  </div>
+</div>
+
+<div class="pick">
+  <h3>我建議 <b>①</b>，但邊界那三格要照上面改</h3>
+  ① 的改動最小（版面高度不變），而錢包頁第一屏已經很滿。<br><br>
+  ⚠ 它唯一的風險是<b>右邊那句在 375px 下接近滿版</b> ——
+  而總部現在改得動等級名稱（今天剛做的那一頁），
+  改成「限定尊爵黑卡」之類就會擠。<br>
+  🎯 <b>解法不是換排版，是讓它安全地退化</b>：
+  等級名超過 5 個字時，那句話自動縮成 <code>再 $5,600 · 95 折</code>
+  （拿掉等級名，因為折數才是動機）。<br><br>
+  📌 若你覺得這一行值得更大聲，選 <b>②</b> —— 它是三案裡唯一
+  「長等級名也不會擠」的，代價是 +34px。
+</div>
+</div>
+</html>
