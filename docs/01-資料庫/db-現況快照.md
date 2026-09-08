@@ -1,8 +1,8 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 190 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`；
-> 最後歸檔的是 `2026-09-08_把註解裡的禁字拿掉.sql`）
+> **基準：`sql/applied/` 有 196 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`；
+> 最後歸檔的是 `2026-09-08_營運函式收掉anon.sql`）
 >
 > 🔴 **這個數字在整份文件裡只出現這一次。** 2026-09-07 之前它同時
 > 寫在檔頭與「怎麼知道它過期了」那一節，而**兩處漂開過三次**
@@ -156,11 +156,16 @@
 > `get_my_games_tx` 與 `get_my_active_queue_tx` 的 `players` 是**陣列**，不變。
 > ⚠ `pos_add_queue_member_tx` 的 `players` 仍在（一次性操作結果，刻意不動）。
 > 🎯 **要回「有哪些人」請叫 `player_names`，不要再用 `players`。**
-> **當下規模（2026-09-05 實測）：函式 169 · 資料表 46 · 檢視表 22 · RLS policy 29**
-> （帶 `can()` 的 policy 20 · 明確授權 anon 的函式 129 · **只靠 PUBLIC 的 0**）
+> **當下規模（2026-09-08 實測）：函式 181 · 資料表 46 · 檢視表 22 · RLS policy 29**
+> （帶 `can()` 的 policy 20 · 明確授權 anon 的函式 **114** · **只靠 PUBLIC 的 0**）
+>
+> 📌 上一版（2026-09-05）是 函式 169 · anon 129 · PUBLIC 124。
+>   函式 +12 是後台那三頁（商品 RPC 化 4 支、場次查詢 1 支、會員等級 2 支、
+>   升等進度 1 支…）；**anon 129 → 114 是 2026-09-08 兩份收斂的結果**，
+>   不是漂移（見下面「2026-09-08 的授權收斂」）。
 >
 > ⚠ **「只靠 PUBLIC 0」不等於「PUBLIC 都收乾淨了」** —— 實際上
-> **124 支函式 PUBLIC 仍然有 EXECUTE**，只是它們同時也明確授權給 anon。
+> **111 支函式 PUBLIC 仍然有 EXECUTE**，只是它們同時也明確授權給 anon。
 > 🔴 所以要真的關掉一支給前端的函式，**兩行都要寫**（硬規則 2.6／2.6b）：
 > ```sql
 > revoke execute on function f(...) from public;   -- 舊的走這條
@@ -207,7 +212,12 @@
 > **段位整批（`rank_tiers` / `rank_points` / `season_champions` ＋ `members.rank` 可為 null
 > ＋ `get_my_games_tx` 補 `my_rating_after` / `settled_at`）**、
 > **成績整批（`get_my_stats_tx` / `season_standings` / `season_rank_rows_tx`）**、
-> **`migi_jwt_uuid` ＋ `can` 兩支新函式 ＋ 三條寫入 policy 收緊（見下面「身分與權限」）**。
+> **`migi_jwt_uuid` ＋ `can` 兩支新函式 ＋ 三條寫入 policy 收緊（見下面「身分與權限」）**、
+> **2026-09-08 後台三頁整批**（商品改走 RPC 的 4 支 `admin_*_product_tx`、
+> 場次查詢 `admin_search_sessions_tx`、會員等級 `admin_list_member_tiers_tx` ＋
+> `admin_update_member_tier_tx` ＋ `member_tiers` 加 `updated_at` / `updated_by`、
+> 升等進度 `member_tier_progress_tx`）、
+> **2026-09-08 兩份授權收斂（anon 129 → 114，見「授權地雷」那一節）**。
 > 來源：`sql/checks/2026-08-28_現況全匯出.sql`（pg_proc / pg_class / pg_constraint / pg_index / information_schema）
 
 ## 怎麼用這份
@@ -250,13 +260,52 @@
 硬規則 2.5：**「函式在包裝裡跑得動」不代表「前端叫得動」** ——
 權限是在**呼叫點**檢查的，而在 DEFINER 裡呼叫端的權限根本不會被檢查。
 
-| 函式 | 狀況 | 後果 |
+| 函式 | 狀況（2026-09-08 重新查證） | 後果 |
 |---|---|---|
-| ~~`topup_void_tx`~~ | ✅ **2026-08-28 已補 anon 授權** | 補之前 POS 叫不動，跟 `topup_tx` 同一個形狀，只是提前補掉了 |
-| `charge_matched_tx` | INVOKER、**anon=無 auth=無** | 完全沒授權給任何人 = 不可能被前端呼叫。舊世代收費函式，**死碼候選**（待辦 28） |
-| `charge_private_tx` | 同上 | 同上 |
-| `checkout_tx` | INVOKER、anon=✅ | ⚠ **有授權但不該被直接呼叫** —— RLS 會濾成「什麼都沒發生而且不報錯」。授權存在本身就是危險（有人會叫） |
-| `_charge_core`／`charge_fnb_tx`／`reverse_txn_tx` | INVOKER、anon=✅ | 同上，都是內部函式卻對 anon 開著 |
+| `topup_void_tx` | DEFINER、**anon=🔴 仍在**、**三端 0 個呼叫點** | 2026-08-28 為了「日後做作廢儲值」補的授權，而那個功能到今天還沒做 ⇒ **一支沒人叫卻對外開著的作廢函式**。⏳ 待收 |
+| `reverse_txn_tx` | INVOKER、**anon ＋ PUBLIC 都在**、**0 個呼叫點** | 🔴 **沖銷錢包交易**（`p_original_txn_id`）。⏳ 待收 |
+| ~~`charge_matched_tx`~~ | ✅ anon=無 PUBLIC=無 | 本來就沒授權給任何人。舊世代收費函式，**死碼候選**（待辦 28） |
+| ~~`charge_private_tx`~~ | ✅ 同上 | 同上 |
+| ~~`checkout_tx`~~ | ✅ **2026-09-08 收乾淨**（anon／PUBLIC／authenticated 全收，只留 service_role） | 收之前是「有授權但不該被直接呼叫」；實測三端 0 個呼叫點，只被三支 DEFINER 包裝內部叫 |
+| ~~`_charge_core`／`charge_fnb_tx`~~ | ✅ **2026-09-08 收乾淨** | 兩支一起收 —— 都是 INVOKER 且外層叫內層，只收一層會變成「外層叫得動、內層失敗」 |
+
+### 🔴 2026-09-08 的授權收斂（anon 129 → 114）
+
+兩份 SQL，起點都是「**這支到底有沒有人在叫**」而不是「它看起來危不危險」。
+
+**① `2026-09-08_收掉三支沒人叫的會員函式.sql`**
+`clear_avatar_photo_tx`（刪頭像照片，前端走 Edge Function）／
+`set_invoice_pref_tx`（改發票載具統編，**三端都沒有人叫**）／
+`member_rank_tx`（只被 3 支 DEFINER 內部呼叫）。三支全收，只留 `service_role`。
+🔴 前兩支是真的洞：**知道一個 member uuid 就能刪別人的照片、改別人的發票設定**。
+⚠ `social.js:516` 的註解本來就寫著「任何人可以刪掉任何會員的照片」——
+  那個洞當時搬去 Edge Function 解決了，**但 RPC 的 anon 授權沒有跟著收**。
+
+**② `2026-09-08_營運函式收掉anon.sql`**
+POS 專用的 11 支收 `public` ＋ `anon`，**保留 `authenticated`**。
+🎯 **能做的原因是一個過期的理由**：CLAUDE.md 待辦 20 把它們歸類為
+「現況的必然 —— POS 用 anon key，收了會當場打壞收銀機」，
+而**店員登入 2026-09-04 就做完了** ⇒ 每一支 POS 的 RPC 現在都帶店員 JWT。
+✅ 實機端到端驗過（本機 POS ＋ 真實店員 session）：
+```
+店員 JWT  pos_member_detail_tx 200 ✅   has_daypass_tx 200 ✅
+anon      兩支都是 401 · code=42501 permission denied
+負對照    list_tables_tx 200 ✅   get_wallet_tx 200 ✅   ← 沒有誤傷
+```
+
+### ⚠ 刻意留著 anon 的兩支（不是漏掉）
+· **`log_app_event_tx`** —— 三端埋點入口，而 migi-web **在還沒登入時就要發事件**
+  （`member_session` 探針**就是在 `no_login` ＝ 沒有 session ＝ anon 那一刻發的**）。
+  🔴 收了會讓那些列消失 ⇒ **探針看起來全綠，而那是假的**。一個會說謊的儀器比沒有更糟。
+· **`get_my_orders_tx`** —— web（會員看自己）與 POS（店員查客人）都在叫，
+  要先解「店員視角 vs 會員視角」才動得了。
+
+### 🔴 掃描條件本身的盲點（2026-09-08 發現）
+那兩份用的判準是「**簽名含 `p_member_id` 且 anon 叫得動且沒查 `current_member_id()`**」，
+而 **`reverse_txn_tx`（`p_original_txn_id`）與 `topup_void_tx`（`p_topup_id`）
+用的不是 member id，所以整批掃描都看不到它們**。
+🎯 **金流函式不一定用會員當鍵** —— 沖銷用交易 id、作廢用單號。
+→ 下次掃暴露面，判準要用「**它會不會動到錢或身分**」，不是「簽名長什麼樣」。
 
 ---
 
@@ -456,7 +505,7 @@ using (org_id = current_org_id() and can('order.write'))     -- order_items / or
 | `member_coupons` | id! │ org_id! │ member_id! │ coupon_id! │ status!=active │ granted_at! │ used_at │ used_txn_id │ **expires_at** │ created_at! │ code │ used_order │ discounted_amount │ cost_bearer |
 | `member_interactions` | id! │ org_id! │ member_id! │ **staff_id** │ channel!=system │ kind! │ note │ created_at! │ created_by |
 | `member_likes` | id! │ org_id! │ liker_id! │ target_id! │ session_id │ created_at! |
-| `member_tiers` | **code!**（PK）│ label! │ discount_pct!=0 │ threshold_amount │ sort!=0 │ is_active!=true │ note │ created_at! |
+| `member_tiers` | **code!**（PK）│ label! │ discount_pct!=0 │ threshold_amount │ sort!=0 │ is_active!=true │ note │ created_at! │ **updated_at** │ **updated_by**<br>⚠ 後兩欄 2026-09-08 新增（後台編輯頁）。在此之前**改折扣完全沒有紀錄**，<br>而那是**不可回溯**的（硬規則 5.6）。<br>🔴 `threshold_amount` 為 **null ＝ 邀請制**（`chef_special`），不是「門檻是 0」。<br>📌 實際值 **0 / 6,000 / 20,000 / null** —— CLAUDE.md 一度記成「暫定 0 / 10,000 / 50,000」，<br>而那個錯的數字被《首店周邊商品規劃》拿去算杯子回本。**「暫定」兩個字讓沒有人回來對過。** |
 | `members` | id! │ org_id! │ **line_user_id** │ display_name! │ phone │ home_store_id │ **tier!=bubble_tea** │ gender │ **birthday** │ occupation │ district │ acquisition_source │ avatar_url │ **last_visit_at** │ **visit_count!=0** │ lifecycle!=new │ **primary_staff_id** │ deleted_at │ created_at! │ updated_at! │ created_by │ updated_by │ **tier_override** │ last_app_active_at │ rank!='銅牌熊 I' │ title!='新手上路' │ likes_count!=0 │ **is_test!=false** │ about │ sched │ style jsonb │ see_score!='牌咖' │ baby_tile jsonb │ avatar_source!=bear │ avatar_photo_path │ avatar_photo_at │ avatar_blocked!=false │ avatar_removed_count!=0 │ inv_type!=member │ inv_carrier │ inv_donate_code │ inv_tax_id │ inv_title │ **phone_verified_at** |
 | `order_items` | id! │ order_id! │ **product_id!** │ qty!=1 │ created_at! │ org_id! │ name │ unit_price! │ line_total │ **revenue_type!** |
 | `order_payments` | id! │ org_id! │ store_id! │ order_id! │ method! │ amount! │ cash_received │ change_given │ ref_no │ staff_id │ created_at! |
