@@ -781,11 +781,51 @@ migi github/           ← Claude Code 的 project folder 選這層
     ⚠ 傷害為零（測試帳號、一個時間戳、`is_test` 讓它進不了任何 `v_real_*`），
       **但那是運氣不是設計**。
 
-    → **正確做法：不要再用本機 dev server 驗會員 App 的登入後畫面。**
-      · 要看畫面 → **真手機開 `app.migi.tw`**（那本來就是唯一真實的環境）
-      · 要驗資料 → **MCP 直接叫 RPC**，看回傳的 JSON 對不對
-      · 要驗前端邏輯 → 讓它**優雅退化**（新鍵還沒回來時落回舊行為），
-        那樣「先推前端」本身就是安全的
+    ### ✅ 臨時方案：**先燒保險絲**（2026-09-07 實測可用）
+    🔴 我第一版在這裡寫「不要再用本機 dev server 驗登入後的畫面」——
+      **那句話當天就被實測推翻了。** 記踩坑要記驗證過的正解，
+      不要記當下的推測（同 2026-09-05 那個 `raise` 的錯誤修法）。
+
+    `App.jsx` 只在**保險絲沒燒**時才自動導：
+    ```js
+    if (who.error === 'no_login') {
+      if (!loginFuseBlown()) { blowLoginFuse(); lineLogin() }
+      return          // ← 燒過了就只是 return，畫面留在原地
+    }
+    ```
+    ⇒ 在 console 先種兩個東西，再 reload（**同一個分頁**）：
+    ```js
+    localStorage.setItem('migi_member',
+      JSON.stringify({ id: '<member uuid>', name: '測試02' }))   // org_id 是常數，不用給
+    sessionStorage.setItem('migi_line_login_tried', '1')          // 保險絲
+    ```
+    **資料真的讀得到** —— 那 19 支會員 RPC 都還有
+    `coalesce(current_member_id(), p_member_id)`，anon 沒有 JWT ⇒ 退回前端送的 id。
+
+    🔴 **它算不算 5.7 的「開發用旁路」？不算。** 它沒有新增任何繞過，
+      是**現有 fallback 的自然結果**，而且**全在瀏覽器 console、不進產品碼**
+      —— 跟 11.6 那個寫入攔截器同一類（「不進產品碼」正是它可以存在的理由）。
+
+    🔴 **但它有到期日：待辦 14 收尾。** 那件事要做的正是「拿掉 `p_member_id` 退回」，
+      **拿掉的那天這個方案就死了。**
+      → 所以**翻那 19 支之前要先決定本機開發怎麼辦**，不要翻完才發現。
+        最可能的答案是 **Cloudflare 預覽分支**：`<branch>.migi-web.pages.dev`
+        是固定網址，Callback 白名單只加一次。
+        ⚠ 它比 localhost 好在**要有 push 權限才當得成那個 origin**，
+          而 localhost 是「任何人在自己機器上都是」。
+
+    ⚠ **開機那幾百毫秒仍然沒有保護** —— reload 會還原 `window.fetch`，
+      而 App 開機就會呼叫 `mark_app_active_tx`。2026-09-07 兩次驗證
+      各寫了一次測試02 的 `last_app_active_at`。
+      → **選一個 `is_test = true` 的帳號**（它進不了任何 `v_real_*`），
+        並且**盡量少 reload**：保險絲燒掉之後 SPA 內切分頁不會重載，
+        攔截器留得住，只有第一次進場沒保護。
+
+    ### 其餘兩條路（不衝突，用途不同）
+    · **桌機瀏覽器直接開 `app.migi.tw`** —— LIFF 在外部瀏覽器可用
+      （官方文件，已為 POS 查證過）。看到的是**已部署**的版本。
+      ⚠ LINE 的桌機登入頁預設是 email，要點「透過行動條碼登入」。
+    · **要驗資料**就用 MCP 直接叫 RPC 看回傳的 JSON —— 那比看畫面可靠。
     📌 POS 與 admin 不受影響：它們跑在桌機瀏覽器，
       而且 `hq.migi.tw` 還留著 Email 那條 break-glass。
 
