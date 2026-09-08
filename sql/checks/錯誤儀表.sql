@@ -81,7 +81,14 @@ select 序, 項目, 內容 from (
                                             props->>'url', '(無訊息)'), 80) as msg,
                               count(*) as n, max(created_at) as mx
                          from app_events
-                        where event in ('app_error','pos_error')
+                        /* 🔴 **用後綴比對，不要列清單**（2026-09-08 改）。
+                           原本寫死 `in ('app_error','pos_error')`，而
+                           `migi-admin` 那天加了 `admin_error` ⇒ 它在儀表上
+                           **完全看不見**，也就是「建了上報卻沒有人讀」。
+                           ⚠ 三端的錯誤事件都以 `_error` 結尾，所以讓它變成
+                             **結構性的**：第四端出現時不用有人記得回來加一格。
+                           📌 同 `analytics.js` 用 `admin_` / `pos_` 前綴的理由。 */
+                        where event like '%\_error' escape '\'
                           and created_at > now() - interval '7 days'
                           -- 🔴 濾掉開發期 HMR 噪音（見檔頭）。歷史那 80 筆改不掉。
                           and coalesce(props->>'msg', props->>'message', '')
@@ -119,7 +126,14 @@ select 序, 項目, 內容 from (
                               count(*) as n,
                               min(created_at) as mn, max(created_at) as mx
                          from app_events
-                        where event in ('app_error','pos_error')
+                        /* 🔴 **用後綴比對，不要列清單**（2026-09-08 改）。
+                           原本寫死 `in ('app_error','pos_error')`，而
+                           `migi-admin` 那天加了 `admin_error` ⇒ 它在儀表上
+                           **完全看不見**，也就是「建了上報卻沒有人讀」。
+                           ⚠ 三端的錯誤事件都以 `_error` 結尾，所以讓它變成
+                             **結構性的**：第四端出現時不用有人記得回來加一格。
+                           📌 同 `analytics.js` 用 `admin_` / `pos_` 前綴的理由。 */
+                        where event like '%\_error' escape '\'
                           -- 同 ①：濾掉開發期 HMR 噪音
                           and coalesce(props->>'msg', props->>'message', '')
                               !~* '(is not defined|before initial)'
