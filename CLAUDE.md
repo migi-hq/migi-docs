@@ -761,15 +761,36 @@ migi github/           ← Claude Code 的 project folder 選這層
       「有照片時標籤變成『我的照片』」與「餘額兩頁同步」。
       ⚠ 用完要還原 `window.fetch` 並重載，不要留在頁面上。
 
-    ### 🔴 11.7 店員／會員登入上線之後，**本機 dev server 看不到登入後的畫面了**
-    （2026-09-07 踩到，而它是待辦 14／20 完成的副作用）
+    ### 🔴 11.7 本機看登入後的畫面 → **走測試帳號那條路，不要自己發明**
+    📄 `docs/09-環境流程/用測試帳號登入會員App.md`（2026-09-05 就寫好了）
+
+    🔴 **這一節 2026-09-07 被我寫錯過三次，而三次都是同一個病：沒查就寫。**
     ```
-    localhost:5173  →  App 找不到 LIFF session  →  自動跳 access.line.me
+    ① 「本機看不到登入後的畫面」        → 錯，那份文件第 60 行明寫支援 localhost
+    ② 於是我「發明」了保險絲 workaround → 那份文件第 103 行就是同一行程式碼
+    ③ 「POS 與 admin 不受影響」          → 錯，POS 的 line.js:32 自己寫著「本機測不了登入」
     ```
-    🔴 而 **localhost 不在 LIFF 白名單，也不可以加**（那等於讓任何能跑本機的人
-      拿到 LINE 授權回呼）—— 所以這條路是**設計上封死的，不是壞了**。
-    ⇒ 「畫出來才會發現」（硬規則 3.85）與「要在對的裝置上畫出來」（3.855）
-      **在會員 App 上從此只能靠真的手機開 `app.migi.tw`**。
+    🎯 而 ② 發明出來的版本**比原本的差**：它靠 `p_member_id` 退回活著，
+      **待辦 14 拿掉那個退回就死了**；文件那條走的是真 JWT，不受影響。
+    ⚠ 同踩坑第 29 條 —— 只是這次「先查再說沒有」要查的是 **`docs/`**，不是資料庫。
+
+    ### 正解（一行都不用改產品碼）
+    四個測試帳號在 Supabase Auth 有**真的密碼**，登入拿到的 JWT
+    帶 `app_metadata.line_user_id` → `migi_jwt_line_id()` → `current_member_id()`
+    —— **與真客人走完全同一條路**，後端分不出來。照那份文件貼那段 console 片段即可。
+    ✅ 2026-09-08 查證：`test01~04@migi.invalid` 四個都在、都已確認、
+      `app_metadata` 都對得上真會員。
+
+    ### ⚠ 為什麼 LINE 登入在 localhost 兩端都不行 —— 但**原因不同**
+    | | 機制 | 登入完導回哪 | 要多一個 origin 得做什麼 |
+    |---|---|---|---|
+    | **會員 App** | **LIFF SDK** `liff.login()` | LIFF app 的 **Endpoint URL**（設在 LINE 後台） | 🔴 **再開一個 LIFF app** —— 每次呼叫都導同一個地方，改不了 |
+    | **POS** | **純 OAuth**（2026-09-05 從 LIFF 改的） | 自己送的 `redirect_uri = window.location.origin` | ✅ 把那個 origin 加進 **Callback URL 白名單** |
+
+    ⚠ 兩邊都**不要加 localhost**（那等於讓任何能跑本機的人拿到 LINE 授權回呼）。
+    📌 POS 的 `line.js:44` 特地用 `origin` 而不寫死，理由就是
+      「寫死的話 preview 網域永遠登不進去」—— 所以**要做預覽環境時 POS 幾乎零成本**，
+      會員 App 才是要多開 LIFF app 的那一個。
 
     ### ⚠ 而它讓 11.6 的攔截器順序變成一個**做不到的要求**
     11.6 說「先 navigate／reload，再裝攔截器」——
@@ -781,53 +802,18 @@ migi github/           ← Claude Code 的 project folder 選這層
     ⚠ 傷害為零（測試帳號、一個時間戳、`is_test` 讓它進不了任何 `v_real_*`），
       **但那是運氣不是設計**。
 
-    ### ✅ 臨時方案：**先燒保險絲**（2026-09-07 實測可用）
-    🔴 我第一版在這裡寫「不要再用本機 dev server 驗登入後的畫面」——
-      **那句話當天就被實測推翻了。** 記踩坑要記驗證過的正解，
-      不要記當下的推測（同 2026-09-05 那個 `raise` 的錯誤修法）。
-
-    `App.jsx` 只在**保險絲沒燒**時才自動導：
-    ```js
-    if (who.error === 'no_login') {
-      if (!loginFuseBlown()) { blowLoginFuse(); lineLogin() }
-      return          // ← 燒過了就只是 return，畫面留在原地
-    }
-    ```
-    ⇒ 在 console 先種兩個東西，再 reload（**同一個分頁**）：
-    ```js
-    localStorage.setItem('migi_member',
-      JSON.stringify({ id: '<member uuid>', name: '測試02' }))   // org_id 是常數，不用給
-    sessionStorage.setItem('migi_line_login_tried', '1')          // 保險絲
-    ```
-    **資料真的讀得到** —— 那 19 支會員 RPC 都還有
-    `coalesce(current_member_id(), p_member_id)`，anon 沒有 JWT ⇒ 退回前端送的 id。
-
-    🔴 **它算不算 5.7 的「開發用旁路」？不算。** 它沒有新增任何繞過，
-      是**現有 fallback 的自然結果**，而且**全在瀏覽器 console、不進產品碼**
-      —— 跟 11.6 那個寫入攔截器同一類（「不進產品碼」正是它可以存在的理由）。
-
-    🔴 **但它有到期日：待辦 14 收尾。** 那件事要做的正是「拿掉 `p_member_id` 退回」，
-      **拿掉的那天這個方案就死了。**
-      → 所以**翻那 19 支之前要先決定本機開發怎麼辦**，不要翻完才發現。
-        最可能的答案是 **Cloudflare 預覽分支**：`<branch>.migi-web.pages.dev`
-        是固定網址，Callback 白名單只加一次。
-        ⚠ 它比 localhost 好在**要有 push 權限才當得成那個 origin**，
-          而 localhost 是「任何人在自己機器上都是」。
-
-    ⚠ **開機那幾百毫秒仍然沒有保護** —— reload 會還原 `window.fetch`，
-      而 App 開機就會呼叫 `mark_app_active_tx`。2026-09-07 兩次驗證
-      各寫了一次測試02 的 `last_app_active_at`。
-      → **選一個 `is_test = true` 的帳號**（它進不了任何 `v_real_*`），
-        並且**盡量少 reload**：保險絲燒掉之後 SPA 內切分頁不會重載，
-        攔截器留得住，只有第一次進場沒保護。
+    ### ⚠ 那條路仍然有一個**沒有保護的視窗**：開機那幾百毫秒
+    reload 會還原 `window.fetch`，而 App 一開機就呼叫 `mark_app_active_tx`。
+    2026-09-07 兩次驗證各寫了一次測試02 的 `last_app_active_at`。
+    → **選 `is_test = true` 的帳號**（它進不了任何 `v_real_*`），
+      並且**盡量少 reload** —— 進去之後 SPA 內切分頁不重載，
+      攔截器留得住，只有第一次進場沒保護。
 
     ### 其餘兩條路（不衝突，用途不同）
     · **桌機瀏覽器直接開 `app.migi.tw`** —— LIFF 在外部瀏覽器可用
       （官方文件，已為 POS 查證過）。看到的是**已部署**的版本。
       ⚠ LINE 的桌機登入頁預設是 email，要點「透過行動條碼登入」。
     · **要驗資料**就用 MCP 直接叫 RPC 看回傳的 JSON —— 那比看畫面可靠。
-    📌 POS 與 admin 不受影響：它們跑在桌機瀏覽器，
-      而且 `hq.migi.tw` 還留著 Email 那條 break-glass。
 
 13. 🔴 **設計 token 一律來自 `@migi/assets`，不要在任何 repo 裡再定義一份。**
     （2026-08-29 建立）
@@ -3888,6 +3874,33 @@ settled_at 09-03 15:18   ← 8 場全部同一個時間點
       牌局本身結束是**桌**的事，不是房的事。
     → 所以「載入更早的」上限 100 筆是刻意的，**不要為了當檔案庫去拉大** ——
       那是待辦 42 那一頁的工作。
+
+43. 🔴 **POS 的店員登入信任「會員 App 那一側產生的 token」**（2026-09-08，
+    使用者問「多開一個 LIFF app 會讓 POS 有漏洞嗎」時挖出來的既有問題）。
+
+    ```ts
+    // supabase/functions/staff-login/index.ts
+    fetch('https://api.line.me/oauth2/v2.1/verify', { id_token, client_id: LINE_CHANNEL_ID })
+    if (lineBody?.aud !== LINE_CHANNEL_ID) → 401
+    ```
+    🔴 **`aud` 是 channel 的，不是 LIFF app 的。** ⇒ 同一個 channel 底下
+      **任何** origin 拿到的 id_token，`staff-login` 都會接受。
+    ⇒ `app.migi.tw`（會員 App）與 `pos.migi.tw`（POS）**今天已經互通**：
+      一個店員在會員 App 裡，那一頁拿得到的 token 就能換到 POS session。
+
+    ✅ **不是「多開 LIFF app」造成的** —— 那只是多一個 origin 落在同一個耦合裡，
+      而保護在於 **Endpoint URL 綁死 token 落在哪**：惡意網站就算用
+      公開的 LIFF ID 呼叫 `liff.login()`，LINE 也是把人導回我們自己的網址。
+      ⇒ 風險 ＝ 誰能在那個 origin 放程式碼 ＝ 誰能推那個分支，
+        而那些人本來就能推 `main`。**邊際風險接近零。**
+
+    → **正解：POS 用自己的 LINE Login channel**（同一個 Provider ⇒
+      `line_user_id` 不變），`staff-login` 驗那個 channel。
+      CLAUDE.md 早就預測過這件事（待辦 20）：
+      「日後 POS 店員登入若要更嚴，**那才是開第二個 channel 的正當理由**」。
+    ⏳ **現在不做**：要新 channel ＋ 改 secret ＋ 改 POS 的 LIFF/OAuth 設定
+      ＋ 重新實機驗一次登入，而今天店員只有一個人而且就是老闆。
+    🎯 **觸發點：店員人數變多，或上線。**
 
 ### 上線當天
 
