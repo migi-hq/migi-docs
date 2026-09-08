@@ -1,8 +1,8 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 196 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`；
-> 最後歸檔的是 `2026-09-08_營運函式收掉anon.sql`）
+> **基準：`sql/applied/` 有 198 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`；
+> 最後歸檔的是 `2026-09-08_收桌與作廢類收掉anon.sql`）
 >
 > 🔴 **這個數字在整份文件裡只出現這一次。** 2026-09-07 之前它同時
 > 寫在檔頭與「怎麼知道它過期了」那一節，而**兩處漂開過三次**
@@ -157,15 +157,15 @@
 > ⚠ `pos_add_queue_member_tx` 的 `players` 仍在（一次性操作結果，刻意不動）。
 > 🎯 **要回「有哪些人」請叫 `player_names`，不要再用 `players`。**
 > **當下規模（2026-09-08 實測）：函式 181 · 資料表 46 · 檢視表 22 · RLS policy 29**
-> （帶 `can()` 的 policy 20 · 明確授權 anon 的函式 **114** · **只靠 PUBLIC 的 0**）
+> （帶 `can()` 的 policy 20 · 明確授權 anon 的函式 **108** · **只靠 PUBLIC 的 0**）
 >
 > 📌 上一版（2026-09-05）是 函式 169 · anon 129 · PUBLIC 124。
 >   函式 +12 是後台那三頁（商品 RPC 化 4 支、場次查詢 1 支、會員等級 2 支、
->   升等進度 1 支…）；**anon 129 → 114 是 2026-09-08 兩份收斂的結果**，
+>   升等進度 1 支…）；**anon 129 → 108 是 2026-09-08 四份收斂的結果**，
 >   不是漂移（見下面「2026-09-08 的授權收斂」）。
 >
 > ⚠ **「只靠 PUBLIC 0」不等於「PUBLIC 都收乾淨了」** —— 實際上
-> **111 支函式 PUBLIC 仍然有 EXECUTE**，只是它們同時也明確授權給 anon。
+> **106 支函式 PUBLIC 仍然有 EXECUTE**，只是它們同時也明確授權給 anon。
 > 🔴 所以要真的關掉一支給前端的函式，**兩行都要寫**（硬規則 2.6／2.6b）：
 > ```sql
 > revoke execute on function f(...) from public;   -- 舊的走這條
@@ -300,12 +300,43 @@ anon      兩支都是 401 · code=42501 permission denied
 · **`get_my_orders_tx`** —— web（會員看自己）與 POS（店員查客人）都在叫，
   要先解「店員視角 vs 會員視角」才動得了。
 
-### 🔴 掃描條件本身的盲點（2026-09-08 發現）
-那兩份用的判準是「**簽名含 `p_member_id` 且 anon 叫得動且沒查 `current_member_id()`**」，
+### 🔴 掃描條件本身的盲點（2026-09-08 發現）—— 而換了判準之後又多找出 6 支
+前兩份用的判準是「**簽名含 `p_member_id` 且 anon 叫得動且沒查 `current_member_id()`**」，
 而 **`reverse_txn_tx`（`p_original_txn_id`）與 `topup_void_tx`（`p_topup_id`）
 用的不是 member id，所以整批掃描都看不到它們**。
 🎯 **金流函式不一定用會員當鍵** —— 沖銷用交易 id、作廢用單號。
-→ 下次掃暴露面，判準要用「**它會不會動到錢或身分**」，不是「簽名長什麼樣」。
+
+✅ **判準換成「函式名裡有沒有動錢／動身分的動詞」**：
+```
+topup|checkout|charge|refund|reverse|void|grant|revoke|
+rebind|merge|claim|settle|adjust|fix_wallet|reconcile
+```
+⇒ **當場又多找出 4 支**（第四批）：
+| 函式 | 前端 | 怎麼收 |
+|---|---|---|
+| `settle_session_tx` 收桌 | POS ×1 | `public`＋`anon`，留 `authenticated` |
+| `void_session_tx` 取消開桌 | POS ×1 | 同上 |
+| `void_invoice_tx` 作廢發票 | **0**（發票整條未接、`invoices` 0 筆） | 全收 |
+| `calc_topup_bonus_tx` 贈點試算 | **0**（只被 `topup_tx` 等兩支 DEFINER 內部叫） | 全收 |
+
+🔴 前兩支的嚴重程度容易被低估：它們不動錢，但**知道一個 session id
+  就能讓店裡正在打的一桌消失**，而店員看到的症狀是「系統自己把桌收了」，
+  且查不到是誰（`p_staff_id` 從 `current_staff()` 覆寫，anon 呼叫時是 null）。
+
+📌 **`settle_session_tx` 對找不到的場次是回 `{ok:false, reason:'session_not_found'}`
+  不是拋例外** —— 所以驗證段那格印「假 session 居然沒報錯」是設計行為，
+  不是異常（同硬規則 4 那一族：業務錯誤回值不 raise）。
+
+### ⚠ 第四批也刻意不動兩類
+· **`list_topup_plans_tx`** —— 儲值方案主檔，**會員 App 與 POS 都在讀**，
+  而未登入的會員 App 是 anon。收了錢包頁的儲值方案會空掉。
+· **`trg_session_voided_release_queue` / `trg_topup_set_no`** ——
+  被上面那個正則**誤抓**的觸發器函式（名字裡有 `void` / `topup`）。
+  🎯 `returns trigger` 的函式直接呼叫會被 Postgres 自己擋下
+    （`trigger functions can only be called as triggers`），**沒有攻擊面**。
+  ⚠ 寫在這裡是為了讓下一個人看到清單時不會又去「修」它們。
+
+→ 四批之後 `anon` 明確授權 **129 → 108**，PUBLIC **124 → 106**。
 
 ---
 
