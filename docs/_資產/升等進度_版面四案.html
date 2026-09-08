@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>會員累積進度 · 版面四案（2026-09-08）</title>
+<style>
+:root{
+  --brand:#FAD6DC; --brand-light:#FFE7EE; --brand-tint:#FFF6F8;
+  --ink:#2E2B2C; --accent:#C2607A;
+  --gray-1:#7A7572; --gray-2:#9A9491; --hint:#B4AEA9;
+  --gray-3:#ECEAE9; --gray-4:#F2F0EE; --divider:#DED9D5;
+  --white:#fff; --field-bg:#F8F7F6; --page-bg:#F6F5F4;
+  --xxxs:11px; --xxs:12px; --xs:13px; --s:14px; --m:15px; --l:16px; --xl:18px; --xxl:22px; --h:38px;
+  --r-pill:999px; --r-lg:16px; --r-card:14px; --r-field:12px;
+  --bw-hair:.5px; --bw-base:1px; --bw-thick:1.5px;
+  --font-sans:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page-bg);font-family:var(--font-sans);color:var(--ink);padding:26px 16px 60px}
+.wrap{max-width:1240px;margin:0 auto}
+h1{font-size:var(--xxl);margin:0 0 6px}
+.sub{font-size:var(--xs);color:var(--gray-1);line-height:1.85;margin:0 0 8px;max-width:860px}
+.warn{background:var(--brand-tint);border:var(--bw-base) solid var(--brand);border-radius:var(--r-card);
+      padding:12px 15px;font-size:var(--xs);line-height:1.85;max-width:860px;margin:0 0 24px}
+.grid{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
+.case{background:var(--white);border:var(--bw-base) solid var(--gray-3);border-radius:var(--r-lg);width:375px;overflow:hidden;box-shadow:0 2px 8px rgba(46,43,44,.06)}
+.case > header{padding:11px 15px;border-bottom:var(--bw-base) solid var(--gray-3);background:var(--field-bg)}
+.case h2{font-size:var(--m);margin:0}
+.case .q{font-size:var(--xxxs);color:var(--gray-2);margin-top:2px;line-height:1.7}
+.phone{background:var(--page-bg);padding:0 0 14px}
+
+/* ── 上下文：點數卡 ＋ 優惠券卡（不可省，這一題就是「它跟鄰居比起來如何」）── */
+.hero{margin:14px 20px 0;background:var(--brand);border-radius:var(--r-lg);padding:15px 16px;position:relative;overflow:hidden}
+.hero .top{display:flex;justify-content:space-between;align-items:center}
+.hero .t{font-size:var(--s);font-weight:600}
+.glass{display:inline-flex;align-items:center;border-radius:var(--r-pill);background:rgba(255,255,255,.55);font-size:var(--xxxs);font-weight:700;padding:3px 9px}
+.pts{margin:6px 0 0;font-size:var(--h);font-weight:700;line-height:1.05}
+.pts s{font-size:var(--l);font-weight:700;margin-left:4px;text-decoration:none}
+.btns{display:flex;gap:8px;margin-top:13px}
+.btns b{flex:1;text-align:center;border-radius:var(--r-pill);padding:10px 0;font-size:var(--m);font-weight:700}
+.b1{background:var(--ink);color:var(--white)} .b2{background:rgba(255,255,255,.75);color:var(--ink)}
+
+.cpn{margin:12px 20px 0;display:flex;justify-content:space-between;align-items:center;
+     border:var(--bw-thick) solid var(--gray-3);border-radius:var(--r-card);padding:11px 14px}
+.tile{display:inline-flex;align-items:center;justify-content:center;background:var(--brand);width:30px;height:38px;border-radius:var(--r-field);font-size:var(--l);font-weight:700;flex:0 0 auto}
+.cpn .n{margin:0;font-size:var(--m);font-weight:700}
+.cpn .d{margin:0;font-size:var(--xs);color:var(--gray-1)}
+.look{font-size:var(--xs);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── 進度條共用 ── */
+.bar{background:var(--gray-4);border-radius:var(--r-pill);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:var(--r-pill)}
+.pillx{display:inline-block;background:var(--brand-light);border-radius:var(--r-pill);padding:1px 8px;font-weight:700;color:var(--ink)}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.acc{color:var(--accent);font-weight:700;font-variant-numeric:tabular-nums}
+.ink{color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums}
+
+/* A 現行 */
+.A{padding:10px 20px 0;font-size:var(--xxs);color:var(--gray-2)}
+.A .bar{height:6px;margin-top:7px}
+.A .b{margin-top:5px}
+
+/* B 自己的卡片（字級不變）*/
+.B{margin:12px 20px 0;border:var(--bw-thick) solid var(--gray-3);border-radius:var(--r-card);padding:11px 14px;font-size:var(--xxs);color:var(--gray-2)}
+.B .bar{height:6px;margin-top:8px}
+.B .b{margin-top:6px}
+
+/* C 卡片 ＋ 字級升一階 ＋ 條加粗 */
+.C{margin:12px 20px 0;border:var(--bw-thick) solid var(--gray-3);border-radius:var(--r-card);padding:13px 15px;font-size:var(--xs);color:var(--gray-1)}
+.C .bar{height:9px;margin-top:10px}
+.C .b{margin-top:8px}
+
+/* D 完全比照優惠券（圖磚 ＋ 標題 ＋ 說明 ＋ 查看）*/
+.D{margin:12px 20px 0;border:var(--bw-thick) solid var(--gray-3);border-radius:var(--r-card);padding:11px 14px}
+.D .head{display:flex;align-items:center;gap:10px}
+.D .n{margin:0;font-size:var(--m);font-weight:700}
+.D .d{margin:0;font-size:var(--xs);color:var(--gray-1)}
+.D .bar{height:8px;margin-top:10px}
+.D .foot{display:flex;justify-content:space-between;align-items:baseline;margin-top:7px;font-size:var(--xxs);color:var(--gray-2)}
+</style>
+
+<div class="wrap">
+<h1>會員累積進度 · 版面四案</h1>
+<p class="sub">
+使用者 2026-09-08：「這一區域很奇怪，很窄小，是不是要做大一點」。
+<b>文案不動</b>（W5 是 9/8 挑定的），這一輪只決定<b>版面份量</b>。
+</p>
+<div class="warn">
+🔴 <b>診斷：問題不是字太小，是它是整頁唯一沒有容器的區塊。</b><br>
+點數是卡片、優惠券是卡片、最近消費是卡片 —— 只有它是裸的一條，
+所以讀起來像「掛在點數卡下面的一行說明」，不像自己的東西。<br>
+⚠ 現有註解說「刻意放在卡片外面，塞進點數卡會讓『還差 $5,600』看起來像點數不夠」——
+<b>那個理由仍然成立</b>，它反對的是「放進點數卡裡」，不是「不能有自己的卡」。
+給它自己的容器反而讓那個分隔更清楚。<br>
+📌 每一案都連著上下鄰居一起畫 —— <b>這一題就是「它跟鄰居比起來如何」，
+單獨看一個區塊答不出來。</b>
+</div>
+
+<div class="grid">
+
+  <!-- ── A ── -->
+  <div class="case">
+    <header><h2>A · 現行（對照）</h2><div class="q">裸的一條，12px 字、6px 條</div></header>
+    <div class="phone">
+      <div class="hero"><div class="top"><span class="t">我的點數</span><span class="glass">會員等級: 珍珠奶茶</span></div>
+        <p class="pts">0<s>點</s></p><div class="btns"><b class="b1">儲值</b><b class="b2">點數紀錄</b></div></div>
+      <div class="A">
+        <div class="row"><span>下一階 <span class="pillx">焦糖布丁</span> 檯費 <b class="acc">95 折</b></span><span>還差 <b class="acc">$5,600</b></span></div>
+        <div class="bar"><i style="width:7%"></i></div>
+        <div class="row b"><span>已累積消費 <b class="ink">$400</b></span><span style="color:var(--gray-1)">查看 ›</span></div>
+      </div>
+      <div class="cpn"><div style="display:flex;align-items:center;gap:10px"><span class="tile">券</span>
+        <div><p class="n">我的優惠券</p><p class="d">0 張可用 · 結帳時自動帶出</p></div></div><span class="look">查看 ›</span></div>
+    </div>
+  </div>
+
+  <!-- ── B ── -->
+  <div class="case">
+    <header><h2>B · 給它自己的卡片</h2><div class="q">字級完全不動，只加邊框與內距</div></header>
+    <div class="phone">
+      <div class="hero"><div class="top"><span class="t">我的點數</span><span class="glass">會員等級: 珍珠奶茶</span></div>
+        <p class="pts">0<s>點</s></p><div class="btns"><b class="b1">儲值</b><b class="b2">點數紀錄</b></div></div>
+      <div class="B">
+        <div class="row"><span>下一階 <span class="pillx">焦糖布丁</span> 檯費 <b class="acc">95 折</b></span><span>還差 <b class="acc">$5,600</b></span></div>
+        <div class="bar"><i style="width:7%"></i></div>
+        <div class="row b"><span>已累積消費 <b class="ink">$400</b></span><span style="color:var(--gray-1)">查看 ›</span></div>
+      </div>
+      <div class="cpn"><div style="display:flex;align-items:center;gap:10px"><span class="tile">券</span>
+        <div><p class="n">我的優惠券</p><p class="d">0 張可用 · 結帳時自動帶出</p></div></div><span class="look">查看 ›</span></div>
+    </div>
+  </div>
+
+  <!-- ── C ── -->
+  <div class="case">
+    <header><h2>C · 卡片 ＋ 字級升一階</h2><div class="q">12 → 13px，進度條 6 → 9px</div></header>
+    <div class="phone">
+      <div class="hero"><div class="top"><span class="t">我的點數</span><span class="glass">會員等級: 珍珠奶茶</span></div>
+        <p class="pts">0<s>點</s></p><div class="btns"><b class="b1">儲值</b><b class="b2">點數紀錄</b></div></div>
+      <div class="C">
+        <div class="row"><span>下一階 <span class="pillx">焦糖布丁</span> 檯費 <b class="acc">95 折</b></span><span>還差 <b class="acc">$5,600</b></span></div>
+        <div class="bar"><i style="width:7%"></i></div>
+        <div class="row b"><span>已累積消費 <b class="ink">$400</b></span><span style="color:var(--accent);font-weight:700">查看 ›</span></div>
+      </div>
+      <div class="cpn"><div style="display:flex;align-items:center;gap:10px"><span class="tile">券</span>
+        <div><p class="n">我的優惠券</p><p class="d">0 張可用 · 結帳時自動帶出</p></div></div><span class="look">查看 ›</span></div>
+    </div>
+  </div>
+
+  <!-- ── D ── -->
+  <div class="case">
+    <header><h2>D · 完全比照優惠券那張</h2><div class="q">圖磚 ＋ 15px 標題 ＋ 說明 ＋ accent 查看</div></header>
+    <div class="phone">
+      <div class="hero"><div class="top"><span class="t">我的點數</span><span class="glass">會員等級: 珍珠奶茶</span></div>
+        <p class="pts">0<s>點</s></p><div class="btns"><b class="b1">儲值</b><b class="b2">點數紀錄</b></div></div>
+      <div class="D">
+        <div class="head">
+          <span class="tile" style="background:var(--brand-light)">級</span>
+          <div style="flex:1;min-width:0">
+            <p class="n">會員等級</p>
+            <p class="d">下一階 <span class="pillx" style="font-size:var(--xxs)">焦糖布丁</span> 檯費 <b class="acc">95 折</b></p>
+          </div>
+          <span class="look">查看 ›</span>
+        </div>
+        <div class="bar"><i style="width:7%"></i></div>
+        <div class="foot"><span>已累積消費 <b class="ink">$400</b></span><span>還差 <b class="acc">$5,600</b></span></div>
+      </div>
+      <div class="cpn"><div style="display:flex;align-items:center;gap:10px"><span class="tile">券</span>
+        <div><p class="n">我的優惠券</p><p class="d">0 張可用 · 結帳時自動帶出</p></div></div><span class="look">查看 ›</span></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="warn" style="margin-top:26px">
+<b>我的看法（依「它解決了什麼」排）</b><br><br>
+🥇 <b>D</b> —— 唯一同時解決兩件事的：有容器<b>而且</b>跟優惠券長得一樣，
+所以它終於是「錢包頁的第三個區塊」而不是點數卡的註腳。
+圖磚讓掃視時一眼看到三個並排的入口。<br>
+⚠ 代價：多一個「會員等級」標題，而右上角膠囊已經寫過一次等級名 —— 有一點重複。<br><br>
+🥈 <b>C</b> —— 改動最小、風險最低。字級升一階之後那一行才真的讀得到，
+但它仍然沒有圖磚，掃視時跟下面兩張卡不同節奏。<br><br>
+<b>B</b> 只加框不加字級 —— 解決了「沒有容器」但沒解決「很窄小」，
+可能還是覺得擠。<br><br>
+🔴 <b>四案都保留 W5 的文案</b>（下一階〔焦糖布丁〕檯費 95 折 / 還差 / 已累積消費）——
+那是 9/8 已經挑定的，這一輪只換版面。
+</div>
+</div>
+</html>
