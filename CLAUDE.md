@@ -824,8 +824,21 @@ migi github/           ← Claude Code 的 project folder 選這層
       所以那「一次」必須由**使用者自己在 Browser 窗格裡打** ——
       Claude 可以先把帳號欄填好、游標放到密碼欄，值從輸入框直接進
       `supabase.auth.signInWithPassword`，Claude 全程看不到。
-    ⚠ **POS 沒有密碼表單**（登入頁只有 LINE OAuth），所以它要嘛注入一個
-      不進版控的臨時登入框，要嘛就不做 —— POS 的 UI 改動頻率遠低於會員 App。
+    ✅ **POS 沒有密碼表單**（登入頁只有 LINE OAuth），做法是**注入一個
+      不進版控的臨時登入框** —— 2026-09-08 實測通過（`使用 2/14`、
+      `店員：MIGI 總部管理員`、停掉再開仍登著）。
+    ```js
+    // 關鍵是用 **App 自己的 client**，session 才會存進 POS 真正在讀的位置
+    const { supabase } = await import('/src/lib/supabase.js')   // Vite dev 直接餵 ESM
+    await supabase.auth.signInWithPassword({ email, password })  // 密碼由使用者在窗格打
+    ```
+    🔴 **一定要加整片遮罩** —— 沒遮的話底下那顆「使用 LINE 登入」還按得到，
+      而它在 localhost 是死路（`redirect_uri` 不在白名單），
+      2026-09-08 第一次就是這樣被帶去 `access.line.me`。
+    ⚠ 它**不進產品碼**，所以硬規則 5.7「一旦存在就會忘記拿掉」不適用 ——
+      reload 就消失，物理上留不下來（同 11.6 的寫入攔截器）。
+    ⚠ 用 `admin@migi.tw` 進 POS ＝ 身分是 `role=hq` / `store_id=null`，
+      **預設門市會是清單第一間（可能沒有桌位）**，要自己切。
 
     ### 其餘兩條路（不衝突，用途不同）
     · **桌機瀏覽器直接開 `app.migi.tw`** —— LIFF 在外部瀏覽器可用
