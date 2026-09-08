@@ -1,8 +1,8 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 187 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`；
-> 最後歸檔的是 `2026-09-07_成績頁補上勝負原料.sql`）
+> **基準：`sql/applied/` 有 190 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`；
+> 最後歸檔的是 `2026-09-08_把註解裡的禁字拿掉.sql`）
 >
 > 🔴 **這個數字在整份文件裡只出現這一次。** 2026-09-07 之前它同時
 > 寫在檔頭與「怎麼知道它過期了」那一節，而**兩處漂開過三次**
@@ -1250,6 +1250,38 @@ pos_member_detail_tx / pos_search_members_tx / pos_add_member_note_tx
 list_products_tx / list_fee_menu_tx / list_daypass_tx / list_stakes_tx / list_stake_levels_tx
 list_stores_tx / get_store_detail_tx / get_order_tx
 ```
+
+### 總部後台專用（★ 2026-09-08 新增四支）
+
+```
+admin_list_products_tx()                        STABLE   · authenticated ✅ anon ❌
+admin_upsert_product_tx(p_id, p_sku, p_name, p_category, p_subcategory,
+                        p_revenue_type, p_tracks_stock, p_unit_price,
+                        p_unit_cost, p_stock_qty, p_is_active, p_is_available)
+admin_set_product_active_tx(p_id, p_is_active)
+admin_delete_product_tx(p_id)
+admin_remove_avatar_tx(p_member_id, p_reason, p_block)   （既有）
+```
+
+🔴 **四支都帶 `can('product.write')`，而且 org 與操作者都不由呼叫端宣告**
+（`current_org_id()` / `current_staff()`）。收 `p_staff_id` 的話，
+登入的人可以填別人的 id —— **那比沒有稽核更糟**（它看起來有，而且指向錯的人）。
+
+🎯 **這一批換到的是兩件看不到的事**：
+- **稽核**：`created_by` / `updated_by` 由後端寫。在此之前 **9 筆商品全是 null**，
+  改價格完全沒有紀錄，而且**不可回溯**。
+- **`is_system` 保護**：在此之前那道牆**只存在於 `Products.jsx` 的一個 `if`**，
+  資料庫端沒有觸發器也沒有約束。停用系統商品會讓開桌回 `product_not_found`，
+  而**那個錯誤訊息不會指向後台**。
+  ⇒ 系統商品：不可停用、不可刪除、不可改貨號；**品名與價格可以改**（調檯費是正當的）。
+
+⚠ **`admin_list_products_tx` 不是 `list_products_tx`** —— 後者是 **POS** 的清單：
+濾掉停用與 `is_available`、排除 `SVC-TBL-%`、只回 7 個欄位。
+兩個需求不同，所以是兩支，**不要加參數把它變成兩用**。
+
+⏳ **`products_org_write` 那條 ALL policy 還留著**（expand → migrate → contract
+的中間態）。前端已切走，但要等部署驗證過才 contract。
+✅ 已查證**沒有任何函式在寫 `products`**，所以日後拿掉是安全的。
 
 ### 主檔 / 身分 / 系統
 

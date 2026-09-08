@@ -1980,8 +1980,25 @@ settled_at 09-03 15:18   ← 8 場全部同一個時間點
       今天無所謂（`live_from` 還沒設，`v_real_*` 全空），
       上線後後台錯誤會算成「真的」—— **那其實是對的**。
 
-    ⏳ **還剩一項**：`products.js` 改走 RPC
-      （全系統唯一還在直接查表的地方，`.from('products')` ×5）。
+    ### ✅ 2026-09-08：`products.js` 改走 RPC —— **待辦 9 三項全部結案**
+    四支新函式（`admin_list_products_tx` / `admin_upsert_product_tx` /
+    `admin_set_product_active_tx` / `admin_delete_product_tx`），
+    全部 `can('product.write')` ＋ org 與操作者從 `current_*()` 取。
+
+    🎯 **換到的是兩件看不到的事，不是「架構整齊」**：
+    · **稽核** —— `created_by` / `updated_by` 在此之前 **9 筆商品全是 null**，
+      改價格完全沒有紀錄，而且**不可回溯**（硬規則 5.6）。
+      🔴 **不由前端送 `staff_id`**：那樣可以填別人的 id，
+        **比沒有稽核更糟**（看起來有，而且指向錯的人）。
+    · **`is_system` 保護** —— 在此之前那道牆**只存在於 `Products.jsx` 的一個
+      `if`**，資料庫端沒有觸發器也沒有約束。停用系統商品會讓開桌回
+      `product_not_found`，而**那個錯誤訊息不會指向後台**。
+
+    ⚠ **`products_org_write` 那條 ALL policy 刻意還留著** ——
+      前端已切走，但要等部署驗證過才 contract（expand → migrate → contract）。
+      ✅ 已查證沒有任何函式在寫 `products`，日後拿掉是安全的。
+    📌 順帶把「不盤點就把庫存歸零」那條商業規則從前端搬到後端 ——
+      留在前端它只是「畫面上的規矩」，直接打 RPC 就繞過了。
 
     ### ✅ 2026-09-08：admin 的資料層收斂做完了（`migi-admin/src/lib/rpc.js`）
     🔴 **先更正這一條原本寫錯的話**：它說「網路失敗是 unhandled rejection
