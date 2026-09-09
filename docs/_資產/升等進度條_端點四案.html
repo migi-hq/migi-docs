@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>升等進度條 · 端點四案（2026-09-09）</title>
+<style>
+:root{
+  --brand:#FAD6DC; --brand-light:#FFE7EE; --brand-tint:#FFF6F8;
+  --ink:#2E2B2C; --accent:#C2607A;
+  --gray-1:#7A7572; --gray-2:#9A9491; --hint:#B4AEA9;
+  --gray-3:#ECEAE9; --gray-4:#F2F0EE; --divider:#DED9D5;
+  --white:#fff; --field-bg:#F8F7F6; --page-bg:#F6F5F4;
+  --xxxs:11px; --xxs:12px; --xs:13px; --s:14px; --m:15px; --l:16px; --xxl:22px;
+  --r-pill:999px; --r-lg:16px; --r-card:14px; --r-field:12px;
+  --bw-hair:.5px; --bw-base:1px; --bw-thick:1.5px;
+  --font-sans:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page-bg);font-family:var(--font-sans);color:var(--ink);padding:26px 16px 60px}
+.wrap{max-width:1240px;margin:0 auto}
+h1{font-size:var(--xxl);margin:0 0 6px}
+.sub{font-size:var(--xs);color:var(--gray-1);line-height:1.85;margin:0 0 8px;max-width:900px}
+.warn{background:var(--brand-tint);border:var(--bw-base) solid var(--brand);border-radius:var(--r-card);
+      padding:12px 15px;font-size:var(--xs);line-height:1.9;max-width:900px;margin:0 0 24px}
+.grid{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
+.case{background:var(--white);border:var(--bw-base) solid var(--gray-3);border-radius:var(--r-lg);width:375px;overflow:hidden;box-shadow:0 2px 8px rgba(46,43,44,.06)}
+.case > header{padding:11px 15px;border-bottom:var(--bw-base) solid var(--gray-3);background:var(--field-bg)}
+.case h2{font-size:var(--m);margin:0}
+.case .q{font-size:var(--xxxs);color:var(--gray-2);margin-top:3px;line-height:1.75}
+.body{padding:14px 20px 18px;background:var(--page-bg)}
+
+/* ── D 版面的卡（與線上一致）── */
+.card{background:var(--brand-tint);border:var(--bw-base) solid var(--brand);border-radius:var(--r-card);padding:11px 14px}
+.head{display:flex;align-items:center;gap:10px}
+.tile{display:inline-flex;align-items:center;justify-content:center;background:var(--brand);width:30px;height:38px;border-radius:var(--r-field);font-size:var(--l);font-weight:700;flex:0 0 auto}
+.n{margin:0;font-size:var(--m);font-weight:700}
+.d{margin:0;font-size:var(--xs);color:var(--gray-1)}
+.pillx{display:inline-block;background:var(--brand);border-radius:var(--r-pill);padding:1px 8px;font-weight:700;color:var(--ink);font-size:var(--xxs)}
+.look{font-size:var(--xs);font-weight:700;color:var(--accent);white-space:nowrap}
+.foot{display:flex;justify-content:space-between;align-items:baseline;margin-top:7px;font-size:var(--xxs);color:var(--gray-2)}
+.ink{color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums}
+.acc{color:var(--accent);font-weight:700;font-variant-numeric:tabular-nums}
+
+/* ── 進度條共用外殼 ── */
+.barwrap{position:relative;margin-top:10px;height:14px;display:flex;align-items:center}
+.track{position:relative;width:100%;height:8px;background:var(--white);border-radius:var(--r-pill);overflow:hidden}
+.fill{height:100%;background:var(--accent);border-radius:var(--r-pill)}
+/* 圓點：絕對定位在外殼上（不能放 track 裡 —— overflow:hidden 會把它裁掉） */
+.dot{position:absolute;top:50%;transform:translate(-50%,-50%);border-radius:50%}
+.dot-now{background:var(--accent);box-shadow:0 0 0 2.5px var(--white)}
+.dot-end{background:var(--brand)}
+
+/* A 無點 */
+/* B 兩顆點 */
+.B .dot-now{width:13px;height:13px}
+.B .dot-end{width:9px;height:9px}
+/* C 只有當前 */
+.C .dot-now{width:13px;height:13px}
+/* D 當前放大＋終點小 */
+.D .dot-now{width:16px;height:16px;box-shadow:0 0 0 3px var(--white)}
+.D .dot-end{width:8px;height:8px}
+
+.mini{margin-top:14px;padding-top:12px;border-top:var(--bw-hair) solid var(--divider)}
+.mini h3{margin:0 0 2px;font-size:var(--xxs);color:var(--gray-2);font-weight:700}
+.mini .lbl{font-size:var(--xxxs);color:var(--hint);margin:9px 0 0}
+.mini .barwrap{margin-top:4px}
+</style>
+
+<div class="wrap">
+<h1>升等進度條 · 端點四案</h1>
+<p class="sub">
+參考 Google 在地嚮導的進度條（兩顆端點）。<b>只動進度條本身</b>，
+卡片版面、文案、顏色全部維持線上現況。
+</p>
+<div class="warn">
+🎯 <b>要看的不是「50% 的時候好不好看」，是「5% 與 0% 的時候還讀不讀得出來」。</b><br>
+珍珠奶茶到焦糖布丁要 <b>$6,000</b>，而檯費一次 $100 ——
+<b>前 20 次來店那條進度條在畫面上幾乎不會動</b>。<br>
+所以每一案都同時畫三種填充：<b>0%（剛註冊）· 5%（咖勁凱現況）· 65%（快升等）</b>。<br><br>
+🔴 <b>圓點不能放進 track 裡</b> —— 那一層有 <code>overflow:hidden</code>（讓 fill 的圓角被裁齊），
+放進去圓點會被切成半圓。所以它掛在外面那層絕對定位。<br>
+⚠ <b>0% 是真的邊界情況</b>：珍珠奶茶門檻就是 0，所以<b>每一個新會員第一眼看到的就是 0%</b>。
+點會貼在最左邊，要看它有沒有被切掉。
+</div>
+
+<div class="grid">
+
+  <!-- A -->
+  <div class="case A">
+    <header><h2>A · 現行（對照）</h2><div class="q">8px 純色條，沒有端點</div></header>
+    <div class="body">
+      <div class="card">
+        <div class="head">
+          <span class="tile">級</span>
+          <div style="flex:1;min-width:0">
+            <p class="n">會員等級</p>
+            <p class="d">下一階 <span class="pillx">焦糖布丁</span></p>
+          </div>
+          <span class="look">查看 ›</span>
+        </div>
+        <div class="barwrap"><div class="track"><div class="fill" style="width:5%"></div></div></div>
+        <div class="foot"><span>已累積消費 <b class="ink">$300</b></span><span>還差 <b class="acc">$5,700</b></span></div>
+      </div>
+      <div class="mini">
+        <h3>同一案在三種填充</h3>
+        <p class="lbl">0%　剛註冊</p>
+        <div class="barwrap"><div class="track"><div class="fill" style="width:0%"></div></div></div>
+        <p class="lbl">5%　咖勁凱現況</p>
+        <div class="barwrap"><div class="track"><div class="fill" style="width:5%"></div></div></div>
+        <p class="lbl">65%　快升等</p>
+        <div class="barwrap"><div class="track"><div class="fill" style="width:65%"></div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B -->
+  <div class="case B">
+    <header><h2>B · 兩顆點（照 Google）</h2><div class="q">當前 13px 實心＋白圈環／終點 9px 蜜桃粉</div></header>
+    <div class="body">
+      <div class="card">
+        <div class="head">
+          <span class="tile">級</span>
+          <div style="flex:1;min-width:0">
+            <p class="n">會員等級</p>
+            <p class="d">下一階 <span class="pillx">焦糖布丁</span></p>
+          </div>
+          <span class="look">查看 ›</span>
+        </div>
+        <div class="barwrap">
+          <div class="track"><div class="fill" style="width:5%"></div></div>
+          <span class="dot dot-now" style="left:5%"></span>
+          <span class="dot dot-end" style="left:100%"></span>
+        </div>
+        <div class="foot"><span>已累積消費 <b class="ink">$300</b></span><span>還差 <b class="acc">$5,700</b></span></div>
+      </div>
+      <div class="mini">
+        <h3>同一案在三種填充</h3>
+        <p class="lbl">0%　剛註冊</p>
+        <div class="barwrap"><div class="track"><div class="fill" style="width:0%"></div></div>
+          <span class="dot dot-now" style="left:0%"></span><span class="dot dot-end" style="left:100%"></span></div>
+        <p class="lbl">5%　咖勁凱現況</p>
+        <div class="barwrap"><div class="track"><div class="fill" style="width:5%"></div></div>
+          <span class="dot dot-now" style="left:5%"></span><span class="dot dot-end" style="left:100%"></span></div>
+        <p class="lbl">65%　快升等</p>
+        <div class="barwrap"><div class="track"><div class="fill" style="width:65%"></div></div>
+          <span class="dot dot-now" style="left:65%"></span><span class="dot dot-end" style="left:100%"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- C -->
+  <div class="case C">
+    <header><h2>C · 只有當前那一顆</h2><div class="q">終點就是條的末端，不另外標</div></header>
+    <div class="body">
+      <div class="card">
+        <div class="head">
+          <span class="tile">級</span>
+          <div style="flex:1;min-width:0">
+            <p class="n">會員等級</p>
+            <p class="d">下一階 <span class="pillx">焦糖布丁</span></p>
+          </div>
+          <span class="look">查看 ›</span>
+        </div>
+        <div class="barwrap">
+          <div class="track"><div class="fill" style="width:5%"></div></div>
+          <span class="dot dot-now" style="left:5%"></span>
+        </div>
+        <div class="foot"><span>已累積消費 <b class="ink">$300</b></span><span>還差 <b class="acc">$5,700</b></span></div>
+      </div>
+      <div class="mini">
+        <h3>同一案在三種填充</h3>
+        <p class="lbl">0%　剛註冊</p>
+        <div class="barwrap"><div class="track"><div class="fill" style="width:0%"></div></div>
+          <span class="dot dot-now" style="left:0%"></span></div>
+        <p class="lbl">5%　咖勁凱現況</p>
+        <div class="barwrap"><div class="track"><div class="fill" style="width:5%"></div></div>
+          <span class="dot dot-now" style="left:5%"></span></div>
+        <p class="lbl">65%　快升等</p>
+        <div class="barwrap"><div class="track"><div class="fill" style="width:65%"></div></div>
+          <span class="dot dot-now" style="left:65%"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- D -->
+  <div class="case D">
+    <header><h2>D · 當前放大＋終點小</h2><div class="q">當前 16px（白圈 3px）／終點 8px</div></header>
+    <div class="body">
+      <div class="card">
+        <div class="head">
+          <span class="tile">級</span>
+          <div style="flex:1;min-width:0">
+            <p class="n">會員等級</p>
+            <p class="d">下一階 <span class="pillx">焦糖布丁</span></p>
+          </div>
+          <span class="look">查看 ›</span>
+        </div>
+        <div class="barwrap">
+          <div class="track"><div class="fill" style="width:5%"></div></div>
+          <span class="dot dot-now" style="left:5%"></span>
+          <span class="dot dot-end" style="left:100%"></span>
+        </div>
+        <div class="foot"><span>已累積消費 <b class="ink">$300</b></span><span>還差 <b class="acc">$5,700</b></span></div>
+      </div>
+      <div class="mini">
+        <h3>同一案在三種填充</h3>
+        <p class="lbl">0%　剛註冊</p>
+        <div class="barwrap"><div class="track"><div class="fill" style="width:0%"></div></div>
+          <span class="dot dot-now" style="left:0%"></span><span class="dot dot-end" style="left:100%"></span></div>
+        <p class="lbl">5%　咖勁凱現況</p>
+        <div class="barwrap"><div class="track"><div class="fill" style="width:5%"></div></div>
+          <span class="dot dot-now" style="left:5%"></span><span class="dot dot-end" style="left:100%"></span></div>
+        <p class="lbl">65%　快升等</p>
+        <div class="barwrap"><div class="track"><div class="fill" style="width:65%"></div></div>
+          <span class="dot dot-now" style="left:65%"></span><span class="dot dot-end" style="left:100%"></span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="warn" style="margin-top:26px">
+<b>我的看法</b><br><br>
+🥇 <b>C</b>（只有當前那一顆）—— 它解決了要解決的問題（<b>0% 與 5% 時位置讀得出來</b>），
+而且沒有引入第二個要解釋的東西。<br>
+🎯 <b>終點那顆點在 MIGI 是多餘的</b>：Google 需要它，是因為它的條<b>兩端都沒有邊界</b>；
+MIGI 的條有明確的圓角末端，<b>末端本身就是終點</b>。多畫一顆只是重複。<br><br>
+🥈 <b>B</b> —— 最貼近 Google。若你覺得「終點要有個東西可以指」就選它。<br><br>
+<b>D</b> 的當前點 16px 已經比條高一倍，在 11px 內距的卡片裡略顯擁擠；
+而它換到的只是「更明顯」——而 C 的 13px 其實已經夠。<br><br>
+🔴 <b>三案都要看 0% 那一格</b>：點的圓心在最左端，靠 <code>transform:translate(-50%,-50%)</code>
+會讓左半邊超出 track。看起來是否可接受，只有眼睛能判斷 ——
+不行的話就把位置夾在 <code>[6px, 寬度−6px]</code>，那是實作細節不影響選案。
+</div>
+</div>
+</html>
