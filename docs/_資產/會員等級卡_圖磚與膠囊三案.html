@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>會員等級卡 · 圖磚與膠囊三案（2026-09-09）</title>
+<style>
+:root{
+  /* 🔴 用 v1.7.0 的新值，不是舊的 —— 這一題就是被底色加深引出來的 */
+  --brand:#FAD6DC; --brand-light:#FFE7EE; --brand-tint:#FFECF1;
+  --ink:#2E2B2C; --accent:#C2607A;
+  --gray-1:#5C5754; --gray-2:#88827E; --hint:#B4AEA9;
+  --gray-3:#ECEAE9; --gray-4:#F2F0EE; --divider:#DED9D5;
+  --white:#fff; --field-bg:#F8F7F6; --page-bg:#F6F5F4;
+  --xxxs:11px; --xxs:12px; --xs:13px; --s:14px; --m:15px; --l:16px; --xl:18px; --xxl:22px;
+  --r-pill:999px; --r-lg:16px; --r-card:14px; --r-field:12px;
+  --bw-hair:.5px; --bw-base:1px; --bw-thick:1.5px;
+  --font-sans:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page-bg);font-family:var(--font-sans);color:var(--ink);padding:26px 16px 60px}
+.wrap{max-width:1500px;margin:0 auto}
+h1{font-size:var(--xxl);margin:0 0 6px}
+.sub{font-size:var(--xs);color:var(--gray-1);line-height:1.9;margin:0 0 10px;max-width:920px}
+.warn{background:var(--brand-tint);border:var(--bw-base) solid var(--brand);border-radius:var(--r-card);
+      padding:12px 15px;font-size:var(--xs);line-height:1.95;max-width:920px;margin:0 0 22px}
+.grid{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+.case{background:var(--white);border:var(--bw-base) solid var(--gray-3);border-radius:var(--r-lg);width:345px;overflow:hidden;box-shadow:0 2px 8px rgba(46,43,44,.06)}
+.case > header{padding:10px 14px;border-bottom:var(--bw-base) solid var(--gray-3);background:var(--field-bg)}
+.case h3{font-size:var(--s);margin:0}
+.case .q{font-size:var(--xxxs);color:var(--gray-2);margin-top:3px;line-height:1.7}
+.body{padding:14px 12px;background:var(--page-bg)}
+
+.card{background:var(--brand-tint);border:var(--bw-base) solid var(--brand);border-radius:var(--r-card);padding:11px 14px}
+.head{display:flex;align-items:center;gap:10px}
+.tile{display:inline-flex;align-items:center;justify-content:center;width:30px;height:38px;
+      border-radius:var(--r-field);font-size:var(--l);font-weight:700;flex:0 0 auto;
+      background:var(--brand);color:var(--ink)}
+.n{margin:0;font-size:var(--m);font-weight:700}
+.d{margin:0;font-size:var(--xs);color:var(--gray-1)}
+.pillx{display:inline-block;border-radius:var(--r-pill);padding:1px 8px;font-weight:700;font-size:var(--xxs);
+       background:var(--brand);color:var(--ink)}
+.look{font-size:var(--xs);font-weight:700;color:var(--accent);white-space:nowrap}
+.bar{height:8px;background:var(--white);border-radius:var(--r-pill);overflow:hidden;margin-top:10px}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:var(--r-pill)}
+.foot{display:flex;justify-content:space-between;align-items:baseline;margin-top:7px;font-size:var(--xxs);color:var(--gray-1)}
+.ink{color:var(--ink);font-weight:700}.acc{color:var(--accent);font-weight:700}
+
+/* 下面那張優惠券卡（判斷「圖磚系統還一致嗎」用的，不參與變化） */
+.cpn{margin-top:10px;display:flex;justify-content:space-between;align-items:center;
+     border:var(--bw-thick) solid var(--gray-3);border-radius:var(--r-card);padding:11px 14px;background:var(--white)}
+
+/* ── 各案只改這兩個 ── */
+.A .pillx{background:var(--white)}
+.B .tile{background:var(--ink);color:var(--white)}
+.C .tile{background:var(--white);border:var(--bw-base) solid var(--brand)}
+</style>
+
+<div class="wrap">
+<h1>會員等級卡 · 圖磚與膠囊三案</h1>
+<p class="sub">
+使用者：「焦糖布丁 PILL 跟左邊的牌，顏色又太接近了」。
+<b>用 v1.7.0 的新 token 值畫</b>（底色 <code>#FFECF1</code>）—— 這一題就是被底色加深引出來的。
+</p>
+
+<div class="warn">
+🔴 <b>現況是「三樣東西同色」不是兩樣</b>：外框、圖磚、膠囊<b>全部都是 <code>--brand</code> #FAD6DC</b>，
+而底色是 <code>--brand-tint</code> #FFECF1。<br><br>
+🎯 <b>一個非顯而易見的點</b>：白色膠囊你在 2026-09-09 稍早否決過，
+但那是<b>在舊的、更淡的底色（#FFF6F8）上判斷的</b> ——
+底色加深之後白色的對比比那時強得多，<b>同一個選項現在不是同一回事</b>。<br><br>
+⚠ 每一案底下都畫了<b>「我的優惠券」那張卡</b>，因為 B 案要判斷的不是
+「好不好看」而是<b>「級的圖磚變成全 App 唯一的例外，可不可以接受」</b>
+—— 桌／券／級今天全部是 <code>--brand</code>。
+</div>
+
+<div class="grid">
+
+  <!-- 現況 -->
+  <div class="case"><header><h3>現況（對照）</h3><div class="q">圖磚 --brand ／ 膠囊 --brand　🔴 完全同色</div></header>
+    <div class="body">
+      <div class="card">
+        <div class="head"><span class="tile">級</span>
+          <div style="flex:1;min-width:0"><p class="n">會員等級</p><p class="d">下一階 <span class="pillx">焦糖布丁</span></p></div>
+          <span class="look">查看 ›</span></div>
+        <div class="bar"><i style="width:5%"></i></div>
+        <div class="foot"><span>已累積消費 <b class="ink">$300</b></span><span>還差 <b class="acc">$5,700</b></span></div>
+      </div>
+      <div class="cpn"><div style="display:flex;align-items:center;gap:10px"><span class="tile">券</span>
+        <div><p class="n">我的優惠券</p><p class="d">0 張可用 · 結帳時自動帶出</p></div></div><span class="look">查看 ›</span></div>
+    </div>
+  </div>
+
+  <!-- A -->
+  <div class="case A"><header><h3>A · 膠囊改白</h3><div class="q">圖磚維持 --brand（全 App 一致）／膠囊 --white</div></header>
+    <div class="body">
+      <div class="card">
+        <div class="head"><span class="tile">級</span>
+          <div style="flex:1;min-width:0"><p class="n">會員等級</p><p class="d">下一階 <span class="pillx">焦糖布丁</span></p></div>
+          <span class="look">查看 ›</span></div>
+        <div class="bar"><i style="width:5%"></i></div>
+        <div class="foot"><span>已累積消費 <b class="ink">$300</b></span><span>還差 <b class="acc">$5,700</b></span></div>
+      </div>
+      <div class="cpn"><div style="display:flex;align-items:center;gap:10px"><span class="tile">券</span>
+        <div><p class="n">我的優惠券</p><p class="d">0 張可用 · 結帳時自動帶出</p></div></div><span class="look">查看 ›</span></div>
+    </div>
+  </div>
+
+  <!-- B -->
+  <div class="case B"><header><h3>B · 圖磚改深</h3><div class="q">圖磚 --ink 底白字／膠囊維持桃粉　⚠ 見下</div></header>
+    <div class="body">
+      <div class="card">
+        <div class="head"><span class="tile">級</span>
+          <div style="flex:1;min-width:0"><p class="n">會員等級</p><p class="d">下一階 <span class="pillx">焦糖布丁</span></p></div>
+          <span class="look">查看 ›</span></div>
+        <div class="bar"><i style="width:5%"></i></div>
+        <div class="foot"><span>已累積消費 <b class="ink">$300</b></span><span>還差 <b class="acc">$5,700</b></span></div>
+      </div>
+      <div class="cpn"><div style="display:flex;align-items:center;gap:10px"><span class="tile" style="background:var(--brand);color:var(--ink)">券</span>
+        <div><p class="n">我的優惠券</p><p class="d">0 張可用 · 結帳時自動帶出</p></div></div><span class="look">查看 ›</span></div>
+    </div>
+  </div>
+
+  <!-- C -->
+  <div class="case C"><header><h3>C · 圖磚白底粉框</h3><div class="q">靠「實心 vs 空心」分開，兩者都留在粉色系</div></header>
+    <div class="body">
+      <div class="card">
+        <div class="head"><span class="tile">級</span>
+          <div style="flex:1;min-width:0"><p class="n">會員等級</p><p class="d">下一階 <span class="pillx">焦糖布丁</span></p></div>
+          <span class="look">查看 ›</span></div>
+        <div class="bar"><i style="width:5%"></i></div>
+        <div class="foot"><span>已累積消費 <b class="ink">$300</b></span><span>還差 <b class="acc">$5,700</b></span></div>
+      </div>
+      <div class="cpn"><div style="display:flex;align-items:center;gap:10px"><span class="tile" style="background:var(--brand);border:none">券</span>
+        <div><p class="n">我的優惠券</p><p class="d">0 張可用 · 結帳時自動帶出</p></div></div><span class="look">查看 ›</span></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="warn" style="margin-top:24px">
+<b>我的看法</b><br><br>
+🥇 <b>A</b> —— 它動的是**局部的那一個**（膠囊），而不是**成系統的那一個**（圖磚）。
+桌／券／級三個圖磚維持同色是對的：它們在說「這是一個區塊」，本來就該長一樣。<br>
+🎯 而且白色在這張卡上**不是無中生有** —— 進度條的軌道已經是白的，
+膠囊改白之後那張卡的白色元素互相呼應，反而更整。<br><br>
+🥈 <b>C</b> —— 兩者都留在粉色系，靠實心／空心分開。比 A 保守，
+但「級」的圖磚變成空心之後，它跟下面那張券的實心圖磚**在同一個掃視動線上不一致**。<br><br>
+<b>B</b> 對比最強，但代價明白寫在畫面上：<b>「級」會變成全 App 唯一深色的圖磚</b>。
+如果你要的是「等級這一塊比較重要」，那 B 是誠實的表達；
+如果不是，它就是一個沒有理由的例外。<br><br>
+🔴 三案都<b>不碰外框</b> —— 那是硬規則 13.8 的組合（<code>--brand-tint</code> ＋ 1px <code>--brand</code>），
+四處共用，改它要一起改。
+</div>
+</div>
+</html>
