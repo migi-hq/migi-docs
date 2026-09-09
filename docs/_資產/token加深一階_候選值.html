@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>token 加深一階 · 候選值（2026-09-09）</title>
+<style>
+:root{
+  --brand:#FAD6DC; --brand-light:#FFE7EE; --brand-tint:#FFF6F8;
+  --ink:#2E2B2C; --accent:#C2607A;
+  --gray-1:#7A7572; --gray-2:#9A9491; --hint:#B4AEA9;
+  --gray-3:#ECEAE9; --gray-4:#F2F0EE; --divider:#DED9D5;
+  --white:#fff; --field-bg:#F8F7F6; --page-bg:#F6F5F4;
+  --xxxs:11px; --xxs:12px; --xs:13px; --s:14px; --m:15px; --l:16px; --xl:18px; --xxl:22px; --h:38px;
+  --r-pill:999px; --r-lg:16px; --r-card:14px; --r-field:12px;
+  --bw-hair:.5px; --bw-base:1px; --bw-thick:1.5px;
+  --font-sans:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page-bg);font-family:var(--font-sans);color:var(--ink);padding:26px 16px 60px}
+.wrap{max-width:1600px;margin:0 auto}
+h1{font-size:var(--xxl);margin:0 0 6px}
+h2.sec{font-size:var(--xl);margin:34px 0 4px}
+.sub{font-size:var(--xs);color:#5C5754;line-height:1.9;margin:0 0 10px;max-width:960px}
+.warn{background:#FFF6F8;border:var(--bw-base) solid var(--brand);border-radius:var(--r-card);
+      padding:12px 15px;font-size:var(--xs);line-height:1.95;max-width:960px;margin:0 0 18px}
+.grid{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+.case{background:var(--white);border:var(--bw-base) solid var(--gray-3);border-radius:var(--r-lg);width:340px;overflow:hidden;box-shadow:0 2px 8px rgba(46,43,44,.06)}
+.case > header{padding:10px 14px;border-bottom:var(--bw-base) solid var(--gray-3);background:var(--field-bg)}
+.case h3{font-size:var(--s);margin:0;display:flex;align-items:center;gap:8px}
+.sw{width:15px;height:15px;border-radius:4px;border:1px solid rgba(0,0,0,.12);flex:0 0 auto}
+.case .q{font-size:var(--xxxs);color:var(--gray-2);margin-top:3px;font-family:ui-monospace,monospace}
+.body{padding:12px;background:var(--page-bg)}
+
+/* ── 段位 Hero（小字站在 --brand 粉底上）── */
+.hero{background:var(--brand);border-radius:var(--r-lg);padding:13px 15px}
+.seasonpill{display:inline-block;background:rgba(255,255,255,.62);border-radius:var(--r-pill);
+            font-size:var(--xxxs);font-weight:700;padding:4px 11px}
+.hrow{display:flex;align-items:center;gap:11px;margin-top:11px}
+.bear{width:52px;height:52px;border-radius:50%;background:var(--white);flex:0 0 auto;
+      display:flex;align-items:center;justify-content:center;font-size:26px}
+.rk{margin:0;font-size:var(--xl);font-weight:700}
+.rs{margin:2px 0 0;font-size:var(--xxs);color:var(--gray-1)}   /* ← 要判斷的就是這一行 */
+.upline{margin:9px 0 0;min-height:24px;font-size:var(--xs);color:var(--gray-1);line-height:1.5}
+.upline b{color:var(--accent);font-weight:700;font-size:var(--l)}
+.segs{display:flex;gap:6px;margin-top:8px}
+.seg{flex:1;height:8px;border-radius:var(--r-pill);background:var(--white)}
+.seg.on{background:var(--accent)}
+.ticks{display:flex;gap:6px;margin-top:4px}
+.ticks span{flex:1;text-align:center;font-size:var(--xxxs);color:var(--gray-1)}
+.ticks .cur{color:var(--accent);font-weight:700}
+
+/* ── 白底上的小字（配桌那一行）── */
+.whitecard{background:var(--white);border:var(--bw-thick) solid var(--gray-3);border-radius:var(--r-card);
+           padding:11px 14px;margin-top:10px}
+.wt{margin:0;font-size:var(--m);font-weight:700}
+.wd{margin:2px 0 0;font-size:var(--xs);color:var(--gray-1)}   /* ← 依積分、時間幫妳湊一桌 */
+
+/* ── 13.8 那個組合（粉底卡）── */
+.navrow{display:flex;align-items:center;justify-content:space-between;gap:10px;
+        background:var(--brand-tint);border:var(--bw-base) solid var(--brand);
+        border-radius:var(--r-card);padding:12px 14px}
+.navrow .t{margin:0;font-size:var(--m);font-weight:700}
+.navrow .s{margin:2px 0 0;font-size:var(--xs);color:var(--gray-1)}
+.look{font-size:var(--xs);font-weight:700;color:var(--accent);white-space:nowrap}
+.tiercard{background:var(--brand-tint);border:var(--bw-base) solid var(--brand);
+          border-radius:var(--r-card);padding:11px 14px;margin-top:10px}
+.tile{display:inline-flex;align-items:center;justify-content:center;background:var(--brand);
+      width:30px;height:38px;border-radius:var(--r-field);font-size:var(--l);font-weight:700;flex:0 0 auto}
+.bar{height:8px;background:var(--white);border-radius:var(--r-pill);overflow:hidden;margin-top:10px}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:var(--r-pill)}
+.foot{display:flex;justify-content:space-between;align-items:baseline;margin-top:7px;font-size:var(--xxs);color:var(--gray-2)}
+.pillx{display:inline-block;background:var(--brand);border-radius:var(--r-pill);padding:1px 8px;font-weight:700;font-size:var(--xxs)}
+.ink{color:var(--ink);font-weight:700}.acc{color:var(--accent);font-weight:700}
+</style>
+
+<div class="wrap">
+<h1>token 加深一階 · 候選值</h1>
+<p class="sub">
+每一欄是<b>把 token 的值換掉之後</b>整塊會長什麼樣（用 CSS 變數覆寫，
+不是各自手改顏色）—— 所以<b>你看到的就是改 token 的實際效果</b>。
+</p>
+
+<div class="warn">
+🔴 <b>這兩件都不是「改一處」。</b><br>
+· <code>--gray-1</code> 在 migi-web 出現 <b>187 次</b>（POS 與 admin 另計）——
+  那兩句小字<b>沒有共用元件</b>，共用的是這個 token。<br>
+· <code>--brand-tint</code> ＋ 1px <code>--brand</code> 這個組合有 <b>4 處</b>
+  （NavRow、配桌進度卡、配桌彈窗、會員等級卡）＋ admin 1 處。
+  <b>只改一張就是硬規則 13.8 禁止的「第三種粉」。</b><br><br>
+⚠ 所以正解是改 <code>@migi/assets</code> 的 token 值，
+流程是：<code>tokens.json</code> → <code>npm run build</code> → 打 tag →
+<b>三個 repo 各自 bump 再 npm install</b>。
+</div>
+
+<!-- ══════════ A：--gray-1 ══════════ -->
+<h2 class="sec">A · <code>--gray-1</code>（小字）</h2>
+<p class="sub">
+判斷點有兩個，而它們的底色不一樣 ——
+<b>「本季段位分」站在粉底（<code>--brand</code>）上，「依積分、時間幫妳湊一桌」站在白底上。</b>
+一個值要同時在兩種底上成立。
+</p>
+<div class="grid">
+
+  <div class="case"><header><h3><span class="sw" style="background:#7A7572"></span>A0 · 現行</h3><div class="q">#7A7572</div></header>
+    <div class="body" style="--gray-1:#7A7572">
+      <div class="hero">
+        <span class="seasonpill">2026 段位秋季賽 · 離賽事結束還有 114 天</span>
+        <div class="hrow"><div class="bear">🐻</div><div><p class="rk">段位: 銀牌熊 III</p><p class="rs">本季段位分 230</p></div></div>
+        <p class="upline">再 <b>40</b> 分升級銀牌熊 II</p>
+        <div class="segs"><i class="seg on"></i><i class="seg on"></i><i class="seg"></i><i class="seg"></i></div>
+        <div class="ticks"><span>IV</span><span class="cur">III</span><span>II</span><span>I</span></div>
+      </div>
+      <div class="whitecard"><p class="wt">自動配桌</p><p class="wd">依積分、時間幫妳湊一桌</p></div>
+    </div>
+  </div>
+
+  <div class="case"><header><h3><span class="sw" style="background:#6B6663"></span>A1 · 微深</h3><div class="q">#6B6663</div></header>
+    <div class="body" style="--gray-1:#6B6663">
+      <div class="hero">
+        <span class="seasonpill">2026 段位秋季賽 · 離賽事結束還有 114 天</span>
+        <div class="hrow"><div class="bear">🐻</div><div><p class="rk">段位: 銀牌熊 III</p><p class="rs">本季段位分 230</p></div></div>
+        <p class="upline">再 <b>40</b> 分升級銀牌熊 II</p>
+        <div class="segs"><i class="seg on"></i><i class="seg on"></i><i class="seg"></i><i class="seg"></i></div>
+        <div class="ticks"><span>IV</span><span class="cur">III</span><span>II</span><span>I</span></div>
+      </div>
+      <div class="whitecard"><p class="wt">自動配桌</p><p class="wd">依積分、時間幫妳湊一桌</p></div>
+    </div>
+  </div>
+
+  <div class="case"><header><h3><span class="sw" style="background:#5C5754"></span>A2 · 一階（推薦）</h3><div class="q">#5C5754</div></header>
+    <div class="body" style="--gray-1:#5C5754">
+      <div class="hero">
+        <span class="seasonpill">2026 段位秋季賽 · 離賽事結束還有 114 天</span>
+        <div class="hrow"><div class="bear">🐻</div><div><p class="rk">段位: 銀牌熊 III</p><p class="rs">本季段位分 230</p></div></div>
+        <p class="upline">再 <b>40</b> 分升級銀牌熊 II</p>
+        <div class="segs"><i class="seg on"></i><i class="seg on"></i><i class="seg"></i><i class="seg"></i></div>
+        <div class="ticks"><span>IV</span><span class="cur">III</span><span>II</span><span>I</span></div>
+      </div>
+      <div class="whitecard"><p class="wt">自動配桌</p><p class="wd">依積分、時間幫妳湊一桌</p></div>
+    </div>
+  </div>
+
+  <div class="case"><header><h3><span class="sw" style="background:#4A4543"></span>A3 · 兩階</h3><div class="q">#4A4543</div></header>
+    <div class="body" style="--gray-1:#4A4543">
+      <div class="hero">
+        <span class="seasonpill">2026 段位秋季賽 · 離賽事結束還有 114 天</span>
+        <div class="hrow"><div class="bear">🐻</div><div><p class="rk">段位: 銀牌熊 III</p><p class="rs">本季段位分 230</p></div></div>
+        <p class="upline">再 <b>40</b> 分升級銀牌熊 II</p>
+        <div class="segs"><i class="seg on"></i><i class="seg on"></i><i class="seg"></i><i class="seg"></i></div>
+        <div class="ticks"><span>IV</span><span class="cur">III</span><span>II</span><span>I</span></div>
+      </div>
+      <div class="whitecard"><p class="wt">自動配桌</p><p class="wd">依積分、時間幫妳湊一桌</p></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="warn" style="margin-top:16px">
+⚠ <b>A3 已經很接近 <code>--ink</code>（#2E2B2C）</b> —— 那會讓「主要文字」與
+「次要文字」的差別消失，而那個差別是整個版面在靠的東西。<br>
+🎯 <b>A2 是照既有節奏走的一階</b>：
+<code>hint #B4AEA9 → gray-2 #9A9491 → gray-1 #7A7572 → #5C5754</code>，每一階差約 26–32。
+</div>
+
+<!-- ══════════ B：--brand-tint ══════════ -->
+<h2 class="sec">B · <code>--brand-tint</code>（粉底）</h2>
+<p class="sub">
+四處一起變。<b>下面每一欄都同時畫「NavRow」與「會員等級卡」</b> ——
+只看一張的話判斷不出「它跟旁邊那張還像不像同一套」。
+</p>
+<div class="grid">
+
+  <div class="case"><header><h3><span class="sw" style="background:#FFF6F8"></span>B0 · 現行</h3><div class="q">#FFF6F8</div></header>
+    <div class="body" style="--brand-tint:#FFF6F8">
+      <div class="navrow"><div><p class="t">段位怎麼算</p><p class="s">級距、一將拿幾分、賽季規則</p></div><span class="look">查看 ›</span></div>
+      <div class="tiercard">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="tile">級</span>
+          <div style="flex:1"><p class="t" style="margin:0">會員等級</p><p class="s" style="margin:0">下一階 <span class="pillx">焦糖布丁</span></p></div>
+          <span class="look">查看 ›</span>
+        </div>
+        <div class="bar"><i style="width:5%"></i></div>
+        <div class="foot"><span>已累積消費 <b class="ink">$300</b></span><span>還差 <b class="acc">$5,700</b></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="case"><header><h3><span class="sw" style="background:#FFF1F5"></span>B1 · 微深</h3><div class="q">#FFF1F5</div></header>
+    <div class="body" style="--brand-tint:#FFF1F5">
+      <div class="navrow"><div><p class="t">段位怎麼算</p><p class="s">級距、一將拿幾分、賽季規則</p></div><span class="look">查看 ›</span></div>
+      <div class="tiercard">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="tile">級</span>
+          <div style="flex:1"><p class="t" style="margin:0">會員等級</p><p class="s" style="margin:0">下一階 <span class="pillx">焦糖布丁</span></p></div>
+          <span class="look">查看 ›</span>
+        </div>
+        <div class="bar"><i style="width:5%"></i></div>
+        <div class="foot"><span>已累積消費 <b class="ink">$300</b></span><span>還差 <b class="acc">$5,700</b></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="case"><header><h3><span class="sw" style="background:#FFECF1"></span>B2 · 一階（推薦）</h3><div class="q">#FFECF1</div></header>
+    <div class="body" style="--brand-tint:#FFECF1">
+      <div class="navrow"><div><p class="t">段位怎麼算</p><p class="s">級距、一將拿幾分、賽季規則</p></div><span class="look">查看 ›</span></div>
+      <div class="tiercard">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="tile">級</span>
+          <div style="flex:1"><p class="t" style="margin:0">會員等級</p><p class="s" style="margin:0">下一階 <span class="pillx">焦糖布丁</span></p></div>
+          <span class="look">查看 ›</span>
+        </div>
+        <div class="bar"><i style="width:5%"></i></div>
+        <div class="foot"><span>已累積消費 <b class="ink">$300</b></span><span>還差 <b class="acc">$5,700</b></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="case"><header><h3><span class="sw" style="background:#FFE7EE"></span>B3 · ＝ brand-light</h3><div class="q">#FFE7EE　⚠ 見下</div></header>
+    <div class="body" style="--brand-tint:#FFE7EE">
+      <div class="navrow"><div><p class="t">段位怎麼算</p><p class="s">級距、一將拿幾分、賽季規則</p></div><span class="look">查看 ›</span></div>
+      <div class="tiercard">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="tile">級</span>
+          <div style="flex:1"><p class="t" style="margin:0">會員等級</p><p class="s" style="margin:0">下一階 <span class="pillx">焦糖布丁</span></p></div>
+          <span class="look">查看 ›</span>
+        </div>
+        <div class="bar"><i style="width:5%"></i></div>
+        <div class="foot"><span>已累積消費 <b class="ink">$300</b></span><span>還差 <b class="acc">$5,700</b></span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="warn" style="margin-top:16px">
+🔴 <b>B3 等於把 <code>--brand-tint</code> 調成 <code>--brand-light</code> 的值</b> ——
+那會讓兩個 token 變成同一個顏色，而且<b>推翻 2026-09-03 的決定</b>
+（<code>ui.jsx:344</code>：「<code>--brand-light</code> 是 Hero 卡那種『整塊都是它』的底，放在這裡太重」）。<br>
+⚠ 真的想要那個深度的話，正解不是改 tint 的值，是<b>把那四處改成用
+<code>--brand-light</code></b> —— 但那就是明白地推翻 09-03，要你點頭。<br><br>
+🎯 <b>B2 是「更明顯但仍然比 light 淡」</b>，兩件事都保住。<br><br>
+⚠ 另外一個只有在真實畫面才看得到的東西：<b>會員等級卡的進度條軌道是白色的</b>，
+底色越深、那條軌道越突出。B2 之後它仍然自然，B3 開始會有點搶。
+</div>
+
+</div>
+</html>
