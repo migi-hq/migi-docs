@@ -1,8 +1,8 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 200 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`；
-> 最後歸檔的是 `2026-09-09_消費明細改從JWT取身分.sql`）
+> **基準：`sql/applied/` 有 203 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`；
+> 最後歸檔的是 `2026-09-09_隊列成員收掉重複的來源鍵.sql`）
 >
 > 🔴 **這個數字在整份文件裡只出現這一次。** 2026-09-07 之前它同時
 > 寫在檔頭與「怎麼知道它過期了」那一節，而**兩處漂開過三次**
@@ -846,6 +846,37 @@ update orgs set live_from = '<真實客人開始使用的時間>';
 
 > 讀法：`DEFINER/INVOKER`　`anon=` 是 POS 與會員 App 用的角色。
 > 🔴 硬規則 2.5：**讓前端第一次直接呼叫某支既有 RPC 時，必須先確認它有 `anon EXECUTE`。**
+
+### 🔴 `pos_` 前綴的函式一律不給 anon（2026-09-09 起）
+
+```
+19 支 pos_*     anon 0 · PUBLIC 0 · authenticated 19
+全庫 anon 明確授權   108 → 95
+全庫 PUBLIC          106 → 93
+函式總數             183（不變）
+```
+`2026-09-09_pos函式全面收掉anon.sql`（7/7 全過）。收之前 **13 支 anon 叫得動、
+而且零權限檢查**，其中最嚴重的是：
+
+```
+pos_search_members_tx(p_org_id, p_keyword)
+回傳 id · nickname · phone · tier · rank · title · avatar · balance · is_test
+比對 display_name ilike '%kw%' OR phone like '%kw%'   limit 20
+```
+`p_org_id` 寫在公開前端的打包檔裡 ⇒ 送 `keyword = '0'` 就能列出 20 個會員的
+**手機、餘額、member_id** —— 正是 2026-08-30 收掉 `register_member_tx` 時堵住的洞。
+✅ 同批補上 `can('member.lookup')`，且 `p_org_id := public.current_org_id()`
+（**只收授權不夠** —— 收成 `authenticated` 之後任何登入的會員仍然叫得動）。
+
+🎯 **判準是前綴本身，不是簽名也不是動詞。** 一支叫 `pos_*` 的函式，
+**照定義就是店員操作** —— 那是**結構性的**，不用維護一份清單。
+🔴 前四批（2026-09-04／09-08）用「簽名含 `p_member_id`」與金錢動詞正則，
+  **13 支全部漏掉** —— 那些判準描述的是「它長什麼樣子」，
+  而前綴描述的是「**它是什麼**」。同 `analytics.js` 用 `pos_` / `admin_` 前綴、
+  錯誤儀表改掃 `%\_error` 的理由：**讓涵蓋範圍是結構，不是一份要維護的清單。**
+
+⚠ **刻意仍然給 anon 的四支**（負對照，這批沒動）：
+`log_app_event_tx`（埋點）／`get_my_orders_tx`／`list_topup_plans_tx`／`list_tables_tx`。
 
 ### 金流（🔴 全部是 INVOKER —— 前端不可直接呼叫）
 

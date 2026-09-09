@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>聚焦框驗證</title>
+<style>
+  /* 與 @migi/assets v1.9.0 相同的值 */
+  :root{
+    --ink:#2E2B2C; --gray-1:#5C5754; --gray-2:#88827E; --divider:#DED9D5;
+    --gray-3:#E5E1DE; --gray-4:#F2F0EE; --white:#FFFFFF;
+    --brand:#FAD6DC; --brand-tint:#FFECF1; --accent-deep:#974B5F;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:28px 20px 60px;background:#FBFAF9;color:var(--ink);
+       font:15px/1.7 "Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif}
+  .wrap{max-width:820px;margin:0 auto}
+  h1{font-size:24px;margin:0 0 4px}
+  .sub{color:var(--gray-1);margin:0 0 26px}
+  h2{font-size:16px;margin:30px 0 10px}
+  .band{padding:20px;border-radius:12px;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+  .b-white{background:var(--white);border:1px solid var(--divider)}
+  .b-tint{background:var(--brand-tint)}
+  .b-brand{background:var(--brand)}
+  .b-ink{background:var(--ink)}
+  .b-ink .note{color:var(--white)}
+  .note{font-size:13px;color:var(--gray-1)}
+
+  /* 測試用的按鈕外觀（模擬 POS／App 的樣子） */
+  .btn{border:1px solid var(--gray-3);background:var(--white);color:var(--ink);
+       border-radius:8px;padding:9px 16px;font:inherit;font-weight:700;cursor:pointer}
+  .btn-solid{background:var(--accent-deep);border-color:var(--accent-deep);color:var(--white)}
+  .fake{display:inline-block;border-radius:999px;padding:6px 14px;font-size:13px;
+        font-weight:700;background:var(--ink);color:var(--white);cursor:pointer}
+
+  /* ══ 這就是三個 repo 加進去的那一段，逐字相同 ══ */
+  button:focus-visible,
+  a:focus-visible,
+  summary:focus-visible,
+  [tabindex]:not([tabindex="-1"]):focus-visible,
+  [role="button"]:focus-visible {
+    outline: 2px solid var(--accent-deep);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px var(--white);
+  }
+
+  code{background:var(--gray-4);border-radius:4px;padding:1px 5px;font-size:13px}
+  .tip{background:var(--brand-tint);border:1px solid var(--brand);border-radius:12px;
+       padding:14px 18px;margin:18px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>聚焦框驗證</h1>
+  <p class="sub">2026-09-09 加進三個 repo 的那一段 CSS，逐字相同。</p>
+
+  <div class="tip">
+    <b>怎麼看：一直按 Tab。</b>
+    每按一次，框會跳到下一個元素。<br>
+    <span class="note">🔴 <b>用滑鼠點不會出現框</b> —— 那是
+    <code>:focus-visible</code> 的設計，也正是當初大家把 outline 拿掉的原因。</span>
+  </div>
+
+  <h2>白底</h2>
+  <div class="band b-white">
+    <button class="btn">一般按鈕</button>
+    <button class="btn btn-solid">主要按鈕</button>
+    <span class="fake" tabindex="0" role="button">補過 tabindex 的膠囊</span>
+  </div>
+
+  <h2>粉底（<code>--brand-tint</code>）</h2>
+  <div class="band b-tint">
+    <button class="btn">一般按鈕</button>
+    <button class="btn btn-solid">主要按鈕</button>
+  </div>
+
+  <h2>品牌粉（<code>--brand</code>）</h2>
+  <div class="band b-brand">
+    <button class="btn">一般按鈕</button>
+    <button class="btn btn-solid">主要按鈕</button>
+  </div>
+
+  <h2>墨底（<code>--ink</code>）—— 兩層環真正發揮作用的地方</h2>
+  <div class="band b-ink">
+    <button class="btn">白按鈕</button>
+    <span class="fake" tabindex="0" role="button"
+          style="background:#3E3A3B;color:var(--white);border:1px solid #4A4647">深色膠囊</span>
+    <span class="note">兩種都要能看見 —— 白的與深的。</span>
+  </div>
+  <div class="tip" style="margin-top:10px">
+    <b>為什麼「2.33 未達」不是一個沒解決的問題。</b><br>
+    <span class="note">
+    環是兩層的，由內而外：<code>元件 │ 白 2px │ 深色 2px │ 背景</code>。<br>
+    要看得見，只需要<b>其中任何一條交界</b>達到 3:1，而<b>白與深色之間永遠是 6.02</b>
+    —— 那條交界不受背景影響。<br>
+    · 深色元件站在墨底 → 內側的「元件↔白」高對比，看得見<br>
+    · 白色元件站在墨底 → 內側的「元件↔深色」是 6.02，看得見<br>
+    🔴 單層環才會出問題，那正是加第二層的理由。
+    </span>
+  </div>
+
+  <h2>不該有框的：表單欄位</h2>
+  <div class="band b-white">
+    <input placeholder="輸入框（維持各 repo 原本的處理）"
+           style="border:1px solid var(--gray-3);border-radius:8px;padding:9px 12px;font:inherit;min-width:280px">
+    <span class="note">🔴 規則刻意不含 <code>input / select / textarea</code>。<br>
+      POS 的搜尋框是「邊框在外層容器、input 自己 <code>border:none</code>」，<br>
+      先前在全域加 outline 把它變成粉色粗框，那段警告還留在 index.css 裡。</span>
+  </div>
+
+  <h2>對比實算</h2>
+  <div class="band b-white" style="display:block">
+    <table style="border-collapse:collapse;font-size:14px;width:100%">
+      <tr style="background:var(--gray-4)">
+        <th style="text-align:left;padding:8px 10px">深色那圈站在</th>
+        <th style="text-align:left;padding:8px 10px;width:110px">對比</th>
+        <th style="text-align:left;padding:8px 10px">單獨看夠不夠</th></tr>
+      <tr><td style="padding:8px 10px;border-top:1px solid var(--divider)">白 #FFFFFF</td>
+          <td style="padding:8px 10px;border-top:1px solid var(--divider)">6.02</td>
+          <td style="padding:8px 10px;border-top:1px solid var(--divider);color:#2F7A55">✅</td></tr>
+      <tr><td style="padding:8px 10px;border-top:1px solid var(--divider)">粉底 #FFECF1</td>
+          <td style="padding:8px 10px;border-top:1px solid var(--divider)">5.31</td>
+          <td style="padding:8px 10px;border-top:1px solid var(--divider);color:#2F7A55">✅</td></tr>
+      <tr><td style="padding:8px 10px;border-top:1px solid var(--divider)">品牌粉 #FAD6DC</td>
+          <td style="padding:8px 10px;border-top:1px solid var(--divider)">4.51</td>
+          <td style="padding:8px 10px;border-top:1px solid var(--divider);color:#2F7A55">✅</td></tr>
+      <tr><td style="padding:8px 10px;border-top:1px solid var(--divider)"><b>墨 #2E2B2C</b></td>
+          <td style="padding:8px 10px;border-top:1px solid var(--divider)"><b>2.33</b></td>
+          <td style="padding:8px 10px;border-top:1px solid var(--divider);color:#B4453C">
+            ⚠ 不夠 —— <b>所以才有第二層</b></td></tr>
+      <tr style="background:var(--brand-tint)">
+        <td style="padding:8px 10px;border-top:1px solid var(--divider)">
+          <b>白圈 ↔ 深色圈</b>（兩層之間）</td>
+        <td style="padding:8px 10px;border-top:1px solid var(--divider)"><b>6.02</b></td>
+        <td style="padding:8px 10px;border-top:1px solid var(--divider);color:#2F7A55">
+          ✅ <b>不受背景影響，永遠成立</b></td></tr>
+    </table>
+    <p class="note" style="margin:14px 0 0">
+      🎯 <b>整個環是不是看得見，看的是「任何一條交界」，不是每一條都要達標。</b><br>
+      那條 2.33 是<b>設計已經處理掉的東西</b>，不是待辦事項 ——
+      單層環才會在墨底上消失，而這正是加第二層的理由。<br>
+      ✅ 上面墨底那一區的兩顆（白按鈕與深色膠囊）都實際按 Tab 看過，兩種都清楚可見。
+    </p>
+  </div>
+</div>
+</body>
+</html>

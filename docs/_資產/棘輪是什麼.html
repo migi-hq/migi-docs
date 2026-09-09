@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>棘輪是什麼</title>
+<style>
+  :root{
+    --ink:#2E2B2C; --gray-1:#5C5754; --gray-2:#88827E; --hint:#B4AEA9;
+    --divider:#DED9D5; --gray-4:#F2F0EE; --white:#fff;
+    --brand:#FAD6DC; --brand-tint:#FFECF1; --accent-deep:#974B5F;
+    --ok:#2F7A55; --bad:#B4453C;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:32px 20px 64px;background:#FBFAF9;color:var(--ink);
+       font:15px/1.75 "Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif}
+  .wrap{max-width:860px;margin:0 auto}
+  h1{font-size:26px;margin:0 0 6px}
+  .sub{color:var(--gray-1);margin:0 0 30px}
+  h2{font-size:18px;margin:38px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--divider)}
+  .card{background:var(--white);border:1px solid var(--divider);border-radius:14px;
+        padding:20px 22px;margin:14px 0}
+  .tint{background:var(--brand-tint);border-color:var(--brand)}
+  p{margin:8px 0}
+  .muted{color:var(--gray-1)}
+  .small{font-size:13px;color:var(--gray-2)}
+
+  /* 實物比喻 */
+  .metaphor{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+  .gear{width:96px;height:96px;flex:0 0 96px}
+
+  /* 數字條 */
+  .rowset{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+  .row{display:flex;align-items:center;gap:12px}
+  .lbl{flex:0 0 132px;font-size:13px;color:var(--gray-1);text-align:right}
+  .bar{height:26px;border-radius:6px;display:flex;align-items:center;
+       justify-content:flex-end;padding-right:9px;color:var(--white);
+       font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+  .b-now{background:var(--gray-2)}
+  .b-ok{background:var(--ok)}
+  .b-bad{background:var(--bad)}
+  .tag{font-size:13px;font-weight:700}
+  .t-ok{color:var(--ok)} .t-bad{color:var(--bad)}
+
+  /* 基準線 */
+  .baseline{position:relative;padding-left:14px;border-left:3px solid var(--accent-deep)}
+  .baseline::before{content:"基準線";position:absolute;left:-3px;top:-22px;
+       font-size:12px;color:var(--accent-deep);font-weight:700}
+
+  table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--divider);vertical-align:top}
+  th{font-size:13px;color:var(--gray-1);font-weight:700;background:var(--gray-4)}
+  td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+  code{background:var(--gray-4);border-radius:4px;padding:1px 5px;font-size:13px}
+  .big{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>棘輪是什麼</h1>
+  <p class="sub">為什麼「不在按鈕上的 onClick」要用棘輪，不是直接擋掉</p>
+
+  <div class="card tint metaphor">
+    <svg class="gear" viewBox="0 0 100 100" aria-hidden="true">
+      <circle cx="50" cy="50" r="30" fill="none" stroke="#974B5F" stroke-width="3"/>
+      <g fill="#974B5F">
+        <rect x="46" y="12" width="8" height="12" rx="2"/>
+        <rect x="46" y="76" width="8" height="12" rx="2"/>
+        <rect x="12" y="46" width="12" height="8" rx="2"/>
+        <rect x="76" y="46" width="12" height="8" rx="2"/>
+        <rect x="22" y="22" width="8" height="12" rx="2" transform="rotate(-45 26 28)"/>
+        <rect x="70" y="66" width="8" height="12" rx="2" transform="rotate(-45 74 72)"/>
+        <rect x="70" y="22" width="8" height="12" rx="2" transform="rotate(45 74 28)"/>
+        <rect x="22" y="66" width="8" height="12" rx="2" transform="rotate(45 26 72)"/>
+      </g>
+      <path d="M50 26 A24 24 0 0 1 74 50" fill="none" stroke="#2F7A55" stroke-width="5"
+            stroke-linecap="round"/>
+      <path d="M70 44 l5 7 -8 2 z" fill="#2F7A55"/>
+    </svg>
+    <div style="flex:1;min-width:260px">
+      <p style="margin:0 0 4px"><b>棘輪扳手只能往一個方向轉。</b></p>
+      <p class="muted" style="margin:0">
+        你可以一直鎖緊，但它不會自己鬆開。<br>
+        這裡要鎖的東西是：<b>技術債的數量</b>。
+      </p>
+    </div>
+  </div>
+
+  <h2>今天的數字</h2>
+  <p class="muted">「可以點但不是 <code>&lt;button&gt;</code>」的元素 ——
+     Tab 鍵到不了、Enter 按不了。</p>
+  <div class="rowset">
+    <div class="row"><div class="lbl">migi-web</div>
+      <div class="bar b-now" style="width:60%">112</div></div>
+    <div class="row"><div class="lbl">migi-pos</div>
+      <div class="bar b-now" style="width:28%">51</div></div>
+    <div class="row"><div class="lbl">migi-admin</div>
+      <div class="bar b-now" style="width:7%">11</div></div>
+  </div>
+  <p class="small" style="margin-top:12px">
+    🔴 <b>2026-09-09 更正：我一開始講的是 140 / 88 / 25，那是錯的。</b>
+    那是用 <code>grep</code> 粗略數的 —— 它只認「<code>&lt;button</code> 和
+    <code>onClick</code> 在同一行」，所以跨行寫的真按鈕被算成有問題，
+    大寫元件也被一起算進去。<br>
+    上面是寫成正式計數器之後的數字：往回找每一個 <code>onClick</code>
+    掛在哪個標籤上，再看那個標籤本身能不能用鍵盤。
+  </p>
+
+  <h2>為什麼不直接擋掉</h2>
+  <div class="card">
+    <p style="margin-top:0">如果規則是「一個都不准有」，那麼<b>今天每一次 push 都會失敗</b>，
+       因為現在就有 174 個。</p>
+    <p class="muted" style="margin-bottom:0">
+      而一個<b>永遠紅的檢查，會讓人學會忽略紅色</b>。那比沒有檢查更糟 ——
+      真的出事那天，紅色也不會有人看。<br>
+      <span class="small">（這個專案已經踩過一次：驗證段因為掃到自己的註解而永遠紅。）</span>
+    </p>
+  </div>
+
+  <h2>棘輪怎麼運作</h2>
+  <p class="muted">以 migi-pos 的 51 為例。基準線一開始就是今天的數字。</p>
+
+  <div class="card baseline" style="margin-top:32px">
+    <div class="rowset">
+
+      <div class="row">
+        <div class="lbl">今天　基準線 51</div>
+        <div class="bar b-now" style="width:28%">51</div>
+        <div class="tag muted">起點</div>
+      </div>
+
+      <div class="row">
+        <div class="lbl">改好 3 個</div>
+        <div class="bar b-ok" style="width:26.4%">48</div>
+        <div class="tag t-ok">✅ 推得上去<br><span class="small">基準線自動降到 48</span></div>
+      </div>
+
+      <div class="row">
+        <div class="lbl">又改好 5 個</div>
+        <div class="bar b-ok" style="width:23.6%">43</div>
+        <div class="tag t-ok">✅ 推得上去<br><span class="small">基準線自動降到 43</span></div>
+      </div>
+
+      <div class="row">
+        <div class="lbl">新寫了 2 個</div>
+        <div class="bar b-bad" style="width:24.7%">45</div>
+        <div class="tag t-bad">🔴 擋下<br><span class="small">45 &gt; 43，把新的兩個改成按鈕</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <table>
+    <tr><th>情況</th><th style="width:120px">數量變化</th><th>結果</th></tr>
+    <tr><td>你把舊的改成真按鈕</td><td class="n">51 → 48</td>
+        <td class="t-ok">✅ 通過，而且<b>基準線自動鎖到 48，回不去了</b></td></tr>
+    <tr><td>沒動到這一塊</td><td class="n">51 → 51</td>
+        <td class="t-ok">✅ 通過</td></tr>
+    <tr><td>新寫了一個 <code>&lt;div onClick&gt;</code></td><td class="n">51 → 52</td>
+        <td class="t-bad">🔴 擋下 push，訊息告訴你多了幾個</td></tr>
+  </table>
+
+  <h2>已經裝好了，而且實測過</h2>
+  <div class="card">
+    <p style="margin-top:0">在 migi-admin 丟進一個測試檔（兩個 <code>&lt;div onClick&gt;</code>、
+       一個真按鈕、一個補過 <code>tabIndex</code> 的），跑 push 前檢查：</p>
+    <p style="font-family:ui-monospace,monospace;font-size:13px;background:var(--gray-4);
+              border-radius:8px;padding:12px 14px;margin:10px 0">
+      🔴 鍵盤到不了 從 11 變成 13 —— 新增的部分要處理掉<br>
+      🔴 擋下這次 push：鍵盤到不了 增加（11 → 13）
+    </p>
+    <p class="muted" style="margin-bottom:0">
+      ✅ 真按鈕與補過 <code>tabIndex</code> 的那兩個**沒有**被算進去 ——
+      不然改好了數字也不會降，棘輪就沒有意義。<br>
+      <span class="small">📌 而這個正對照當場抓到計數器自己的一個 bug：
+      它原本往後看 400 個字元找 <code>tabIndex</code>，會吃到後面別的標籤，
+      導致整個檔案都被誤判成「已經補過了」。只跑「通過」那一半是驗不出來的。</span>
+    </p>
+  </div>
+
+  <h2>所以它換到什麼</h2>
+  <div class="card tint">
+    <p style="margin-top:0"><span class="big">舊的債</span> 可以慢慢還，不擋你今天做事。</p>
+    <p><span class="big">新的債</span> 加不進來 —— 想加就要先過 push 這一關。</p>
+    <p class="muted" style="margin-bottom:0">
+      🔴 而且<b>「基準線往下鎖」是自動的</b>。<br>
+      如果要人記得去改那個數字，它就又變成一條「要記得」的規則 ——
+      而這整件事的重點就是<b>不要再靠記性</b>。
+    </p>
+  </div>
+
+  <h2>這不是新發明</h2>
+  <p class="muted">你已經有一個一模一樣的：<code>tokencheck</code> 的寫死值棘輪，
+     今天早上裝好的，基準線是 <b>32 / 11 / 5</b>。
+     這一項只是把同一個形狀套到鍵盤可操作性上。</p>
+  <p class="small">📌 完全不改任何畫面。這一步只是量、記錄、擋住變多。</p>
+
+</div>
+</body>
+</html>
