@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>--accent-text 候選值（2026-09-09）</title>
+<style>
+:root{
+  --brand:#FAD6DC; --brand-light:#FFE7EE; --brand-tint:#FFECF1;
+  --ink:#2E2B2C; --accent:#C2607A;
+  --accent-text:#C2607A;              /* ← 每一欄覆寫的就是這一個 */
+  --gray-1:#5C5754; --gray-2:#88827E; --hint:#B4AEA9;
+  --gray-3:#ECEAE9; --gray-4:#F2F0EE; --divider:#DED9D5;
+  --white:#fff; --field-bg:#F8F7F6; --page-bg:#F6F5F4;
+  --xxxs:11px; --xxs:12px; --xs:13px; --s:14px; --m:15px; --l:16px; --xl:18px; --xxl:22px;
+  --r-pill:999px; --r-lg:16px; --r-card:14px; --r-field:12px;
+  --bw-hair:.5px; --bw-base:1px; --bw-thick:1.5px;
+  --font-sans:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page-bg);font-family:var(--font-sans);color:var(--ink);padding:26px 16px 60px}
+.wrap{max-width:1520px;margin:0 auto}
+h1{font-size:var(--xxl);margin:0 0 6px}
+.sub{font-size:var(--xs);color:var(--gray-1);line-height:1.9;margin:0 0 10px;max-width:940px}
+.warn{background:var(--brand-tint);border:var(--bw-base) solid var(--brand);border-radius:var(--r-card);
+      padding:12px 15px;font-size:var(--xs);line-height:1.95;max-width:940px;margin:0 0 22px}
+.grid{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+.case{background:var(--white);border:var(--bw-base) solid var(--gray-3);border-radius:var(--r-lg);width:352px;overflow:hidden;box-shadow:0 2px 8px rgba(46,43,44,.06)}
+.case > header{padding:10px 14px;border-bottom:var(--bw-base) solid var(--gray-3);background:var(--field-bg)}
+.case h3{font-size:var(--s);margin:0;display:flex;align-items:center;gap:8px}
+.sw{width:15px;height:15px;border-radius:4px;border:1px solid rgba(0,0,0,.12);flex:0 0 auto}
+.case .q{font-size:var(--xxxs);color:var(--gray-2);margin-top:4px;line-height:1.75;font-family:ui-monospace,monospace}
+.body{padding:12px;background:var(--page-bg)}
+
+/* 🔴 填色一律用 --accent（不變）、文字一律用 --accent-text（每欄不同）*/
+.hero{background:var(--brand);border-radius:var(--r-lg);padding:12px 14px}
+.rk{margin:0;font-size:var(--xl);font-weight:700}
+.rs{margin:2px 0 0;font-size:var(--xxs);color:var(--gray-1)}
+.upline{margin:9px 0 0;font-size:var(--xs);color:var(--gray-1);line-height:1.5}
+.upline b{color:var(--accent-text);font-weight:700;font-size:var(--l)}       /* ← 文字 */
+.segs{display:flex;gap:6px;margin-top:8px}
+.seg{flex:1;height:8px;border-radius:var(--r-pill);background:var(--white)}
+.seg.on{background:var(--accent)}                                            /* ← 填色，不變 */
+.ticks{display:flex;gap:6px;margin-top:4px}
+.ticks span{flex:1;text-align:center;font-size:var(--xxxs);color:var(--gray-1)}
+.ticks .cur{color:var(--accent-text);font-weight:700}                        /* ← 文字 */
+
+.card{background:var(--brand-tint);border:var(--bw-base) solid var(--brand);border-radius:var(--r-card);padding:11px 14px;margin-top:10px}
+.tile{display:inline-flex;align-items:center;justify-content:center;width:30px;height:38px;border-radius:var(--r-field);
+      font-size:var(--l);font-weight:700;flex:0 0 auto;background:var(--brand)}
+.n{margin:0;font-size:var(--m);font-weight:700}
+.d{margin:0;font-size:var(--xs);color:var(--gray-1)}
+.pillw{display:inline-block;background:var(--white);border-radius:var(--r-pill);padding:1px 8px;font-weight:700;font-size:var(--xxs)}
+.look{font-size:var(--xs);font-weight:700;color:var(--accent-text);white-space:nowrap}   /* ← 文字 */
+.bar{height:8px;background:var(--white);border-radius:var(--r-pill);overflow:hidden;margin-top:10px}
+.bar i{display:block;height:100%;background:var(--accent)}                    /* ← 填色，不變 */
+.foot{display:flex;justify-content:space-between;align-items:baseline;margin-top:7px;font-size:var(--xxs);color:var(--gray-1)}
+.acc{color:var(--accent-text);font-weight:700}                                /* ← 文字 */
+.ink{color:var(--ink);font-weight:700}
+
+.white{background:var(--white);border:var(--bw-thick) solid var(--gray-3);border-radius:var(--r-card);padding:11px 14px;margin-top:10px;
+       display:flex;justify-content:space-between;align-items:center}
+.fillpill{display:inline-block;background:var(--accent);color:var(--white);border-radius:var(--r-pill);
+          padding:3px 10px;font-size:var(--xxxs);font-weight:700}             /* ← 填色 ＋ 白字，不變 */
+</style>
+
+<div class="wrap">
+<h1><code>--accent-text</code> 候選值</h1>
+<p class="sub">
+全站掃描找到 <b>95 筆未達 WCAG AA</b>，其中約 33 筆的根因是
+<code>--accent</code> #C2607A 當文字時只有 <b>4.00</b>（門檻 4.5）。
+</p>
+
+<div class="warn">
+🎯 <b>解法不是把 <code>--accent</code> 改深，是拆成兩個值</b> ——
+那正是這個專案硬規則 13.7 的判準（<code>--divider</code> 從 <code>--gray-4</code> 拆出來時用的同一條）：<br>
+<b>「這個值改了，哪些東西會跟著動？」答案超過一種用途就該拆。</b><br><br>
+<code>--accent</code> 現在同時是：
+<b>填色</b>（進度條、膠囊底、按鈕）與 <b>文字</b>（查看 ›、+30、III）。
+壓暗它會讓進度條與膠囊一起變深 —— 而那不是要解決的問題。<br><br>
+⚠ <b>所以下面每一欄裡，粉紅色的「條」與「膠囊底」都不會變</b> ——
+只有文字在變。這一點請特別確認，那是這個做法成不成立的關鍵。<br><br>
+📌 世界級的設計系統幾乎都這樣做（Material 的 tonal palette、
+IBM Carbon 的 <code>$link-primary</code>、Shopify Polaris 的獨立文字 token）——
+<b>品牌色是為了「好看」挑的，不是為了「4.5」挑的。</b>
+</div>
+
+<div class="grid">
+
+  <div class="case"><header><h3><span class="sw" style="background:#C2607A"></span>T0 · 現行（對照）</h3>
+    <div class="q">#C2607A<br>白 4.00🟡　tint 3.53🟡　brand 2.99🔴</div></header>
+    <div class="body" style="--accent-text:#C2607A">
+      <div class="hero"><p class="rk">段位: 銀牌熊 III</p><p class="rs">本季段位分 230</p>
+        <p class="upline">再 <b>40</b> 分升級銀牌熊 II</p>
+        <div class="segs"><i class="seg on"></i><i class="seg on"></i><i class="seg"></i><i class="seg"></i></div>
+        <div class="ticks"><span>IV</span><span class="cur">III</span><span>II</span><span>I</span></div></div>
+      <div class="card"><div style="display:flex;align-items:center;gap:10px"><span class="tile">級</span>
+        <div style="flex:1"><p class="n">會員等級</p><p class="d">下一階 <span class="pillw">焦糖布丁</span></p></div>
+        <span class="look">查看 ›</span></div>
+        <div class="bar"><i style="width:5%"></i></div>
+        <div class="foot"><span>已累積消費 <b class="ink">$300</b></span><span>還差 <b class="acc">$5,700</b></span></div></div>
+      <div class="white"><div><p class="n">最近消費</p><p class="d">近 3 筆　<span class="fillpill">新</span></p></div><span class="look">全部 ›</span></div>
+    </div>
+  </div>
+
+  <div class="case"><header><h3><span class="sw" style="background:#B45971"></span>T1 · 剛好過白底</h3>
+    <div class="q">#B45971<br>白 4.56✅　tint 4.02🟡　brand 3.41🟡</div></header>
+    <div class="body" style="--accent-text:#B45971">
+      <div class="hero"><p class="rk">段位: 銀牌熊 III</p><p class="rs">本季段位分 230</p>
+        <p class="upline">再 <b>40</b> 分升級銀牌熊 II</p>
+        <div class="segs"><i class="seg on"></i><i class="seg on"></i><i class="seg"></i><i class="seg"></i></div>
+        <div class="ticks"><span>IV</span><span class="cur">III</span><span>II</span><span>I</span></div></div>
+      <div class="card"><div style="display:flex;align-items:center;gap:10px"><span class="tile">級</span>
+        <div style="flex:1"><p class="n">會員等級</p><p class="d">下一階 <span class="pillw">焦糖布丁</span></p></div>
+        <span class="look">查看 ›</span></div>
+        <div class="bar"><i style="width:5%"></i></div>
+        <div class="foot"><span>已累積消費 <b class="ink">$300</b></span><span>還差 <b class="acc">$5,700</b></span></div></div>
+      <div class="white"><div><p class="n">最近消費</p><p class="d">近 3 筆　<span class="fillpill">新</span></p></div><span class="look">全部 ›</span></div>
+    </div>
+  </div>
+
+  <div class="case"><header><h3><span class="sw" style="background:#A64C63"></span>T2 · 白／淡粉都過</h3>
+    <div class="q">#A64C63<br>白 5.48✅　tint 4.83✅　brand 4.10🟡</div></header>
+    <div class="body" style="--accent-text:#A64C63">
+      <div class="hero"><p class="rk">段位: 銀牌熊 III</p><p class="rs">本季段位分 230</p>
+        <p class="upline">再 <b>40</b> 分升級銀牌熊 II</p>
+        <div class="segs"><i class="seg on"></i><i class="seg on"></i><i class="seg"></i><i class="seg"></i></div>
+        <div class="ticks"><span>IV</span><span class="cur">III</span><span>II</span><span>I</span></div></div>
+      <div class="card"><div style="display:flex;align-items:center;gap:10px"><span class="tile">級</span>
+        <div style="flex:1"><p class="n">會員等級</p><p class="d">下一階 <span class="pillw">焦糖布丁</span></p></div>
+        <span class="look">查看 ›</span></div>
+        <div class="bar"><i style="width:5%"></i></div>
+        <div class="foot"><span>已累積消費 <b class="ink">$300</b></span><span>還差 <b class="acc">$5,700</b></span></div></div>
+      <div class="white"><div><p class="n">最近消費</p><p class="d">近 3 筆　<span class="fillpill">新</span></p></div><span class="look">全部 ›</span></div>
+    </div>
+  </div>
+
+  <div class="case"><header><h3><span class="sw" style="background:#974B5F"></span>T3 · 全部都過（推薦）</h3>
+    <div class="q">#974B5F<br>白 6.02✅　tint 5.31✅　brand 4.51✅</div></header>
+    <div class="body" style="--accent-text:#974B5F">
+      <div class="hero"><p class="rk">段位: 銀牌熊 III</p><p class="rs">本季段位分 230</p>
+        <p class="upline">再 <b>40</b> 分升級銀牌熊 II</p>
+        <div class="segs"><i class="seg on"></i><i class="seg on"></i><i class="seg"></i><i class="seg"></i></div>
+        <div class="ticks"><span>IV</span><span class="cur">III</span><span>II</span><span>I</span></div></div>
+      <div class="card"><div style="display:flex;align-items:center;gap:10px"><span class="tile">級</span>
+        <div style="flex:1"><p class="n">會員等級</p><p class="d">下一階 <span class="pillw">焦糖布丁</span></p></div>
+        <span class="look">查看 ›</span></div>
+        <div class="bar"><i style="width:5%"></i></div>
+        <div class="foot"><span>已累積消費 <b class="ink">$300</b></span><span>還差 <b class="acc">$5,700</b></span></div></div>
+      <div class="white"><div><p class="n">最近消費</p><p class="d">近 3 筆　<span class="fillpill">新</span></p></div><span class="look">全部 ›</span></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="warn" style="margin-top:24px">
+<b>我的看法</b><br><br>
+🥇 <b>T3 #974B5F</b> —— 它是<b>唯一在全部五種底上都過 4.5 的</b>，包含最難的
+<code>--brand</code> 粉底（段位 Hero 的「40」與「III」就站在那裡）。<br>
+🎯 而「最難的那一格」不是特例：<b>段位 Hero 是成績頁的第一眼</b>，
+那個數字就是整頁最該讀得到的東西。<br><br>
+<b>T1</b> 只過白底 —— 修掉約 21 筆，但淡粉底那 12 筆還是紅的，<b>等於要分兩次做</b>。<br>
+<b>T2</b> 差一點（brand 底 4.10），而差的正好是段位 Hero 那一格。<br><br>
+⚠ <b>要確認的不是「哪個好看」，是「粉紅色的條與膠囊有沒有跟著變」</b> ——
+四欄的填色都是同一個 <code>--accent</code>，如果你看得出它們有差，那這個做法就不成立。<br><br>
+🔴 <b>剩下不修的兩類，理由不同</b>：<br>
+· <code>--gray-2</code> 白底 3.79（約 45 筆）—— 要過 4.5 得拉到 #7B7673，
+  那會跟 <code>--gray-1</code> 幾乎一樣，<b>剛做好的等距階梯就塌了</b>。它的角色本來就是「讀得到就好」。<br>
+· LINE 綠底白字 2.26（1 筆）—— <b>不能改</b>，LINE 官方規定按鈕顏色不可修改。
+</div>
+</div>
+</html>
