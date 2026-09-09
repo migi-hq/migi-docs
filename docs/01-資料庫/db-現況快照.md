@@ -563,7 +563,7 @@ using (org_id = current_org_id() and can('order.write'))     -- order_items / or
 | `invoices` | id! │ org_id! │ entity_id │ store_id │ ref_table! │ ref_id! │ kind!=invoice │ parent_invoice_id │ status!=pending │ invoice_no │ invoice_at │ random_code │ period │ tax_type!='1' │ tax_rate!=0.05 │ sales_amount! │ tax_amount! │ total_amount! │ buyer_type!=B2C │ buyer_tax_id │ buyer_title │ carrier_type │ carrier_no │ donate_code │ donate_org_name │ print_mark!=false │ items jsonb!=[] │ void_at │ void_reason │ provider │ provider_ref │ raw │ idempotency_key │ created_at! │ created_by |
 | `legal_entities` | id! │ org_id! │ name! │ tax_id │ kind! │ bank_account jsonb │ is_active!=true │ created_at! │ updated_at! |
 | `mahjong_buddies` | id! │ org_id! │ member_id! │ buddy_id! │ **origin!** │ co_play_count!=1 │ **compat_score** │ linked_at! │ deleted_at │ created_at! |
-| `match_queue_players` | id! │ org_id! │ queue_id! │ member_id! │ join_source │ joined_at! │ left_at │ leave_reason │ no_show!=false │ leave_detail |
+| `match_queue_players` | id! │ org_id! │ queue_id! │ member_id! │ join_source │ joined_at! │ left_at │ leave_reason │ no_show!=false │ leave_detail │ **left_by_staff_id → staff**（2026-09-10：是誰讓他離開的，自己退房是 null）|
 | `match_queues` | id! │ org_id! │ store_id! │ stake_level_id! │ game_type!='16張' │ **rounds!='2 將'**（2026-08-28 由 `'一將'` 改，見下）│ seats!=4 │ prefs jsonb!={} │ status!=waiting │ opened_by │ **play_at!** │ **matched_at** │ matched_session_id │ expires_at!=now()+2h │ created_at! │ updated_at! │ source!=member │ tags jsonb!=[] │ recurring_id │ recurring_freq │ flower │ **open_at** |
 | `member_app_state` | member_id! │ org_id! │ bear jsonb!={} │ titles jsonb!=[] │ updated_at! |
 | `member_availability` | id! │ org_id! │ member_id! │ weekday! │ slot! │ preference!=often │ **source!=stated** │ created_at! │ updated_at! |
@@ -766,7 +766,7 @@ update orgs set live_from = '<真實客人開始使用的時間>';
 | `match_queues.*_source_check` | member / **pos** / recurring |
 | `match_queues.*_seats_check` | 2–4 |
 | `match_queues.*_game_type_chk` / `*_flower_chk` | 台麻／美麻、無花／有花（NOT VALID）|
-| `match_queue_players.*_leave_reason_check` | quit / cancelled / expired / switched |
+| `match_queue_players.*_leave_reason_check` | quit / cancelled / expired / **switched** / **staff_removed**（後者 2026-09-10 新增）<br>⚠ `switched` 在 2026-09-10 之前**沒有任何函式寫過** —— schema 為「移動」保留的字，線上唯一那一列是手動改的 |
 | `recurring_tables.*_frequency_check` | daily / weekly |
 | `recurring_tables.recurring_lead_hours_chk` | 1–720 |
 | `pricing_tiers.*_mode_check` | matched / private |

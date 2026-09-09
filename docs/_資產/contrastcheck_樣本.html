@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>contrastcheck 的正負對照樣本</title>
+<!-- 每一格的預期值都是手算過的。檢查器改動之後拿這一頁重跑，
+     結果不同就是檢查器變了，不是頁面變了。 -->
+<style>body{background:#fff;font-family:sans-serif;margin:24px}</style>
+</head>
+<body>
+
+<!-- ── 文字（1.4.3）───────────────────────────────── -->
+<!-- ✅ 應通過：#767676 站在白底 = 4.54，剛好過 4.5 -->
+<p id="t-pass" style="color:#767676;font-size:15px">一般文字剛好過</p>
+
+<!-- 🔴 應抓到：#949494 站在白底 = 3.03，未達 4.5 -->
+<p id="t-fail" style="color:#949494;font-size:15px">一般文字未達</p>
+
+<!-- ✅ 應通過：同樣是 #949494，但 26px ⇒ 大字門檻 3.0 -->
+<p id="t-big" style="color:#949494;font-size:26px">大字用 3.0 門檻</p>
+
+<!-- ✅ 應通過：半透明白字疊在深底上。
+     🔴 如果檢查器沒有逐層混合，這一格會被算成「白對深底 = 很高」而漏掉，
+       或算成錯的值。這是第 ① 條那個坑的守衛。 -->
+<div style="background:#2E2B2C;padding:12px">
+  <span id="t-alpha" style="color:rgba(255,255,255,.85);font-size:15px">半透明白字</span>
+</div>
+
+<!-- ✅ 不該被算：這個 div 自己沒有文字節點，文字在子元素裡。
+     🔴 少了第 ③ 條，父層會被重複計算一次。 -->
+<div id="t-parent" style="color:#949494">
+  <span style="color:#2E2B2C;font-size:15px">文字其實在子元素</span>
+</div>
+
+<!-- ── 非文字：互動元件（1.4.11）────────────────────── -->
+<!-- 🔴 應抓到：邊框 #EEEEEE 站在白底 = 1.13，兩側都是白，未達 3.0 -->
+<button id="u-fail" style="border:1px solid #EEEEEE;background:#fff;padding:8px 14px">邊框太淡的按鈕</button>
+
+<!-- ✅ 應通過：邊框 #767676 = 4.54 -->
+<button id="u-pass" style="border:1px solid #767676;background:#fff;padding:8px 14px">邊框夠深的按鈕</button>
+
+<!-- ✅ 應通過：沒有邊框，但填色 #2E2B2C 對白底 = 14.02 -->
+<button id="u-solid" style="border:none;background:#2E2B2C;color:#fff;padding:8px 14px">實心按鈕</button>
+
+<!-- 🔴 應抓到：沒有邊框，填色 #FAFAFA 對白底 = 1.04 -->
+<button id="u-ghost" style="border:none;background:#FAFAFA;color:#2E2B2C;padding:8px 14px">填色幾乎看不見</button>
+
+<!-- ✅ 不該被算進非文字那一項：純文字按鈕，沒有邊框也沒有填色。
+     它靠文字本身被辨識，而文字已經由 1.4.3 那一段管了。 -->
+<button id="u-text" style="border:none;background:transparent;color:#2E2B2C;padding:8px 14px">純文字按鈕</button>
+
+<!-- ✅ 不該被算：分隔線不是互動元件，1.4.11 不管它。
+     🔴 把它掃進來會產生大量雜訊，而充滿雜訊的報告等於沒有報告。 -->
+<hr id="u-divider" style="border:none;border-top:1px solid #EEEEEE">
+
+</body>
+</html>
