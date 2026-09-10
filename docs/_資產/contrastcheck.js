@@ -102,6 +102,38 @@
   const INTERACTIVE =
     'button,a,input,select,textarea,summary,[role="button"],[tabindex]';
 
+  /* 🔴 `cursor: pointer` **會被子元素繼承** —— 一張可點的卡片裡，
+     每一個 span、每一張圖都會被算成「互動元件」。
+     2026-09-10 第一次掃真的畫面就中了：錢包頁 10 個「有底色的可點元素」
+     裡有 5 個是卡片內部的圖示膠囊、頭像、未讀數字 ——
+     而**元件是外面那張卡，不是它裡面的裝飾**。
+     ⚠ 那正是這支檔案開頭警告過的形狀：**充滿雜訊的報告等於沒有報告。**
+
+     ✅ 判準：自己是真的互動標籤 → 一律算（卡片裡的按鈕本來就是獨立元件）；
+       只靠繼承來的 `pointer` → **上面還有可點的祖先就跳過**。 */
+  const inheritedPointer = (el) => {
+    if (el.matches(INTERACTIVE)) return false;
+    let up = el.parentElement;
+    while (up) {
+      const ps = getComputedStyle(up);
+      if (up.matches(INTERACTIVE) || ps.cursor === 'pointer') return true;
+      up = up.parentElement;
+    }
+    return false;
+  };
+
+  /* 🔴 **視窗太窄時這支會靜靜回報「零個問題」。**
+     （2026-09-10 踩到）`visible()` 要求寬高都 > 0，而在一個寬度趨近於零的
+     分頁裡，**每一個區塊元素的寬度都是 0** ⇒ 整批被判成看不見 ⇒ 掃描結果全綠。
+     ⚠ 症狀是最糟的那一種：**它跟「這一頁沒問題」長得一模一樣。**
+     📌 實際數字：那次 `<p>` 量到 `0x140`、按鈕 `43x137`（一個字一行）。
+     ⇒ 寧可**不給答案**也不要給一個假的通過（同硬規則 3.58：
+       不要讓失敗訊號被翻譯成通過訊號）。 */
+  if (innerWidth < 320) {
+    return { 錯誤: '🔴 視窗只有 ' + innerWidth + 'px 寬 —— 太窄，元素會全部被判成看不見。'
+      + '把視窗拉到 320px 以上再跑，不要相信這一次的結果。' };
+  }
+
   const textFails = [];
   const uiFails = [];
   let textN = 0, uiN = 0;
@@ -113,6 +145,8 @@
 
     /* ── 文字（1.4.3）────────────────────────────────── */
     const t = ownText(el);
+    /* 這個元件有沒有「自己就看得懂的文字標籤」—— 下面 1.4.11 要用 */
+    let hasReadableLabel = false;
     if (t) {
       const fg0 = parse(s.color);
       if (fg0) {
@@ -124,6 +158,7 @@
         const need = big ? 3.0 : 4.5;
         const r = ratio(fg, bg);
         textN++;
+        hasReadableLabel = r >= need;
         if (r < need) {
           textFails.push({
             誰: label(el), 對比: +r.toFixed(2), 門檻: need,
@@ -133,8 +168,19 @@
       }
     }
 
-    /* ── 非文字：互動元件的可辨識性（1.4.11）───────────── */
-    if (el.matches(INTERACTIVE) || s.cursor === 'pointer') {
+    /* ── 非文字：互動元件的可辨識性（1.4.11）─────────────
+       🔴 **有清楚文字標籤的元件，不需要再要求邊框或填色達 3:1。**
+       （2026-09-10 修正，這是規範讀法的錯不是程式的錯）
+       1.4.11 的原文是「**辨識 UI 元件與狀態所必需**的視覺資訊」——
+       一顆寫著「點數紀錄」的按鈕，人是靠那四個字認出它的，
+       那幾個字歸 1.4.3 管（4.5）。再去要求它的底色達 3.0
+       會把**每一顆淺底按鈕**都報出來，而那是雜訊不是缺陷。
+       ⇒ 只有**沒有文字**的（純圖示鈕、色塊、指示點）才真的靠形狀被辨識。
+       ⚠ 已知沒涵蓋到的：**狀態**（選中 vs 未選中只差一個底色）。
+         那要比較兩個狀態之間的差異，掃一次靜態畫面看不出來，
+         **這支不假裝自己驗得了**。 */
+    if ((el.matches(INTERACTIVE) || s.cursor === 'pointer')
+        && !inheritedPointer(el) && !hasReadableLabel) {
       uiN++;
       const bw = ['Top', 'Right', 'Bottom', 'Left']
         .map((d) => parseFloat(s['border' + d + 'Width']) || 0);
@@ -175,6 +221,7 @@
   window.__contrast = { text: textFails, ui: uiFails };
   return {
     網址: location.pathname,
+    視窗寬: innerWidth,   /* ⚠ 一定要印出來 —— 它決定了上面那些數字算不算數 */
     文字: '檢查 ' + textN + ' 個，未達門檻 ' + textFails.length + ' 個',
     互動元件: '檢查 ' + uiN + ' 個，未達 3.0 的 ' + uiFails.length + ' 個',
     文字前五: textFails.slice(0, 5),

@@ -32,13 +32,18 @@
   <span style="color:#2E2B2C;font-size:15px">文字其實在子元素</span>
 </div>
 
-<!-- ── 非文字：互動元件（1.4.11）────────────────────── -->
-<!-- 🔴 應抓到：邊框 #EEEEEE 站在白底 = 1.16，兩側都是白，未達 3.0
-     ⚠ 這裡原本寫 1.13，是錯的（2026-09-10 第一次真的跑這一頁時發現）。
-       手算：L(#EEE)=0.8550 → (1.0+0.05)/(0.8550+0.05)=1.160。
-     🎯 同硬規則 3.56：**對不上時先懷疑期望值，再懷疑程式**。
-       這一格不影響通過與否（1.13 與 1.16 都遠低於 3.0），
-       但一個錯的期望值放著，下次就會有人去「修」一支對的程式。 -->
+<!-- ── 非文字：互動元件（1.4.11）──────────────────────
+     🔴 **2026-09-10 大幅收窄：有清楚文字標籤的元件一律退出這一項。**
+     規範原文是「**辨識 UI 元件與狀態所必需**的視覺資訊」——
+     一顆寫著字的按鈕，人是靠那些字認出它的，那歸 1.4.3 管（4.5）。
+     再要求它的邊框或底色達 3.0 會把**每一顆淺底按鈕**都報出來。
+     ⇒ 這一項現在只管**沒有文字**的：純圖示鈕、色塊、指示點。
+     ⚠ 所以下面幾格的預期值在那天全部翻過一次 —— 它們有字，**不該再被抓**。 -->
+
+<!-- ✅ 不該被抓（有文字）：邊框 #EEEEEE 對白底只有 1.16，但按鈕上寫著字。
+     📌 那個 1.16 仍然是對的數字（原本註解寫 1.13 是錯的，同日更正，
+       手算 L(#EEE)=0.8550 → 1.05/0.9050 = 1.160）——
+       同硬規則 3.56：對不上時先懷疑期望值。 -->
 <button id="u-fail" style="border:1px solid #EEEEEE;background:#fff;padding:8px 14px">邊框太淡的按鈕</button>
 
 <!-- ✅ 應通過：邊框 #767676 = 4.54 -->
@@ -47,8 +52,19 @@
 <!-- ✅ 應通過：沒有邊框，但填色 #2E2B2C 對白底 = 14.02 -->
 <button id="u-solid" style="border:none;background:#2E2B2C;color:#fff;padding:8px 14px">實心按鈕</button>
 
-<!-- 🔴 應抓到：沒有邊框，填色 #FAFAFA 對白底 = 1.04 -->
+<!-- ✅ 不該被抓（有文字）：填色 #FAFAFA 對白底只有 1.04，但它寫著字。
+     ⚠ 這一格在 2026-09-10 之前的預期是「應抓到」，那個讀法太寬。 -->
 <button id="u-ghost" style="border:none;background:#FAFAFA;color:#2E2B2C;padding:8px 14px">填色幾乎看不見</button>
+
+<!-- ── 真正靠形狀被辨識的：純圖示鈕（沒有可見文字）────────────
+     🔴 應抓到：填色 #FAFAFA 對白底 1.04，而它**沒有字可以幫忙**，
+       客人只能靠那個色塊看出「這裡有一顆按鈕」。 -->
+<button id="u-icon-fail" aria-label="關閉"
+  style="border:none;background:#FAFAFA;width:32px;height:32px"></button>
+
+<!-- ✅ 不該被抓：同樣是純圖示鈕，但填色 #2E2B2C 對白底 14.02。 -->
+<button id="u-icon-pass" aria-label="設定"
+  style="border:none;background:#2E2B2C;width:32px;height:32px"></button>
 
 <!-- ✅ 不該被算進非文字那一項：純文字按鈕，沒有邊框也沒有填色。
      它靠文字本身被辨識，而文字已經由 1.4.3 那一段管了。 -->
@@ -57,6 +73,19 @@
 <!-- ✅ 不該被算：分隔線不是互動元件，1.4.11 不管它。
      🔴 把它掃進來會產生大量雜訊，而充滿雜訊的報告等於沒有報告。 -->
 <hr id="u-divider" style="border:none;border-top:1px solid #EEEEEE">
+
+<!-- ── cursor:pointer 的繼承（2026-09-10 加）──────────────────
+     🔴 一張可點的卡片，它裡面的每一個元素都會繼承 cursor:pointer。
+       那些是卡片的**裝飾**，元件是卡片本身。 -->
+<div id="u-card" style="cursor:pointer;border:1px solid #767676;background:#fff;padding:12px">
+  <!-- 🔴 應被略過：自己不是互動標籤，只是繼承了外面那張卡的 pointer。
+       填色 #FAFAFA 對白底只有 1.04，舊版會把它報成「填色幾乎看不見」。 -->
+  <span id="u-inner-deco" style="background:#FAFAFA;padding:4px 8px">卡片裡的裝飾膠囊</span>
+
+  <!-- ✅ 仍然要被抓到：它是**真的** button，即使在可點的卡片裡
+       也是自己一個元件。填色 #FAFAFA 對白底 1.04。 -->
+  <button id="u-inner-btn" style="border:none;background:#FAFAFA;color:#2E2B2C;padding:8px 14px">卡片裡的真按鈕</button>
+</div>
 
 </body>
 </html>
