@@ -1,28 +1,31 @@
 /* ============================================================
    MIGI 資料庫完整結構 baseline
-   產生日期：2026-08-29
-   產生方式：sql/checks/匯出完整結構baseline.sql（Supabase SQL Editor 執行後匯出）
+   產生日期：2026-09-11
+   基準：`sql/applied/` 有 209 個 `.sql`，最後一份是
+        `2026-09-11_消費明細帶規格.sql`
 
-   ── 這是什麼 ──────────────────────────────────────
-   🔴 **`sql/applied/` 拼不回一個完整的資料庫**（後來直接在 Dashboard 改過
-     而沒留檔的東西不在裡面，例如承重牆 `uq_members_line_user`）。
-   → 這一份是「**今天的完整結構**」，讓「從零重建」變成可能。
+   🔴 **這份是機器產生的，不要手改。** 要更新就重跑一次：
+      ① Supabase SQL Editor 執行 `sql/checks/匯出完整結構baseline.sql`
+      ② 右上角**下載 CSV**（不要全選複製，DDL 裡有換行與引號）
+      ③ `python docs/_資產/baseline_csv2sql.py <下載的.csv>`
 
-   ── 怎麼用 ────────────────────────────────────────
-   重建 = 這一份 baseline ＋ 之後累加的 `sql/applied/`
-   ⚠ **baseline 不取代 `applied/`** —— 那是歷史，記著「為什麼」；
-     baseline 回答「現在長什麼樣」。**兩份都要。**
+   ── 怎麼判斷它過期了（不需要連資料庫）──────────────
+   比對上面那個檔案數與現在的 `sql/applied/`。不一樣就是過期。
+   ⚠ 但它**只能證明「確定過期」，不能證明「還是新的」** ——
+     直接在 Dashboard 手改、沒留檔的東西抓不到，
+     而那不是假設：`uq_members_line_user` 就是那樣來的。
+   → 真要改 schema 時**硬規則 3 永遠成立**：先撈線上版。
 
-   ── 沒有包含的（要另外處理）────────────────────────
-   1. 種子資料（orgs / stores / products / stake_levels / member_tiers…）
-   2. Storage 的 bucket 與 policy（在 storage schema）
-   3. pg_cron 排程（在 cron schema，五個）
-   4. Edge Functions（在 supabase/functions/，已在版控）
-   5. auth schema（Supabase 自己管理，不要重建）
-
-   ⚠ 要更新這份：重跑 sql/checks/匯出完整結構baseline.sql，
-     不要手改 —— 手改一定會漂。
+   ── 這份不含什麼 ─────────────────────────────────
+   種子資料／Storage bucket 與 policy／pg_cron 排程／
+   Edge Functions／auth schema。
+   ⇒ **重建 = 這份 baseline ＋ 之後累加的 `applied/`**，
+     而 `applied/` 記的是「為什麼」，這份記的是「現在長什麼樣」。
+     兩份都要。
    ============================================================ */
+
+-- [1.0] btree_gist
+create extension if not exists btree_gist;
 
 -- [1.0] pg_cron
 create extension if not exists pg_cron;
@@ -206,7 +209,8 @@ create table match_queue_players (
   left_at timestamp with time zone,
   leave_reason text,
   no_show boolean default false not null,
-  leave_detail text
+  leave_detail text,
+  left_by_staff_id uuid
 );
 
 -- [3.0] match_queues
@@ -232,7 +236,8 @@ create table match_queues (
   recurring_id uuid,
   recurring_freq text,
   flower text,
-  open_at timestamp with time zone
+  open_at timestamp with time zone,
+  auto_seat boolean default true not null
 );
 
 -- [3.0] member_app_state
@@ -317,7 +322,9 @@ create table member_tiers (
   sort integer default 0 not null,
   is_active boolean default true not null,
   note text,
-  created_at timestamp with time zone default now() not null
+  created_at timestamp with time zone default now() not null,
+  updated_at timestamp with time zone,
+  updated_by uuid
 );
 
 -- [3.0] members
@@ -346,7 +353,7 @@ create table members (
   updated_by uuid,
   tier_override text,
   last_app_active_at timestamp with time zone,
-  rank text default '銅牌熊 I'::text not null,
+  rank text,
   title text default '新手上路'::text not null,
   likes_count integer default 0 not null,
   is_test boolean default false not null,
@@ -365,7 +372,10 @@ create table members (
   inv_donate_code text,
   inv_tax_id text,
   inv_title text,
-  avatar_bear text
+  avatar_bear text,
+  phone_verified_at timestamp with time zone,
+  rating integer default 0 not null,
+  rating_games integer default 0 not null
 );
 
 -- [3.0] order_items
@@ -379,7 +389,8 @@ create table order_items (
   name text,
   unit_price bigint not null,
   line_total bigint,
-  revenue_type text not null
+  revenue_type text not null,
+  spec text
 );
 
 -- [3.0] order_payments
@@ -443,6 +454,21 @@ create table orgs (
   live_from timestamp with time zone
 );
 
+-- [3.0] phone_otps
+create table phone_otps (
+  id uuid default gen_random_uuid() not null,
+  org_id uuid not null,
+  phone text not null,
+  code_hash text not null,
+  purpose text not null,
+  line_user_id text,
+  attempts integer default 0 not null,
+  sent_at timestamp with time zone default now() not null,
+  expires_at timestamp with time zone not null,
+  verified_at timestamp with time zone,
+  consumed_at timestamp with time zone
+);
+
 -- [3.0] pricing_tiers
 create table pricing_tiers (
   id uuid default gen_random_uuid() not null,
@@ -497,7 +523,8 @@ create table products (
   subcategory text,
   tracks_stock boolean default true not null,
   is_system boolean default false not null,
-  discountable boolean default true not null
+  discountable boolean default true not null,
+  spec text
 );
 
 -- [3.0] queue_tags
@@ -507,6 +534,43 @@ create table queue_tags (
   sort_order integer default 0 not null,
   is_active boolean default true not null,
   created_at timestamp with time zone default now() not null
+);
+
+-- [3.0] rank_points
+create table rank_points (
+  band text not null,
+  place smallint not null,
+  points smallint not null
+);
+
+-- [3.0] rank_seasons
+create table rank_seasons (
+  code text not null,
+  org_id uuid not null,
+  label text not null,
+  starts_at timestamp with time zone not null,
+  ends_at timestamp with time zone not null,
+  created_at timestamp with time zone default now() not null
+);
+
+-- [3.0] rank_sub_levels
+create table rank_sub_levels (
+  tier_code text not null,
+  sub text not null,
+  offset_pts integer not null,
+  sort integer not null
+);
+
+-- [3.0] rank_tiers
+create table rank_tiers (
+  code text not null,
+  label text not null,
+  min_rating integer not null,
+  auto boolean default true not null,
+  sort smallint not null,
+  note text,
+  band text default 'low'::text not null,
+  min_opponents integer
 );
 
 -- [3.0] recurring_tables
@@ -529,6 +593,26 @@ create table recurring_tables (
   tags jsonb default '[]'::jsonb not null
 );
 
+-- [3.0] season_champions
+create table season_champions (
+  season text not null,
+  org_id uuid not null,
+  member_id uuid,
+  rating integer,
+  awarded_at timestamp with time zone default now() not null
+);
+
+-- [3.0] season_standings
+create table season_standings (
+  org_id uuid not null,
+  season text not null,
+  member_id uuid not null,
+  rating integer not null,
+  rank_no integer not null,
+  games integer not null,
+  recorded_at timestamp with time zone default now() not null
+);
+
 -- [3.0] session_players
 create table session_players (
   id uuid default gen_random_uuid() not null,
@@ -549,7 +633,9 @@ create table session_players (
   left_at timestamp with time zone,
   paid_by uuid,
   fee_waived_amount bigint default 0 not null,
-  fee_waived_reason text
+  fee_waived_reason text,
+  rating_after integer,
+  final_score integer
 );
 
 -- [3.0] staff
@@ -817,6 +903,9 @@ alter table orders add constraint orders_pkey PRIMARY KEY (id);
 -- [4.1] orgs.orgs_pkey
 alter table orgs add constraint orgs_pkey PRIMARY KEY (id);
 
+-- [4.1] phone_otps.phone_otps_pkey
+alter table phone_otps add constraint phone_otps_pkey PRIMARY KEY (id);
+
 -- [4.1] pricing_tiers.pricing_tiers_pkey
 alter table pricing_tiers add constraint pricing_tiers_pkey PRIMARY KEY (id);
 
@@ -829,8 +918,26 @@ alter table products add constraint products_pkey PRIMARY KEY (id);
 -- [4.1] queue_tags.queue_tags_pkey
 alter table queue_tags add constraint queue_tags_pkey PRIMARY KEY (code);
 
+-- [4.1] rank_points.rank_points_pkey
+alter table rank_points add constraint rank_points_pkey PRIMARY KEY (band, place);
+
+-- [4.1] rank_seasons.rank_seasons_pkey
+alter table rank_seasons add constraint rank_seasons_pkey PRIMARY KEY (org_id, code);
+
+-- [4.1] rank_sub_levels.rank_sub_levels_pkey
+alter table rank_sub_levels add constraint rank_sub_levels_pkey PRIMARY KEY (tier_code, sub);
+
+-- [4.1] rank_tiers.rank_tiers_pkey
+alter table rank_tiers add constraint rank_tiers_pkey PRIMARY KEY (code);
+
 -- [4.1] recurring_tables.recurring_tables_pkey
 alter table recurring_tables add constraint recurring_tables_pkey PRIMARY KEY (id);
+
+-- [4.1] season_champions.season_champions_pkey
+alter table season_champions add constraint season_champions_pkey PRIMARY KEY (org_id, season);
+
+-- [4.1] season_standings.season_standings_pkey
+alter table season_standings add constraint season_standings_pkey PRIMARY KEY (org_id, season, member_id);
 
 -- [4.1] session_players.session_players_pkey
 alter table session_players add constraint session_players_pkey PRIMARY KEY (id);
@@ -935,7 +1042,7 @@ alter table mahjong_buddies add constraint mahjong_buddies_check CHECK ((member_
 alter table mahjong_buddies add constraint mahjong_buddies_origin_check CHECK ((origin = ANY (ARRAY['pre_existing'::text, 'matched'::text])));
 
 -- [4.3] match_queue_players.match_queue_players_leave_reason_check
-alter table match_queue_players add constraint match_queue_players_leave_reason_check CHECK ((leave_reason = ANY (ARRAY['quit'::text, 'cancelled'::text, 'expired'::text, 'switched'::text])));
+alter table match_queue_players add constraint match_queue_players_leave_reason_check CHECK ((leave_reason = ANY (ARRAY['quit'::text, 'cancelled'::text, 'expired'::text, 'switched'::text, 'staff_removed'::text])));
 
 -- [4.3] match_queues.match_queues_flower_chk
 alter table match_queues add constraint match_queues_flower_chk CHECK (((flower IS NULL) OR (flower = ANY (ARRAY['無花'::text, '有花'::text])))) NOT VALID;
@@ -989,7 +1096,7 @@ alter table member_likes add constraint member_likes_check CHECK ((liker_id <> t
 alter table member_tiers add constraint member_tiers_pct_chk CHECK (((discount_pct >= 0) AND (discount_pct <= 100)));
 
 -- [4.3] members.members_avatar_source_chk
-alter table members add constraint members_avatar_source_chk CHECK ((avatar_source = ANY (ARRAY['bear'::text, 'photo'::text])));
+alter table members add constraint members_avatar_source_chk CHECK ((avatar_source = ANY (ARRAY['bear'::text, 'photo'::text, 'line'::text])));
 
 -- [4.3] members.members_display_name_chk
 alter table members add constraint members_display_name_chk CHECK (((display_name IS NOT NULL) AND (display_name = migi_norm_nickname(display_name)) AND ((char_length(display_name) >= 1) AND (char_length(display_name) <= 12)) AND (display_name !~* '(migi|官方|客服|店長|管理員|系統|admin)'::text)));
@@ -1045,6 +1152,9 @@ alter table orders add constraint orders_status_check CHECK ((status = ANY (ARRA
 -- [4.3] orgs.orgs_plan_check
 alter table orgs add constraint orgs_plan_check CHECK ((plan = ANY (ARRAY['self'::text, 'franchise'::text, 'licensed'::text])));
 
+-- [4.3] phone_otps.phone_otps_purpose_check
+alter table phone_otps add constraint phone_otps_purpose_check CHECK ((purpose = ANY (ARRAY['register'::text, 'claim'::text, 'change'::text])));
+
 -- [4.3] pricing_tiers.pricing_tiers_mode_check
 alter table pricing_tiers add constraint pricing_tiers_mode_check CHECK ((mode = ANY (ARRAY['matched'::text, 'private'::text])));
 
@@ -1065,6 +1175,18 @@ alter table products add constraint products_stock_qty_check CHECK ((stock_qty >
 
 -- [4.3] products.products_unit_price_check
 alter table products add constraint products_unit_price_check CHECK ((unit_price >= 0));
+
+-- [4.3] rank_seasons.rank_seasons_range_chk
+alter table rank_seasons add constraint rank_seasons_range_chk CHECK ((ends_at > starts_at));
+
+-- [4.3] rank_sub_levels.rank_sub_levels_offset_chk
+alter table rank_sub_levels add constraint rank_sub_levels_offset_chk CHECK ((offset_pts >= 0));
+
+-- [4.3] rank_sub_levels.rank_sub_levels_sub_chk
+alter table rank_sub_levels add constraint rank_sub_levels_sub_chk CHECK ((sub = ANY (ARRAY['IV'::text, 'III'::text, 'II'::text, 'I'::text])));
+
+-- [4.3] rank_tiers.rank_tiers_band_chk
+alter table rank_tiers add constraint rank_tiers_band_chk CHECK ((band = ANY (ARRAY['low'::text, 'mid'::text, 'top'::text])));
 
 -- [4.3] recurring_tables.recurring_lead_hours_chk
 alter table recurring_tables add constraint recurring_lead_hours_chk CHECK (((lead_hours >= 1) AND (lead_hours <= 720)));
@@ -1204,6 +1326,9 @@ alter table mahjong_buddies add constraint mahjong_buddies_member_id_fkey FOREIG
 -- [5.0] mahjong_buddies.mahjong_buddies_org_id_fkey
 alter table mahjong_buddies add constraint mahjong_buddies_org_id_fkey FOREIGN KEY (org_id) REFERENCES orgs(id) ON DELETE RESTRICT;
 
+-- [5.0] match_queue_players.match_queue_players_left_by_staff_id_fkey
+alter table match_queue_players add constraint match_queue_players_left_by_staff_id_fkey FOREIGN KEY (left_by_staff_id) REFERENCES staff(id);
+
 -- [5.0] match_queue_players.match_queue_players_member_id_fkey
 alter table match_queue_players add constraint match_queue_players_member_id_fkey FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE RESTRICT;
 
@@ -1324,6 +1449,9 @@ alter table orders add constraint orders_store_id_fkey FOREIGN KEY (store_id) RE
 -- [5.0] orders.orders_table_id_fkey
 alter table orders add constraint orders_table_id_fkey FOREIGN KEY (table_id) REFERENCES tables(id) ON DELETE RESTRICT;
 
+-- [5.0] phone_otps.phone_otps_org_id_fkey
+alter table phone_otps add constraint phone_otps_org_id_fkey FOREIGN KEY (org_id) REFERENCES orgs(id);
+
 -- [5.0] pricing_tiers.pricing_tiers_org_id_fkey
 alter table pricing_tiers add constraint pricing_tiers_org_id_fkey FOREIGN KEY (org_id) REFERENCES orgs(id) ON DELETE RESTRICT;
 
@@ -1332,6 +1460,24 @@ alter table pricing_tiers add constraint pricing_tiers_store_id_fkey FOREIGN KEY
 
 -- [5.0] products.products_org_id_fkey
 alter table products add constraint products_org_id_fkey FOREIGN KEY (org_id) REFERENCES orgs(id) ON DELETE RESTRICT;
+
+-- [5.0] rank_seasons.rank_seasons_org_id_fkey
+alter table rank_seasons add constraint rank_seasons_org_id_fkey FOREIGN KEY (org_id) REFERENCES orgs(id);
+
+-- [5.0] rank_sub_levels.rank_sub_levels_tier_code_fkey
+alter table rank_sub_levels add constraint rank_sub_levels_tier_code_fkey FOREIGN KEY (tier_code) REFERENCES rank_tiers(code) ON DELETE CASCADE;
+
+-- [5.0] season_champions.season_champions_member_id_fkey
+alter table season_champions add constraint season_champions_member_id_fkey FOREIGN KEY (member_id) REFERENCES members(id);
+
+-- [5.0] season_champions.season_champions_org_id_fkey
+alter table season_champions add constraint season_champions_org_id_fkey FOREIGN KEY (org_id) REFERENCES orgs(id);
+
+-- [5.0] season_champions.season_champions_season_fk
+alter table season_champions add constraint season_champions_season_fk FOREIGN KEY (org_id, season) REFERENCES rank_seasons(org_id, code);
+
+-- [5.0] season_standings.season_standings_member_id_fkey
+alter table season_standings add constraint season_standings_member_id_fkey FOREIGN KEY (member_id) REFERENCES members(id);
 
 -- [5.0] session_players.session_players_member_id_fkey
 alter table session_players add constraint session_players_member_id_fkey FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE RESTRICT;
@@ -1531,6 +1677,9 @@ CREATE INDEX idx_order_payments_store_day ON public.order_payments USING btree (
 -- [6.0] idx_orders_entity
 CREATE INDEX idx_orders_entity ON public.orders USING btree (entity_id, created_at);
 
+-- [6.0] idx_orders_member_paid
+CREATE INDEX idx_orders_member_paid ON public.orders USING btree (member_id, status) INCLUDE (payable) WHERE (member_id IS NOT NULL);
+
 -- [6.0] idx_orders_real
 CREATE INDEX idx_orders_real ON public.orders USING btree (created_at) WHERE (is_test = false);
 
@@ -1539,6 +1688,12 @@ CREATE INDEX idx_orders_session ON public.orders USING btree (session_id) WHERE 
 
 -- [6.0] idx_orders_txn_no
 CREATE INDEX idx_orders_txn_no ON public.orders USING btree (txn_no) WHERE (txn_no IS NOT NULL);
+
+-- [6.0] idx_phone_otps_line
+CREATE INDEX idx_phone_otps_line ON public.phone_otps USING btree (line_user_id, sent_at DESC) WHERE (line_user_id IS NOT NULL);
+
+-- [6.0] idx_phone_otps_lookup
+CREATE INDEX idx_phone_otps_lookup ON public.phone_otps USING btree (org_id, phone, sent_at DESC);
 
 -- [6.0] idx_pricing_lookup
 CREATE INDEX idx_pricing_lookup ON public.pricing_tiers USING btree (org_id, store_id, mode, is_active) WHERE (deleted_at IS NULL);
@@ -1611,6 +1766,9 @@ CREATE INDEX idx_wallet_audit_member ON public.wallet_balance_audit USING btree 
 
 -- [6.0] idx_wallet_audit_unsynced
 CREATE INDEX idx_wallet_audit_unsynced ON public.wallet_balance_audit USING btree (changed_at DESC) WHERE (is_synced = false);
+
+-- [6.0] ix_season_standings_member
+CREATE INDEX ix_season_standings_member ON public.season_standings USING btree (org_id, member_id, rank_no);
 
 -- [6.0] member_coupons_org_code_uq
 CREATE UNIQUE INDEX member_coupons_org_code_uq ON public.member_coupons USING btree (org_id, code);
@@ -1708,6 +1866,11 @@ AS $function$
 declare
   v_org uuid; v_bal bigint; v_existing uuid; v_txn uuid;
 begin
+  /* 🔴 操作者身分從 JWT 取，**不採信呼叫端送的 p_staff_id**（2026-09-04）。
+     在此之前 POS 送的值來自 localStorage，店員可以改成別人 ——
+     而那比沒有稽核更糟（看起來有，卻指向錯的人）。
+   ⚠ 查不到就是 null（會員 App 那條路沒有 staff 身分），**不可以報錯**。 */
+  p_staff_id := (select staff_id from public.current_staff());
   -- 冪等檢查（基石⑧）：同 key 已處理 → 回前次結果，不重複扣
   if p_idempotency_key is not null then
     select id into v_existing from wallet_txns
@@ -1755,29 +1918,36 @@ AS $function$
 declare
   r record;
   v_target_is_fix boolean := (p_source = 'recurring');
-  v_row_is_fix    boolean;
+  v_row_is_fix boolean;
 begin
-  -- 掃身上所有還沒結束的場（waiting 等待中 + matched 已成桌）
+  /* 掃身上所有「還沒結束」的場。
+     ★ 2026-09-06：加入 `seated`（已經帶到桌、正要去店裡）——
+       在此之前成桌之後還能再開一桌，而這支的規則本身寫著
+       「同時只能參加一場」。
+     🔴 但**必須綁「那張桌還開著」** —— `seated` 是終點狀態，
+       打完收桌之後房仍然是 seated，無條件擋的話
+       **打過一場的人從此永遠報不了名**。 */
   for r in
     select q.play_at, q.source
-    from match_queue_players qp
-    join match_queues q on q.id = qp.queue_id
-    where qp.member_id = p_member
-      and qp.left_at is null
-      and q.status in ('waiting', 'matched')
+      from match_queue_players qp
+      join match_queues q on q.id = qp.queue_id
+     where qp.member_id = p_member
+       and qp.left_at is null
+       and q.org_id = p_org_id
+       and (
+         q.status in ('waiting', 'matched')
+         or (q.status = 'seated' and public.migi_seat_is_live(q.matched_session_id))
+       )
   loop
     v_row_is_fix := (r.source = 'recurring');
-
     -- ① 即時局最多一場：目標是即時局、身上已有即時局
     if not v_target_is_fix and not v_row_is_fix then
       raise exception '你已報名即時牌局，同時只能參加一場';
     end if;
-
     -- ② 固定局最多一場：目標是固定局、身上已有固定局
     if v_target_is_fix and v_row_is_fix then
       raise exception '你已報名固定牌局，同時只能參加一場';
     end if;
-
     -- ③ 任一場 play_at 跟目標場差 < 6 小時 → 擋（跨類型也要守）
     if abs(extract(epoch from (r.play_at - p_play_at))) < 6 * 3600 then
       raise exception '你已有一場 % 的牌局，時間太近無法同時報名（需間隔 6 小時以上）',
@@ -1821,6 +1991,141 @@ begin
 
   return jsonb_build_object('ok', true, 'status', 'matched',
     'seat_reason', v_seat->>'reason');
+end $function$
+;
+
+-- [7.0] _member_orders_core
+CREATE OR REPLACE FUNCTION public._member_orders_core(p_member_id uuid, p_limit integer DEFAULT 10, p_before timestamp with time zone DEFAULT NULL::timestamp with time zone)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_limit int := greatest(1, least(coalesce(p_limit, 10), 100));
+  v_list  jsonb;
+begin
+  if p_member_id is null then
+    raise exception 'member_id required';
+  end if;
+
+  select coalesce(jsonb_agg(x order by x_at desc), '[]'::jsonb)
+    into v_list
+    from (
+      select u.x_at, u.x
+        from (
+          -- ── 消費單（可能附帶同一次交易的儲值）──
+          select o.paid_at as x_at,
+                 jsonb_build_object(
+                   'type', 'order',
+                   'id', o.id,
+                   'order_no', o.order_no,
+                   'txn_no', o.txn_no,
+                   'paid_at', o.paid_at,
+                   'subtotal', o.subtotal,
+                   'coupon_discount', o.coupon_discount,
+                   'tier_discount', o.tier_discount,
+                   'payable', o.payable,
+                   'points_used', o.points_used,
+                   'cash_due', o.cash_due,
+                   'items', (
+                     select coalesce(jsonb_agg(jsonb_build_object(
+                       'name', i.name, 'spec', i.spec, 'revenue_type', i.revenue_type, 'qty', i.qty,
+                       'unit_price', i.unit_price, 'line_total', i.line_total
+                     ) order by case i.revenue_type
+                                  when 'venue_fee' then 1
+                                  when 'fnb'       then 2
+                                  when 'retail'    then 3
+                                  else 4 end, i.name), '[]'::jsonb)
+                     from order_items i where i.order_id = o.id),
+                   'payments', (
+                     select coalesce(jsonb_agg(jsonb_build_object(
+                       'method', pm.method, 'amount', pm.amount
+                     )), '[]'::jsonb)
+                     from order_payments pm where pm.order_id = o.id),
+
+                   -- 同一次收款的儲值（冪等鍵前綴配對，與 POS 桌帳同一套）
+                   'topup', (
+                     select jsonb_build_object(
+                              'topup_no',     t.topup_no,
+                              'points',       t.points,
+                              'bonus_points', t.bonus_points,
+                              'credit',       t.points + t.bonus_points,
+                              'amount_twd',   t.amount_twd)
+                       from topup_orders t
+                      where t.member_id = o.member_id
+                        and t.status = 'paid'
+                        and o.idempotency_key like 'pos-%'
+                        and split_part(t.idempotency_key, ':', 1)
+                          = split_part(o.idempotency_key, ':', 1)
+                      limit 1),
+
+                   'collected', o.payable + coalesce((
+                     select t.amount_twd from topup_orders t
+                      where t.member_id = o.member_id
+                        and t.status = 'paid'
+                        and o.idempotency_key like 'pos-%'
+                        and split_part(t.idempotency_key, ':', 1)
+                          = split_part(o.idempotency_key, ':', 1)
+                      limit 1), 0)
+                 ) as x
+            from orders o
+           where o.member_id = p_member_id
+             and o.deleted_at is null
+             and o.status = 'paid'
+
+          union all
+
+          -- ── 沒有配對到訂單的儲值單 ──
+          select t.created_at as x_at,
+                 jsonb_build_object(
+                   'type', 'topup',
+                   'id', t.id,
+                   'order_no', t.topup_no,
+                   'txn_no', t.txn_no,
+                   'paid_at', t.created_at,
+                   'subtotal', t.amount_twd,
+                   'coupon_discount', 0,
+                   'tier_discount', 0,
+                   'payable', t.amount_twd,
+                   'points_used', 0,
+                   'cash_due', t.amount_twd,
+                   'collected', t.amount_twd,
+                   'points', t.points,
+                   'bonus_points', t.bonus_points,
+                   -- 儲值不是營收類別，用獨立旗標標記（與 POS 一致）
+                   'items', jsonb_build_array(jsonb_build_object(
+                     'name', '會員儲值 ' || (t.points + t.bonus_points)::text || ' 點',
+                     'is_topup', true, 'qty', 1,
+                     'unit_price', t.amount_twd, 'line_total', t.amount_twd)),
+                   'payments', jsonb_build_array(jsonb_build_object(
+                     'method', t.pay_method, 'amount', t.amount_twd))
+                 ) as x
+            from topup_orders t
+           where t.member_id = p_member_id
+             and t.status = 'paid'
+             and not exists (
+               select 1 from orders o
+                where o.member_id = t.member_id
+                  and o.deleted_at is null
+                  and o.status = 'paid'
+                  and o.idempotency_key like 'pos-%'
+                  and split_part(o.idempotency_key, ':', 1)
+                    = split_part(t.idempotency_key, ':', 1))
+        ) u
+       where p_before is null or u.x_at < p_before
+       order by u.x_at desc
+       limit v_limit
+    ) z;
+
+  return jsonb_build_object(
+    'orders', v_list,
+    -- 還有更多：前端據此決定要不要顯示「載入更多」。
+    -- 回筆數等於上限就當作還有 —— 少一次查詢，代價是最後一頁可能多按一次。
+    'has_more', jsonb_array_length(v_list) >= v_limit,
+    'next_before', case when jsonb_array_length(v_list) > 0
+                        then (v_list -> (jsonb_array_length(v_list) - 1) ->> 'paid_at')
+                   end);
 end $function$
 ;
 
@@ -1877,6 +2182,11 @@ CREATE OR REPLACE FUNCTION public.activate_session_tx(p_session_id uuid, p_staff
 AS $function$
 declare v_n int;
 begin
+  /* 🔴 操作者身分從 JWT 取，**不採信呼叫端送的 p_staff_id**（2026-09-04）。
+     在此之前 POS 送的值來自 localStorage，店員可以改成別人 ——
+     而那比沒有稽核更糟（看起來有，卻指向錯的人）。
+   ⚠ 查不到就是 null（會員 App 那條路沒有 staff 身分），**不可以報錯**。 */
+  p_staff_id := (select staff_id from public.current_staff());
   select count(*) into v_n from session_players
    where session_id = p_session_id and left_at is null;
   if v_n = 0 then
@@ -1895,6 +2205,105 @@ begin
 end $function$
 ;
 
+-- [7.0] admin_delete_product_tx
+CREATE OR REPLACE FUNCTION public.admin_delete_product_tx(p_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare v_org uuid; v_staff uuid; v_sys boolean;
+begin
+  if not public.can('product.write') then
+    return jsonb_build_object('ok', false, 'reason', 'forbidden', 'message', '沒有權限刪除商品');
+  end if;
+  v_org   := public.current_org_id();
+  v_staff := (select staff_id from public.current_staff());
+
+  select is_system into v_sys from products
+   where id = p_id and org_id = v_org and deleted_at is null;
+  if not found then
+    return jsonb_build_object('ok', false, 'reason', 'not_found', 'message', '找不到這個商品');
+  end if;
+  if v_sys then
+    return jsonb_build_object('ok', false, 'reason', 'system_cannot_delete',
+      'message', '系統商品不可刪除，開桌流程以貨號查詢它');
+  end if;
+
+  update products set deleted_at = now(), updated_by = v_staff
+   where id = p_id and org_id = v_org and deleted_at is null;
+  return jsonb_build_object('ok', true);
+end $function$
+;
+
+-- [7.0] admin_list_member_tiers_tx
+CREATE OR REPLACE FUNCTION public.admin_list_member_tiers_tx()
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  if not public.can('tier.write') then
+    return jsonb_build_object('ok', false, 'reason', 'forbidden',
+                              'message', '沒有權限查看會員等級');
+  end if;
+
+  /* ⚠ **不是 `list_member_tiers_tx`** —— 那一支濾掉停用的、也不回
+     `is_active` 與 `sort`（POS 與會員 App 在讀它，不可以改）。 */
+  return jsonb_build_object('ok', true, 'rows', coalesce((
+    select jsonb_agg(jsonb_build_object(
+             'code', t.code,
+             'label', t.label,
+             'discount_pct', t.discount_pct,
+             'threshold_amount', t.threshold_amount,
+             'sort', t.sort,
+             'is_active', t.is_active,
+             'note', t.note,
+             'updated_at', t.updated_at,
+             /* 🎯 **有幾個人在這一階** —— 讓改動的後果看得見
+                （「改這一階會影響 3 個人」），而不是改完才知道。
+                ⚠ 也是 ② 那道擋牆的依據。 */
+             'members', (select count(*) from members m
+                          where m.tier = t.code and m.deleted_at is null)
+           ) order by t.sort, t.code)
+      from member_tiers t), '[]'::jsonb));
+end $function$
+;
+
+-- [7.0] admin_list_products_tx
+CREATE OR REPLACE FUNCTION public.admin_list_products_tx()
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare v_org uuid;
+begin
+  if not public.can('product.write') then
+    return jsonb_build_object('ok', false, 'reason', 'forbidden',
+                              'message', '沒有權限查看商品');
+  end if;
+  v_org := public.current_org_id();
+
+  return jsonb_build_object('ok', true, 'rows', coalesce((
+    select jsonb_agg(jsonb_build_object(
+      'id', id, 'sku', sku, 'name', name,
+      'category', category, 'subcategory', subcategory,
+      'revenue_type', revenue_type,
+      'unit_price', unit_price, 'unit_cost', unit_cost,
+      'tracks_stock', tracks_stock, 'stock_qty', stock_qty,
+      'is_active', is_active, 'is_available', is_available,
+      'is_system', is_system, 'discountable', discountable,
+      'spec', spec,
+      'updated_at', updated_at
+    ) order by category, sku)
+    from products
+    where org_id = v_org and deleted_at is null
+  ), '[]'::jsonb));
+end $function$
+;
+
 -- [7.0] admin_remove_avatar_tx
 CREATE OR REPLACE FUNCTION public.admin_remove_avatar_tx(p_member_id uuid, p_reason text DEFAULT NULL::text, p_block boolean DEFAULT false)
  RETURNS jsonb
@@ -1904,6 +2313,14 @@ CREATE OR REPLACE FUNCTION public.admin_remove_avatar_tx(p_member_id uuid, p_rea
 AS $function$
 declare v_path text; v_org uuid; v_cnt int;
 begin
+  /* 🔴 這一行是這次唯一新增的東西。
+     照 admin_search_sessions_tx / admin_update_member_tier_tx 同一個寫法，
+     回傳形狀也一致（ok / reason / message）—— 不要發明第二種。 */
+  if not public.can('member.write') then
+    return jsonb_build_object('ok', false, 'reason', 'forbidden',
+                              'message', '沒有權限下架會員頭像');
+  end if;
+
   select avatar_photo_path, org_id, avatar_removed_count
     into v_path, v_org, v_cnt
     from members where id = p_member_id;
@@ -1932,6 +2349,339 @@ begin
 end $function$
 ;
 
+-- [7.0] admin_search_sessions_tx
+CREATE OR REPLACE FUNCTION public.admin_search_sessions_tx(p_from timestamp with time zone DEFAULT NULL::timestamp with time zone, p_to timestamp with time zone DEFAULT NULL::timestamp with time zone, p_store uuid DEFAULT NULL::uuid, p_table_q text DEFAULT NULL::text, p_member_q text DEFAULT NULL::text, p_limit integer DEFAULT 50, p_before timestamp with time zone DEFAULT NULL::timestamp with time zone, p_before_id uuid DEFAULT NULL::uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_org   uuid;
+  v_from  timestamptz;
+  v_to    timestamptz;
+  v_lim   int := least(greatest(coalesce(p_limit, 50), 1), 200);
+  v_rows  jsonb;
+  v_more  boolean := false;
+begin
+  if not public.can('ops.read') then
+    return jsonb_build_object('ok', false, 'reason', 'forbidden',
+                              'message', '沒有權限查詢場次');
+  end if;
+  v_org := public.current_org_id();
+
+  v_from := coalesce(p_from,
+              ((now() at time zone 'Asia/Taipei')::date)::timestamp at time zone 'Asia/Taipei');
+  v_to   := coalesce(p_to, v_from + interval '1 day');
+
+  with base as (
+    select s.id,
+           coalesce(s.activated_at, s.started_at) as at,
+           s.ended_at, s.status, s.mode, s.game_type, s.flower,
+           s.planned_rounds, s.fee_points,
+           t.label as table_label, t.area,
+           st.name as store_name,
+           coalesce(sl.label, '未設定') as stake_label,
+           coalesce(sl.is_hygiene, false) as hygiene
+      from table_sessions s
+      left join tables t        on t.id  = s.table_id
+      left join stores st       on st.id = s.store_id
+      left join stake_levels sl on sl.id = s.stake_level_id
+     where s.org_id = v_org
+       and s.deleted_at is null
+       and coalesce(s.activated_at, s.started_at) >= v_from
+       and coalesce(s.activated_at, s.started_at) <  v_to
+       and (p_store   is null or s.store_id = p_store)
+       and (p_table_q is null or t.label ilike '%' || btrim(p_table_q) || '%')
+       /* 🔴 手機那一半一定要先確認真的有數字 ——
+          `regexp_replace('阿明','\D','','g')` 回空字串 ⇒ `like '%%'`
+          ⇒ 每個有手機的會員都符合 ⇒ **篩選完全失效而且不報錯**。 */
+       and (p_member_q is null or exists (
+              select 1 from session_players sp
+                join members m on m.id = sp.member_id
+               where sp.session_id = s.id
+                 and (m.display_name ilike '%' || btrim(p_member_q) || '%'
+                      or (regexp_replace(p_member_q, '\D', '', 'g') <> ''
+                          and m.phone like '%' || regexp_replace(p_member_q, '\D', '', 'g') || '%'))))
+       /* ★ 複合游標：`(at, id)` 的列比較是字典序 —— 先比時間，打平才比 id。
+          ⚠ **必須與 `order by` 用同一組鍵**，否則游標會指到排序上不相鄰的位置。
+          ⚠ 只給 `p_before` 沒給 id 時退回單鍵（前端第一版就是這樣叫的）。 */
+       and (p_before is null
+            or (p_before_id is null and coalesce(s.activated_at, s.started_at) < p_before)
+            or (p_before_id is not null
+                and (coalesce(s.activated_at, s.started_at), s.id) < (p_before, p_before_id)))
+     order by coalesce(s.activated_at, s.started_at) desc, s.id desc
+     limit v_lim + 1
+  )
+  /* `has_more` 從**多撈的那一筆**判斷，而且要在截斷之前數 ——
+     內層先 limit 再 count 的話，count 永遠 ≤ v_lim，
+     `has_more` 恆為 false 而且不報錯（下一頁永遠按不到）。 */
+  select coalesce(jsonb_agg(x.j order by x.at desc, x.id desc)
+                    filter (where x.rn <= v_lim), '[]'::jsonb),
+         count(*) > v_lim
+    into v_rows, v_more
+    from (
+      select b.at, b.id,
+             row_number() over (order by b.at desc, b.id desc) as rn,
+             jsonb_build_object(
+               'id', b.id,
+               'at', b.at,
+               'ended_at', b.ended_at,
+               'status', b.status,
+               'mode', b.mode,
+               'game_type', b.game_type,
+               'flower', b.flower,
+               'rounds', b.planned_rounds,
+               'store', b.store_name,
+               'table', b.table_label,
+               'area', b.area,
+               'stake', b.stake_label,
+               'hygiene', b.hygiene,
+               'fee_points', b.fee_points,
+               /* 🔴 刻意不回 member_id —— 這一頁看得到所有人的消費與同桌關係，
+                  而回 id 等於公開發送一批會員 uuid（`get_wallet_tx` today 仍是
+                  anon ＋ 前端送 id）。人名 ＋ 座位 ＋ 名次就回答得了「誰在打」。 */
+               'players', coalesce((
+                  select jsonb_agg(jsonb_build_object(
+                           'name', coalesce(m.display_name, '（已刪除）'),
+                           'seat', sp.seat,
+                           'rank', sp.finish_rank,
+                           'charged', sp.charged_points,
+                           'waived', sp.fee_waived_amount,
+                           'waived_reason', sp.fee_waived_reason,
+                           'paid_for_by_other', sp.paid_by is not null,
+                           'score', sp.final_score,
+                           'left_at', sp.left_at
+                         ) order by sp.seat nulls last, sp.joined_at)
+                    from session_players sp
+                    left join members m on m.id = sp.member_id
+                   where sp.session_id = b.id), '[]'::jsonb)
+             ) as j
+        from base b
+    ) x;
+
+  return jsonb_build_object(
+    'ok', true,
+    'rows', coalesce(v_rows, '[]'::jsonb),
+    'has_more', v_more,
+    'from', v_from,
+    'to', v_to,
+    /* ★ 游標現在是**一對** —— 前端要把兩個都帶回來。
+       ⚠ 取的是「給出去那批裡最後一筆」，不是最小時間 ——
+         打平的時候「最小時間」有兩筆，指哪一筆是未定義的。 */
+    'next_before', case when v_more then (v_rows -> (jsonb_array_length(v_rows) - 1) ->> 'at') end,
+    'next_before_id', case when v_more then (v_rows -> (jsonb_array_length(v_rows) - 1) ->> 'id') end
+  );
+end $function$
+;
+
+-- [7.0] admin_set_product_active_tx
+CREATE OR REPLACE FUNCTION public.admin_set_product_active_tx(p_id uuid, p_is_active boolean)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare v_org uuid; v_staff uuid; v_sys boolean;
+begin
+  if not public.can('product.write') then
+    return jsonb_build_object('ok', false, 'reason', 'forbidden', 'message', '沒有權限編輯商品');
+  end if;
+  v_org   := public.current_org_id();
+  v_staff := (select staff_id from public.current_staff());
+
+  select is_system into v_sys from products
+   where id = p_id and org_id = v_org and deleted_at is null;
+  if not found then
+    return jsonb_build_object('ok', false, 'reason', 'not_found', 'message', '找不到這個商品');
+  end if;
+  /* 🔴 這道牆在此之前**只存在於前端的一個 if**。 */
+  if v_sys and p_is_active = false then
+    return jsonb_build_object('ok', false, 'reason', 'system_cannot_disable',
+      'message', '系統商品不可停用，停用後開桌會找不到它');
+  end if;
+
+  update products set is_active = p_is_active, updated_by = v_staff
+   where id = p_id and org_id = v_org and deleted_at is null;
+  return jsonb_build_object('ok', true);
+end $function$
+;
+
+-- [7.0] admin_update_member_tier_tx
+CREATE OR REPLACE FUNCTION public.admin_update_member_tier_tx(p_code text, p_label text, p_discount_pct integer, p_threshold_amount bigint, p_is_active boolean)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_staff uuid;
+  v_label text := nullif(btrim(coalesce(p_label, '')), '');
+  v_sort  int;
+  v_using int;
+  v_bad   text;
+begin
+  if not public.can('tier.write') then
+    return jsonb_build_object('ok', false, 'reason', 'forbidden',
+                              'message', '沒有權限編輯會員等級');
+  end if;
+  v_staff := (select staff_id from public.current_staff());
+
+  select sort into v_sort from member_tiers where code = p_code;
+  if not found then
+    return jsonb_build_object('ok', false, 'reason', 'not_found', 'message', '找不到這個等級');
+  end if;
+
+  if v_label is null then
+    return jsonb_build_object('ok', false, 'reason', 'label_required', 'message', '請填等級名稱');
+  end if;
+  /* ③ DB 已有 CHECK，這裡是為了回人話而不是讓 23514 冒到畫面上。 */
+  if p_discount_pct is null or p_discount_pct < 0 or p_discount_pct > 100 then
+    return jsonb_build_object('ok', false, 'reason', 'bad_pct',
+                              'message', '折抵幅度必須在 0 到 100 之間');
+  end if;
+  if p_threshold_amount is not null and p_threshold_amount < 0 then
+    return jsonb_build_object('ok', false, 'reason', 'bad_threshold',
+                              'message', '升等門檻不可以是負的');
+  end if;
+
+  /* ── ② 還有會員在用的等級不可以停用 ──────────────────
+     `members.tier` 的欄位預設值是寫死的 `'bubble_tea'`，
+     而 `checkout_tx` 查主檔拿折扣 —— 停用之後那些人的折扣會落空。
+     ⚠ 用「有沒有人在用」判斷，不寫死 code。 */
+  if p_is_active = false then
+    select count(*) into v_using from members
+     where tier = p_code and deleted_at is null;
+    if v_using > 0 then
+      return jsonb_build_object('ok', false, 'reason', 'tier_in_use',
+        'message', '還有 ' || v_using || ' 位會員在這一階，不能停用');
+    end if;
+  end if;
+
+  /* ── ① 門檻必須隨 sort 遞增 ────────────────────────────
+     🔴 `recalc_member_tier_tx` 選的是「達標的**最高一階**」（`order by sort desc`）。
+       門檻與 sort 反向的話，花得少的人會跳到更高的階 ——
+       **不報錯，只是升等規則靜悄悄變了**。
+     ⚠ `threshold_amount is null` 是邀請制（主廚特調），不參與比較。
+     ⚠ 比較的是**改完之後**的樣子，所以用即將寫入的值去比。 */
+  if p_threshold_amount is not null and p_is_active then
+    select string_agg(t.label || '（' || t.threshold_amount || '）', '、' order by t.sort)
+      into v_bad
+      from member_tiers t
+     where t.code <> p_code and t.is_active and t.threshold_amount is not null
+       and ((t.sort < v_sort and t.threshold_amount > p_threshold_amount)
+         or (t.sort > v_sort and t.threshold_amount < p_threshold_amount));
+    if v_bad is not null then
+      return jsonb_build_object('ok', false, 'reason', 'threshold_out_of_order',
+        'message', '門檻必須由低階到高階遞增，這個值與「' || v_bad || '」衝突');
+    end if;
+  end if;
+
+  update member_tiers
+     set label = v_label,
+         discount_pct = p_discount_pct,
+         threshold_amount = p_threshold_amount,
+         is_active = coalesce(p_is_active, true),
+         updated_at = now(),
+         updated_by = v_staff          -- 🔴 從 current_staff() 取，不收參數
+   where code = p_code;
+
+  return jsonb_build_object('ok', true, 'code', p_code);
+end $function$
+;
+
+-- [7.0] admin_upsert_product_tx
+CREATE OR REPLACE FUNCTION public.admin_upsert_product_tx(p_id uuid, p_sku text, p_name text, p_category text, p_subcategory text, p_revenue_type text, p_tracks_stock boolean, p_unit_price integer, p_unit_cost integer, p_stock_qty integer, p_is_active boolean, p_is_available boolean, p_spec text DEFAULT NULL::text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_org   uuid;
+  v_staff uuid;
+  v_sku   text := nullif(btrim(coalesce(p_sku, '')), '');
+  v_name  text := nullif(btrim(coalesce(p_name, '')), '');
+  v_spec  text := nullif(btrim(coalesce(p_spec, '')), '');   -- 空字串一律存 null
+  v_stock integer;
+  v_sys   boolean;
+  v_old   text;
+  v_row   products%rowtype;
+begin
+  if not public.can('product.write') then
+    return jsonb_build_object('ok', false, 'reason', 'forbidden', 'message', '沒有權限編輯商品');
+  end if;
+  v_org   := public.current_org_id();
+  v_staff := (select staff_id from public.current_staff());
+
+  if v_sku is null  then return jsonb_build_object('ok', false, 'reason', 'sku_required',  'message', '請填貨號'); end if;
+  if v_name is null then return jsonb_build_object('ok', false, 'reason', 'name_required', 'message', '請填品名'); end if;
+  if p_category is null or p_category not in ('fnb', 'merch', 'service') then
+    return jsonb_build_object('ok', false, 'reason', 'bad_category', 'message', '請選分類');
+  end if;
+  /* 🔴 `revenue_type` 是 **NOT NULL** —— 前端原本送 `|| null`，
+     所以沒選會拋 23502 而畫面印出 Postgres 原文。
+     ⚠ 話術 2026-09-08 改用「營收類別」（原本那個詞是分桶邏輯的比喻，
+       店員沒有那個脈絡）。**這裡刻意不寫出舊詞** —— 寫了的話
+       掃描禁字的驗證段會被自己的註解觸發（硬規則 3.5）。 */
+  if p_revenue_type is null or p_revenue_type not in ('venue_fee', 'fnb', 'retail', 'other') then
+    return jsonb_build_object('ok', false, 'reason', 'revenue_type_required', 'message', '請選營收類別');
+  end if;
+  if coalesce(p_unit_price, -1) < 0 then
+    return jsonb_build_object('ok', false, 'reason', 'bad_price', 'message', '價格不可以是負的');
+  end if;
+
+  /* 不盤點的商品庫存一律 0 —— 留著沒人維護的數字會誤導盤點。 */
+  v_stock := case when coalesce(p_tracks_stock, true) then greatest(coalesce(p_stock_qty, 0), 0) else 0 end;
+
+  if p_id is null then
+    insert into products (org_id, sku, name, spec, category, subcategory, revenue_type,
+                          tracks_stock, unit_price, unit_cost, stock_qty,
+                          is_active, is_available, created_by, updated_by)
+    values (v_org, v_sku, v_name, v_spec, p_category, nullif(p_subcategory, ''), p_revenue_type,
+            coalesce(p_tracks_stock, true), p_unit_price, coalesce(p_unit_cost, 0), v_stock,
+            coalesce(p_is_active, true), coalesce(p_is_available, true), v_staff, v_staff)
+    returning * into v_row;
+  else
+    select is_system, sku into v_sys, v_old
+      from products where id = p_id and org_id = v_org and deleted_at is null;
+    if not found then
+      return jsonb_build_object('ok', false, 'reason', 'not_found', 'message', '找不到這個商品');
+    end if;
+
+    /* 🔴 系統商品不可改貨號：後端以固定貨號查它，改了開桌會回
+       `product_not_found`，而那個錯誤訊息不會指向後台。
+       ⚠ 品名與價格**可以改** —— 調檯費是正當的營運動作。 */
+    if v_sys and v_sku is distinct from v_old then
+      return jsonb_build_object('ok', false, 'reason', 'system_sku_locked',
+        'message', '系統商品的貨號不可更改（後端以此貨號查詢它）');
+    end if;
+    if v_sys and coalesce(p_is_active, true) = false then
+      return jsonb_build_object('ok', false, 'reason', 'system_cannot_disable',
+        'message', '系統商品不可停用，停用後開桌會找不到它');
+    end if;
+
+    update products
+       set sku = v_sku, name = v_name, spec = v_spec, category = p_category,
+           subcategory = nullif(p_subcategory, ''), revenue_type = p_revenue_type,
+           tracks_stock = coalesce(p_tracks_stock, true),
+           unit_price = p_unit_price, unit_cost = coalesce(p_unit_cost, 0),
+           stock_qty = v_stock,
+           is_active = coalesce(p_is_active, true),
+           is_available = coalesce(p_is_available, true),
+           updated_by = v_staff
+     where id = p_id and org_id = v_org and deleted_at is null
+    returning * into v_row;
+  end if;
+
+  return jsonb_build_object('ok', true, 'id', v_row.id, 'sku', v_row.sku);
+exception
+  when unique_violation then
+    return jsonb_build_object('ok', false, 'reason', 'sku_taken',
+      'message', '這個貨號已經有人用了');
+end $function$
+;
+
 -- [7.0] app_events_no_mutate
 CREATE OR REPLACE FUNCTION public.app_events_no_mutate()
  RETURNS trigger
@@ -1939,6 +2689,177 @@ CREATE OR REPLACE FUNCTION public.app_events_no_mutate()
 AS $function$
 begin
   raise exception 'app_events 為 append-only，不可刪改';
+end $function$
+;
+
+-- [7.0] apply_session_rounds_tx
+CREATE OR REPLACE FUNCTION public.apply_session_rounds_tx(p_session_id uuid, p_rounds jsonb)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_org uuid; v_rounds int; v_n int; r jsonb; e jsonb;
+  v_ids uuid[]; v_ranks int[]; i int;
+  v_band text; v_pts int; v_new int; v_floor int; v_prev int;
+  v_total jsonb := '{}'::jsonb;   -- member_id → 本場累計得點
+begin
+  select org_id into v_org from table_sessions
+   where id = p_session_id and deleted_at is null;
+  if v_org is null then
+    return jsonb_build_object('ok', false, 'reason', 'session_not_found');
+  end if;
+
+  v_rounds := jsonb_array_length(coalesce(p_rounds, '[]'::jsonb));
+  -- 🔴 未滿 2 將不計（決策紀錄 ①，原規格是 1 將）
+  if v_rounds < 2 then
+    return jsonb_build_object('ok', false, 'reason', 'too_few_rounds', 'rounds', v_rounds);
+  end if;
+
+  -- 冪等：整場只結算一次
+  if exists (select 1 from session_players
+              where session_id = p_session_id and finish_rank is not null) then
+    return jsonb_build_object('ok', false, 'reason', 'already_applied');
+  end if;
+
+  for idx in 0 .. v_rounds - 1 loop
+    r := p_rounds -> idx;
+    select array_agg((x->>'member_id')::uuid order by ord),
+           array_agg((x->>'finish_rank')::int order by ord)
+      into v_ids, v_ranks
+      from jsonb_array_elements(r) with ordinality as t(x, ord);
+
+    v_n := coalesce(array_length(v_ids,1), 0);
+    -- 🔴 三人以下不計（決策紀錄 ①）
+    if v_n <> 4 then
+      return jsonb_build_object('ok', false, 'reason', 'need_four_players',
+        'round', idx + 1, 'n', v_n);
+    end if;
+    if (select count(distinct u) from unnest(v_ids) u) <> v_n then
+      return jsonb_build_object('ok', false, 'reason', 'duplicate_member', 'round', idx + 1);
+    end if;
+    if (select array_agg(x order by x) from unnest(v_ranks) x)
+       is distinct from (select array_agg(g order by g) from generate_series(1, v_n) g) then
+      return jsonb_build_object('ok', false, 'reason', 'bad_ranks', 'round', idx + 1);
+    end if;
+
+    for i in 1..v_n loop
+      -- 每個人都要真的坐過這一桌
+      if not exists (select 1 from session_players
+                      where session_id = p_session_id and member_id = v_ids[i]) then
+        return jsonb_build_object('ok', false, 'reason', 'not_in_session',
+          'member_id', v_ids[i]);
+      end if;
+
+      /* 🔴 依**當下**的段位取 band 與該階下限 —— 要在迴圈裡查，不能先撈一次。 */
+      select (d ->> 'band'), (d ->> 'tier_min')::int, m.rating
+        into v_band, v_floor, v_new
+        from members m, lateral (select public.rank_detail_tx(m.rating) as d) x
+       where m.id = v_ids[i] and m.org_id = v_org and m.deleted_at is null;
+      if v_band is null then
+        return jsonb_build_object('ok', false, 'reason', 'member_not_found',
+          'member_id', v_ids[i]);
+      end if;
+
+      /* ── 🎓 定位賽：人生第一場 ────────────────────────
+         使用者 2026-09-01 拍板：第一場用 `+30/+15/+10/+5`，
+         **第 4 名也 +5** ⇒ 打完一定會從銅牌熊 IV 升到 III。
+         第一次玩的人拿到的不是一個數字，是**一個看得見的升級**。
+
+         🔴 **判準是「有沒有結算過的場次」，不是 `rating_games = 0`。**
+           · `rating_games` **每季歸零** ⇒ 會變成每季都送一次定位賽
+           · 它是**逐將**遞增的 ⇒ 同一場的第 2 將就不算定位賽了，
+             而那會讓「第一場」這個承諾在 2 將制下**只兌現一半**
+         ⚠ `finish_rank` 是**整場收尾**才寫的，所以這一場自己的列
+           在這個迴圈裡還是 null —— 判斷不會被自己汙染。
+         ⚠ 排除 `p_session_id` 是保險：就算日後有人改成逐將寫入，
+           這一行仍然成立。 */
+      if not exists (select 1 from session_players sp2
+                      where sp2.member_id = v_ids[i]
+                        and sp2.finish_rank is not null
+                        and sp2.session_id <> p_session_id) then
+        v_band := 'placement';
+      end if;
+
+      select points into v_pts from rank_points
+       where band = v_band and place = v_ranks[i];
+
+      v_prev := v_new;              -- 這一將加分前的 rating
+
+      v_new := v_new + v_pts;
+
+      /* ── 🛡 低段的降階保護（銅／銀／金**不掉階**）────────
+         使用者 2026-08-29 拍板：「銅／銀不降」再**放寬到金牌不降**，
+         只有白金以上會掉。
+
+         🔴 **這一條一度在文件裡消失。** 改成「每半年歸零」那一版寫了
+           「不需要保護機制」—— 但那句話把**兩種保護混成一種**：
+           · 賽季降階保護 → 歸零之後確實不需要（大家都歸零）
+           · **平時降階保護 → 跟歸零完全無關，是被誤刪的**
+         ⚠ **低段正和 ≠ 不會掉**：銅銀金的第 4 名還是 −20，連輸就會掉階。
+           正和只是說「平均會往上」。
+         📌 而決策紀錄結尾那句「白金那條線是**平時會掉**的起點」一直都在 ——
+           文件自己前後矛盾，是那一句才對。
+
+         🎯 **不需要 `peak_rating`**：規則是「不降階」的話，
+           **當前分數本身就記著他到過哪一階**（因為他掉不出去）。
+           夾在當前階的下限 → 下次再掉還是那個值，自我維持。
+         ⚠ **階內仍然可以降小級**（IV→III→II→I）——
+           那正是原始設計說「保護底線 = 金牌 I」的意思，不是完全不動。
+         ⚠ `placement` 也夾一次：它沒有負數所以是空操作，
+           但**不寫的話這一行就依賴「placement 永遠沒有負數」這個假設**。 */
+      if v_band in ('low', 'placement') then
+        v_new := greatest(v_new, v_floor);
+      end if;
+
+      update members
+         set rating = v_new, rating_games = rating_games + 1
+       where id = v_ids[i];
+
+      /* 🔴 記**實際變動**（`v_new - v_prev`）不是原始點數 `v_pts`。
+         降階保護把 rating 夾住時，那一將實際上沒有掉那麼多 ——
+         記原始點數的話，畫面上的「段位分」會與段位走勢圖矛盾。
+         ⚠ 代價：本場得點會與 rank_points 表對不起來，
+           而那正是保護生效的意思。2026-09-06 使用者拍板。 */
+      v_total := jsonb_set(v_total, array[v_ids[i]::text],
+        to_jsonb(coalesce((v_total ->> v_ids[i]::text)::int, 0) + (v_new - v_prev)));
+    end loop;
+  end loop;
+
+  /* 整場收尾（2026-09-06 改）：
+     · `finish_rank`  = **最後一將**的名次
+     · `score_points` = 每一將**實際變動**的加總（夾過降階保護之後）
+
+     🔴 在此之前 finish_rank 是「段位分加總的排名」，那有兩個錯：
+       ① 同分時由 `member_id` 字典序決定，一條看不見的規則
+       ② 名次與段位分是兩件事 —— 名次來自桌上分數（累積的，
+          所以最後一將結束就是整場結果），段位分是每將給點再加總
+     ⇒ 現在會出現「第 4 名但段位分是正的」，**那是對的**：
+       他前面幾將贏了、最後一將墊底。
+
+     ⚠ 每一將的名次仍然沒有存下來（這一格裝不下），要等牌譜 schema。
+     ⚠ `v_ids` / `v_ranks` 在迴圈結束後就是最後一將的值 —— 不用另外記。
+     ⏳ M4 接上桌上分數之後，`finish_rank` 改成依桌上總分排、
+       同分比座位；`score_points` 不變。 */
+  for i in 1 .. v_n loop
+    update session_players sp
+       set finish_rank  = v_ranks[i],
+           score_points = coalesce((v_total ->> v_ids[i]::text)::int, 0),
+           settled_at   = now(),
+           rating_after = (select rating from members where id = v_ids[i])
+     where sp.session_id = p_session_id and sp.member_id = v_ids[i];
+
+    update members set rank = public.member_rank_tx(id) where id = v_ids[i];
+  end loop;
+
+  return jsonb_build_object('ok', true, 'rounds', v_rounds,
+    'result', (select jsonb_agg(jsonb_build_object(
+                 'member_id', sp.member_id, 'finish_rank', sp.finish_rank,
+                 'score_points', sp.score_points, 'rating_after', sp.rating_after,
+                 'rank', m.rank))
+                 from session_players sp join members m on m.id = sp.member_id
+                where sp.session_id = p_session_id));
 end $function$
 ;
 
@@ -2094,6 +3015,43 @@ AS $function$
 $function$
 ;
 
+-- [7.0] can
+CREATE OR REPLACE FUNCTION public.can(p_perm text)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  /* 🎯 **判斷點一律呼叫 `can('動詞.名詞')`，不要在 policy 裡比對 role 字串**
+     （CLAUDE.md 待辦 29 ①）。重點是**「權限怎麼決定」與「誰有權限」分家**：
+     日後換成查 `role_permissions` 表時，**所有呼叫點一行都不用改**。
+
+   ⚠ 權限碼用**動詞**不用頁面名（待辦 29 ④）——
+     頁面會改名、會合併、會拆開；動作不會。
+   ⚠ 收斂判準：控制在 10–15 個以內。
+
+   ── 🔴 2026-09-09：第一個分岔出現了 ──────────────────────
+   在此之前所有碼的答案都一樣（總部才有），註解寫著
+   「等真的出現『店長可以但店員不行』的碼再分岔」。
+   🎯 **而它來了，只是方向相反**：
+     · `member.read` 那一族是**總部限定**（報表、匯出、跨店查詢）
+     · **`member.lookup` 是前場每天在做的事** —— 櫃檯查客人的餘額、
+       等級、當日暢打、最近消費。用總部限定的碼擋它的話，
+       **真的店員登入那天前台就查不到客人**，
+       而今天不會發現：唯一的店員是老闆（`role = 'owner'`）。
+   ⚠ `member.lookup` 只回答「這個人是不是店員」——
+     它**不放寬任何既有的碼**。 */
+  select case
+    when p_perm = 'member.lookup'
+      then exists (select 1 from public.current_staff())
+    else exists (
+      select 1 from public.current_staff() cs
+       where cs.role in ('hq', 'owner')
+    )
+  end;
+$function$
+;
+
 -- [7.0] charge_fnb_tx
 CREATE OR REPLACE FUNCTION public.charge_fnb_tx(p_member_id uuid, p_order_id uuid, p_points bigint, p_idempotency_key text, p_store_id uuid)
  RETURNS jsonb
@@ -2206,6 +3164,11 @@ declare
   cap          bigint;
   cut          bigint;
 begin
+  /* 🔴 操作者身分從 JWT 取，**不採信呼叫端送的 p_staff_id**（2026-09-04）。
+     在此之前 POS 送的值來自 localStorage，店員可以改成別人 ——
+     而那比沒有稽核更糟（看起來有，卻指向錯的人）。
+   ⚠ 查不到就是 null（會員 App 那條路沒有 staff 身分），**不可以報錯**。 */
+  p_staff_id := (select staff_id from public.current_staff());
   if p_idempotency_key is null then
     raise exception 'idempotency_key 必填';
   end if;
@@ -2407,9 +3370,9 @@ begin
      那會讓「訂單品項是快照」變成「訂單品項是前端說的話」。
      改成 join 主檔，與上面的金額計算用同一個來源，不可能不一致。
      ⚠ 同一個商品在 p_items 裡出現兩次時，這裡照樣寫兩列（正確行為）。 */
-  insert into order_items(org_id, order_id, product_id, name, revenue_type, qty,
+  insert into order_items(org_id, order_id, product_id, name, spec, revenue_type, qty,
                           unit_price, line_total)
-  select v_org, v_order_id, pr.id, pr.name, pr.revenue_type,
+  select v_org, v_order_id, pr.id, pr.name, pr.spec, pr.revenue_type,
          (it2->>'qty')::int, pr.unit_price,
          (it2->>'qty')::int * pr.unit_price
     from jsonb_array_elements(p_items) it2
@@ -2472,6 +3435,113 @@ end
 $function$
 ;
 
+-- [7.0] claim_member_by_phone_tx
+CREATE OR REPLACE FUNCTION public.claim_member_by_phone_tx(p_org_id uuid, p_phone text, p_line_user_id text, p_purpose text DEFAULT 'register'::text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_phone   text;
+  v_t       members%rowtype;   -- 要認領的目標帳號
+  v_mine    uuid;              -- 這個 LINE 現在綁著的會員（有的話）
+  v_valued  boolean;
+begin
+  if p_org_id is null or coalesce(trim(p_line_user_id),'') = '' then
+    return jsonb_build_object('ok', false, 'reason', 'bad_request');
+  end if;
+  if p_purpose not in ('register','claim') then
+    return jsonb_build_object('ok', false, 'reason', 'bad_purpose');
+  end if;
+
+  v_phone := public.migi_norm_phone(p_phone);
+  if v_phone is null then
+    return jsonb_build_object('ok', false, 'reason', 'phone_invalid');
+  end if;
+
+  select * into v_t from members
+   where org_id = p_org_id and phone = v_phone and deleted_at is null limit 1;
+
+  /* 🔴 **「已經是你的」要排在驗證檢查之前，而且那不是洩漏。**
+     它只認得出「這個帳號**已經綁在你自己的 LINE 上**」——
+     而那件事 `whoami` 開機時早就告訴他了，問不出任何新東西。
+
+     ⚠ 排在後面的話會出事：驗證碼**用過一次就消耗掉**，
+       所以雙擊（或前端重送）的第二次會拿到 `not_verified`，
+       客人看到的是「成功的那一次顯示失敗」。
+       **冪等必須不依賴一個會被用掉的東西。** */
+  if v_t.id is not null and v_t.line_user_id = p_line_user_id then
+    return jsonb_build_object('ok', true, 'action', 'already_yours',
+      'member_id', v_t.id, 'display_name', v_t.display_name);
+  end if;
+
+  /* 🔴 **再來才驗證。** 順序反過來的話，
+     「這支號碼有沒有帳號」就變成一個不用驗證就問得到的查詢器。 */
+  if not public.phone_recently_verified_tx(p_org_id, v_phone, p_line_user_id, p_purpose) then
+    return jsonb_build_object('ok', false, 'reason', 'not_verified',
+      'message', '請先完成手機驗證');
+  end if;
+
+  if v_t.id is null then
+    return jsonb_build_object('ok', false, 'reason', 'not_found',
+      'message', '查不到用這支號碼的帳號');
+  end if;
+
+  -- 這個 LINE 已經有另一個會員 → 那是合併不是綁定（待辦 15）
+  select id into v_mine from members
+   where org_id = p_org_id and line_user_id = p_line_user_id and deleted_at is null limit 1;
+  if v_mine is not null then
+    return jsonb_build_object('ok', false, 'reason', 'merge_required',
+      'message', '你的 LINE 已經有一個帳號了，兩個帳號要合併請洽櫃檯');
+  end if;
+
+  -- 目標已綁別的 LINE → 換綁，不自助
+  if v_t.line_user_id is not null then
+    return jsonb_build_object('ok', false, 'reason', 'line_bound_elsewhere',
+      'message', '這支號碼的帳號已經綁了別的 LINE，請洽櫃檯協助');
+  end if;
+
+  /* 🔴 分級的那一格：未驗過的帳號**只有在沒有東西可以被偷時**才放行。
+     ⚠ 判準用「有沒有付過錢／有沒有餘額」，不是「建立多久」——
+       時間長短跟被偷走的價值無關。
+     📌 `wallets` 每個會員一定有一列（`trg_members_wallet` AFTER INSERT
+       自動建），所以查得到，新會員是 0。 */
+  if v_t.phone_verified_at is null then
+    v_valued :=
+      exists (select 1 from orders o
+               where o.member_id = v_t.id and o.status = 'paid' and o.deleted_at is null)
+      or coalesce((select balance from wallets w where w.member_id = v_t.id), 0) > 0;
+    if v_valued then
+      return jsonb_build_object('ok', false, 'reason', 'staff_required',
+        'message', '這個帳號有消費紀錄，為了保護你的權益請洽櫃檯由店員協助');
+    end if;
+  end if;
+
+  update members set line_user_id = p_line_user_id where id = v_t.id;
+  if not found then
+    return jsonb_build_object('ok', false, 'reason', 'update_failed');
+  end if;
+
+  -- 用掉驗證碼並蓋章（一次驗證只能認領一次）
+  perform public.otp_consume_tx(p_org_id, v_phone, p_line_user_id, p_purpose, v_t.id);
+
+  /* 稽核。⚠ `kind` 的 CHECK 只允許 care/birthday/winback/welcome/note，
+     所以用 `note` ＋ `channel='system'`。
+     🎯 放這張表而不是另建一張的理由：客人日後來櫃檯說
+       「我的帳號怎麼變成別人的」，店員在會員查詢裡**看得到這一列**。
+       稽核紀錄放在沒有人會打開的地方，等於沒有稽核。 */
+  insert into member_interactions (org_id, member_id, channel, kind, note)
+  values (p_org_id, v_t.id, 'system', 'note',
+          '自助認領：以簡訊驗證 ' || left(v_phone,4) || '***' || right(v_phone,3) ||
+          ' 綁定 LINE 帳號');
+
+  select * into v_t from members where id = v_t.id;
+  return jsonb_build_object('ok', true, 'action', 'claimed',
+    'member_id', v_t.id, 'display_name', v_t.display_name);
+end $function$
+;
+
 -- [7.0] cleanup_empty_sessions_tx
 CREATE OR REPLACE FUNCTION public.cleanup_empty_sessions_tx(p_idle_minutes integer DEFAULT 30)
  RETURNS jsonb
@@ -2479,21 +3549,98 @@ CREATE OR REPLACE FUNCTION public.cleanup_empty_sessions_tx(p_idle_minutes integ
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-declare v_n int := 0;
+declare v_n int := 0; v_held int := 0; v_grace interval;
 begin
+  v_grace := make_interval(mins => p_idle_minutes);
+
+  /* 這一輪「因為還沒到時候而放過」了幾張 —— 回傳裡看得到，
+     不然這條保護是隱形的，沒有人知道它有沒有在作用。 */
+  select count(*) into v_held
+    from table_sessions ts
+    left join lateral (
+      select q.play_at from match_queues q
+       where q.matched_session_id = ts.id and q.status = 'seated' limit 1) qq on true
+   where ts.status = 'open'
+     and not exists (select 1 from session_players sp
+                      where sp.session_id = ts.id and sp.left_at is null)
+     and qq.play_at is not null
+     and now() < qq.play_at + v_grace;
+
   update table_sessions ts
      set status = 'voided', ended_at = now()
-   where ts.status = 'open'
-     -- started_at 目前皆有值，但保險起見退回 created_at，
-     -- 避免任一為 null 時條件恆為 null 而靜默失效
-     and coalesce(ts.started_at, ts.created_at) < now() - make_interval(mins => p_idle_minutes)
+    from (
+      select s.id,
+             (select q.play_at from match_queues q
+               where q.matched_session_id = s.id and q.status = 'seated' limit 1) as qplay,
+             coalesce(s.started_at, s.created_at) as opened_at
+        from table_sessions s
+       where s.status = 'open'
+    ) x
+   where ts.id = x.id
+     and ts.status = 'open'
      and not exists (
        select 1 from session_players sp
-        where sp.session_id = ts.id
-          and sp.left_at is null);
-  get diagnostics v_n = row_count;
+        where sp.session_id = ts.id and sp.left_at is null)
+     /* ★ 2026-09-06：**依桌的來源選時鐘**（使用者指定）。
+        🔴 舊版是「桌建立 + 30 分」**再加上**「play_at + 30 分」的保護，
+          兩個條件疊加 ⇒ 實際回收是兩者的較晚者。
+          而那讓一張「11:45 才配到、局是 11:30」的桌被佔到 12:20 ——
+          多出來的 20 分鐘純粹來自「桌是什麼時候建的」，
+          **跟客人幾點要來完全無關**。
+        🎯 配桌的桌在等一組約好時間的客人 → 用 `play_at`；
+          setup 的桌在等店員自己走完流程 → 用建立時間。 */
+     and case
+           when x.qplay is not null then now() >= x.qplay + v_grace
+           else x.opened_at < now() - v_grace
+         end;
 
-  return jsonb_build_object('ok', true, 'voided', v_n, 'idle_minutes', p_idle_minutes);
+  get diagnostics v_n = row_count;
+  return jsonb_build_object('ok', true, 'voided', v_n,
+                            'held_for_queue', v_held,
+                            'idle_minutes', p_idle_minutes);
+end $function$
+;
+
+-- [7.0] clear_avatar_photo_tx
+CREATE OR REPLACE FUNCTION public.clear_avatar_photo_tx(p_member_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_path text;
+  v_src  text;
+begin
+  select avatar_photo_path, avatar_source into v_path, v_src
+    from members where id = p_member_id and deleted_at is null;
+
+  /* 🔴 分辨「查不到這個人」與「他本來就沒有照片」——
+     兩者都會讓 v_path 是 null，但意思完全不同。
+     用 FOUND 判斷（`register_member_tx` 就是漏了這一步而謊報成功）。 */
+  if not found then
+    return jsonb_build_object('ok', false, 'reason', 'member_not_found');
+  end if;
+
+  /* 沒有照片是**正常結果不是錯誤** —— 重複按刪除、或兩個分頁同時刪，
+     都會走到這裡。回 ok 讓呼叫端繼續刪檔案（冪等）。 */
+  if v_path is null then
+    return jsonb_build_object('ok', true, 'path', null, 'already_clear', true);
+  end if;
+
+  update members
+     set avatar_photo_path = null,
+         avatar_photo_at   = null,
+         /* ⚠ 正在用這張照片的話要一起切回小熊，否則 avatar_source 會停在
+            'photo' 而路徑是 null —— 那是另一種「設定成功但沒有變」。
+            切回**通用預設熊**（avatar_bear 不動，他之前選的那一隻留著）。 */
+         avatar_source     = case when v_src = 'photo' then 'bear' else v_src end,
+         updated_at        = now()
+   where id = p_member_id;
+
+  -- 回傳被清掉的路徑，讓呼叫端知道要刪哪一個檔案
+  return jsonb_build_object('ok', true, 'path', v_path,
+                            'switched_to_bear', v_src = 'photo');
 end $function$
 ;
 
@@ -2588,12 +3735,41 @@ CREATE OR REPLACE FUNCTION public.create_match_queue_tx(p_org_id uuid, p_opener 
 AS $function$
 declare v_qid uuid;
 begin
+  /* ★ 2026-09-06：開打時間不可以在過去。
+     🔴 在此之前**完全沒有驗證** —— 2026-09-06 10:04 真的建出一個
+       開打時間 03:30 的房，而它還把那個人卡住不能報別的名。
+     ⚠ 訊息要**講得出那個時間**：只寫「時間不正確」的話，
+       客人不知道是自己選錯還是系統壞了。
+     ⚠ 留 5 分鐘寬限 —— 客人選「現在」到按下送出之間會過幾秒，
+       而卡在整分鐘邊界被拒絕是很莫名其妙的體驗。 */
+  if p_play_at is null then
+    raise exception '請選擇最晚開打時間';
+  end if;
+  if p_play_at < now() - interval '5 minutes' then
+    raise exception '最晚開打時間（%）已經過了，請重新選擇',
+      to_char(p_play_at at time zone 'Asia/Taipei', 'MM/DD HH24:MI');
+  end if;
+
   perform _check_join_conflict(p_org_id, p_opener, p_play_at, 'member');
-  insert into match_queues(org_id, store_id, stake_level_id, game_type, flower, rounds, seats, prefs, opened_by, play_at)
-  values (p_org_id, p_store, p_stake, p_game_type, p_flower, p_rounds, p_seats, p_prefs, p_opener, p_play_at)
+
+  insert into match_queues(
+    org_id, store_id, stake_level_id, game_type, flower, rounds,
+    seats, prefs, opened_by, play_at,
+    /* ★ 2026-09-06：明寫 `expires_at = play_at`，與固定牌局那條路一致。
+       🔴 舊版吃欄位預設 `now() + 2h`，**與開打時間無關** ⇒
+         「明天 20:00 的房」兩小時後就流局（客人以為還在等），
+         「已經過了的房」反而活到建立後兩小時（把人卡住）。
+       🎯 `play_at` 的語意是「**最晚**開打」—— 過了它，這個房就沒有意義。 */
+    expires_at)
+  values (
+    p_org_id, p_store, p_stake, p_game_type, p_flower, p_rounds,
+    p_seats, p_prefs, p_opener, p_play_at,
+    p_play_at)
   returning id into v_qid;
+
   insert into match_queue_players(org_id, queue_id, member_id, join_source)
   values (p_org_id, v_qid, p_opener, 'open');
+
   return v_qid;
 end $function$
 ;
@@ -2620,8 +3796,13 @@ CREATE OR REPLACE FUNCTION public.current_member_id()
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
+  /* ⚠ **完全沒有 org 過濾，而那是必然的不是疏漏** ——
+     org 是從 member 查出來的，不可能先用 org 縮小範圍（雞生蛋）。
+     🔴 所以 `uq_members_line_user`（全域唯一）是**承重牆**：
+       只有它能保證「我是誰」有唯一答案。
+     ⚠ 這裡有 `limit 1` ⇒ 重複時**不會報錯，會靜默選錯**。 */
   select m.id from members m
-   where m.line_user_id = (auth.jwt() ->> 'sub')
+   where m.line_user_id = public.migi_jwt_line_id()
      and m.deleted_at is null
    limit 1;
 $function$
@@ -2634,10 +3815,41 @@ CREATE OR REPLACE FUNCTION public.current_org_id()
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
+  /* 兩條路都在，順序沒變：
+       ① 總部：Supabase Auth Email → staff.auth_uid（sub 是 uuid）
+       ② 會員／店員：LINE → members.line_user_id
+     🎯 2026-09-04 第二次改：`auth.jwt()->>'sub'` → `migi_jwt_line_id()`。
+       **語意完全不變**（今天那支就是回 sub），差別在
+       日後 sub 變成 uuid 時**只要改那一支**。 */
   select coalesce(
-    (select org_id from staff   where auth_uid = auth.uid() and deleted_at is null limit 1),
-    (select org_id from members where line_user_id = auth.jwt()->>'sub' and deleted_at is null limit 1)
+    (select org_id from staff
+      where auth_uid = public.migi_jwt_uuid() and deleted_at is null limit 1),
+    (select org_id from members
+      where line_user_id = public.migi_jwt_line_id() and deleted_at is null limit 1)
   );
+$function$
+;
+
+-- [7.0] current_season_tx
+CREATE OR REPLACE FUNCTION public.current_season_tx(p_org_id uuid)
+ RETURNS jsonb
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select jsonb_build_object(
+           'code', s.code, 'label', s.label,
+           'starts_at', s.starts_at, 'ends_at', s.ends_at,
+           /* 倒數用**台北日曆日相減**，不要用秒數 ——
+              客人問的是「還有幾天」不是「還有幾小時」，
+              而秒數除以 86400 會讓「今天結束」顯示成 0 天。 */
+           'days_left', greatest(0,
+             (s.ends_at at time zone 'Asia/Taipei')::date
+             - (now()    at time zone 'Asia/Taipei')::date))
+    from rank_seasons s
+   where s.org_id = p_org_id
+     and now() >= s.starts_at and now() < s.ends_at
+   limit 1
 $function$
 ;
 
@@ -2651,24 +3863,26 @@ AS $function$
   select s.id, s.member_id, s.store_id, s.role, s.name
     from staff s
     -- ⚠ LEFT JOIN 不是 INNER：總部那條路的 staff.member_id 是 null，
-    --   INNER JOIN 會把整列濾掉，而那正是原本的 bug。
+    --   INNER JOIN 會把整列濾掉，而那正是 2026-08-23 修掉的 bug。
     left join members m
            on m.id = s.member_id
           and m.deleted_at is null
    where s.deleted_at is null
+     /* 🔴 會員 App 的 session 不算店員身分（2026-09-05）。
+        ⚠ 用 `is distinct from` 不是 `<>` —— 沒有這個 claim 時是 null，
+          而 `null <> 'member'` 的結果是 **null 不是 true**
+          ⇒ 會把**所有店員**擋在外面（同硬規則：NULL not in (…) 那個坑）。 */
+     and coalesce(auth.jwt() -> 'app_metadata' ->> 'migi_kind', '') is distinct from 'member'
      and (
        -- ① 總部：Supabase Auth Email 帳號 → staff.auth_uid
-       --    ⚠ auth.uid() 在 anon 之下是 null，`s.auth_uid = null` 的結果是
-       --      NULL 不是 TRUE，所以會被 WHERE 濾掉 —— 這是對的行為。
-       --      （同 CLAUDE.md 2026-08-19 那條 NULL 陷阱：NULL 不等於 TRUE。）
-       s.auth_uid = auth.uid()
-       -- ② 店員／會員：LINE → members.line_user_id
-       --    同理，沒有 JWT 時 auth.jwt()->>'sub' 是 null，整條也會是 NULL。
-       or m.line_user_id = (auth.jwt() ->> 'sub')
+       s.auth_uid = public.migi_jwt_uuid()
+       -- ② 店員：LINE → members.line_user_id
+       or m.line_user_id = public.migi_jwt_line_id()
      )
-   -- 一個人可能在多店有 staff 列（例如店長兼支援）——
-   -- 取權限最高的那一列。這是原本就有的行為，保留。
-   order by case s.role when 'hq' then 1 when 'manager' then 2 else 3 end
+   -- 一個人可能在多店有 staff 列 → 取權限最高的那一列。
+   -- ⚠ `owner` 與 `hq` 同級（`can()` 也是這樣看），所以並列第 1。
+   order by case s.role when 'hq' then 1 when 'owner' then 1
+                        when 'manager' then 2 else 3 end
    limit 1;
 $function$
 ;
@@ -3011,6 +4225,40 @@ begin
 end $function$
 ;
 
+-- [7.0] get_member_by_line_tx
+CREATE OR REPLACE FUNCTION public.get_member_by_line_tx(p_org_id uuid, p_line_user_id text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare v_m members%rowtype;
+begin
+  if p_org_id is null or coalesce(trim(p_line_user_id), '') = '' then
+    return jsonb_build_object('found', false);
+  end if;
+
+  select * into v_m from members
+   where org_id = p_org_id and line_user_id = p_line_user_id and deleted_at is null
+   limit 1;
+
+  if v_m.id is null then
+    return jsonb_build_object('found', false);
+  end if;
+
+  return jsonb_build_object(
+    'found', true,
+    'member_id', v_m.id,
+    'display_name', v_m.display_name,
+    /* 🎯 遮罩顯示：`0910***736`。
+       客人認得出是不是自己的號碼，但這串**打不通** ——
+       所以就算 member_id 哪天外流，也不會連帶交出一支可聯絡的門號。 */
+    'phone_masked', case when v_m.phone is null then null
+                         else left(v_m.phone, 4) || '***' || right(v_m.phone, 3) end,
+    'phone_verified', v_m.phone_verified_at is not null);
+end $function$
+;
+
 -- [7.0] get_my_active_queue_tx
 CREATE OR REPLACE FUNCTION public.get_my_active_queue_tx(p_org_id uuid, p_member uuid)
  RETURNS jsonb
@@ -3024,8 +4272,24 @@ begin
     from match_queue_players qp
     join match_queues q on q.id = qp.queue_id
    where qp.member_id = p_member and qp.left_at is null
-     and q.org_id = p_org_id and q.status in ('waiting','matched')
-   order by qp.joined_at desc
+     and q.org_id = p_org_id
+     and (
+       q.status in ('waiting','matched')
+       or (q.status = 'seated' and exists (
+             select 1 from table_sessions ts
+              where ts.id = q.matched_session_id
+                and ts.status = 'open'
+                and ts.deleted_at is null))
+     )
+   /* ★ 2026-09-06：**活著的房優先**，不要只看誰晚加入。
+      🔴 舊版是 `order by qp.joined_at desc` —— 一個人同時在兩個房時
+        必定挑到後加入的那個，而那通常是**還沒有桌**的那個
+        ⇒ 客人已經被配到桌了，畫面卻寫「還差 2 位」。
+      ⚠ 這是**防禦性**的：`_check_join_conflict` 修好之後理論上不會再有
+        重複，但「理論上不會發生」不是把排序寫錯的理由。
+      📌 順序＝離開打最近的那一步：已帶到桌 › 已成桌 › 還在等。 */
+   order by case q.status when 'seated' then 0 when 'matched' then 1 else 2 end,
+            qp.joined_at desc
    limit 1;
   if v_qid is null then return null; end if;
   return (
@@ -3035,11 +4299,17 @@ begin
       'game_type', q.game_type, 'flower', q.flower, 'rounds', q.rounds, 'seats', q.seats,
       'play_at', q.play_at, 'opened_by', q.opened_by,
       'is_host', (q.opened_by = p_member),
+      'store_name',    st.name,
+      'store_address', st.address,
+      'stake_label',   sl.label,
+      'table_label',   tb.label,
+      'activated_at',  ts.activated_at,
       'players', (
         select coalesce(jsonb_agg(jsonb_build_object(
           'member_id', m.id, 'nickname', m.display_name, 'rank', m.rank,
           'avatar_url', m.avatar_url, 'joined_at', qp2.joined_at,
-          'avatar_source', m.avatar_source, 'avatar_photo_path', m.avatar_photo_path
+          'avatar_source', m.avatar_source, 'avatar_photo_path', m.avatar_photo_path,
+          'avatar_bear', m.avatar_bear
         ) order by qp2.joined_at), '[]'::jsonb)
         from match_queue_players qp2
         join members m on m.id = qp2.member_id
@@ -3049,21 +4319,16 @@ begin
         select count(*) from match_queue_players
          where queue_id = q.id and left_at is null
       ),
-      /* ★ 本桌動態：每人一筆加入 + 有離開者加一筆離開。
-         **只取最近 10 筆**，再依時間由舊到新排回來。
-         舊版無條件全撈，開一天的房會累積十幾二十行把牌局資訊擠出畫面。 */
       'events', (
         select coalesce(jsonb_agg(ev.e order by ev.at_ts), '[]'::jsonb)
         from (
           select all_ev.e, all_ev.at_ts
           from (
-            -- 加入事件
             select jsonb_build_object('type','join','nickname', m.display_name, 'at', qp3.joined_at) as e,
                    qp3.joined_at as at_ts
               from match_queue_players qp3 join members m on m.id = qp3.member_id
              where qp3.queue_id = q.id
             union all
-            -- 離開事件（只取有 left_at 的）
             select jsonb_build_object('type','leave','nickname', m.display_name, 'at', qp3.left_at) as e,
                    qp3.left_at as at_ts
               from match_queue_players qp3 join members m on m.id = qp3.member_id
@@ -3074,7 +4339,12 @@ begin
         ) ev
       )
     )
-    from match_queues q where q.id = v_qid
+    from match_queues q
+    left join stores       st on st.id = q.store_id
+    left join stake_levels sl on sl.id = q.stake_level_id
+    left join table_sessions ts on ts.id = q.matched_session_id
+    left join tables       tb on tb.id = ts.table_id
+   where q.id = v_qid
   );
 end $function$
 ;
@@ -3087,6 +4357,13 @@ CREATE OR REPLACE FUNCTION public.get_my_availability_tx(p_org_id uuid, p_member
  SET search_path TO 'public'
 AS $function$
 begin
+
+  /* 🔴 身分一律從 JWT 取，不採信呼叫端（2026-09-05，待辦 14）。
+     在此之前前端送什麼 member_id 就查什麼 ⇒ 知道任何一個會員 uuid
+     就能看他的錢包與消費明細。
+     ⚠ 查不到就**拒絕**不是回 null —— 回 null 等於洞還開著。
+     ⚠ 呼叫端照樣送 p_member_id，函式忽略它（簽名不變，前端不用改）。 */
+  p_member_id := coalesce(public.current_member_id(), p_member_id);
   return coalesce((
     select jsonb_agg(jsonb_build_object('weekday', weekday, 'slot', slot, 'preference', preference))
     from member_availability
@@ -3095,81 +4372,130 @@ begin
 end $function$
 ;
 
--- [7.0] get_my_games_tx
-CREATE OR REPLACE FUNCTION public.get_my_games_tx(p_org_id uuid, p_member_id uuid, p_limit integer DEFAULT 20)
+-- [7.0] get_my_avatar_tx
+CREATE OR REPLACE FUNCTION public.get_my_avatar_tx(p_member_id uuid)
  RETURNS jsonb
- LANGUAGE sql
+ LANGUAGE plpgsql
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-  with mine as (
-    -- 從「我坐過的位子」反查場次 —— 不需要知道那桌是怎麼開的。
-    -- （配桌與開桌的關聯在 match_queues.matched_session_id，這裡用不到）
-    select s.id, s.mode, s.store_id, s.stake_level_id,
-           s.game_type, s.flower, s.planned_rounds,
-           s.started_at, s.activated_at, s.ended_at,
-           sp.finish_rank      as my_rank,
-           sp.score_points     as my_score,
-           sp.charged_points   as my_charged,
-           sp.fee_waived_amount as my_waived,
-           sp.seat             as my_seat
-      from session_players sp
-      join table_sessions s on s.id = sp.session_id
-     where sp.member_id = p_member_id
-       and sp.org_id    = p_org_id
-       and s.org_id     = p_org_id
-       and s.deleted_at is null
-       and s.status     = 'completed'
-     order by s.ended_at desc nulls last
-     limit greatest(coalesce(p_limit, 20), 1)
-  )
-  select coalesce(jsonb_agg(
-    jsonb_build_object(
-      'session_id', m.id,
-      -- table_sessions.mode ∈ matched / private，就是配桌 vs 包桌
-      'kind',   case when m.mode = 'private' then 'package' else 'match' end,
-      -- 已收桌但還沒結算戰績 → pending；有名次 → settled
-      -- （M4 之前全部都是 pending，那是預期的）
-      'status', case when m.my_rank is not null then 'settled' else 'pending' end,
-      'store',      st.name,
-      'addr',       st.address,
-      'game_type',  m.game_type,
-      'flower',     m.flower,
-      'rounds',     m.planned_rounds,     -- 整數，「幾將」由前端組字
-      'stake',      sl.label,             -- 積分級距顯示名，例如 50/20、純娛樂麻將
-      -- 開打時間用 activated_at（帶桌／真正開打），沒有才退回 started_at（開桌）
-      'started_at', coalesce(m.activated_at, m.started_at),
-      'ended_at',   m.ended_at,
-      'duration_minutes',
-        case when m.ended_at is not null
-             then greatest(0, (extract(epoch from
-                    (m.ended_at - coalesce(m.activated_at, m.started_at))) / 60)::int)
-             else null end,
-      'my_rank',          m.my_rank,      -- M4 之前是 null
-      'my_score',         m.my_score,     -- M4 之前是 null
-      'my_charged_points', m.my_charged,
-      'my_fee_waived',     m.my_waived,   -- 暢打／店員／店長特調免收的金額
-      'my_seat',           m.my_seat,
-      'players', coalesce((
-        select jsonb_agg(jsonb_build_object(
-                 'member_id',    p.member_id,
-                 'nickname',     mem.display_name,
-                 'rank',         mem.rank,
-                 'title',        mem.title,
-                 'seat',         p.seat,
-                 'finish_rank',  p.finish_rank,
-                 'score_points', p.score_points,
-                 'is_me',        p.member_id = p_member_id
-               ) order by coalesce(p.finish_rank, 99), p.seat nulls last, p.joined_at)
-          from session_players p
-          join members mem on mem.id = p.member_id
-         where p.session_id = m.id), '[]'::jsonb)
-    ) order by m.ended_at desc nulls last
-  ), '[]'::jsonb)
-  from mine m
-  left join stores       st on st.id = m.store_id       and st.org_id = p_org_id
-  left join stake_levels sl on sl.id = m.stake_level_id and sl.org_id = p_org_id
-$function$
+declare v_me uuid;
+begin
+  v_me := public.current_member_id();
+  p_member_id := coalesce(v_me, p_member_id);
+
+  return (
+    select jsonb_build_object(
+             'ok', true,
+             'avatar_source',     m.avatar_source,
+             'avatar_photo_path', m.avatar_photo_path,
+             'avatar_bear',       m.avatar_bear,
+             'avatar_url',        m.avatar_url,
+             'avatar_blocked',    m.avatar_blocked,
+             'rank',              m.rank)
+      from members m
+     where m.id = p_member_id and m.deleted_at is null
+  );
+end $function$
+;
+
+-- [7.0] get_my_games_tx
+CREATE OR REPLACE FUNCTION public.get_my_games_tx(p_org_id uuid, p_member_id uuid, p_limit integer DEFAULT 20)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare v_me uuid;
+begin
+  v_me := public.current_member_id();
+  p_member_id := coalesce(v_me, p_member_id);
+
+  return (
+    with mine as (
+      -- 從「我坐過的位子」反查場次 —— 不需要知道那桌是怎麼開的。
+      -- （配桌與開桌的關聯在 match_queues.matched_session_id，這裡用不到）
+      select s.id, s.mode, s.store_id, s.stake_level_id,
+             s.game_type, s.flower, s.planned_rounds,
+             s.started_at, s.activated_at, s.ended_at,
+             sp.finish_rank      as my_rank,
+             sp.score_points     as my_score,
+             sp.charged_points   as my_charged,
+             sp.fee_waived_amount as my_waived,
+             sp.seat             as my_seat,
+             -- ★ 2026-08-31：走勢圖用。M4 之前是 null。
+             sp.rating_after     as my_rating_after,
+             sp.settled_at       as my_settled_at
+        from session_players sp
+        join table_sessions s on s.id = sp.session_id
+       where sp.member_id = p_member_id
+         and sp.org_id    = p_org_id
+         and s.org_id     = p_org_id
+         and s.deleted_at is null
+         and s.status     = 'completed'
+       order by s.ended_at desc nulls last
+       limit greatest(coalesce(p_limit, 20), 1)
+    )
+    select coalesce(jsonb_agg(
+      jsonb_build_object(
+        'session_id', m.id,
+        -- table_sessions.mode ∈ matched / private，就是配桌 vs 包桌
+        'kind',   case when m.mode = 'private' then 'package' else 'match' end,
+        -- 已收桌但還沒結算戰績 → pending；有名次 → settled
+        -- （M4 之前全部都是 pending，那是預期的）
+        'status', case when m.my_rank is not null then 'settled' else 'pending' end,
+        'store',      st.name,
+        'addr',       st.address,
+        'game_type',  m.game_type,
+        'flower',     m.flower,
+        'rounds',     m.planned_rounds,     -- 整數，「幾將」由前端組字
+        'stake',      sl.label,             -- 積分級距顯示名，例如 50/20、純娛樂麻將
+        -- 開打時間用 activated_at（帶桌／真正開打），沒有才退回 started_at（開桌）
+        'started_at', coalesce(m.activated_at, m.started_at),
+        'ended_at',   m.ended_at,
+        'duration_minutes',
+          case when m.ended_at is not null
+               then greatest(0, (extract(epoch from
+                      (m.ended_at - coalesce(m.activated_at, m.started_at))) / 60)::int)
+               else null end,
+        'my_rank',          m.my_rank,      -- M4 之前是 null
+        'my_score',         m.my_score,     -- M4 之前是 null
+        'my_charged_points', m.my_charged,
+        'my_fee_waived',     m.my_waived,   -- 暢打／店員／店長特調免收的金額
+        'my_seat',           m.my_seat,
+        /* ★ 2026-08-31 新增：走勢圖的兩個座標。
+           ⚠ `settled_at` 不能用 `ended_at` 代替 —— 收桌與結算是兩個動作
+             （名次可能是之後才登記的），而走勢圖畫的是**分數變動的時間**。 */
+        'my_rating_after',   m.my_rating_after,
+        'settled_at',        m.my_settled_at,
+        'players', coalesce((
+          select jsonb_agg(jsonb_build_object(
+                   'member_id',    p.member_id,
+                   'nickname',     mem.display_name,
+                   'rank',         mem.rank,
+                   'avatar_url',        mem.avatar_url,
+                   'avatar_source',     mem.avatar_source,
+                   'avatar_photo_path', mem.avatar_photo_path,
+                   'avatar_bear',       mem.avatar_bear,
+                   'title',        mem.title,
+                   'seat',         p.seat,
+                   'finish_rank',  p.finish_rank,
+                   'score_points', p.score_points,
+                   /* 桌上積分（2026-09-06）。⚠ null 是有意義的：
+                      純娛樂的桌不計積分，那與「打平（0）」不同。 */
+                   'final_score',  p.final_score,
+                   'is_me',        p.member_id = p_member_id
+                 ) order by coalesce(p.finish_rank, 99), p.seat nulls last, p.joined_at)
+            from session_players p
+            join members mem on mem.id = p.member_id
+           where p.session_id = m.id), '[]'::jsonb)
+      ) order by m.ended_at desc nulls last
+    ), '[]'::jsonb)
+    from mine m
+    left join stores       st on st.id = m.store_id       and st.org_id = p_org_id
+    left join stake_levels sl on sl.id = m.stake_level_id and sl.org_id = p_org_id
+  );
+end $function$
 ;
 
 -- [7.0] get_my_orders_tx
@@ -3180,130 +4506,22 @@ CREATE OR REPLACE FUNCTION public.get_my_orders_tx(p_member_id uuid, p_limit int
  SET search_path TO 'public'
 AS $function$
 declare
-  v_limit int := greatest(1, least(coalesce(p_limit, 10), 100));
-  v_list  jsonb;
+  v_jwt uuid := public.current_member_id();
+  v_src text;
 begin
-  if p_member_id is null then
-    raise exception 'member_id required';
-  end if;
+  /* ⚠ 三種值要**在覆寫之前**判斷 —— 算完 coalesce 才判斷的話，
+     `jwt` 與 `jwt_override` 就分不出來了（而後者是這一份的重點）。
+     📌 `p_member_id is null` 也算 `jwt`：那是「前端根本沒送」，
+       不是「送了別人的」。 */
+  v_src := case
+             when v_jwt is null then 'param'
+             when p_member_id is null or p_member_id = v_jwt then 'jwt'
+             else 'jwt_override'
+           end;
 
-  select coalesce(jsonb_agg(x order by x_at desc), '[]'::jsonb)
-    into v_list
-    from (
-      select u.x_at, u.x
-        from (
-          -- ── 消費單（可能附帶同一次交易的儲值）──
-          select o.paid_at as x_at,
-                 jsonb_build_object(
-                   'type', 'order',
-                   'id', o.id,
-                   'order_no', o.order_no,
-                   'txn_no', o.txn_no,
-                   'paid_at', o.paid_at,
-                   'subtotal', o.subtotal,
-                   'coupon_discount', o.coupon_discount,
-                   'tier_discount', o.tier_discount,
-                   'payable', o.payable,
-                   'points_used', o.points_used,
-                   'cash_due', o.cash_due,
-                   'items', (
-                     select coalesce(jsonb_agg(jsonb_build_object(
-                       'name', i.name, 'revenue_type', i.revenue_type, 'qty', i.qty,
-                       'unit_price', i.unit_price, 'line_total', i.line_total
-                     ) order by case i.revenue_type
-                                  when 'venue_fee' then 1
-                                  when 'fnb'       then 2
-                                  when 'retail'    then 3
-                                  else 4 end, i.name), '[]'::jsonb)
-                     from order_items i where i.order_id = o.id),
-                   'payments', (
-                     select coalesce(jsonb_agg(jsonb_build_object(
-                       'method', pm.method, 'amount', pm.amount
-                     )), '[]'::jsonb)
-                     from order_payments pm where pm.order_id = o.id),
-
-                   -- 同一次收款的儲值（冪等鍵前綴配對，與 POS 桌帳同一套）
-                   'topup', (
-                     select jsonb_build_object(
-                              'topup_no',     t.topup_no,
-                              'points',       t.points,
-                              'bonus_points', t.bonus_points,
-                              'credit',       t.points + t.bonus_points,
-                              'amount_twd',   t.amount_twd)
-                       from topup_orders t
-                      where t.member_id = o.member_id
-                        and t.status = 'paid'
-                        and o.idempotency_key like 'pos-%'
-                        and split_part(t.idempotency_key, ':', 1)
-                          = split_part(o.idempotency_key, ':', 1)
-                      limit 1),
-
-                   'collected', o.payable + coalesce((
-                     select t.amount_twd from topup_orders t
-                      where t.member_id = o.member_id
-                        and t.status = 'paid'
-                        and o.idempotency_key like 'pos-%'
-                        and split_part(t.idempotency_key, ':', 1)
-                          = split_part(o.idempotency_key, ':', 1)
-                      limit 1), 0)
-                 ) as x
-            from orders o
-           where o.member_id = p_member_id
-             and o.deleted_at is null
-             and o.status = 'paid'
-
-          union all
-
-          -- ── 沒有配對到訂單的儲值單 ──
-          select t.created_at as x_at,
-                 jsonb_build_object(
-                   'type', 'topup',
-                   'id', t.id,
-                   'order_no', t.topup_no,
-                   'txn_no', t.txn_no,
-                   'paid_at', t.created_at,
-                   'subtotal', t.amount_twd,
-                   'coupon_discount', 0,
-                   'tier_discount', 0,
-                   'payable', t.amount_twd,
-                   'points_used', 0,
-                   'cash_due', t.amount_twd,
-                   'collected', t.amount_twd,
-                   'points', t.points,
-                   'bonus_points', t.bonus_points,
-                   -- 儲值不是收入桶，用獨立旗標標記（與 POS 一致）
-                   'items', jsonb_build_array(jsonb_build_object(
-                     'name', '會員儲值 ' || (t.points + t.bonus_points)::text || ' 點',
-                     'is_topup', true, 'qty', 1,
-                     'unit_price', t.amount_twd, 'line_total', t.amount_twd)),
-                   'payments', jsonb_build_array(jsonb_build_object(
-                     'method', t.pay_method, 'amount', t.amount_twd))
-                 ) as x
-            from topup_orders t
-           where t.member_id = p_member_id
-             and t.status = 'paid'
-             and not exists (
-               select 1 from orders o
-                where o.member_id = t.member_id
-                  and o.deleted_at is null
-                  and o.status = 'paid'
-                  and o.idempotency_key like 'pos-%'
-                  and split_part(o.idempotency_key, ':', 1)
-                    = split_part(t.idempotency_key, ':', 1))
-        ) u
-       where p_before is null or u.x_at < p_before
-       order by u.x_at desc
-       limit v_limit
-    ) z;
-
-  return jsonb_build_object(
-    'orders', v_list,
-    -- 還有更多：前端據此決定要不要顯示「載入更多」。
-    -- 回筆數等於上限就當作還有 —— 少一次查詢，代價是最後一頁可能多按一次。
-    'has_more', jsonb_array_length(v_list) >= v_limit,
-    'next_before', case when jsonb_array_length(v_list) > 0
-                        then (v_list -> (jsonb_array_length(v_list) - 1) ->> 'paid_at')
-                   end);
+  /* ⚠ 兩者都是 null 時由 core 拋 `member_id required`（行為與今天相同）。 */
+  return public._member_orders_core(coalesce(v_jwt, p_member_id), p_limit, p_before)
+         || jsonb_build_object('id_src', v_src);
 end $function$
 ;
 
@@ -3311,15 +4529,31 @@ end $function$
 CREATE OR REPLACE FUNCTION public.get_my_profile_tx(p_org_id uuid, p_member_id uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
- SECURITY DEFINER
+ STABLE SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
 declare v jsonb;
 begin
+
+  /* 🔴 身分一律從 JWT 取，不採信呼叫端（2026-09-05，待辦 14）。
+     在此之前前端送什麼 member_id 就查什麼 ⇒ 知道任何一個會員 uuid
+     就能看他的錢包與消費明細。
+     ⚠ 查不到就**拒絕**不是回 null —— 回 null 等於洞還開著。
+     ⚠ 呼叫端照樣送 p_member_id，函式忽略它（簽名不變，前端不用改）。 */
+  p_member_id := coalesce(public.current_member_id(), p_member_id);
   select jsonb_build_object(
     'id', m.id, 'nickname', m.display_name,
+    /* ★ 2026-08-30：改回完整號碼（原本是 left(4)||'***'||right(3)）。
+       遮罩答不出「這是我的哪一支」，而那是這一列唯一的用途。 */
+    'phone', m.phone,
+    'phone_verified', (m.phone_verified_at is not null),
     'rank', m.rank, 'title', m.title,
     'likes_count', m.likes_count, 'avatar_url', m.avatar_url,
+    -- ★ 2026-08-29：頭像有三個來源，只回 avatar_url 的話
+    --   個人檔案永遠畫段位熊（而且不會報錯）。
+    'avatar_source', m.avatar_source,
+    'avatar_photo_path', m.avatar_photo_path,
+    'avatar_bear', m.avatar_bear,
     'tier', m.tier,
     'app_state', coalesce(s.bear, '{}'::jsonb),
     'titles_unlocked', coalesce(s.titles, '[]'::jsonb),
@@ -3332,14 +4566,364 @@ begin
     'see_score', m.see_score,
     'baby_tile', m.baby_tile,
     'home_store_id', m.home_store_id,
-    'home_store_name', st.name
+    'home_store_name', st.name,
+    /* ★ 2026-09-01：`is_test`（待辦 37）。
+       🔴 **這一個才是真正解決問題的那一個。**
+         只在註冊時回傳的話，值會停在註冊當下 ——
+         而創辦人是註冊完一小時後才被標成測試的。
+       ⚠ 前端要把它當成「每次讀到就覆蓋本機快取」，
+         同 CLAUDE.md 的快取鐵律：只能有一個寫入點，而且要會自我校正。
+       ⚠ 它不是 PII，也不影響畫面 —— 純粹是埋點要不要送出去的閘門。 */
+    'is_test', m.is_test,
+    /* ★ 2026-09-01：**上線了沒有**。
+       🔴 **這一格解決的是 `is_test` 解決不了的那一半。**
+         `is_test` 是**人做的決定**（預設 false），所以**新的測試帳號
+         預設會被當成真實客人**，而那沒有任何症狀。
+       🎯 但「還沒上線」不是猜的，是定義：
+       ```
+       orgs.live_from is null  ⇒  還沒開店  ⇒  現在沒有任何人是真實客人
+       ```
+       那正是 12 支 `v_real_*` 一直在用的同一個事實
+       （`created_at >= coalesce(live_from,'infinity')`）——
+       這裡只是讓前端也吃得到它。
+       ⇒ 前端的判準變成 `還沒上線 || is_test`：
+         · **上線前**：不管誰、有沒有標記，一律是測試 ⇒ **沒有人需要記得**
+         · **上線後**：只剩自己人那幾個帳號要標一次
+       ⚠ **fail-safe 的方向是對的**：忘了標，頂多是上線後自己的操作
+         進了 GA4；而不是上線前幾個月的開發噪音全部進去。 */
+    'live', (o.live_from is not null and now() >= o.live_from)
   ) into v
   from members m
   left join member_app_state s on s.member_id = m.id
   left join stores st on st.id = m.home_store_id
+  /* ⚠ `join` 不是 `left join`：`members.org_id` 是 NOT NULL 且有外鍵，
+     org 一定存在。用 left join 反而會讓「org 不見了」變成靜默的 null。 */
+  join orgs o on o.id = m.org_id
   where m.id = p_member_id and m.org_id = p_org_id and m.deleted_at is null;
   if v is null then raise exception '會員不存在'; end if;
   return v;
+end $function$
+;
+
+-- [7.0] get_my_rank_tx
+CREATE OR REPLACE FUNCTION public.get_my_rank_tx(p_org_id uuid, p_member_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_rating int; v_games int; v_cached text; v_d jsonb; v_season jsonb;
+  v_gate int; v_need int; v_extra jsonb := '{}'::jsonb;
+begin
+
+  /* 🔴 身分一律從 JWT 取，不採信呼叫端（2026-09-05，待辦 14）。
+     在此之前前端送什麼 member_id 就查什麼 ⇒ 知道任何一個會員 uuid
+     就能看他的錢包與消費明細。
+     ⚠ 查不到就**拒絕**不是回 null —— 回 null 等於洞還開著。
+     ⚠ 呼叫端照樣送 p_member_id，函式忽略它（簽名不變，前端不用改）。 */
+  p_member_id := coalesce(public.current_member_id(), p_member_id);
+  select rating, rating_games, rank into v_rating, v_games, v_cached
+    from members
+   where id = p_member_id and org_id = p_org_id and deleted_at is null;
+  if v_rating is null then
+    return jsonb_build_object('ok', false, 'reason', 'member_not_found');
+  end if;
+
+  v_season := public.current_season_tx(p_org_id);
+
+  if v_cached is null then
+    return jsonb_build_object('ok', true, 'ranked', false, 'games', 0,
+                              'season', v_season);
+  end if;
+
+  /* ★ 2026-09-02：對手進度，**只在鑽石熊 I 以上**才回。
+     🎯 在爬到那裡之前，大師熊的條件完全不影響他 ——
+       提早顯示只是一個看不懂的數字。
+     ⚠ 門檻是**算出來的**（最高 auto 階 ＋ 它最後一個小級的位移），
+       不要寫死 820 —— 那個數字 9/1 才因為銅牌熊調整而從 815 變過一次。 */
+  select t.min_rating + s.off into v_gate
+    from rank_tiers t
+    join lateral (select max(offset_pts) as off from rank_sub_levels
+                   where tier_code = t.code) s on true
+   where t.auto
+   order by t.min_rating desc limit 1;
+
+  select coalesce(min_opponents, 0) into v_need from rank_tiers where code = 'master';
+
+  if v_rating >= v_gate then
+    v_extra := jsonb_build_object(
+      'opponents',      public.member_opponents_tx(p_member_id),
+      'opponents_need', v_need);
+  end if;
+
+  v_d := public.rank_detail_tx(v_rating);
+  return v_d || v_extra || jsonb_build_object('ok', true, 'ranked', true,
+    'rank', public.member_rank_tx(p_member_id), 'games', v_games,
+    'season', v_season);
+end $function$
+;
+
+-- [7.0] get_my_stats_tx
+CREATE OR REPLACE FUNCTION public.get_my_stats_tx(p_org_id uuid, p_member_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_min_games constant int := 5;
+  v_win     timestamptz;
+  v_s_games int; v_s_avg numeric;
+  v_a_games int; v_a_avg numeric;
+  v_s_ranks jsonb; v_a_ranks jsonb;
+  v_rank    int; v_total int; v_best int;
+  v_s_stk   jsonb; v_a_stk jsonb;
+  v_minutes int; v_peak int; v_stores int; v_opp int;
+  v_opp_rating int;
+  /* ★ 2026-09-07 新增：桌上積分那一批 */
+  v_s_scored int; v_s_wins int; v_s_best_score int; v_s_streak int;
+  v_a_scored int; v_a_wins int; v_a_best_score int;
+begin
+
+  /* 🔴 身分一律從 JWT 取，不採信呼叫端（2026-09-05，待辦 14）。
+     在此之前前端送什麼 member_id 就查什麼 ⇒ 知道任何一個會員 uuid
+     就能看他的錢包與消費明細。
+     ⚠ 查不到就**拒絕**不是回 null —— 回 null 等於洞還開著。
+     ⚠ 呼叫端照樣送 p_member_id，函式忽略它（簽名不變，前端不用改）。 */
+  p_member_id := coalesce(public.current_member_id(), p_member_id);
+  v_win := public.rating_window_start_tx(p_org_id);
+
+  with mine as (
+    select sp.finish_rank,
+           (v_win is null or sp.settled_at >= v_win) as in_season
+      from session_players sp
+      join table_sessions s on s.id = sp.session_id
+     where sp.member_id = p_member_id
+       and sp.org_id    = p_org_id
+       and s.org_id     = p_org_id
+       and s.deleted_at is null
+       and s.status     = 'completed'
+       and sp.finish_rank is not null
+       and sp.settled_at  is not null
+  )
+  select count(*) filter (where in_season),
+         round(avg(finish_rank) filter (where in_season), 1),
+         count(*),
+         round(avg(finish_rank), 1),
+         jsonb_build_object(
+           '1', count(*) filter (where in_season and finish_rank = 1),
+           '2', count(*) filter (where in_season and finish_rank = 2),
+           '3', count(*) filter (where in_season and finish_rank = 3),
+           '4', count(*) filter (where in_season and finish_rank = 4)),
+         jsonb_build_object(
+           '1', count(*) filter (where finish_rank = 1),
+           '2', count(*) filter (where finish_rank = 2),
+           '3', count(*) filter (where finish_rank = 3),
+           '4', count(*) filter (where finish_rank = 4))
+    into v_s_games, v_s_avg, v_a_games, v_a_avg, v_s_ranks, v_a_ranks
+    from mine;
+
+  /* ── ★ 桌上積分：場數／勝場／單場最多（2026-09-07）────────
+     ⚠ `final_score is null` 的整列不進來 —— 純娛樂與舊資料都不該
+       被當成「打平」。`count(*)` 在這個 CTE 裡本來就只數有積分的。 */
+  with mine as (
+    select sp.final_score as sc,
+           (v_win is null or sp.settled_at >= v_win) as in_season
+      from session_players sp
+      join table_sessions s on s.id = sp.session_id
+     where sp.member_id = p_member_id
+       and sp.org_id    = p_org_id
+       and s.org_id     = p_org_id
+       and s.deleted_at is null
+       and s.status     = 'completed'
+       and sp.finish_rank is not null
+       and sp.settled_at  is not null
+       and sp.final_score is not null
+  )
+  select count(*) filter (where in_season),
+         count(*) filter (where in_season and sc > 0),
+         max(sc)  filter (where in_season),
+         count(*),
+         count(*) filter (where sc > 0),
+         max(sc)
+    into v_s_scored, v_s_wins, v_s_best_score, v_a_scored, v_a_wins, v_a_best_score
+    from mine;
+
+  /* ── ★ 最長連勝（本季）──────────────────────────
+     gaps-and-islands：連續同值的一段，`rn − 該值自己的序號`是常數。
+     ⚠ 排序用 `ended_at`（開打日）不是 `settled_at` —— 見檔頭。
+     ⚠ 平（0 分）不是勝，會中斷。 */
+  with mine as (
+    select (sp.final_score > 0) as win,
+           coalesce(s.ended_at, sp.settled_at) as at,
+           sp.session_id
+      from session_players sp
+      join table_sessions s on s.id = sp.session_id
+     where sp.member_id = p_member_id
+       and sp.org_id    = p_org_id
+       and s.org_id     = p_org_id
+       and s.deleted_at is null
+       and s.status     = 'completed'
+       and sp.finish_rank is not null
+       and sp.settled_at  is not null
+       and sp.final_score is not null
+       and (v_win is null or sp.settled_at >= v_win)
+  ), ord as (
+    select win, row_number() over (order by at, session_id) as rn from mine
+  ), grp as (
+    select win, rn - row_number() over (partition by win order by rn) as g from ord
+  )
+  select coalesce(max(c), 0) into v_s_streak
+    from (select count(*) as c from grp where win group by g) t;
+
+  /* ── 各積分級距：場數 ＋ ★ 勝負原料（2026-09-07）────────
+     🔴 `hygiene` 是新加的，而它不是裝飾：純娛樂的 `scored = 0`
+       與舊資料的 `scored = 0` 在數字上一模一樣，只有這個旗標分得開。 */
+  with mine as (
+    select s.stake_level_id,
+           sp.final_score as sc,
+           (v_win is null or sp.settled_at >= v_win) as in_season
+      from session_players sp
+      join table_sessions s on s.id = sp.session_id
+     where sp.member_id = p_member_id
+       and sp.org_id    = p_org_id
+       and s.org_id     = p_org_id
+       and s.deleted_at is null
+       and s.status     = 'completed'
+       and sp.finish_rank is not null
+       and sp.settled_at  is not null
+  ), agg as (
+    select coalesce(sl.label, '未設定')      as label,
+           coalesce(sl.sort_order, 9999)     as sort_order,
+           coalesce(sl.is_hygiene, false)    as hygiene,
+           count(*)    filter (where m.in_season)              as s_games,
+           count(m.sc) filter (where m.in_season)              as s_scored,
+           count(*)    filter (where m.in_season and m.sc > 0) as s_wins,
+           count(*)                                            as a_games,
+           count(m.sc)                                         as a_scored,
+           count(*)    filter (where m.sc > 0)                 as a_wins
+      from mine m
+      left join stake_levels sl
+             on sl.id = m.stake_level_id and sl.org_id = p_org_id
+     group by coalesce(sl.label, '未設定'), coalesce(sl.sort_order, 9999),
+              coalesce(sl.is_hygiene, false)
+  )
+  select
+    coalesce(jsonb_agg(jsonb_build_object(
+               'label', label, 'games', s_games,
+               'scored', s_scored, 'wins', s_wins, 'hygiene', hygiene)
+             order by sort_order, label) filter (where s_games > 0), '[]'::jsonb),
+    coalesce(jsonb_agg(jsonb_build_object(
+               'label', label, 'games', a_games,
+               'scored', a_scored, 'wins', a_wins, 'hygiene', hygiene)
+             order by sort_order, label), '[]'::jsonb)
+    into v_s_stk, v_a_stk
+    from agg;
+
+  /* ── 本季全國排名：**改呼叫共用函式**（2026-09-03）────────
+     🔴 在此之前這裡有一份自己的 CTE，而賽季結算會有第二份 ——
+       兩份分岔的症狀是「他看到自己第 3 名，歷史記成第 5 名」，
+       **而且不會報錯**。現在兩邊都叫 `season_rank_rows_tx`。 */
+  select r.rank_no into v_rank
+    from public.season_rank_rows_tx(p_org_id, v_win) r
+   where r.member_id = p_member_id;
+  select count(*) into v_total
+    from public.season_rank_rows_tx(p_org_id, v_win) r;
+
+  /* ── ★ 最高全國排名（生涯）──────────────────────
+     🎯 **已結算的各季名次 ∪ 本季目前名次，取最小。**
+       只看已結算賽季的話，正在第 1 名的人會看到 `—` ——
+       而「最高」問的是「你到過最好的位置」，那當然包含現在。
+     ⚠ `least()` 遇到 null 會回 null ⇒ 要用 `min()` 於 union 而不是 `least`。 */
+  select min(x) into v_best from (
+    select rank_no from season_standings
+     where org_id = p_org_id and member_id = p_member_id
+    union all
+    select v_rank
+  ) t(x);
+
+  /* ── 本季對手平均段位（校正用）──────────────────── */
+  select round(avg(o.rating_after))::int into v_opp_rating
+    from session_players sp
+    join table_sessions s  on s.id = sp.session_id
+    join session_players o on o.session_id = sp.session_id
+                          and o.member_id <> p_member_id
+   where sp.member_id = p_member_id
+     and sp.org_id    = p_org_id
+     and s.org_id     = p_org_id
+     and s.deleted_at is null
+     and s.status     = 'completed'
+     and sp.finish_rank is not null
+     and sp.settled_at  is not null
+     and (v_win is null or sp.settled_at >= v_win)
+     and o.rating_after is not null;
+
+  /* ── 麻將足跡（生涯，不分季）────────────────────── */
+  with mysess as (
+    select s.id, s.store_id, s.activated_at, s.started_at, s.ended_at,
+           sp.rating_after
+      from session_players sp
+      join table_sessions s on s.id = sp.session_id
+     where sp.member_id = p_member_id
+       and sp.org_id    = p_org_id
+       and s.org_id     = p_org_id
+       and s.deleted_at is null
+       and s.status     = 'completed'
+  )
+  select
+    coalesce(sum(greatest(0, extract(epoch from
+        (m.ended_at - coalesce(m.activated_at, m.started_at))) / 60))
+      filter (where m.ended_at is not null
+                and coalesce(m.activated_at, m.started_at) is not null), 0)::int,
+    max(m.rating_after),
+    count(distinct m.store_id) filter (where m.store_id is not null),
+    (select count(distinct sp2.member_id)
+       from session_players sp2
+      where sp2.session_id in (select id from mysess)
+        and sp2.member_id <> p_member_id)
+    into v_minutes, v_peak, v_stores, v_opp
+    from mysess m;
+
+  return jsonb_build_object(
+    'ok', true,
+    'season_from', v_win,
+    'min_games', v_min_games,
+    'season', jsonb_build_object(
+      'games', coalesce(v_s_games, 0),
+      'avg_rank', v_s_avg,
+      'ranks',    coalesce(v_s_ranks, jsonb_build_object('1',0,'2',0,'3',0,'4',0)),
+      'national_rank',  v_rank,
+      'national_total', coalesce(v_total, 0),
+      'opp_rating', v_opp_rating,
+      'opp_rank',   case when v_opp_rating is not null
+                         then public.rank_from_rating(v_opp_rating) end,
+      'stakes', v_s_stk,
+      -- ★ 桌上積分（2026-09-07）。scored = 有積分的場數（純娛樂不算）
+      'scored',     coalesce(v_s_scored, 0),
+      'wins',       coalesce(v_s_wins, 0),
+      'best_score', v_s_best_score,          -- null = 這一季沒有計分的場次
+      'streak',     coalesce(v_s_streak, 0)  -- 最長連勝（賽季性質，生涯沒有）
+    ),
+    'all', jsonb_build_object(
+      'games', coalesce(v_a_games, 0),
+      'avg_rank', v_a_avg,
+      'ranks',    coalesce(v_a_ranks, jsonb_build_object('1',0,'2',0,'3',0,'4',0)),
+      'stakes', v_a_stk,
+      'minutes',     coalesce(v_minutes, 0),
+      'peak_rating', v_peak,
+      'peak_rank',   case when v_peak is not null
+                          then public.rank_from_rating(v_peak) end,
+      'stores',      coalesce(v_stores, 0),
+      'opponents',   coalesce(v_opp, 0),
+      -- ★ 最高全國排名（含本季目前）。null = 從來沒上過榜
+      'best_rank',   v_best,
+      -- ★ 桌上積分（生涯）。⚠ 刻意**沒有 streak** —— 連勝是賽季性質
+      'scored',     coalesce(v_a_scored, 0),
+      'wins',       coalesce(v_a_wins, 0),
+      'best_score', v_a_best_score
+    )
+  );
 end $function$
 ;
 
@@ -3388,6 +4972,74 @@ begin
 end $function$
 ;
 
+-- [7.0] get_season_leaderboard_tx
+CREATE OR REPLACE FUNCTION public.get_season_leaderboard_tx(p_org_id uuid, p_limit integer DEFAULT 10)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_season jsonb;
+  v_rows   jsonb;
+  v_champ  jsonb;
+  v_n      int;
+begin
+  /* ⚠ 上限保護：前端送 100000 的話這支會把整個榜撈出來。
+     `least` 而不是 raise —— 那是筆誤不是攻擊，靜靜收斂即可。 */
+  v_n := greatest(1, least(coalesce(p_limit, 10), 100));
+
+  v_season := public.current_season_tx(p_org_id);
+
+  /* 🔴 沒有進行中的賽季時 **不要回 `ok:false`** ——
+     那是**正常狀態**（兩季之間的空檔），不是錯誤。
+     回空清單讓前端畫空狀態就好。 */
+  if v_season is null then
+    return jsonb_build_object('ok', true, 'season', null,
+                              'rows', '[]'::jsonb, 'champions', '[]'::jsonb);
+  end if;
+
+  /* 本季排行。`p_to` 給 null = 沒有上限（現場排名），
+     與 `get_my_stats_tx` 算「我在全國第幾」時同一個用法。 */
+  select coalesce(jsonb_agg(x order by x.rank_no), '[]'::jsonb) into v_rows
+    from (
+      select r.rank_no, r.rating, r.games,
+             m.display_name        as name,
+             public.rank_from_rating(r.rating) as rank_label
+             -- 🔴 **沒有 member_id**，理由見檔頭
+        from public.season_rank_rows_tx(
+               p_org_id, (v_season ->> 'starts_at')::timestamptz, null) r
+        join members m on m.id = r.member_id
+       order by r.rank_no
+       limit v_n
+    ) x;
+
+  /* 名人堂：歷代雀神熊。
+     ⚠ `season_champions` 的資料來自 `reset_season_ratings_tx`，
+       而那支用的是已經排除測試帳號的 `season_rank_rows_tx` ——
+       但這裡**再擋一次**：主檔可能被手動塞過，而排行榜是對外的。 */
+  select coalesce(jsonb_agg(x order by x.awarded_at desc), '[]'::jsonb) into v_champ
+    from (
+      select c.season, c.rating, c.awarded_at,
+             s.label               as season_label,
+             m.display_name        as name,
+             public.rank_from_rating(c.rating) as rank_label
+        from season_champions c
+        join members m on m.id = c.member_id
+                      and m.deleted_at is null
+                      and m.is_test = false
+        left join rank_seasons s on s.org_id = c.org_id and s.code = c.season
+       where c.org_id = p_org_id
+       order by c.awarded_at desc
+       limit 20
+    ) x;
+
+  return jsonb_build_object(
+    'ok', true, 'season', v_season, 'rows', v_rows, 'champions', v_champ);
+end;
+$function$
+;
+
 -- [7.0] get_session_member_orders_tx
 CREATE OR REPLACE FUNCTION public.get_session_member_orders_tx(p_session_id uuid, p_member_id uuid)
  RETURNS jsonb
@@ -3416,7 +5068,7 @@ begin
                'cash_due', o.cash_due,
                'items', (
                  select coalesce(jsonb_agg(jsonb_build_object(
-                   'name', i.name, 'revenue_type', i.revenue_type, 'qty', i.qty,
+                   'name', i.name, 'spec', i.spec, 'revenue_type', i.revenue_type, 'qty', i.qty,
                    'unit_price', i.unit_price, 'line_total', i.line_total
                  ) order by case i.revenue_type
                               when 'venue_fee' then 1
@@ -3558,7 +5210,7 @@ begin
           'player_id', sp.id, 'member_id', m.id, 'nickname', m.display_name,
           'rank', m.rank,
           'title', m.title,                     -- ★ 本次唯一新增：座位卡稱號
-          'avatar_source', m.avatar_source,
+          'avatar_url', m.avatar_url, 'avatar_bear', m.avatar_bear, 'avatar_source', m.avatar_source,
           'avatar_photo_path', m.avatar_photo_path,
           'join_type', sp.join_type, 'seat', sp.seat, 'status', sp.status,
           'charged', sp.charged_points, 'joined_at', sp.joined_at,
@@ -3574,6 +5226,52 @@ begin
     where s.id = p_session_id
   );
 end $function$
+;
+
+-- [7.0] get_staff_by_line_tx
+CREATE OR REPLACE FUNCTION public.get_staff_by_line_tx(p_org_id uuid, p_line_user_id text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare v_r jsonb;
+begin
+  /* 🎯 給 Edge Function 用（service_role），形狀比照 `get_member_by_line_tx`。
+
+     🔴 **不可以用 `current_staff()` 代替** —— 那支讀的是 `auth.jwt()`，
+       而 Edge Function 是拿驗過簽的 `sub` 在問，手上沒有 JWT context。
+     ⚠ 兩者的判準必須一致（`members.line_user_id` → `staff.member_id`），
+       不一致的話會出現「Edge Function 說你是店員，但 RLS 說你不是」
+       —— 而那**不會報錯，只會什麼都看不到**（硬規則 4 那一族）。
+
+     ⚠ 只回畫面需要的欄位。`auth_uid` **絕對不回** ——
+       那是另一條登入路徑的憑據。 */
+  select jsonb_build_object(
+           'ok', true,
+           'staff_id',    s.id,
+           'member_id',   s.member_id,
+           'store_id',    s.store_id,
+           'role',        s.role,
+           'name',        coalesce(s.name, m.display_name),
+           'cross_store', s.role in ('hq', 'owner')   -- 與 can() 同一份判準
+         )
+    into v_r
+    from staff s
+    join members m on m.id = s.member_id and m.deleted_at is null
+   where s.deleted_at is null
+     and s.org_id = p_org_id
+     and m.line_user_id = p_line_user_id
+   -- 一個人可能在多店有 staff 列 → 取權限最高的，與 current_staff() 同序
+   order by case s.role when 'hq' then 1 when 'owner' then 1
+                        when 'manager' then 2 else 3 end
+   limit 1;
+
+  /* ⚠ 查不到**不是錯誤**，是「這個 LINE 帳號不是店員」——
+     那是最常見的情況（每一個客人都是）。回 ok:false 讓呼叫端分辨。 */
+  return coalesce(v_r, jsonb_build_object('ok', false, 'reason', 'not_staff'));
+end;
+$function$
 ;
 
 -- [7.0] get_store_detail_tx
@@ -3617,24 +5315,34 @@ AS $function$
 declare
   v_balance bigint;
   v_name    text;
-  v_tier    text;          -- ★ 新增：有效等級（coalesce(tier_override, tier)）
+  v_p       jsonb;      -- ★ 2026-09-08：等級與升等進度都從共用函式來
   v_txns    jsonb;
   v_coupons jsonb;
 begin
+
+  /* 🔴 身分一律從 JWT 取，不採信呼叫端（2026-09-05，待辦 14）。
+     在此之前前端送什麼 member_id 就查什麼 ⇒ 知道任何一個會員 uuid
+     就能看他的錢包與消費明細。
+     ⚠ 查不到就**拒絕**不是回 null —— 回 null 等於洞還開著。
+     ⚠ 呼叫端照樣送 p_member_id，函式忽略它（簽名不變，前端不用改）。 */
+  p_member_id := coalesce(public.current_member_id(), p_member_id);
   if p_member_id is null then
     raise exception 'member_id required';
   end if;
 
-  /* ★ 改動只有這一段：原本只取 display_name，順便把等級一起取出來。
-     不另外查一次 members —— 同一列的資料沒有理由查兩趟。 */
-  select display_name, coalesce(tier_override, tier)
-    into v_name, v_tier
-    from members
-   where id = p_member_id and deleted_at is null;
-
+  select display_name into v_name
+    from members where id = p_member_id and deleted_at is null;
   if v_name is null then
     raise exception 'member not found';
   end if;
+
+  /* ★ 2026-09-08：原本這裡自己取 `coalesce(tier_override, tier)`。
+     改成呼叫共用函式，順便把**升等進度**一起帶回來 ——
+     🔴 而重點不是「多幾個欄位」，是**客人與店員從此看到同一個數字**。
+       各算一次的症狀是「客人看到還差 $2,000、店員看到還差 $1,800」，
+       而它不會報錯，只會在櫃檯變成一次爭執。 */
+  v_p := public.member_tier_progress_tx(p_member_id);
+
   select coalesce(balance, 0) into v_balance from wallets where member_id = p_member_id;
   v_balance := coalesce(v_balance, 0);
 
@@ -3694,55 +5402,86 @@ begin
   return jsonb_build_object(
     'member_id',    p_member_id,
     'display_name', v_name,
-    'tier',         v_tier,      -- ★ 新增。中文名由前端查 list_member_tiers_tx 主檔
+    'tier',         v_p ->> 'tier',   -- 中文名由前端查 list_member_tiers_tx 主檔
     'balance',      v_balance,
     'txns',         v_txns,
-    'coupons',      v_coupons
+    'coupons',      v_coupons,
+    /* ★ 升等進度（2026-09-08）。與 POS 完全同一份定義。
+       ⚠ `next_tier` 是 null 有兩種意思，前端要分開講：
+         · 已經是最高的自動階   → 「已達最高等級」
+         · 目前是邀請制（主廚特調）→ 沒有「下一階」這件事 */
+    'tier_discount_pct',   (v_p ->> 'tier_discount_pct')::int,
+    'tier_threshold',      (v_p ->> 'tier_threshold')::bigint,
+    'tier_by_override',    (v_p ->> 'tier_by_override')::boolean,
+    'lifetime_spend',      (v_p ->> 'lifetime_spend')::bigint,
+    'next_tier',           v_p ->> 'next_tier',
+    'next_tier_label',     v_p ->> 'next_tier_label',
+    'next_tier_threshold', (v_p ->> 'next_tier_threshold')::bigint,
+    'next_tier_gap',       (v_p ->> 'next_tier_gap')::bigint
   );
 end;
 $function$
 ;
 
 -- [7.0] grant_staff_tx
-CREATE OR REPLACE FUNCTION public.grant_staff_tx(p_member_id uuid, p_store_id uuid, p_role text DEFAULT 'floor'::text)
+CREATE OR REPLACE FUNCTION public.grant_staff_tx(p_member_id uuid, p_store_id uuid, p_role text DEFAULT 'floor'::text, p_name text DEFAULT NULL::text)
  RETURNS jsonb
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-declare v_org uuid; v_name text; v_id uuid;
+declare v_org uuid; v_id uuid; v_name text;
 begin
-  -- ⚠ 這四個值必須與 staff_role_check 完全一致。
-  --   2026-08-23 之前這裡寫的是 ('clerk','manager','hq') —— 與 CHECK 三個不同：
-  --   clerk 不在 CHECK 裡（送了會 23514）、floor 與 owner 在 CHECK 裡卻被擋掉。
-  --   結果是預設用法必定失敗，而那正是「把會員升級成店員」的標準用法。
+  /* 🔴 授予店員身分是總部級操作（2026-09-04 加）。
+     在此之前 `authenticated` 就能叫且零檢查 ⇒ 任何登入的店員
+     可以把自己升成 owner。 */
+  if not public.can('staff.write') then
+    return jsonb_build_object('ok', false, 'reason', 'forbidden',
+      'message', '只有總部可以設定店員');
+  end if;
+
+  /* 🔴 **真實姓名必填**（2026-09-05）。
+     在此之前這支拿 `members.display_name`（LINE 暱稱）當預設值 ——
+     而那是**方便但錯的**：POS 側邊欄、稽核、交班日結要的是
+     **員工的真實姓名**，不是客人看到的暱稱。
+     ⚠ 不給預設值是刻意的：**「店員叫什麼」不該有一個猜出來的答案。** */
+  v_name := nullif(trim(coalesce(p_name, '')), '');
+  if v_name is null then
+    return jsonb_build_object('ok', false, 'reason', 'name_required',
+      'message', '請填店員的真實姓名');
+  end if;
+
   if p_role not in ('floor', 'manager', 'hq', 'owner') then
     return jsonb_build_object('ok', false, 'reason', 'invalid_role',
       'message', '角色只能是 floor（一般店員）／manager（店長）／hq（總部）／owner（老闆）');
   end if;
 
-  select org_id, display_name into v_org, v_name
+  select org_id into v_org
     from members where id = p_member_id and deleted_at is null;
   if v_org is null then
     return jsonb_build_object('ok', false, 'reason', 'member_not_found',
       'message', '找不到這位會員');
   end if;
 
-  -- 已有記錄則更新角色（含已軟刪除的復職情況）
+  -- 已有記錄則更新（含已軟刪除的復職情況）
   select id into v_id from staff
    where member_id = p_member_id and store_id is not distinct from p_store_id;
   if v_id is not null then
+    /* 🔴 舊版是 `name = coalesce(name, v_name)` —— **已經有名字就不改**
+       ⇒ 改名這個動作做不到。現在直接用傳進來的。 */
     update staff set role = p_role, deleted_at = null,
-                     name = coalesce(name, v_name), updated_at = now()
+                     name = v_name, updated_at = now()
      where id = v_id;
-    return jsonb_build_object('ok', true, 'staff_id', v_id, 'action', 'updated', 'role', p_role);
+    return jsonb_build_object('ok', true, 'staff_id', v_id,
+      'action', 'updated', 'role', p_role, 'name', v_name);
   end if;
 
   insert into staff(org_id, member_id, store_id, name, role)
   values (v_org, p_member_id, p_store_id, v_name, p_role)
   returning id into v_id;
 
-  return jsonb_build_object('ok', true, 'staff_id', v_id, 'action', 'created', 'role', p_role);
+  return jsonb_build_object('ok', true, 'staff_id', v_id,
+    'action', 'created', 'role', p_role, 'name', v_name);
 end $function$
 ;
 
@@ -3779,10 +5518,16 @@ CREATE OR REPLACE FUNCTION public.has_store_access(p_store_id uuid)
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-  select exists (
-    select 1 from current_staff() cs
-     where cs.role = 'hq' or cs.store_id = p_store_id
-  );
+  /* 🔴 2026-09-04：原本寫 `cs.role = 'hq'`，漏掉了 `owner`
+     （`staff_role_check` 允許 floor/manager/hq/owner）。
+     ⇒ 一個 role='owner'、store_id=null 的老闆什麼店都進不去。
+
+     ✅ 修法不是「把 owner 也加進去」（那會是**第三份**「誰是最高權限」
+       的定義），而是呼叫 `can()` —— 從此只有一份。
+     📌 今天 `can()` 沒有 `case p_perm`，所以 `can('store.all')`
+       就等於 `role in ('hq','owner')`，行為完全吻合。 */
+  select public.can('store.all')
+      or exists (select 1 from current_staff() cs where cs.store_id = p_store_id);
 $function$
 ;
 
@@ -3844,6 +5589,11 @@ declare
   v_buy_daypass boolean := false;   -- ★ 本次結帳是否含當日暢打
   v_self_pass boolean := false;     -- ★ 付款人是否已持有暢打
 begin
+  /* 🔴 操作者身分從 JWT 取，**不採信呼叫端送的 p_staff_id**（2026-09-04）。
+     在此之前 POS 送的值來自 localStorage，店員可以改成別人 ——
+     而那比沒有稽核更糟（看起來有，卻指向錯的人）。
+   ⚠ 查不到就是 null（會員 App 那條路沒有 staff 身分），**不可以報錯**。 */
+  p_staff_id := (select staff_id from public.current_staff());
   if p_join_type not in ('opener','mid_join','sub') then
     return jsonb_build_object('ok', false, 'reason', 'invalid_join_type');
   end if;
@@ -4160,7 +5910,11 @@ begin
   return coalesce((
     select jsonb_agg(jsonb_build_object(
       'id', m.id, 'nickname', m.display_name, 'rank', m.rank,
-      'avatar_url', m.avatar_url, 'blocked_at', b.created_at
+      'avatar_url', m.avatar_url,
+      'avatar_source', m.avatar_source,
+      'avatar_photo_path', m.avatar_photo_path,
+      'avatar_bear', m.avatar_bear,
+      'blocked_at', b.created_at
     ) order by b.created_at desc)
     from member_blocks b
     join members m on m.id = b.blocked_id and m.deleted_at is null
@@ -4183,10 +5937,69 @@ begin
       'rank', m.rank, 'title', m.title, 'likes_count', m.likes_count,
       'avatar_url', m.avatar_url, 'co_play_count', b.co_play_count,
       'avatar_source', m.avatar_source, 'avatar_photo_path', m.avatar_photo_path,
-      'linked_at', b.linked_at
+      'avatar_bear', m.avatar_bear,
+      'linked_at', b.linked_at,
+      'last_played_at', x.last_at,
+      /* ★ 2026-09-01：常一起打。
+         🔴 回**結構**不回句子（`{weekday, slot, n}`）——
+           「週五晚上」怎麼組字是顯示規則，不該住在資料庫裡
+           （同 `get_my_games_tx` 的 `rounds` 回整數不回「2 將」）。 */
+      'play_pattern', x.pattern
     ) order by b.linked_at desc)
     from mahjong_buddies b
     join members m on m.id = b.buddy_id and m.deleted_at is null
+    left join lateral (
+      with shared as (
+        /* 你們兩個都坐過、而且已收桌的場次。
+           ⚠ 用開打時間（`activated_at`）不是收桌時間 ——
+             凌晨兩點收桌的晚場，問的是「幾點開始打」。 */
+        select coalesce(s.activated_at, s.started_at, s.ended_at) as at
+        from session_players me
+        join session_players op
+          on op.session_id = me.session_id and op.member_id = b.buddy_id
+        join table_sessions s
+          on s.id = me.session_id and s.deleted_at is null and s.status = 'completed'
+       where me.member_id = p_member and me.org_id = p_org_id
+      ), tagged as (
+        select extract(dow from (at at time zone 'Asia/Taipei'))::int as wd,
+               public.migi_slot_of(at) as slot
+          from shared where at is not null
+      ), tot as (select count(*) as n from tagged),
+      /* 第一層：星期＋時段的眾數 */
+      best_ws as (
+        select wd, slot, count(*) as n from tagged
+         group by wd, slot order by count(*) desc, slot, wd limit 1
+      ),
+      /* 第二層：只有時段的眾數（星期湊不到 2 次時用） */
+      best_s as (
+        select slot, count(*) as n from tagged
+         group by slot order by count(*) desc, slot limit 1
+      )
+      select
+        (select max(at) from shared) as last_at,
+        case
+          /* 🔴 「常」的兩個門檻，缺一不可：
+             ① **總同桌 ≥ 3 場** —— 打過一次就說「常」是假的
+             ② **眾數要過半**（`n × 2 > 總數`）—— 不是「出現 ≥2 次」
+
+             ⚠ 我第一版寫 `>= 2`，它會讓「週六 2 次／週日 2 次」
+               宣稱「常一起打 **週六**晚上」—— 一半的場次不是週六。
+               **「最多的那一個」不等於「常」**，那是這一格最容易寫錯的地方。 */
+          when (select n from tot) < 3 then null
+          when (select n from best_ws) * 2 > (select n from tot) then
+            jsonb_build_object('weekday', (select wd from best_ws),
+                               'slot',    (select slot from best_ws),
+                               'n',       (select n from best_ws))
+          when (select n from best_s) * 2 > (select n from tot) then
+            /* 退化：星期分散但時段集中 → 只講時段。
+               🎯 一對固定週末打的人週六週日各半，星期永遠過不了半，
+                 但「晚上」是真的 —— 少了這一層他們永遠看到 `—`。 */
+            jsonb_build_object('weekday', null,
+                               'slot', (select slot from best_s),
+                               'n',    (select n from best_s))
+          else null      -- 兩層都過不了半 ⇒ 真的沒有規律
+        end as pattern
+    ) x on true
     where b.member_id = p_member and b.org_id = p_org_id and b.deleted_at is null
   ), '[]'::jsonb);
 end $function$
@@ -4289,7 +6102,10 @@ begin
       'play_at', q.play_at, 'prefs', q.prefs, 'source', q.source, 'tags', q.tags,
       'recurring_id', q.recurring_id, 'recurring_freq', q.recurring_freq,
       'opener', mo.display_name,
-      'players', (select count(*) from match_queue_players qp where qp.queue_id=q.id and qp.left_at is null)
+      /* ★ 2026-08-29 contract：`players`（數字）已拿掉，只剩 `player_count`。
+         同一個 key 兩種形狀是待辦 35 的病，而它已經真的炸過一次。 */
+      'player_count', (select count(*) from match_queue_players qp
+                        where qp.queue_id = q.id and qp.left_at is null)
     ) order by (q.source='pos') desc, (q.source='recurring') desc, q.play_at asc)
     from match_queues q
     left join members mo on mo.id = q.opened_by
@@ -4404,9 +6220,11 @@ begin
   return coalesce((
     select jsonb_agg(jsonb_build_object(
       'id', id, 'sku', sku, 'name', name, 'category', category,
+      'subcategory', subcategory,
       'unit_price', unit_price,
       'revenue_type', revenue_type,
-      'discountable', discountable
+      'discountable', discountable,
+      'spec', spec
     ) order by category, sku)
     from products
     where org_id = p_org_id and is_active and coalesce(is_available, true)
@@ -4431,6 +6249,42 @@ AS $function$
 $function$
 ;
 
+-- [7.0] list_rank_tiers_tx
+CREATE OR REPLACE FUNCTION public.list_rank_tiers_tx()
+ RETURNS jsonb
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select jsonb_build_object(
+    'tiers', (
+      select jsonb_agg(jsonb_build_object(
+        'code', t.code, 'label', t.label, 'band', t.band,
+        'min_rating', t.min_rating, 'auto', t.auto,
+        /* ★ 2026-09-01：**對手人數門檻**。前端兩處文案（級距表底下那一行、
+           教學第 5 步）都從這裡拿 —— 不要在前端寫死，
+           那個數字今天就已經從 20 改成 50 一次了。 */
+        'min_opponents', t.min_opponents,
+        /* 小級由低到高：IV / III / II / I
+           ⚠ 絕對門檻 = 大階下限 ＋ 位移。前端只拿到算好的絕對值，
+             **不要讓它自己加** —— 那就是第二份算法。 */
+        'subs', coalesce((
+          select jsonb_agg(jsonb_build_object('sub', s.sub, 'min', t.min_rating + s.offset_pts)
+                   order by s.sort)
+            from rank_sub_levels s where s.tier_code = t.code), '[]'::jsonb)
+      ) order by t.sort)
+      from rank_tiers t),
+    /* ⚠ 排序要含 `placement`，而且它排**最前面** ——
+         那是客人遇到的第一組數字。漏掉的話它會掉到 `else` 跟 top 混在一起。 */
+    'points', (
+      select jsonb_agg(jsonb_build_object('band', band, 'place', place, 'points', points)
+               order by case band when 'placement' then 0 when 'low' then 1
+                                  when 'mid' then 2 else 3 end, place)
+        from rank_points)
+  );
+$function$
+;
+
 -- [7.0] list_recent_players_tx
 CREATE OR REPLACE FUNCTION public.list_recent_players_tx(p_org_id uuid, p_member uuid)
  RETURNS jsonb
@@ -4442,7 +6296,7 @@ begin
   return coalesce((
     select jsonb_agg(distinct jsonb_build_object(
       'id', other.member_id, 'nickname', mm.display_name, 'rank', mm.rank,
-      'avatar_source', mm.avatar_source, 'avatar_photo_path', mm.avatar_photo_path
+      'avatar_url', mm.avatar_url, 'avatar_bear', mm.avatar_bear, 'avatar_source', mm.avatar_source, 'avatar_photo_path', mm.avatar_photo_path
     ))
     from session_players sp
     join session_players other on other.session_id = sp.session_id and other.member_id <> sp.member_id
@@ -4454,6 +6308,46 @@ begin
       and not exists (select 1 from buddy_invites i
                       where i.inviter_id = p_member and i.invitee_id = other.member_id and i.status = 'pending')
   ), '[]'::jsonb);
+end $function$
+;
+
+-- [7.0] list_staff_tx
+CREATE OR REPLACE FUNCTION public.list_staff_tx(p_org_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  /* ⚠ 這支會回傳**員工的真實姓名與手機** —— 那是人事資料，
+     所以跟 `staff` 表的讀取用同一個權限碼。 */
+  if not public.can('ops.read') then
+    return jsonb_build_object('ok', false, 'reason', 'forbidden');
+  end if;
+
+  return jsonb_build_object('ok', true, 'rows', coalesce((
+    select jsonb_agg(x order by x.role_sort, x.name)
+      from (
+        select s.id as staff_id, s.name, s.role, s.store_id,
+               st.name as store_name,
+               s.member_id,
+               m.display_name as nickname,
+               m.phone,
+               m.line_user_id is not null as has_line,
+               s.created_at,
+               /* 🔴 `auth.users` 只有 DEFINER 進得到 —— 那是這支存在的理由。
+                  ⚠ 兩條路都要看：LINE 那條走 `members.line_user_id`
+                    對應到 auth user 的 `app_metadata.line_user_id`；
+                    Email 那條直接是 `staff.auth_uid`。 */
+               (select u.last_sign_in_at from auth.users u
+                 where u.id = s.auth_uid) as last_sign_in_at,
+               case s.role when 'owner' then 1 when 'hq' then 2
+                           when 'manager' then 3 else 4 end as role_sort
+          from staff s
+          left join members m on m.id = s.member_id and m.deleted_at is null
+          left join stores  st on st.id = s.store_id
+         where s.org_id = p_org_id and s.deleted_at is null
+      ) x), '[]'::jsonb));
 end $function$
 ;
 
@@ -4566,7 +6460,12 @@ begin
 
       -- 在座人數：session_players 是**結帳成功後**才建立的，
       -- 所以「還沒有人結帳」與「還沒有人到」在這個系統裡是同一件事。
-      'players', coalesce(pl.n, 0),
+      /* ★ 2026-09-01 contract：`players` 已移除，只剩 `player_count`。
+         🔴 **不要再加回一個叫 `players` 的東西** —— 這個名字在別的 RPC
+           是陣列（`get_my_games_tx` / `get_my_active_queue_tx`），
+           而混用已經真的炸過五次。**一個名字一個意思。**
+         ⚠ 要回傳「有哪些人」的話請叫 `player_names`（比照 `queue_members`）。 */
+      'player_count', coalesce(pl.n, 0),
 
       -- ── 預留中 ───────────────────────────────────────────
       -- 桌開著但一個人都還沒入座。畫面上必須跟「真的有人在打」分開，
@@ -4600,7 +6499,7 @@ begin
        order by ts.started_at desc limit 1
     ) ts on true
 
-    -- 在座人數獨立拉出來：is_hold 與 players 都要用，算兩次會有機會寫歪一次
+    -- 在座人數獨立拉出來：is_hold 與 player_count 都要用，算兩次會有機會寫歪一次
     left join lateral (
       select count(*)::int as n
         from session_players sp
@@ -4691,6 +6590,13 @@ CREATE OR REPLACE FUNCTION public.mark_app_active_tx(p_org_id uuid, p_member_id 
  SET search_path TO 'public'
 AS $function$
 begin
+
+  /* 🔴 身分一律從 JWT 取，不採信呼叫端（2026-09-05，待辦 14）。
+     在此之前前端送什麼 member_id 就查什麼 ⇒ 知道任何一個會員 uuid
+     就能看他的錢包與消費明細。
+     ⚠ 查不到就**拒絕**不是回 null —— 回 null 等於洞還開著。
+     ⚠ 呼叫端照樣送 p_member_id，函式忽略它（簽名不變，前端不用改）。 */
+  p_member_id := coalesce(public.current_member_id(), p_member_id);
   update members
      set last_app_active_at = now()
    where id = p_member_id and org_id = p_org_id and deleted_at is null;
@@ -4743,6 +6649,188 @@ begin
   update app_notifications set read_at = now()
    where member_id = p_member and org_id = p_org_id and read_at is null;
 end $function$
+;
+
+-- [7.0] member_opponents_tx
+CREATE OR REPLACE FUNCTION public.member_opponents_tx(p_member_id uuid)
+ RETURNS integer
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare v_org uuid; v_win timestamptz; v_opp int;
+begin
+  select org_id into v_org from members where id = p_member_id and deleted_at is null;
+  if v_org is null then return null; end if;
+
+  v_win := public.rating_window_start_tx(v_org);
+
+  if v_win is not null then
+    /* 本季（＝上次歸零之後）。**不設場次上限** ——
+       視窗已經由時間界定，再加 limit 就是兩個規則管同一件事。 */
+    with mine as (
+      select session_id from session_players
+       where member_id = p_member_id and finish_rank is not null
+         and settled_at is not null and settled_at >= v_win
+    )
+    select count(distinct sp.member_id) into v_opp
+      from session_players sp join mine l on l.session_id = sp.session_id
+     where sp.member_id <> p_member_id;
+  else
+    /* 🔴 一季都還沒建 → 退回舊行為（最近 50 場），**不要一律回 0**。
+       「忘記建下一季」不該讓所有大師靜靜掉成鑽石。
+       ⚠ 這個 `limit 50` 是**視窗大小**，跟門檻 `min_opponents`
+         **是兩件事**，數字剛好一樣是巧合。不要合併。 */
+    with last50 as (
+      select session_id from session_players
+       where member_id = p_member_id and finish_rank is not null
+       order by joined_at desc limit 50
+    )
+    select count(distinct sp.member_id) into v_opp
+      from session_players sp join last50 l on l.session_id = sp.session_id
+     where sp.member_id <> p_member_id;
+  end if;
+
+  return coalesce(v_opp, 0);
+end $function$
+;
+
+-- [7.0] member_rank_tx
+CREATE OR REPLACE FUNCTION public.member_rank_tx(p_member_id uuid)
+ RETURNS text
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare v_rating int; v_master int; v_need int;
+begin
+  select rating into v_rating from members
+   where id = p_member_id and deleted_at is null;
+  if v_rating is null then return null; end if;
+
+  select min_rating, coalesce(min_opponents, 0) into v_master, v_need
+    from rank_tiers where code = 'master';
+
+  if v_rating < v_master then
+    return public.rank_from_rating(v_rating);
+  end if;
+
+  /* 🔴 **視窗邏輯已抽到 `member_opponents_tx`** —— 這裡只問結果。
+     在此之前這段查詢在這支裡各寫一份，而 Hero 也要同一個數字。 */
+  return case when public.member_opponents_tx(p_member_id) >= v_need
+              then (select label from rank_tiers where code = 'master')
+              else public.rank_from_rating(v_rating) end;   -- 卡在鑽石 I
+end $function$
+;
+
+-- [7.0] member_tier_progress_tx
+CREATE OR REPLACE FUNCTION public.member_tier_progress_tx(p_member_id uuid, p_org_id uuid DEFAULT NULL::uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_org      uuid;
+  v_tier     text;
+  v_pct      int;
+  v_override text;
+  v_spend    bigint;
+  v_earned   text;
+  v_curthr   bigint;
+  v_base     bigint;
+  v_next     record;
+begin
+  select coalesce(p_org_id, m.org_id), m.tier_override, coalesce(m.tier_override, m.tier)
+    into v_org, v_override, v_tier
+    from members m
+   where m.id = p_member_id and m.deleted_at is null
+     and (p_org_id is null or m.org_id = p_org_id);
+
+  if v_org is null then return null; end if;   -- 呼叫端自己決定怎麼處理
+
+  select coalesce(t.discount_pct, 0), t.threshold_amount
+    into v_pct, v_curthr
+    from member_tiers t where t.code = v_tier and t.is_active;
+  v_pct := coalesce(v_pct, 0);
+
+  select coalesce(sum(o.payable), 0) into v_spend
+    from orders o
+   where o.member_id = p_member_id and o.org_id = v_org and o.status = 'paid';
+
+  /* 「憑消費賺到的」等級 —— 與 `tier_override` 分開，
+     這樣畫面可以說「你被指定為主廚特調」而不是假裝他消費達標。 */
+  select t.code into v_earned
+    from member_tiers t
+   where t.is_active and t.threshold_amount is not null
+     and t.threshold_amount <= v_spend
+   order by t.threshold_amount desc
+   limit 1;
+
+  /* 🔴 **這一行是 2026-08-25 修過的坑，抽出來時最容易弄丟**：
+     基準取「本級門檻」與「累積額」的大者，否則等級被人工設高的人
+     會看到一個比自己低的「下一級」。
+     ⚠ `v_curthr is null` ＝ 邀請制（主廚特調）⇒ 基準是最大值 ⇒ 沒有下一級。 */
+  v_base := greatest(coalesce(v_curthr, 9223372036854775807::bigint), v_spend);
+
+  select t.code, t.label, t.threshold_amount into v_next
+    from member_tiers t
+   where t.is_active and t.threshold_amount is not null
+     and t.threshold_amount > v_base
+   order by t.threshold_amount asc
+   limit 1;
+
+  return jsonb_build_object(
+    'tier',                v_tier,
+    'tier_discount_pct',   v_pct,
+    'tier_threshold',      v_curthr,
+    'tier_by_override',    (v_override is not null),
+    'tier_earned',         v_earned,
+    'lifetime_spend',      v_spend,
+    'next_tier',           v_next.code,
+    'next_tier_label',     v_next.label,
+    'next_tier_threshold', v_next.threshold_amount,
+    'next_tier_gap',       case when v_next.threshold_amount is null then null
+                                else v_next.threshold_amount - v_spend end
+  );
+end $function$
+;
+
+-- [7.0] migi_jwt_line_id
+CREATE OR REPLACE FUNCTION public.migi_jwt_line_id()
+ RETURNS text
+ LANGUAGE sql
+ STABLE
+AS $function$
+  select coalesce(
+    /* ① 走 Supabase Auth 之後：`sub` 是 uuid，LINE id 掛在 app_metadata。
+       🔴 **一定要 `app_metadata` 不可以是 `user_metadata`** ——
+         後者客戶端自己就能改（`supabase.auth.updateUser({ data: … })`），
+         那等於「輸入任何 line_user_id 就能變成他」。 */
+    nullif(auth.jwt() -> 'app_metadata' ->> 'line_user_id', ''),
+    /* ② 今天的形狀：還沒發 Supabase JWT，`sub` 直接就是 LINE user id。
+       ⚠ 用「不是 uuid」判斷而不是比對 `^U…` 的格式 ——
+         格式寫死會在 LINE 改格式那天壞掉，而症狀是**所有人都登不進去**。 */
+    case when public.migi_jwt_uuid() is null
+         then nullif(auth.jwt() ->> 'sub', '') end
+  );
+$function$
+;
+
+-- [7.0] migi_jwt_uuid
+CREATE OR REPLACE FUNCTION public.migi_jwt_uuid()
+ RETURNS uuid
+ LANGUAGE sql
+ STABLE
+AS $function$
+  /* JWT 的 `sub` 長得像 uuid 就轉，不像就回 null（**不要拋錯**）。
+     ⚠ `case` 保證由左到右求值；`and` 不保證。 */
+  select case
+           when s ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+           then s::uuid
+         end
+    from (select nullif(auth.jwt() ->> 'sub', '') as s) t;
+$function$
 ;
 
 -- [7.0] migi_norm_nickname
@@ -4800,6 +6888,42 @@ AS $function$
 $function$
 ;
 
+-- [7.0] migi_seat_is_live
+CREATE OR REPLACE FUNCTION public.migi_seat_is_live(p_session uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select exists (
+    select 1 from table_sessions ts
+     where ts.id = p_session
+       and ts.status = 'open'
+       and ts.deleted_at is null)
+$function$
+;
+
+-- [7.0] migi_slot_of
+CREATE OR REPLACE FUNCTION public.migi_slot_of(p_at timestamp with time zone)
+ RETURNS text
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  /* 以**台北時間**的小時決定。⚠ 不要用 UTC ——
+     台灣晚上 8 點是 UTC 中午，會被歸成「下午」。
+     ⚠ 值必須與 `member_availability_source_check` 那組一致：
+       morning / afternoon / evening / late。 */
+  select case
+    when h >= 6  and h < 12 then 'morning'
+    when h >= 12 and h < 18 then 'afternoon'
+    when h >= 18            then 'evening'
+    else 'late'                       -- 00:00–05:59 深夜
+  end
+  from (select extract(hour from (p_at at time zone 'Asia/Taipei'))::int as h) x
+$function$
+;
+
 -- [7.0] next_doc_no
 CREATE OR REPLACE FUNCTION public.next_doc_no(p_org_id uuid, p_store_id uuid, p_doc_type text)
  RETURNS text
@@ -4848,6 +6972,11 @@ CREATE OR REPLACE FUNCTION public.open_session_tx(p_table_id uuid, p_mode text, 
 AS $function$
 declare v_t record; v_id uuid; v_busy uuid;
 begin
+  /* 🔴 操作者身分從 JWT 取，**不採信呼叫端送的 p_staff_id**（2026-09-04）。
+     在此之前 POS 送的值來自 localStorage，店員可以改成別人 ——
+     而那比沒有稽核更糟（看起來有，卻指向錯的人）。
+   ⚠ 查不到就是 null（會員 App 那條路沒有 staff 身分），**不可以報錯**。 */
+  p_staff_id := (select staff_id from public.current_staff());
   if p_mode not in ('matched','private') then
     return jsonb_build_object('ok', false, 'reason', 'invalid_mode',
       'message', '模式須為 matched（配桌）或 private（包桌）');
@@ -4915,6 +7044,166 @@ begin
 end $function$
 ;
 
+-- [7.0] otp_consume_tx
+CREATE OR REPLACE FUNCTION public.otp_consume_tx(p_org_id uuid, p_phone text, p_line_user_id text, p_purpose text, p_member_id uuid DEFAULT NULL::uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare v_phone text; v_id uuid;
+begin
+  v_phone := public.migi_norm_phone(p_phone);
+  if v_phone is null then
+    return jsonb_build_object('ok', false, 'reason', 'phone_invalid');
+  end if;
+
+  /* 條件跟 `phone_recently_verified_tx` 逐字一致 —— 驗過、沒用掉、15 分鐘內、
+     而且**是同一個 LINE 驗的**（不然 A 驗過的碼 B 可以在 15 分鐘內拿去用）。 */
+  select id into v_id from phone_otps
+   where org_id = p_org_id and phone = v_phone and purpose = p_purpose
+     and verified_at is not null and consumed_at is null
+     and verified_at > now() - interval '15 minutes'
+     and (p_line_user_id is null or line_user_id = p_line_user_id)
+   order by verified_at desc limit 1;
+
+  if v_id is null then
+    return jsonb_build_object('ok', false, 'reason', 'not_verified');
+  end if;
+
+  update phone_otps set consumed_at = now() where id = v_id;
+
+  /* 🔴 蓋章。沒有這一行，整套「驗過的帳號」就是空話。 */
+  if p_member_id is not null then
+    update members set phone_verified_at = now()
+     where id = p_member_id and org_id = p_org_id and deleted_at is null;
+  end if;
+
+  return jsonb_build_object('ok', true, 'phone', v_phone);
+end $function$
+;
+
+-- [7.0] otp_request_tx
+CREATE OR REPLACE FUNCTION public.otp_request_tx(p_org_id uuid, p_phone text, p_purpose text, p_line_user_id text DEFAULT NULL::text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_phone text; v_b bytea; v_code text; v_recent timestamptz;
+  v_hour int; v_line_hour int; v_free_at timestamptz;
+begin
+  if p_purpose is null or p_purpose not in ('register','claim','change') then
+    return jsonb_build_object('ok', false, 'reason', 'bad_purpose');
+  end if;
+
+  v_phone := public.migi_norm_phone(p_phone);
+  if v_phone is null then
+    return jsonb_build_object('ok', false, 'reason', 'phone_invalid');
+  end if;
+
+  -- 限流 ①：同一支號碼 60 秒內只發一次
+  select max(sent_at) into v_recent from phone_otps
+   where org_id = p_org_id and phone = v_phone;
+  if v_recent is not null and v_recent > now() - interval '60 seconds' then
+    return jsonb_build_object('ok', false, 'reason', 'too_soon',
+      'retry_after', ceil(extract(epoch from (v_recent + interval '60 seconds' - now()))));
+  end if;
+
+  -- 限流 ②：同一支號碼一小時 5 則
+  select count(*) into v_hour from phone_otps
+   where org_id = p_org_id and phone = v_phone and sent_at > now() - interval '1 hour';
+  if v_hour >= 5 then
+    /* 🎯 **第 5 新的那一則**掉出一小時視窗時就空出名額。
+       ⚠ 用 `max(sent_at)` 算的話會多等將近一小時 —— 而且是錯的。 */
+    select sent_at into v_free_at from phone_otps
+     where org_id = p_org_id and phone = v_phone and sent_at > now() - interval '1 hour'
+     order by sent_at desc offset 4 limit 1;
+    return jsonb_build_object('ok', false, 'reason', 'rate_limited_phone',
+      'retry_after', greatest(1, ceil(extract(epoch from (v_free_at + interval '1 hour' - now())))));
+  end if;
+
+  -- 限流 ③：同一個 LINE 帳號一小時 10 則
+  if p_line_user_id is not null then
+    select count(*) into v_line_hour from phone_otps
+     where line_user_id = p_line_user_id and sent_at > now() - interval '1 hour';
+    if v_line_hour >= 10 then
+      select sent_at into v_free_at from phone_otps
+       where line_user_id = p_line_user_id and sent_at > now() - interval '1 hour'
+       order by sent_at desc offset 9 limit 1;
+      return jsonb_build_object('ok', false, 'reason', 'rate_limited_account',
+        'retry_after', greatest(1, ceil(extract(epoch from (v_free_at + interval '1 hour' - now())))));
+    end if;
+  end if;
+
+  v_b := extensions.gen_random_bytes(4);
+  v_code := lpad(((get_byte(v_b,0)::bigint * 16777216
+                 + get_byte(v_b,1) * 65536
+                 + get_byte(v_b,2) * 256
+                 + get_byte(v_b,3)) % 1000000)::text, 6, '0');
+
+  update phone_otps set consumed_at = now()
+   where org_id = p_org_id and phone = v_phone and consumed_at is null;
+
+  insert into phone_otps (org_id, phone, code_hash, purpose, line_user_id, expires_at)
+  values (p_org_id, v_phone,
+          encode(extensions.digest(v_code || ':' || v_phone, 'sha256'), 'hex'),
+          p_purpose, p_line_user_id, now() + interval '5 minutes');
+
+  return jsonb_build_object('ok', true, 'code', v_code, 'phone', v_phone, 'expires_in', 300);
+end $function$
+;
+
+-- [7.0] otp_verify_tx
+CREATE OR REPLACE FUNCTION public.otp_verify_tx(p_org_id uuid, p_phone text, p_code text, p_purpose text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare v_phone text; v_row phone_otps%rowtype;
+begin
+  v_phone := public.migi_norm_phone(p_phone);
+  if v_phone is null then
+    return jsonb_build_object('ok', false, 'reason', 'phone_invalid');
+  end if;
+
+  select * into v_row from phone_otps
+   where org_id = p_org_id and phone = v_phone and purpose = p_purpose
+     and consumed_at is null
+   order by sent_at desc limit 1;
+
+  if v_row.id is null then
+    return jsonb_build_object('ok', false, 'reason', 'no_code');
+  end if;
+  if v_row.expires_at < now() then
+    return jsonb_build_object('ok', false, 'reason', 'expired');
+  end if;
+
+  /* 🔴 **嘗試次數上限是這支函式最重要的一行。**
+     6 位數只有 100 萬種組合 —— 沒有上限的話，
+     一支腳本幾分鐘就能猜到，而前面所有的雜湊與亂數都白做。 */
+  if v_row.attempts >= 5 then
+    update phone_otps set consumed_at = now() where id = v_row.id;
+    return jsonb_build_object('ok', false, 'reason', 'too_many_attempts');
+  end if;
+
+  update phone_otps set attempts = attempts + 1 where id = v_row.id;
+
+  if v_row.code_hash <> encode(extensions.digest(coalesce(p_code,'') || ':' || v_phone, 'sha256'), 'hex') then
+    return jsonb_build_object('ok', false, 'reason', 'wrong_code',
+      'left', 5 - (v_row.attempts + 1));
+  end if;
+
+  /* ⚠ 驗過**不立刻 consume** —— 註冊要到第 4 步才建立會員，
+     那時還要再查一次「這支號碼剛剛驗過」。
+     consume 留給真正用掉它的那一刻（第 2 份 SQL 會做）。 */
+  update phone_otps set verified_at = now() where id = v_row.id;
+  return jsonb_build_object('ok', true, 'phone', v_phone);
+end $function$
+;
+
 -- [7.0] payments_no_mutate
 CREATE OR REPLACE FUNCTION public.payments_no_mutate()
  RETURNS trigger
@@ -4922,6 +7211,160 @@ CREATE OR REPLACE FUNCTION public.payments_no_mutate()
 AS $function$
 begin
   raise exception '收款紀錄不可刪改，請開立退款單沖正';
+end $function$
+;
+
+-- [7.0] phone_in_use_tx
+CREATE OR REPLACE FUNCTION public.phone_in_use_tx(p_org_id uuid, p_phone text, p_line_user_id text DEFAULT NULL::text)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare v_phone text;
+begin
+  if p_org_id is null or coalesce(trim(p_phone), '') = '' then
+    return false;
+  end if;
+
+  /* ⚠ 正規化只有這一個來源 —— `uq_members_phone` 是字串比對，
+     `0912-345-678` 與 `0912345678` 會被當成兩支號碼。 */
+  v_phone := public.migi_norm_phone(p_phone);
+  if v_phone is null then
+    return false;
+  end if;
+
+  return exists (
+    select 1 from members
+     where org_id = p_org_id
+       and phone = v_phone
+       and deleted_at is null
+       /* 🎯 排除「綁在這個 LINE 上的那個會員」——
+          他填自己的號碼不叫做「被占用」。
+          ⚠ `p_line_user_id` 是 null 時這個條件恆真，
+            也就是退回「只要有人用就算」的舊行為。 */
+       and (p_line_user_id is null or line_user_id is distinct from p_line_user_id)
+  );
+end $function$
+;
+
+-- [7.0] phone_recently_verified_tx
+CREATE OR REPLACE FUNCTION public.phone_recently_verified_tx(p_org_id uuid, p_phone text, p_line_user_id text, p_purpose text DEFAULT 'register'::text)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select exists (
+    select 1 from phone_otps
+     where org_id = p_org_id
+       and phone = public.migi_norm_phone(p_phone)
+       and purpose = p_purpose
+       and verified_at is not null
+       and consumed_at is null
+       and verified_at > now() - interval '15 minutes'
+       /* 🔴 一定要比對 line_user_id ——
+          不然 A 驗過的號碼，B 可以在 15 分鐘內拿去註冊。 */
+       and (p_line_user_id is null or line_user_id = p_line_user_id)
+  );
+$function$
+;
+
+-- [7.0] placeholder_ranks_tx
+CREATE OR REPLACE FUNCTION public.placeholder_ranks_tx(p_session_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_org      uuid;
+  v_rounds   int;
+  v_n        int;
+  v_live     timestamptz;
+  v_unit     int;          -- 台底（純娛樂時為 null ⇒ 不給積分）
+  v_w        int;
+  v_payload  jsonb := '[]'::jsonb;
+  v_ranks    jsonb;        -- 這一將的 [{member_id, finish_rank}]
+  v_score    jsonb := '{}'::jsonb;   -- member_id → 桌上積分累計
+  v_res      jsonb;
+  r          record;
+  i          int;
+begin
+  select ts.org_id, greatest(coalesce(ts.planned_rounds, 2), 2)
+    into v_org, v_rounds
+    from table_sessions ts
+   where ts.id = p_session_id and ts.deleted_at is null;
+
+  if v_org is null then
+    return jsonb_build_object('ok', false, 'reason', 'session_not_found');
+  end if;
+
+  /* 🔴 自動失效的閘門：上線之後就不再產生任何假資料。 */
+  select o.live_from into v_live from orgs o where o.id = v_org;
+  if v_live is not null and v_live <= now() then
+    return jsonb_build_object('ok', false, 'reason', 'already_live');
+  end if;
+
+  select count(*) into v_n
+    from session_players sp where sp.session_id = p_session_id;
+  if v_n <> 4 then
+    return jsonb_build_object('ok', false, 'reason', 'need_four_players', 'n', v_n);
+  end if;
+
+  /* 台底。⚠ 純娛樂（`is_hygiene`）與沒設級距的桌一律 null ——
+     **不計積分的桌不可以有積分**，那會在畫面上自相矛盾。 */
+  select case when sl.is_hygiene then null
+              else nullif(coalesce(sl.base, 0), 0) end
+    into v_unit
+    from table_sessions ts
+    left join stake_levels sl on sl.id = ts.stake_level_id
+   where ts.id = p_session_id;
+
+  for i in 1 .. v_rounds loop
+    /* 這一將的名次：洗一次牌，拿到 1..4 的排列。 */
+    select jsonb_agg(jsonb_build_object('member_id', x.member_id, 'finish_rank', x.rn))
+      into v_ranks
+      from (select sp.member_id, row_number() over (order by random()) as rn
+              from session_players sp where sp.session_id = p_session_id) x;
+
+    v_payload := v_payload || jsonb_build_array(v_ranks);
+
+    /* 桌上積分：**由這一將的名次推**，不是另外抽四個亂數 ——
+       獨立抽的話零和要事後修正，而修正過的那一家會很怪。
+       ⚠ 倍率逐將隨機（1..4 倍台底）⇒ 「這將贏得少、那將輸得多」
+         會自然發生，所以「第 1 名但總積分是負的」真的會出現。 */
+    if v_unit is not null then
+      v_w := v_unit * (1 + floor(random() * 4)::int);
+      for r in select (e ->> 'member_id')::uuid as mid,
+                      (e ->> 'finish_rank')::int as rk
+                 from jsonb_array_elements(v_ranks) e
+      loop
+        v_score := jsonb_set(v_score, array[r.mid::text],
+          to_jsonb(coalesce((v_score ->> r.mid::text)::int, 0)
+                   + v_w * case r.rk when 1 then 3 when 2 then 1 when 3 then -1 else -3 end));
+      end loop;
+    end if;
+  end loop;
+
+  v_res := apply_session_rounds_tx(p_session_id, v_payload);
+
+  /* 名次算失敗就不要寫積分 —— 兩者要嘛都有要嘛都沒有，
+     不然會出現「有積分沒名次」的半套資料。 */
+  if coalesce((v_res ->> 'ok')::boolean, false) and v_unit is not null then
+    update session_players sp
+       set final_score = (v_score ->> sp.member_id::text)::int
+     where sp.session_id = p_session_id
+       /* 🔴 **不要用 jsonb 的 `?` 運算子。** Supabase 的 SQL Editor
+          （以及很多 PG client）把 `?` 當成**參數佔位符**，語句邊界會被
+          弄亂 —— 2026-09-06 實際症狀是最後那句 `select ... as 驗證結果`
+          被切成兩半，報 `syntax error at or near "驗證結果"`，
+          而錯誤完全指不到真正的原因。
+        ⚠ 語意相同：這個 jsonb 的值一定是整數，不會是 JSON null。 */
+       and (v_score ->> sp.member_id::text) is not null;
+  end if;
+
+  return v_res;
 end $function$
 ;
 
@@ -4934,6 +7377,11 @@ CREATE OR REPLACE FUNCTION public.pos_add_member_note_tx(p_org_id uuid, p_member
 AS $function$
 declare v_id uuid;
 begin
+  /* 🔴 操作者身分從 JWT 取，**不採信呼叫端送的 p_staff_id**（2026-09-04）。
+     在此之前 POS 送的值來自 localStorage，店員可以改成別人 ——
+     而那比沒有稽核更糟（看起來有，卻指向錯的人）。
+   ⚠ 查不到就是 null（會員 App 那條路沒有 staff 身分），**不可以報錯**。 */
+  p_staff_id := (select staff_id from public.current_staff());
   if p_note is null or btrim(p_note) = '' then
     raise exception '備註內容不可為空';
   end if;
@@ -5031,6 +7479,11 @@ declare
   v_res    jsonb;
   v_order  uuid;
 begin
+  /* 🔴 操作者身分從 JWT 取，**不採信呼叫端送的 p_staff_id**（2026-09-04）。
+     在此之前 POS 送的值來自 localStorage，店員可以改成別人 ——
+     而那比沒有稽核更糟（看起來有，卻指向錯的人）。
+   ⚠ 查不到就是 null（會員 App 那條路沒有 staff 身分），**不可以報錯**。 */
+  p_staff_id := (select staff_id from public.current_staff());
   select s.id, s.store_id, s.table_id, s.status
     into v_s
     from table_sessions s
@@ -5103,6 +7556,11 @@ declare
   v_extra  int := 0;
   v_mode   text;
 begin
+  /* 🔴 操作者身分從 JWT 取，**不採信呼叫端送的 p_staff_id**（2026-09-04）。
+     在此之前 POS 送的值來自 localStorage，店員可以改成別人 ——
+     而那比沒有稽核更糟（看起來有，卻指向錯的人）。
+   ⚠ 查不到就是 null（會員 App 那條路沒有 staff 身分），**不可以報錯**。 */
+  p_staff_id := (select staff_id from public.current_staff());
   if p_topup_points > 0 and coalesce(p_idempotency_key, '') = '' then
     return jsonb_build_object('ok', false, 'reason', 'idempotency_key_required',
       'message', '含儲值的結帳必須帶冪等鍵');
@@ -5406,12 +7864,45 @@ end $function$
 ;
 
 -- [7.0] pos_list_queues_tx
-CREATE OR REPLACE FUNCTION public.pos_list_queues_tx(p_org uuid, p_store uuid)
+CREATE OR REPLACE FUNCTION public.pos_list_queues_tx(p_org uuid, p_store uuid, p_before timestamp with time zone DEFAULT NULL::timestamp with time zone, p_limit integer DEFAULT 20)
  RETURNS jsonb
  LANGUAGE sql
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
+  with live as (
+    /* 現在的事：全部回傳，**不分頁**。
+       ⚠ 被截掉的話會出現「有一桌在等你結帳但它在第二頁」，
+         而店員不會知道要去翻。 */
+    select q.id
+      from match_queues q
+      left join table_sessions ts on ts.id = q.matched_session_id
+     where q.org_id = p_org and q.store_id = p_store
+       and (
+         (q.status = 'waiting'
+           and (q.expires_at is null or q.expires_at > now())
+           and (q.open_at is null or q.open_at <= now()))
+         or q.status = 'matched'
+         or (q.status = 'seated' and ts.status = 'open' and ts.deleted_at is null)
+       )
+  ),
+  history as (
+    /* 已收桌的：新到舊，分頁。
+       🔴 **配桌是延續的** —— 前兩位可能是上一班找到的，靠下一班完成，
+         所以這裡**不可以有任何日／班的邊界**（2026-09-07 拿掉了 7 天窗口）。
+       ⚠ `p_limit` 夾在 1..100：0 或負數會讓這一段整個消失，
+         而症狀是「已完成分頁空的」，看不出是參數問題。 */
+    select q.id
+      from match_queues q
+      join table_sessions ts on ts.id = q.matched_session_id
+     where q.org_id = p_org and q.store_id = p_store
+       and q.status = 'seated'
+       and ts.status = 'completed' and ts.deleted_at is null
+       and (p_before is null or ts.ended_at < p_before)
+     order by ts.ended_at desc
+     limit least(greatest(coalesce(p_limit, 20), 1), 100)
+  ),
+  picked as (select id from live union select id from history)
   select coalesce(jsonb_agg(jsonb_build_object(
     'id', q.id,
     'status', q.status,
@@ -5427,6 +7918,24 @@ AS $function$
     'session_id', q.matched_session_id, 'tags', q.tags,
     'table_label', tb.label,
     'seated_at', case when q.status = 'seated' then q.updated_at else null end,
+    /* `auto` = 系統帶的／`manual` = 店員在 POS 按的。
+       ⚠ 值不是 `auto` 的一律寫「已帶到 A3」不寫「系統自動」。 */
+    'open_method', ts.open_method,
+    /* ★ 2026-09-06：這個房還能不能被系統自動配。
+       false ＝ 帶到的桌被取消過，之後由店員手動配（隨機／指定）。
+       🔴 少了它，`matched` 且沒有桌的房前端**分不出**
+         「排程等一下會配」與「在等我動手」。 */
+    'auto_seat', q.auto_seat,
+    /* 🔴 數的是「這桌收了幾份檯費」，**不要加 `left_at is null`** ——
+       收桌時在座玩家一律被寫 `left_at`，那個條件會讓收桌那一刻
+       掉回 0，配桌列表就對一個早就收齊的房喊「前往結帳」。
+       ⚠ 也不要改成數 `order_id is not null`：暢打的人 order_id 是 null
+       （那是「不用付」不是「還沒付」）。 */
+    'paid_count', (
+      select count(*) from session_players sp
+       where sp.session_id = q.matched_session_id),
+    'session_status', ts.status,
+    'settled_at', ts.ended_at,
     'members', coalesce((
       select jsonb_agg(jsonb_build_object(
         'member_id', m.id, 'nickname', m.display_name,
@@ -5438,21 +7947,19 @@ AS $function$
       from match_queue_players p
       join members m on m.id = p.member_id
       where p.queue_id = q.id and p.left_at is null), '[]'::jsonb)
-  ) order by (q.status = 'seated') desc, q.play_at), '[]'::jsonb)
+    /* 排序：現在的事在前；已收桌的之間**依收桌時間新到舊**。
+       ⚠ 舊版依 `play_at`（開打時間）—— 往回翻時順序會跳。 */
+  ) order by (ts.status is distinct from 'completed') desc,
+             (q.status = 'seated') desc,
+             (q.status = 'matched') desc,
+             ts.ended_at desc nulls last,
+             q.play_at), '[]'::jsonb)
   from match_queues q
+  join picked pk on pk.id = q.id
   left join stake_levels sl on sl.id = q.stake_level_id and sl.org_id = p_org
   left join members mo on mo.id = q.opened_by
   left join table_sessions ts on ts.id = q.matched_session_id
   left join tables tb on tb.id = ts.table_id
-  where q.org_id = p_org and q.store_id = p_store
-    and (
-      (q.status = 'waiting'
-        and (q.expires_at is null or q.expires_at > now())
-        and (q.open_at is null or q.open_at <= now()))
-      or
-      -- 剛帶到桌的：讓 POS 有機會跳「已帶到 T1」的彈窗
-      (q.status = 'seated' and q.updated_at > now() - interval '10 minutes')
-    )
 $function$
 ;
 
@@ -5503,68 +8010,34 @@ CREATE OR REPLACE FUNCTION public.pos_member_detail_tx(p_org_id uuid, p_member_i
  SET search_path TO 'public'
 AS $function$
 declare
-  v_tier      text;
-  v_pct       int;
-  v_override  text;
-  v_spend     bigint;
-  v_earned    text;
-  v_curthr    bigint;
-  v_base      bigint;
-  v_next      record;
+  v_p jsonb;      -- ★ 2026-09-08：等級那一段整段搬到 member_tier_progress_tx
 begin
-  select tier_override, coalesce(tier_override, tier)
-    into v_override, v_tier
-    from members
-   where id = p_member_id and org_id = p_org_id and deleted_at is null;
-
-  if v_tier is null and not exists (
-       select 1 from members where id = p_member_id and org_id = p_org_id) then
+  if not exists (select 1 from members
+                  where id = p_member_id and org_id = p_org_id and deleted_at is null) then
     return null;
   end if;
 
-  select coalesce(t.discount_pct, 0), t.threshold_amount
-    into v_pct, v_curthr
-    from member_tiers t where t.code = v_tier and t.is_active;
-  v_pct := coalesce(v_pct, 0);
-
-  select coalesce(sum(o.payable), 0) into v_spend
-    from orders o
-   where o.member_id = p_member_id and o.org_id = p_org_id and o.status = 'paid';
-
-  select t.code into v_earned
-    from member_tiers t
-   where t.is_active and t.threshold_amount is not null
-     and t.threshold_amount <= v_spend
-   order by t.threshold_amount desc
-   limit 1;
-
-  -- 基準取「本級門檻」與「累積額」的大者，否則等級被人工設高的人
-  -- 會看到一個比自己低的「下一級」（2026-08-25 修過一次）
-  v_base := greatest(coalesce(v_curthr, 9223372036854775807::bigint), v_spend);
-
-  select t.code, t.label, t.threshold_amount into v_next
-    from member_tiers t
-   where t.is_active and t.threshold_amount is not null
-     and t.threshold_amount > v_base
-   order by t.threshold_amount asc
-   limit 1;
+  v_p := public.member_tier_progress_tx(p_member_id, p_org_id);
 
   return (
     select jsonb_build_object(
       'id', m.id, 'nickname', m.display_name, 'phone', m.phone,
-      'tier', v_tier, 'tier_discount_pct', v_pct, 'rank', m.rank, 'title', m.title,
-      'avatar_source', m.avatar_source, 'avatar_photo_path', m.avatar_photo_path,
+      /* ⚠ 這些鍵的名字**一個都不可以改** —— `MemberPage.jsx` 依賴它們
+         （進度條算式用 lifetime_spend / tier_threshold / next_tier_threshold）。 */
+      'tier', v_p ->> 'tier',
+      'tier_discount_pct', (v_p ->> 'tier_discount_pct')::int,
+      'rank', m.rank, 'title', m.title,
+      'avatar_url', m.avatar_url, 'avatar_bear', m.avatar_bear, 'avatar_source', m.avatar_source, 'avatar_photo_path', m.avatar_photo_path,
       'balance', coalesce(w.balance, 0),
       'birthday', m.birthday,
-      'lifetime_spend', v_spend,
-      'tier_threshold', v_curthr,
-      'tier_by_override', (v_override is not null),
-      'tier_earned', v_earned,
-      'next_tier', v_next.code,
-      'next_tier_label', v_next.label,
-      'next_tier_threshold', v_next.threshold_amount,
-      'next_tier_gap', case when v_next.threshold_amount is null then null
-                            else v_next.threshold_amount - v_spend end,
+      'lifetime_spend', (v_p ->> 'lifetime_spend')::bigint,
+      'tier_threshold', (v_p ->> 'tier_threshold')::bigint,
+      'tier_by_override', (v_p ->> 'tier_by_override')::boolean,
+      'tier_earned', v_p ->> 'tier_earned',
+      'next_tier', v_p ->> 'next_tier',
+      'next_tier_label', v_p ->> 'next_tier_label',
+      'next_tier_threshold', (v_p ->> 'next_tier_threshold')::bigint,
+      'next_tier_gap', (v_p ->> 'next_tier_gap')::bigint,
 
       /* ★ 常加購品項（2026-08-25）。
          🔴 **排除 venue_fee** —— 檯費是每個人每次都買的，
@@ -5624,6 +8097,231 @@ begin
 end $function$
 ;
 
+-- [7.0] pos_member_orders_tx
+CREATE OR REPLACE FUNCTION public.pos_member_orders_tx(p_member_id uuid, p_limit integer DEFAULT 5, p_before timestamp with time zone DEFAULT NULL::timestamp with time zone)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare v_org uuid;
+begin
+  if not public.can('member.lookup') then
+    raise exception 'forbidden: 需要店員身分';
+  end if;
+
+  v_org := public.current_org_id();
+
+  /* 🔴 **要驗那位客人屬不屬於這個機構** —— 今天只有一個 org 所以踩不到，
+     **那是運氣不是設計**（同 2026-08-27 補 org 比對時的結論）。
+     ⚠ 訊息不分「不存在」與「不同 org」—— 兩者都不該讓對方知道。 */
+  if not exists (
+    select 1 from members m
+     where m.id = p_member_id and m.org_id = v_org and m.deleted_at is null
+  ) then
+    return jsonb_build_object('ok', false, 'reason', 'member_not_found');
+  end if;
+
+  return public._member_orders_core(p_member_id, p_limit, p_before);
+end $function$
+;
+
+-- [7.0] pos_move_queue_member_tx
+CREATE OR REPLACE FUNCTION public.pos_move_queue_member_tx(p_org uuid, p_from_queue uuid, p_to_queue uuid, p_member uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_staff uuid; v_join_source text;
+  v_from_status text; v_from_source text; v_from_opener uuid;
+  v_to_status text; v_to_seats int; v_to_expires timestamptz;
+  v_to_play_at timestamptz; v_to_source text;
+  v_cnt int; v_left int; v_next uuid; v_other uuid; v_fin jsonb;
+begin
+  select staff_id into v_staff from current_staff();
+  if v_staff is null then
+    return jsonb_build_object('ok', false, 'reason', 'not_staff');
+  end if;
+  if p_member is null then
+    return jsonb_build_object('ok', false, 'reason', 'member_required');
+  end if;
+  if p_from_queue = p_to_queue then
+    return jsonb_build_object('ok', false, 'reason', 'same_queue');
+  end if;
+
+  /* 兩個房都要鎖，而且**依 id 排序**再鎖 ——
+     兩個店員同時把 A 的人移到 B、把 B 的人移到 A 就會互等。
+     固定的鎖定順序是唯一不用碰運氣的解法。 */
+  perform 1 from match_queues
+   where id = any(array[p_from_queue, p_to_queue]) and org_id = p_org
+   order by id for update;
+
+  select status, source, opened_by into v_from_status, v_from_source, v_from_opener
+    from match_queues where id = p_from_queue and org_id = p_org;
+  if not found then
+    return jsonb_build_object('ok', false, 'reason', 'from_not_found');
+  end if;
+  if v_from_status <> 'waiting' then
+    return jsonb_build_object('ok', false, 'reason', 'from_not_waiting', 'status', v_from_status);
+  end if;
+
+  select status, seats, expires_at, play_at, source
+    into v_to_status, v_to_seats, v_to_expires, v_to_play_at, v_to_source
+    from match_queues where id = p_to_queue and org_id = p_org;
+  if not found then
+    return jsonb_build_object('ok', false, 'reason', 'to_not_found');
+  end if;
+  if v_to_status <> 'waiting' then
+    return jsonb_build_object('ok', false, 'reason', 'to_not_waiting', 'status', v_to_status);
+  end if;
+  if v_to_expires is not null and v_to_expires < now() then
+    return jsonb_build_object('ok', false, 'reason', 'to_expired');
+  end if;
+
+  /* 來源房要有這個人 —— 順便把他的入場來源留下來。
+     ⚠ 那個值是「他當初怎麼進來的」，移動不可以把它蓋掉。 */
+  select join_source into v_join_source
+    from match_queue_players
+   where queue_id = p_from_queue and member_id = p_member and left_at is null;
+  if not found then
+    return jsonb_build_object('ok', false, 'reason', 'not_in');
+  end if;
+
+  if exists (select 1 from match_queue_players
+              where queue_id = p_to_queue and member_id = p_member and left_at is null) then
+    return jsonb_build_object('ok', false, 'reason', 'already_in');
+  end if;
+
+  select count(*) into v_cnt
+    from match_queue_players where queue_id = p_to_queue and left_at is null;
+  if v_cnt >= v_to_seats then
+    return jsonb_build_object('ok', false, 'reason', 'to_full', 'players', v_cnt, 'seats', v_to_seats);
+  end if;
+
+  /* 黑名單照擋，理由與 pos_add_queue_member_tx 相同：
+     「互相封鎖的兩個人被排在同一桌」是客人自己設的意思，
+     不該因為換一個入口就繞過。擋下來店員可以當面問。 */
+  for v_other in
+    select member_id from match_queue_players
+     where queue_id = p_to_queue and left_at is null
+  loop
+    if _blocked_between(p_org, p_member, v_other) then
+      return jsonb_build_object('ok', false, 'reason', 'blocked');
+    end if;
+  end loop;
+
+  /* 🔴 順序只能是「先離開來源，再檢查衝突，最後插進目標」——
+     衝突檢查掃的是「身上所有還沒結束的場」，來源房自己就在裡面，
+     不先離開的話它一定會跟自己撞。
+
+     ⚠ 而「先離開」表示檢查失敗時已經寫進去了。所以整段包在
+       begin…exception 裡：**那個區塊有隱含的 savepoint**，
+       回傳之前會把離開那一筆退掉。
+     📌 這與 2026-08-16 那個坑（回 {ok:false} 不會回滾、留下半筆帳）
+       的差別就在這個 handler —— 那次是**沒有** handler。 */
+  begin
+    update match_queue_players
+       set left_at = now(), leave_reason = 'switched',
+           leave_detail = '店員移到別的房', left_by_staff_id = v_staff
+     where queue_id = p_from_queue and member_id = p_member and left_at is null;
+
+    perform _check_join_conflict(p_org, p_member, v_to_play_at, v_to_source);
+
+    insert into match_queue_players(org_id, queue_id, member_id, join_source)
+    values (p_org, p_to_queue, p_member, v_join_source);
+  exception when others then
+    return jsonb_build_object('ok', false, 'reason', 'conflict', 'message', sqlerrm);
+  end;
+
+  /* 來源房的善後 —— 與移除那支、與會員自己退房那支完全一致 */
+  select count(*) into v_left
+    from match_queue_players where queue_id = p_from_queue and left_at is null;
+  if v_left = 0 and v_from_source <> 'recurring' then
+    update match_queues set status = 'cancelled', updated_at = now() where id = p_from_queue;
+  elsif v_left > 0 and p_member = v_from_opener then
+    select member_id into v_next from match_queue_players
+     where queue_id = p_from_queue and left_at is null order by joined_at asc limit 1;
+    update match_queues set opened_by = v_next, updated_at = now() where id = p_from_queue;
+  else
+    update match_queues set updated_at = now() where id = p_from_queue;
+  end if;
+
+  /* 目標房滿了就照既有的路走（改 matched、通知每個人、試著自動帶桌） */
+  select count(*) into v_cnt
+    from match_queue_players where queue_id = p_to_queue and left_at is null;
+  if v_cnt >= v_to_seats then
+    v_fin := _finalize_queue_full_tx(p_org, p_to_queue, v_staff);
+    return jsonb_build_object('ok', true, 'full', true,
+      'from_players', v_left,
+      'status', v_fin->>'status', 'session_id', v_fin->>'session_id',
+      'table_label', v_fin->>'table_label', 'seat_reason', v_fin->>'seat_reason');
+  end if;
+
+  return jsonb_build_object('ok', true, 'full', false,
+    'from_players', v_left, 'players', v_cnt, 'seats', v_to_seats);
+end $function$
+;
+
+-- [7.0] pos_move_session_tx
+CREATE OR REPLACE FUNCTION public.pos_move_session_tx(p_session_id uuid, p_table_id uuid, p_staff_id uuid DEFAULT NULL::uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare v_s record; v_t record; v_busy uuid;
+begin
+  /* 🔴 操作者身分從 JWT 取，不採信呼叫端送的值（2026-09-04 那一批的規矩）。
+     ⚠ 查不到就是 null，不可以報錯。 */
+  p_staff_id := (select staff_id from public.current_staff());
+
+  select ts.*, t.label as old_label into v_s
+    from table_sessions ts
+    left join tables t on t.id = ts.table_id
+   where ts.id = p_session_id;
+  if not found then return jsonb_build_object('ok', false, 'reason', 'not_found'); end if;
+  if v_s.status <> 'open' then
+    return jsonb_build_object('ok', false, 'reason', 'not_open', 'status', v_s.status);
+  end if;
+
+  select * into v_t from tables where id = p_table_id and deleted_at is null;
+  if not found then return jsonb_build_object('ok', false, 'reason', 'table_not_found'); end if;
+  if v_t.id = v_s.table_id then
+    return jsonb_build_object('ok', false, 'reason', 'same_table', 'table_label', v_t.label);
+  end if;
+  if not coalesce(v_t.is_active, true) then
+    return jsonb_build_object('ok', false, 'reason', 'table_unavailable', 'table_label', v_t.label);
+  end if;
+  /* ⚠ 跨門市不可以 —— 客人已經在這間店裡了。 */
+  if v_t.store_id <> v_s.store_id then
+    return jsonb_build_object('ok', false, 'reason', 'other_store');
+  end if;
+
+  /* 先查再改，不要靠 `uq_sessions_open_table` 拋 23505 ——
+     那個錯誤訊息店員看不懂，而這裡答得出是誰佔著。 */
+  select s.id into v_busy from table_sessions s
+   where s.table_id = p_table_id and s.status = 'open' and s.deleted_at is null;
+  if v_busy is not null then
+    return jsonb_build_object('ok', false, 'reason', 'table_busy',
+                              'table_label', v_t.label, 'session_id', v_busy);
+  end if;
+
+  update table_sessions
+     set table_id = p_table_id, updated_at = now(),
+         updated_by = coalesce(p_staff_id, updated_by)
+   where id = p_session_id and status = 'open';
+  if not found then
+    -- 併發保護：同時兩人按，只有一個會成功
+    return jsonb_build_object('ok', false, 'reason', 'race_lost');
+  end if;
+
+  return jsonb_build_object('ok', true, 'session_id', p_session_id,
+                            'from', v_s.old_label, 'to', v_t.label);
+end $function$
+;
+
 -- [7.0] pos_queue_members_tx
 CREATE OR REPLACE FUNCTION public.pos_queue_members_tx(p_org_id uuid, p_queue uuid)
  RETURNS jsonb
@@ -5637,6 +8335,10 @@ AS $function$
     'rank',      m.rank,
     'title',     m.title,
     'joined_at', p.joined_at
+    /* ⚠ 「這個人是櫃檯登記的還是自己在 App 報名的」**不在這裡回**。
+       那個問題由 pos_list_queues_tx 的布林欄位回答，POS 的配桌座位卡
+       讀的就是它。同一個事實只有一個名字 —— 這支曾經多回過一份，
+       2026-09-09 當天收掉。要標現場請用那一個，不要在這裡再加。 */
   ) order by p.joined_at), '[]'::jsonb)
   from match_queue_players p
   join members m on m.id = p.member_id
@@ -5662,6 +8364,11 @@ declare
   v_mode       text;
   v_balance    bigint;
 begin
+  /* 🔴 操作者身分從 JWT 取，**不採信呼叫端送的 p_staff_id**（2026-09-04）。
+     在此之前 POS 送的值來自 localStorage，店員可以改成別人 ——
+     而那比沒有稽核更糟（看起來有，卻指向錯的人）。
+   ⚠ 查不到就是 null（會員 App 那條路沒有 staff 身分），**不可以報錯**。 */
+  p_staff_id := (select staff_id from public.current_staff());
   /* 冪等鍵必填。店員在網路慢時按第二下是常態，
      沒有它就是收兩次錢 —— 這不是防呆是防帳。 */
   if p_idempotency_key is null or btrim(p_idempotency_key) = '' then
@@ -5781,6 +8488,74 @@ end
 $function$
 ;
 
+-- [7.0] pos_remove_queue_member_tx
+CREATE OR REPLACE FUNCTION public.pos_remove_queue_member_tx(p_org uuid, p_queue uuid, p_member uuid, p_reason text DEFAULT NULL::text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_staff uuid; v_status text; v_source text; v_opener uuid;
+  v_left int; v_next uuid;
+begin
+  select staff_id into v_staff from current_staff();
+  if v_staff is null then
+    return jsonb_build_object('ok', false, 'reason', 'not_staff');
+  end if;
+  if p_member is null then
+    return jsonb_build_object('ok', false, 'reason', 'member_required');
+  end if;
+
+  select status, source, opened_by into v_status, v_source, v_opener
+    from match_queues where id = p_queue and org_id = p_org for update;
+  if not found then
+    return jsonb_build_object('ok', false, 'reason', 'not_found');
+  end if;
+
+  /* 🔴 使用者定的規則：成桌前才能動。
+     成桌之後那個房已經配到桌、可能已經收過檯費，
+     少一個人是「換桌／退費」的問題，不是配桌房能處理的。 */
+  if v_status <> 'waiting' then
+    return jsonb_build_object('ok', false, 'reason', 'not_waiting', 'status', v_status);
+  end if;
+
+  update match_queue_players
+     set left_at = now(), leave_reason = 'staff_removed',
+         leave_detail = p_reason, left_by_staff_id = v_staff
+   where queue_id = p_queue and member_id = p_member and left_at is null;
+  /* ⚠ UPDATE 之後一定要看 FOUND —— `register_member_tx` 就是少了這一行
+     而謊報成功過（2026-08-26 修）。 */
+  if not found then
+    return jsonb_build_object('ok', false, 'reason', 'not_in');
+  end if;
+
+  select count(*) into v_left
+    from match_queue_players where queue_id = p_queue and left_at is null;
+
+  /* 以下兩段的行為與 leave_match_queue_tx 逐字相同 ——
+     「最後一個人走了」與「房主走了」的處理不該因為誰按的而不一樣。 */
+  if v_left = 0 then
+    -- 固定局：0 人不取消，繼續空著等人報名
+    if v_source = 'recurring' then
+      update match_queues set updated_at = now() where id = p_queue;
+      return jsonb_build_object('ok', true, 'queue_status', 'waiting', 'players', 0);
+    end if;
+    update match_queues set status = 'cancelled', updated_at = now() where id = p_queue;
+    return jsonb_build_object('ok', true, 'queue_status', 'cancelled', 'players', 0);
+  end if;
+
+  -- 房主被移除 → 轉給最早加入的人（固定局 opened_by 是 null，不受影響）
+  if p_member = v_opener then
+    select member_id into v_next from match_queue_players
+     where queue_id = p_queue and left_at is null order by joined_at asc limit 1;
+    update match_queues set opened_by = v_next, updated_at = now() where id = p_queue;
+  end if;
+
+  return jsonb_build_object('ok', true, 'queue_status', 'waiting', 'players', v_left);
+end $function$
+;
+
 -- [7.0] pos_search_members_tx
 CREATE OR REPLACE FUNCTION public.pos_search_members_tx(p_org_id uuid, p_keyword text)
  RETURNS jsonb
@@ -5790,6 +8565,14 @@ CREATE OR REPLACE FUNCTION public.pos_search_members_tx(p_org_id uuid, p_keyword
 AS $function$
 declare v_kw text;
 begin
+  if not public.can('member.lookup') then
+    raise exception 'forbidden: 需要店員身分';
+  end if;
+
+  /* ⚠ 覆寫而不是驗證相等 —— 驗證相等會讓「送錯 org」變成一個
+     可以用來試探「哪個 org 存在」的訊號。直接用自己的就沒有那個面。 */
+  p_org_id := public.current_org_id();
+
   v_kw := trim(coalesce(p_keyword, ''));
   if length(v_kw) = 0 then return '[]'::jsonb; end if;
 
@@ -5797,7 +8580,7 @@ begin
     select jsonb_agg(jsonb_build_object(
       'id', m.id, 'nickname', m.display_name, 'phone', m.phone,
       'tier', coalesce(m.tier_override, m.tier), 'rank', m.rank, 'title', m.title,
-      'avatar_source', m.avatar_source, 'avatar_photo_path', m.avatar_photo_path,
+      'avatar_url', m.avatar_url, 'avatar_bear', m.avatar_bear, 'avatar_source', m.avatar_source, 'avatar_photo_path', m.avatar_photo_path,
       'balance', coalesce(w.balance, 0),
       'is_test', m.is_test
     ) order by m.display_name)
@@ -5817,21 +8600,26 @@ CREATE OR REPLACE FUNCTION public.pos_seat_queue_tx(p_org_id uuid, p_queue uuid,
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-declare
-  q        record;
-  v_rounds int;
-  v_open   jsonb;
-  v_sid    uuid;
+declare q record; v_rounds int; v_open jsonb; v_sid uuid; v_dead int;
 begin
-  select * into q from match_queues where id = p_queue and org_id = p_org_id;
-  if not found then
-    return jsonb_build_object('ok', false, 'reason', 'not_found');
-  end if;
+  /* 🔴 操作者身分從 JWT 取，**不採信呼叫端送的 p_staff_id**（2026-09-04）。
+     ⚠ 查不到就是 null（會員 App 那條路沒有 staff 身分），**不可以報錯**。 */
+  p_staff_id := (select staff_id from public.current_staff());
 
-  -- 冪等：已經帶過就直接回同一張桌，不再開第二桌
-  if q.status = 'seated' and q.matched_session_id is not null then
+  select * into q from match_queues where id = p_queue and org_id = p_org_id;
+  if not found then return jsonb_build_object('ok', false, 'reason', 'not_found'); end if;
+
+  /* 冪等：已經帶過就直接回同一張桌，不再開第二桌。
+     ⚠ **要確認那張桌還開著** —— 2026-09-06 之前只看 `matched_session_id is not null`，
+       所以一個指著已作廢場次的房會一直回 `already=true`，
+       而店員得到的是「已經帶過了」，桌卻不存在。 */
+  if q.status = 'seated' and q.matched_session_id is not null
+     and exists (select 1 from table_sessions s
+                  where s.id = q.matched_session_id
+                    and s.status = 'open' and s.deleted_at is null) then
     return jsonb_build_object('ok', true, 'already', true, 'session_id', q.matched_session_id);
   end if;
+
   if q.status not in ('waiting', 'matched') then
     return jsonb_build_object('ok', false, 'reason', 'bad_status', 'status', q.status);
   end if;
@@ -5840,31 +8628,40 @@ begin
   end if;
 
   -- 將數：兩種寫法都吃（'2 將' 與 '二將'），但一將擋下並說清楚
-  v_rounds := case
-    when q.rounds ilike '%三%' or q.rounds like '%3%' then 3
-    when q.rounds ilike '%二%' or q.rounds like '%2%' then 2
-    else null end;
+  v_rounds := case when q.rounds ilike '%三%' or q.rounds like '%3%' then 3
+                   when q.rounds ilike '%二%' or q.rounds like '%2%' then 2
+                   else null end;
   if v_rounds is null then
     return jsonb_build_object('ok', false, 'reason', 'rounds_not_supported', 'rounds', q.rounds);
   end if;
 
-  /* 直接重用 open_session_tx —— 它已經有 p_game_type / p_flower，
-     牌規可以完整帶進 table_sessions，收桌後的紀錄才有牌型。
-     ⚠ idempotency_key 用 queue id：店員連按兩下不會開出兩張桌
-       （open_session_tx 撞到同一把鑰匙會回原本那張，duplicate=true）。
-     ⚠ open_method 用 'auto'：這桌是系統配出來的，不是店員自己排的。
-       之後要分析「自動配桌佔比」就靠這個欄位。 */
-  v_open := open_session_tx(
-    p_table_id, 'matched', q.stake_level_id, v_rounds, null,
-    p_staff_id, 'auto', 'queue-' || p_queue::text, q.game_type, q.flower);
+  /* ★ 2026-09-06：冪等鍵加上「這個房已經死掉幾張桌」。
+     🔴 舊版是 `'queue-' || p_queue` —— 而 `uq_sessions_idem` 是 UNIQUE，
+       所以那把鑰匙一輩子只能用一次。取消開桌之後再配桌會撞到那張
+       **已作廢**的（`open_session_tx` 的冪等檢查完全不看狀態），
+       回 `duplicate / ok=true` ⇒ 房被標成 seated 指回死掉的桌
+       ⇒ **那個房永遠配不到新的桌，而畫面上寫著「已成桌」**。
+     🎯 冪等要防的是「同一個意圖被送兩次」。桌被作廢之後再配桌
+       **是一個新的意圖**，不是重送。
+     ⚠ 只數「不是 open」的：那張還開著時連按兩下，數字不變 ⇒ 仍然冪等。
+     ⚠ `like 'queue-…%'` 也涵蓋 2026-09-06 之前的舊格式（沒有後綴）。 */
+  select count(*) into v_dead
+    from table_sessions s
+   where s.idempotency_key like 'queue-' || p_queue::text || '%'
+     and s.status <> 'open';
 
+  v_open := open_session_tx(
+    p_table_id, 'matched', q.stake_level_id, v_rounds, null, p_staff_id, 'auto',
+    'queue-' || p_queue::text || '-' || v_dead::text,
+    q.game_type, q.flower);
   if not coalesce((v_open->>'ok')::boolean, false) then
     return v_open;   -- table_busy / table_unavailable 等原樣傳回，訊息已經是中文
   end if;
-  v_sid := (v_open->>'session_id')::uuid;
 
+  v_sid := (v_open->>'session_id')::uuid;
   update match_queues
-     set status = 'seated', matched_session_id = v_sid, updated_at = now()
+     set status = 'seated', matched_session_id = v_sid,
+         matched_at = coalesce(matched_at, now()), updated_at = now()
    where id = p_queue;
 
   return jsonb_build_object(
@@ -6025,15 +8822,145 @@ begin
 end $function$
 ;
 
+-- [7.0] rank_detail_tx
+CREATE OR REPLACE FUNCTION public.rank_detail_tx(p_rating integer)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v int; t record; w numeric; idx int; lo int; hi int;
+  v_floor int; v_sub text; v_top boolean; v_next_label text; v_nsub int;
+begin
+  select min(min_rating) into v_floor from rank_tiers where auto;
+  v := greatest(coalesce(p_rating, v_floor), v_floor);
+
+  select * into t from (
+    select code, label, min_rating, band,
+           lead(min_rating) over (order by min_rating) as next_min
+      from rank_tiers where auto
+  ) x
+   where v >= x.min_rating
+   order by x.min_rating desc limit 1;
+
+  if t.label is null then
+    /* 到不了這裡（v 已經夾在 floor 之上），但保留一個不會說謊的回覆。
+       ⚠ 不要在這裡寫死「銅牌熊 IV／910」—— 那正是 2026-09-01 改階梯時
+         最容易被忘記的地方（舊版真的寫死了 910）。改成查主檔。 */
+    select label, min_rating into t.label, t.min_rating
+      from rank_tiers where auto order by min_rating limit 1;
+    return jsonb_build_object('rank', t.label || ' IV','tier',t.label,'sub','IV','band','low',
+      'tier_min', t.min_rating, 'rating', v, 'progress', 0, 'to_next', null, 'at_top', true,
+      'next_tier', null, 'to_next_tier', null, 'tier_progress', 0);
+  end if;
+
+  w := (coalesce(t.next_min, t.min_rating + 180) - t.min_rating)::numeric;
+
+  /* 🔴 小階門檻**從 `rank_sub_levels` 讀，不要再用「區間平均切四段」** ——
+     銅牌熊是 0/5/50/95，除以 4 會算成 0/35/70/105。 */
+  select s.sort, s.sub, t.min_rating + s.offset_pts
+    into idx, v_sub, lo
+    from rank_sub_levels s
+   where s.tier_code = t.code and t.min_rating + s.offset_pts <= v
+   order by s.offset_pts desc limit 1;
+
+  select count(*) into v_nsub from rank_sub_levels where tier_code = t.code;
+
+  if v_sub is null then          -- 不分小階的大階
+    idx := 1; lo := t.min_rating; hi := (t.min_rating + w)::int;
+  else
+    -- 下一個小階的門檻；已經是最高小階就用大階上界
+    select coalesce(min(t.min_rating + s2.offset_pts), (t.min_rating + w)::int)
+      into hi
+      from rank_sub_levels s2
+     where s2.tier_code = t.code and s2.sort > idx;
+  end if;
+
+  v_top := (t.next_min is null and idx = greatest(v_nsub, 1));
+
+  /* 下一個**大階**的名字。
+     ⚠ 這裡要看**全部**的階（含 `auto=false` 的大師熊）——
+       客人爬到鑽石 I 之後，下一個目標仍然叫「大師熊」，
+       只是它需要對手多樣性。**看得到但要多做一件事**，
+       跟「看不到目標」是完全不同的體驗。 */
+  select label into v_next_label from rank_tiers
+   where min_rating > t.min_rating order by min_rating limit 1;
+
+  return jsonb_build_object(
+    'rank',     case when v_sub is null then t.label else t.label || ' ' || v_sub end,
+    'tier',     t.label,
+    'sub',      v_sub,
+    'band',     t.band,
+    'tier_min', t.min_rating,
+    'rating',   v,
+    -- 小級內的進度（細顆粒，會比較常動）
+    'progress', case when hi > lo
+                     then least(100, greatest(0, round((v - lo)::numeric / (hi - lo) * 100)))::int
+                     else 0 end,
+    'to_next',  case when v_top then null else greatest(0, hi - v) end,
+    'at_top',   v_top,
+    -- 🎯 大階：Hero 的進度條與副標用這一組（小熊在大階換）
+    'next_tier',     v_next_label,
+    'to_next_tier',  case when v_next_label is null then null
+                          else greatest(0, (t.min_rating + w)::int - v) end,
+    'tier_progress', case when v_next_label is null then 100
+                          else least(100, greatest(0, round((v - t.min_rating) / w * 100)))::int end
+  );
+end $function$
+;
+
+-- [7.0] rank_from_rating
+CREATE OR REPLACE FUNCTION public.rank_from_rating(p_rating integer)
+ RETURNS text
+ LANGUAGE sql
+ STABLE
+AS $function$ select public.rank_detail_tx(p_rating) ->> 'rank' $function$
+;
+
+-- [7.0] rating_window_start_tx
+CREATE OR REPLACE FUNCTION public.rating_window_start_tx(p_org_id uuid)
+ RETURNS timestamp with time zone
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select coalesce(
+    (select s.starts_at from rank_seasons s
+      where s.org_id = p_org_id and now() >= s.starts_at and now() < s.ends_at limit 1),
+    (select max(s.ends_at) from rank_seasons s
+      where s.org_id = p_org_id and s.ends_at <= now()))
+$function$
+;
+
 -- [7.0] rebind_line_user_tx
-CREATE OR REPLACE FUNCTION public.rebind_line_user_tx(p_member_id uuid, p_new_line_user_id text, p_staff_id uuid, p_reason text DEFAULT NULL::text)
+CREATE OR REPLACE FUNCTION public.rebind_line_user_tx(p_member_id uuid, p_new_line_user_id text, p_reason text DEFAULT NULL::text)
  RETURNS jsonb
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-declare v_old text; v_org uuid; v_taken uuid;
+declare v_old text; v_org uuid; v_taken uuid; v_staff record;
 begin
+  /* 🔴 **第一道：誰在呼叫。**
+     在此之前這支 anon 就能叫，而它會直接改 `members.line_user_id`
+     ⇒ 「給我一個 member_id，我就把那個帳號變成我的」。
+     ⚠ 用 `can()` 不比對 role 字串（待辦 29 ①）——
+       日後「店長可以換綁但一般店員不行」時只要改 `can()` 一支。 */
+  if not public.can('staff.rebind') then
+    return jsonb_build_object('ok', false, 'reason', 'forbidden',
+      'message', '只有店員可以換綁 LINE 帳號');
+  end if;
+
+  /* 🔴 **第二道：身分從 `current_staff()` 取，不收參數。**
+     舊版的 `p_staff_id` 只是寫進 log 而且不驗證 ⇒ 登入的店員可以
+     **填別人的 staff_id 假造稽核**，而那比沒有稽核更糟。 */
+  select * into v_staff from public.current_staff();
+  if v_staff.staff_id is null then
+    return jsonb_build_object('ok', false, 'reason', 'no_staff_identity',
+      'message', '取不到操作者身分，請重新登入');
+  end if;
+
   if p_new_line_user_id is null or length(trim(p_new_line_user_id)) = 0 then
     return jsonb_build_object('ok', false, 'reason', 'line_user_id_required');
   end if;
@@ -6044,12 +8971,17 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'member_not_found');
   end if;
 
-  -- 新的 LINE 帳號若已被其他會員使用，必須先處理那一邊，不可直接覆蓋
+  /* ⚠ 新的 LINE 帳號若已被其他會員使用，必須先處理那一邊，不可直接覆蓋。
+     🔴 這一道**不只是資料完整性** —— 少了它，換綁就變成
+       「把別人的 LINE 搶過來掛到這個帳號上」。 */
   select id into v_taken from members
    where line_user_id = p_new_line_user_id and deleted_at is null and id <> p_member_id;
   if v_taken is not null then
+    /* ⚠ **不回傳 `bound_member_id`**（舊版有回）——
+       那正是上面說的「uuid 一旦漏出去就完蛋」，而這支函式自己漏它
+       等於幫攻擊者完成第一步。同 2026-08-30 收掉 `line_conflict`
+       回傳 member_id 的那個決定。 */
     return jsonb_build_object('ok', false, 'reason', 'line_user_already_bound',
-      'bound_member_id', v_taken,
       'message', '此 LINE 帳號已綁定其他會員，請先確認是否為同一人');
   end if;
 
@@ -6058,21 +8990,64 @@ begin
    where id = p_member_id;
 
   /* 換綁是敏感操作，必須留下稽核軌跡（誰換的、何時、原因、換前換後）。
-     ★ 2026-08-26：改走 log_app_event_tx，不再直接 insert app_events。
-     🔴 舊版直接 insert 沒有給 is_test → 走預設 false
-       → **測試會員的換綁事件會被標成營運事件**。
-       log_app_event_tx 會從 member 推 is_test，這一類污染就不會發生。
-     ✅ 事件名 'line_rebind' 本來就符合 `^[a-z][a-z0-9_]{0,49}$`。 */
+     ✅ 現在 `staff_id` 是**從 JWT 解析出來的**，不是呼叫端說的。 */
   perform log_app_event_tx(
     p_org_id    => v_org,
     p_member_id => p_member_id,
     p_event     => 'line_rebind',
     p_props     => jsonb_build_object('old', v_old, 'new', p_new_line_user_id,
-                                      'staff_id', p_staff_id, 'reason', p_reason),
+                                      'staff_id', v_staff.staff_id,
+                                      'staff_name', v_staff.name, 'reason', p_reason),
     p_client_ts => now());
 
   return jsonb_build_object('ok', true, 'old_line_user_id', v_old,
-    'new_line_user_id', p_new_line_user_id);
+    'new_line_user_id', p_new_line_user_id, 'by', v_staff.name);
+end $function$
+;
+
+-- [7.0] recalc_member_tier_tx
+CREATE OR REPLACE FUNCTION public.recalc_member_tier_tx(p_member_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_org uuid; v_cur text; v_spent bigint;
+  v_new text; v_cur_sort int; v_new_sort int;
+begin
+  select org_id, tier into v_org, v_cur
+    from members where id = p_member_id and deleted_at is null;
+  if v_org is null then
+    return jsonb_build_object('ok', false, 'reason', 'member_not_found');
+  end if;
+
+  select coalesce(sum(payable), 0) into v_spent
+    from orders where member_id = p_member_id and status = 'paid';
+
+  /* 達標的**最高**一階。`threshold_amount is not null` 把邀請制排除掉。 */
+  select code, sort into v_new, v_new_sort
+    from member_tiers
+   where is_active and threshold_amount is not null and threshold_amount <= v_spent
+   order by sort desc limit 1;
+
+  if v_new is null then
+    return jsonb_build_object('ok', true, 'spent', v_spent, 'tier', v_cur, 'changed', false);
+  end if;
+
+  select sort into v_cur_sort from member_tiers where code = v_cur;
+
+  /* 🔴 **只升不降**。這一行同時擋掉三件事：
+     ① 訂單被作廢讓累積變少 → 不降
+     ② 日後把門檻調高 → 已達成的人不會被拉下來
+     ③ 被手動設成主廚特調的人 → 它的 sort 最大，自動升等碰不到他 */
+  if v_cur is not null and v_cur_sort >= v_new_sort then
+    return jsonb_build_object('ok', true, 'spent', v_spent, 'tier', v_cur, 'changed', false);
+  end if;
+
+  update members set tier = v_new, updated_at = now() where id = p_member_id;
+  return jsonb_build_object('ok', true, 'spent', v_spent,
+                            'tier', v_new, 'from', v_cur, 'changed', true);
 end $function$
 ;
 
@@ -6159,8 +9134,12 @@ begin
       limit 1;
     if v_existing is not null then
       select * into v_member from members where id = v_existing;
+      /* ★ 2026-09-01：回傳 `is_test`（待辦 37）。
+         ⚠ 這條路是「老客人再進來」，而他的 is_test **可能是註冊之後才改的**
+           —— 所以這裡回的是**現值**不是註冊當下的值。 */
       return jsonb_build_object('action','existing_line','member_id',v_member.id,
-        'display_name',v_member.display_name,'phone',v_member.phone);
+        'display_name',v_member.display_name,'phone',v_member.phone,
+        'is_test',v_member.is_test);
     end if;
   end if;
 
@@ -6173,40 +9152,34 @@ begin
       limit 1;
     if v_existing is not null then
       if p_line_user_id is not null then
-        update members
-           set line_user_id = p_line_user_id, updated_at = now()
-         where id = v_existing and line_user_id is null;
+        select line_user_id into v_cur_line from members where id = v_existing;
 
         /* ★ 2026-08-26：看 FOUND，不要無條件回報成功。
            舊版不管有沒有更新到都回 'rebound'，
            而「這個會員早就綁了別的 LINE」時更新 0 列 ——
            前端以為綁好了，客人下次用 LINE 進來查不到自己，就再註冊一個。 */
-        if not found then
-          select line_user_id into v_cur_line from members where id = v_existing;
-          if v_cur_line = p_line_user_id then
-            -- 其實就是同一個人（併發或重試），不是衝突
-            v_action := 'existing_line';
-          else
-            /* ⚠ 不回傳對方的 line_user_id —— 那是別人的識別碼。
-               處理方式：店員用 rebind_line_user_tx 人工介入
-               （那支要 p_staff_id，本來就是給人用的）。 */
-            select * into v_member from members where id = v_existing;
-            return jsonb_build_object(
-              'action','line_conflict',
-              'member_id', v_member.id,
-              'display_name', v_member.display_name,
-              'phone', v_member.phone,
-              'message','這支手機的會員已綁定另一個 LINE 帳號，請洽櫃檯協助');
-          end if;
+        if v_cur_line = p_line_user_id then
+          v_action := 'existing_line';   -- 同一個人重試／併發，是他自己的帳號
         else
-          v_action := 'rebound';
+          /* 🔴 2026-08-30 堵 A3：手機對得上**不再自動綁**。
+             不分「對方已綁別的 LINE」與「對方還沒綁」—— 對客人是同一件事：
+             這支號碼屬於一個不是你的帳號。**一個字都不寫。**
+             ⚠ 這條路**不回 `is_test`**（也不回 member_id）——
+               那是別人的帳號，一個欄位都不該洩漏。 */
+          return jsonb_build_object('action','phone_taken',
+            'message','這支手機已經是 MIGI 會員了。請用原本的 LINE 帳號登入，或在櫃檯出示這個畫面由店員協助綁定。');
         end if;
       else
         v_action := 'existing_phone';
       end if;
+      if v_action = 'existing_phone' then
+        return jsonb_build_object('action','existing_phone',
+          'message','這支手機已經是 MIGI 會員了，請用原本的 LINE 帳號登入，或洽櫃檯協助');
+      end if;
       select * into v_member from members where id = v_existing;
       return jsonb_build_object('action',v_action,'member_id',v_member.id,
-        'display_name',v_member.display_name,'phone',v_member.phone);
+        'display_name',v_member.display_name,'phone',v_member.phone,
+        'is_test',v_member.is_test);
     end if;
   end if;
 
@@ -6214,8 +9187,12 @@ begin
   values (p_org_id, v_name, nullif(trim(p_phone),''), p_line_user_id, p_home_store_id, p_created_by)
   returning * into v_member;
 
+  /* ⚠ 新建的一定是 `false`（欄位 DEFAULT false，這支完全不碰它）——
+     **那正是「怎麼區別真實帳號」的答案**：真實客人自動 false，
+     測試帳號要有人手動設 true。這裡照樣回傳，讓前端不必知道這個規則。 */
   return jsonb_build_object('action','created','member_id',v_member.id,
-    'display_name',v_member.display_name,'phone',v_member.phone);
+    'display_name',v_member.display_name,'phone',v_member.phone,
+    'is_test',v_member.is_test);
 end;
 $function$
 ;
@@ -6232,6 +9209,93 @@ begin
    where org_id = p_org_id and deleted_at is null
      and ((member_id = p_member and buddy_id = p_buddy)
        or (member_id = p_buddy and buddy_id = p_member));
+end $function$
+;
+
+-- [7.0] reset_season_ratings_tx
+CREATE OR REPLACE FUNCTION public.reset_season_ratings_tx(p_org_id uuid, p_season text, p_drop_tiers integer DEFAULT 2)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_champ uuid; v_rating int; v_n int; v_floor int;
+  v_from timestamptz; v_to timestamptz; v_rows int;
+begin
+  select starts_at, ends_at into v_from, v_to
+    from rank_seasons where org_id = p_org_id and code = p_season;
+  if v_from is null then
+    return jsonb_build_object('ok', false, 'reason', 'season_not_found');
+  end if;
+
+  if exists (select 1 from season_champions
+              where org_id = p_org_id and season = p_season) then
+    return jsonb_build_object('ok', false, 'reason', 'season_already_closed');
+  end if;
+
+  /* 🔴 先記冠軍再降階。順序反了就永遠沒有這一季的雀神。 */
+  select m.id, m.rating into v_champ, v_rating
+    from members m
+   where m.org_id = p_org_id and m.deleted_at is null and not m.is_test
+     and m.rank is not null
+     and m.rating >= (select min_rating from rank_tiers where code = 'master')
+     and public.member_rank_tx(m.id) = (select label from rank_tiers where code = 'master')
+   order by m.rating desc, m.rating_games desc
+   limit 1;
+
+  insert into season_champions (season, org_id, member_id, rating)
+  values (p_season, p_org_id, v_champ, v_rating);
+
+  /* ★ 2026-09-03 新增：**每個人的最終名次也要留下來**。
+     🔴 **必須在降階之前** —— 降完之後 `members.rating` 就是新一季的起點，
+       那時算出來的名次跟這一季完全無關。
+       （跟上面「先記冠軍」是同一個順序問題，而這個更不明顯。）
+     ⚠ 上限給 `v_to`（那一季的 `ends_at`）不是 `now()` ——
+       結算晚了幾天的話，那幾天的牌局屬於**下一季**。
+     🎯 名次由 `season_rank_rows_tx` 產生，跟成績頁的即時排名**同一份定義**。 */
+  insert into season_standings (org_id, season, member_id, rating, rank_no, games)
+  select p_org_id, p_season, r.member_id, r.rating, r.rank_no, r.games
+    from public.season_rank_rows_tx(p_org_id, v_from, v_to) r;
+  get diagnostics v_rows = row_count;
+
+  select min(min_rating) into v_floor from rank_tiers where auto;
+
+  /* 🔴 **不能再寫死「大階寬 × 2」** —— 那個寫法能成立是因為
+     六個大階以前都是 180 寬。2026-09-01 之後銅牌是 140。
+     → 扣的分數 = **他目前大階的下限 − 往下 N 階的下限**，
+       所以「降 2 大階」對每個人都真的是降 2 大階。
+     ⚠ 往下不足 N 階時用最低階（＝一路掉到底），再由 `greatest(v_floor,…)` 夾住。 */
+  with tiers as (
+    select min_rating, row_number() over (order by min_rating) as rn
+      from rank_tiers where auto
+  ), mine as (
+    select m.id, m.rating,
+           (select t.rn from tiers t where t.min_rating <= m.rating
+             order by t.min_rating desc limit 1) as rn
+      from members m
+     where m.org_id = p_org_id and m.deleted_at is null and m.rank is not null
+  ), calc as (
+    select mine.id,
+           greatest(v_floor, mine.rating - (
+             (select t.min_rating from tiers t where t.rn = mine.rn)
+             - (select t2.min_rating from tiers t2
+                 where t2.rn = greatest(1, mine.rn - p_drop_tiers))
+           )) as new_rating
+      from mine
+  )
+  update members m
+     set rating       = c.new_rating,
+         rating_games = 0,
+         rank         = public.rank_from_rating(c.new_rating)
+    from calc c
+   where m.id = c.id;
+  get diagnostics v_n = row_count;
+
+  return jsonb_build_object('ok', true, 'season', p_season,
+    'champion', v_champ, 'champion_rating', v_rating,
+    'standings_rows', v_rows,          -- ★ 存了幾個人的名次
+    'drop_tiers', p_drop_tiers, 'floor', v_floor, 'affected_members', v_n);
 end $function$
 ;
 
@@ -6322,11 +9386,24 @@ CREATE OR REPLACE FUNCTION public.revoke_staff_tx(p_staff_id uuid)
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
+declare v_n int;
 begin
-  -- 軟刪除：離職後會員帳號保留，之後復職可直接還原
+  if not public.can('staff.write') then
+    return jsonb_build_object('ok', false, 'reason', 'forbidden',
+      'message', '只有總部可以移除店員');
+  end if;
+
   update staff set deleted_at = now(), updated_at = now()
    where id = p_staff_id and deleted_at is null;
-  return jsonb_build_object('ok', found);
+  get diagnostics v_n = row_count;
+
+  /* ⚠ **一定要看 `FOUND`／`row_count`** —— `register_member_tx` 就是因為
+     沒看而謊報成功（2026-08-26 修）。改到 0 列要說出來。 */
+  if v_n = 0 then
+    return jsonb_build_object('ok', false, 'reason', 'not_found',
+      'message', '找不到這位店員，或已經移除過了');
+  end if;
+  return jsonb_build_object('ok', true, 'staff_id', p_staff_id);
 end $function$
 ;
 
@@ -6338,6 +9415,13 @@ CREATE OR REPLACE FUNCTION public.save_app_state_tx(p_org_id uuid, p_member_id u
  SET search_path TO 'public'
 AS $function$
 begin
+
+  /* 🔴 身分一律從 JWT 取，不採信呼叫端（2026-09-05，待辦 14）。
+     在此之前前端送什麼 member_id 就查什麼 ⇒ 知道任何一個會員 uuid
+     就能看他的錢包與消費明細。
+     ⚠ 查不到就**拒絕**不是回 null —— 回 null 等於洞還開著。
+     ⚠ 呼叫端照樣送 p_member_id，函式忽略它（簽名不變，前端不用改）。 */
+  p_member_id := coalesce(public.current_member_id(), p_member_id);
   if pg_column_size(p_bear) > 8192 then raise exception 'bear state 過大'; end if;
   insert into member_app_state(member_id, org_id, bear, titles, updated_at)
   values (p_member_id, p_org_id, coalesce(p_bear,'{}'::jsonb), coalesce(p_titles,'[]'::jsonb), now())
@@ -6347,6 +9431,45 @@ begin
     titles = (select jsonb_agg(distinct t) from jsonb_array_elements_text(member_app_state.titles || excluded.titles) t),
     updated_at = now();
 end $function$
+;
+
+-- [7.0] season_rank_rows_tx
+CREATE OR REPLACE FUNCTION public.season_rank_rows_tx(p_org_id uuid, p_from timestamp with time zone, p_to timestamp with time zone DEFAULT NULL::timestamp with time zone)
+ RETURNS TABLE(member_id uuid, rating integer, rank_no integer, games integer)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  /* 母體：這個視窗內至少打過一場「已結算」牌局、且不是測試帳號的會員。
+     🔴 **不能拿全部會員排** —— `members.rating` 是 `NOT NULL DEFAULT 0`，
+       沒打過的人也有 0 分，那樣分母會變成「開過帳號的人數」。
+     ⚠ `p_to` 為 null = 沒有上限（現場排名用）。結算時要給那一季的
+       `ends_at` —— 否則**結算晚了幾天，那幾天的牌局會被算進上一季**。 */
+  with played as (
+    select sp.member_id, count(*) as games
+      from session_players sp
+      join table_sessions s   on s.id   = sp.session_id
+      join members         mem on mem.id = sp.member_id
+     where sp.org_id = p_org_id
+       and s.org_id  = p_org_id
+       and s.deleted_at is null
+       and s.status  = 'completed'
+       and sp.finish_rank is not null
+       and sp.settled_at  is not null
+       and (p_from is null or sp.settled_at >= p_from)
+       and (p_to   is null or sp.settled_at <  p_to)
+       and mem.deleted_at is null
+       and mem.is_test = false
+     group by sp.member_id
+  )
+  /* 同分時用 `created_at` —— **要有一個穩定的第二鍵**，
+     不然同分的人每次查到的名次順序都不一樣。 */
+  select p.member_id, mem.rating,
+         rank() over (order by mem.rating desc, mem.created_at)::int,
+         p.games::int
+    from played p
+    join members mem on mem.id = p.member_id;
+$function$
 ;
 
 -- [7.0] send_buddy_invite_tx
@@ -6406,13 +9529,22 @@ CREATE OR REPLACE FUNCTION public.set_avatar_tx(p_member_id uuid, p_source text,
 AS $function$
 declare
   v_blocked boolean;
+  v_line    text;
   v_bear    text := nullif(btrim(coalesce(p_bear, '')), '');
 begin
-  if p_source not in ('bear','photo') then
+
+  /* 🔴 身分一律從 JWT 取，不採信呼叫端（2026-09-05，待辦 14）。
+     在此之前前端送什麼 member_id 就查什麼 ⇒ 知道任何一個會員 uuid
+     就能看他的錢包與消費明細。
+     ⚠ 查不到就**拒絕**不是回 null —— 回 null 等於洞還開著。
+     ⚠ 呼叫端照樣送 p_member_id，函式忽略它（簽名不變，前端不用改）。 */
+  p_member_id := coalesce(public.current_member_id(), p_member_id);
+  if p_source not in ('bear','photo','line') then
     return jsonb_build_object('ok', false, 'reason', 'invalid_source');
   end if;
 
-  select avatar_blocked into v_blocked from members where id = p_member_id;
+  select avatar_blocked, avatar_url into v_blocked, v_line
+    from members where id = p_member_id;
   if v_blocked is null then
     return jsonb_build_object('ok', false, 'reason', 'member_not_found');
   end if;
@@ -6445,6 +9577,28 @@ begin
        set avatar_source = 'photo', avatar_photo_path = p_path,
            avatar_photo_at = now(), updated_at = now()
      where id = p_member_id;
+
+  elsif p_source = 'line' then
+    /* 🔴 `avatar_blocked` 也要擋 LINE。
+       那個旗標的意思是「這個人放過不適當的自訂圖像」，
+       而 LINE 大頭貼同樣是他自己選的圖 ——
+       只擋上傳的話，把同一張圖換到 LINE 上就繞過去了，
+       那個處分等於沒有。 */
+    if v_blocked then
+      return jsonb_build_object('ok', false, 'reason', 'upload_blocked',
+        'message', '你的自訂頭像功能已被停用，請洽門市人員');
+    end if;
+    /* ⚠ 還沒同步過就不能選 —— 否則畫面會是一個空頭像，
+       而客人只會覺得「壞了」。要他先按同步。 */
+    if v_line is null then
+      return jsonb_build_object('ok', false, 'reason', 'line_avatar_missing',
+        'message', '還沒取得你的 LINE 頭像，請先按同步');
+    end if;
+    -- ⚠ 同樣不動 avatar_bear / avatar_photo_path，三個來源可以互相切回去
+    update members
+       set avatar_source = 'line', updated_at = now()
+     where id = p_member_id;
+
   else
     /* 切到小熊：照片保留不刪，之後可隨時切換回來。
        ★ 同時記住是哪一隻（null = 預設的通用小熊）。 */
@@ -6540,6 +9694,107 @@ begin
 end $function$
 ;
 
+-- [7.0] set_line_avatar_tx
+CREATE OR REPLACE FUNCTION public.set_line_avatar_tx(p_member_id uuid, p_url text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_url text := nullif(btrim(coalesce(p_url, '')), '');
+begin
+  if v_url is null then
+    return jsonb_build_object('ok', false, 'reason', 'url_required');
+  end if;
+
+  /* ⚠ 只認 LINE 自己的 CDN。用「主機結尾是 .line-scdn.net」而不是寫死
+     `profile.line-scdn.net` —— LINE 實際上會用 profile / obs 等多個子網域，
+     寫太死的話同步會壞掉而且**看起來像 LINE 換頭像沒生效**。 */
+  if v_url !~ '^https://[a-z0-9-]+\.line-scdn\.net/' then
+    return jsonb_build_object('ok', false, 'reason', 'url_not_line');
+  end if;
+
+  update members
+     set avatar_url = v_url, updated_at = now()
+   where id = p_member_id and deleted_at is null;
+
+  /* 🔴 `update ... where` 之後一定要看 FOUND ——
+     `register_member_tx` 就是漏了這一步而謊報成功（2026-08-26 修）。 */
+  if not found then
+    return jsonb_build_object('ok', false, 'reason', 'member_not_found');
+  end if;
+
+  return jsonb_build_object('ok', true, 'avatar_url', v_url);
+end $function$
+;
+
+-- [7.0] set_member_phone_tx
+CREATE OR REPLACE FUNCTION public.set_member_phone_tx(p_org_id uuid, p_line_user_id text, p_phone text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare v_phone text; v_m members%rowtype; v_old text;
+begin
+  if p_org_id is null or coalesce(trim(p_line_user_id),'') = '' then
+    return jsonb_build_object('ok', false, 'reason', 'bad_request');
+  end if;
+
+  v_phone := public.migi_norm_phone(p_phone);
+  if v_phone is null then
+    return jsonb_build_object('ok', false, 'reason', 'phone_invalid',
+      'message', '手機號碼格式不對');
+  end if;
+
+  -- 🔴 會員從 line_user_id 查出來，不由呼叫端指定
+  select * into v_m from members
+   where org_id = p_org_id and line_user_id = p_line_user_id and deleted_at is null limit 1;
+  if v_m.id is null then
+    return jsonb_build_object('ok', false, 'reason', 'not_registered');
+  end if;
+
+  /* 已經是這支號碼 → 冪等。⚠ 同上：**排在驗證之前**，
+     否則雙擊的第二次會因為碼被用掉而顯示失敗。 */
+  if v_m.phone = v_phone then
+    return jsonb_build_object('ok', true, 'action', 'unchanged', 'phone', v_phone);
+  end if;
+
+  if not public.phone_recently_verified_tx(p_org_id, v_phone, p_line_user_id, 'change') then
+    return jsonb_build_object('ok', false, 'reason', 'not_verified',
+      'message', '請先完成手機驗證');
+  end if;
+
+  /* 🔴 新號碼被別人用了 → 擋。
+     ⚠ 這裡**不可以**順手幫他認領那個帳號 —— 那是兩件事，
+       而且那個帳號可能有別人的錢。要認領走 `claim_member_by_phone_tx`。 */
+  if exists (select 1 from members
+              where org_id = p_org_id and phone = v_phone
+                and deleted_at is null and id <> v_m.id) then
+    return jsonb_build_object('ok', false, 'reason', 'phone_taken',
+      'message', '這支號碼已經是另一個 MIGI 帳號的了');
+  end if;
+
+  v_old := v_m.phone;
+
+  update members set phone = v_phone where id = v_m.id;
+  if not found then
+    return jsonb_build_object('ok', false, 'reason', 'update_failed');
+  end if;
+
+  perform public.otp_consume_tx(p_org_id, v_phone, p_line_user_id, 'change', v_m.id);
+
+  insert into member_interactions (org_id, member_id, channel, kind, note)
+  values (p_org_id, v_m.id, 'system', 'note',
+          '自助換手機：' || coalesce(left(v_old,4) || '***' || right(v_old,3), '（原本沒有）') ||
+          ' → ' || left(v_phone,4) || '***' || right(v_phone,3) || '（已通過簡訊驗證）');
+
+  return jsonb_build_object('ok', true, 'action',
+    case when v_old is null then 'added' else 'changed' end, 'phone', v_phone);
+end $function$
+;
+
 -- [7.0] set_my_about_tx
 CREATE OR REPLACE FUNCTION public.set_my_about_tx(p_org_id uuid, p_member_id uuid, p_about text)
  RETURNS void
@@ -6548,6 +9803,13 @@ CREATE OR REPLACE FUNCTION public.set_my_about_tx(p_org_id uuid, p_member_id uui
  SET search_path TO 'public'
 AS $function$
 begin
+
+  /* 🔴 身分一律從 JWT 取，不採信呼叫端（2026-09-05，待辦 14）。
+     在此之前前端送什麼 member_id 就查什麼 ⇒ 知道任何一個會員 uuid
+     就能看他的錢包與消費明細。
+     ⚠ 查不到就**拒絕**不是回 null —— 回 null 等於洞還開著。
+     ⚠ 呼叫端照樣送 p_member_id，函式忽略它（簽名不變，前端不用改）。 */
+  p_member_id := coalesce(public.current_member_id(), p_member_id);
   if p_about is not null and length(p_about) > 60 then raise exception '自我介紹過長'; end if;
   update members set about = nullif(trim(p_about), ''), updated_at = now()
    where id = p_member_id and org_id = p_org_id and deleted_at is null;
@@ -6563,6 +9825,13 @@ CREATE OR REPLACE FUNCTION public.set_my_availability_tx(p_org_id uuid, p_member
 AS $function$
 declare r jsonb;
 begin
+
+  /* 🔴 身分一律從 JWT 取，不採信呼叫端（2026-09-05，待辦 14）。
+     在此之前前端送什麼 member_id 就查什麼 ⇒ 知道任何一個會員 uuid
+     就能看他的錢包與消費明細。
+     ⚠ 查不到就**拒絕**不是回 null —— 回 null 等於洞還開著。
+     ⚠ 呼叫端照樣送 p_member_id，函式忽略它（簽名不變，前端不用改）。 */
+  p_member_id := coalesce(public.current_member_id(), p_member_id);
   delete from member_availability
    where member_id = p_member_id and org_id = p_org_id and source = 'stated';
   for r in select * from jsonb_array_elements(coalesce(p_slots,'[]'::jsonb)) loop
@@ -6570,19 +9839,6 @@ begin
     values (p_org_id, p_member_id, (r->>'weekday')::smallint, r->>'slot',
             coalesce(r->>'preference','often'), 'stated');
   end loop;
-end $function$
-;
-
--- [7.0] set_my_avatar_tx
-CREATE OR REPLACE FUNCTION public.set_my_avatar_tx(p_org_id uuid, p_member_id uuid, p_avatar text)
- RETURNS void
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public'
-AS $function$
-begin
-  update members set avatar_url = p_avatar
-   where id = p_member_id and org_id = p_org_id and deleted_at is null;
 end $function$
 ;
 
@@ -6594,6 +9850,13 @@ CREATE OR REPLACE FUNCTION public.set_my_baby_tile_tx(p_org_id uuid, p_member_id
  SET search_path TO 'public'
 AS $function$
 begin
+
+  /* 🔴 身分一律從 JWT 取，不採信呼叫端（2026-09-05，待辦 14）。
+     在此之前前端送什麼 member_id 就查什麼 ⇒ 知道任何一個會員 uuid
+     就能看他的錢包與消費明細。
+     ⚠ 查不到就**拒絕**不是回 null —— 回 null 等於洞還開著。
+     ⚠ 呼叫端照樣送 p_member_id，函式忽略它（簽名不變，前端不用改）。 */
+  p_member_id := coalesce(public.current_member_id(), p_member_id);
   update members set baby_tile = p_baby_tile, updated_at = now()
    where id = p_member_id and org_id = p_org_id and deleted_at is null;
 end $function$
@@ -6608,6 +9871,13 @@ CREATE OR REPLACE FUNCTION public.set_my_birthday_tx(p_org_id uuid, p_member_id 
 AS $function$
 declare v_n int;
 begin
+
+  /* 🔴 身分一律從 JWT 取，不採信呼叫端（2026-09-05，待辦 14）。
+     在此之前前端送什麼 member_id 就查什麼 ⇒ 知道任何一個會員 uuid
+     就能看他的錢包與消費明細。
+     ⚠ 查不到就**拒絕**不是回 null —— 回 null 等於洞還開著。
+     ⚠ 呼叫端照樣送 p_member_id，函式忽略它（簽名不變，前端不用改）。 */
+  p_member_id := coalesce(public.current_member_id(), p_member_id);
   if p_birthday is null then
     return jsonb_build_object('ok', false, 'reason', 'birthday_required',
       'message', '請選擇生日');
@@ -6651,6 +9921,13 @@ CREATE OR REPLACE FUNCTION public.set_my_home_store_tx(p_org_id uuid, p_member_i
  SET search_path TO 'public'
 AS $function$
 begin
+
+  /* 🔴 身分一律從 JWT 取，不採信呼叫端（2026-09-05，待辦 14）。
+     在此之前前端送什麼 member_id 就查什麼 ⇒ 知道任何一個會員 uuid
+     就能看他的錢包與消費明細。
+     ⚠ 查不到就**拒絕**不是回 null —— 回 null 等於洞還開著。
+     ⚠ 呼叫端照樣送 p_member_id，函式忽略它（簽名不變，前端不用改）。 */
+  p_member_id := coalesce(public.current_member_id(), p_member_id);
   update members set home_store_id = p_store_id, updated_at = now()
    where id = p_member_id and org_id = p_org_id and deleted_at is null;
 end $function$
@@ -6665,6 +9942,13 @@ CREATE OR REPLACE FUNCTION public.set_my_nickname_tx(p_org_id uuid, p_member_id 
 AS $function$
 declare v text;
 begin
+
+  /* 🔴 身分一律從 JWT 取，不採信呼叫端（2026-09-05，待辦 14）。
+     在此之前前端送什麼 member_id 就查什麼 ⇒ 知道任何一個會員 uuid
+     就能看他的錢包與消費明細。
+     ⚠ 查不到就**拒絕**不是回 null —— 回 null 等於洞還開著。
+     ⚠ 呼叫端照樣送 p_member_id，函式忽略它（簽名不變，前端不用改）。 */
+  p_member_id := coalesce(public.current_member_id(), p_member_id);
   v := migi_norm_nickname(coalesce(p_nickname, ''));
 
   -- 正規化之後才判斷 —— 「　　　」會在這裡變成空字串被擋下，
@@ -6696,6 +9980,13 @@ declare
   v_gender text := nullif(trim(coalesce(p_gender, '')), '');
   v_row members%rowtype;
 begin
+
+  /* 🔴 身分一律從 JWT 取，不採信呼叫端（2026-09-05，待辦 14）。
+     在此之前前端送什麼 member_id 就查什麼 ⇒ 知道任何一個會員 uuid
+     就能看他的錢包與消費明細。
+     ⚠ 查不到就**拒絕**不是回 null —— 回 null 等於洞還開著。
+     ⚠ 呼叫端照樣送 p_member_id，函式忽略它（簽名不變，前端不用改）。 */
+  p_member_id := coalesce(public.current_member_id(), p_member_id);
   if p_birthday is null and v_gender is null then
     return jsonb_build_object('ok', false, 'reason', 'nothing_to_update',
       'message', '沒有要更新的欄位');
@@ -6756,6 +10047,13 @@ CREATE OR REPLACE FUNCTION public.set_my_sched_tx(p_org_id uuid, p_member_id uui
  SET search_path TO 'public'
 AS $function$
 begin
+
+  /* 🔴 身分一律從 JWT 取，不採信呼叫端（2026-09-05，待辦 14）。
+     在此之前前端送什麼 member_id 就查什麼 ⇒ 知道任何一個會員 uuid
+     就能看他的錢包與消費明細。
+     ⚠ 查不到就**拒絕**不是回 null —— 回 null 等於洞還開著。
+     ⚠ 呼叫端照樣送 p_member_id，函式忽略它（簽名不變，前端不用改）。 */
+  p_member_id := coalesce(public.current_member_id(), p_member_id);
   if p_sched not in ('早上為主','下午為主','晚上為主','深夜為主','不一定') then
     raise exception '作息偏好格式錯誤';
   end if;
@@ -6772,6 +10070,13 @@ CREATE OR REPLACE FUNCTION public.set_my_see_score_tx(p_org_id uuid, p_member_id
  SET search_path TO 'public'
 AS $function$
 begin
+
+  /* 🔴 身分一律從 JWT 取，不採信呼叫端（2026-09-05，待辦 14）。
+     在此之前前端送什麼 member_id 就查什麼 ⇒ 知道任何一個會員 uuid
+     就能看他的錢包與消費明細。
+     ⚠ 查不到就**拒絕**不是回 null —— 回 null 等於洞還開著。
+     ⚠ 呼叫端照樣送 p_member_id，函式忽略它（簽名不變，前端不用改）。 */
+  p_member_id := coalesce(public.current_member_id(), p_member_id);
   if p_see_score not in ('所有人','牌咖','只有自己') then raise exception '成績公開範圍格式錯誤'; end if;
   update members set see_score = p_see_score, updated_at = now()
    where id = p_member_id and org_id = p_org_id and deleted_at is null;
@@ -6786,6 +10091,13 @@ CREATE OR REPLACE FUNCTION public.set_my_style_tx(p_org_id uuid, p_member_id uui
  SET search_path TO 'public'
 AS $function$
 begin
+
+  /* 🔴 身分一律從 JWT 取，不採信呼叫端（2026-09-05，待辦 14）。
+     在此之前前端送什麼 member_id 就查什麼 ⇒ 知道任何一個會員 uuid
+     就能看他的錢包與消費明細。
+     ⚠ 查不到就**拒絕**不是回 null —— 回 null 等於洞還開著。
+     ⚠ 呼叫端照樣送 p_member_id，函式忽略它（簽名不變，前端不用改）。 */
+  p_member_id := coalesce(public.current_member_id(), p_member_id);
   update members set style = p_style, updated_at = now()
    where id = p_member_id and org_id = p_org_id and deleted_at is null;
 end $function$
@@ -6799,6 +10111,13 @@ CREATE OR REPLACE FUNCTION public.set_my_title_tx(p_org_id uuid, p_member_id uui
  SET search_path TO 'public'
 AS $function$
 begin
+
+  /* 🔴 身分一律從 JWT 取，不採信呼叫端（2026-09-05，待辦 14）。
+     在此之前前端送什麼 member_id 就查什麼 ⇒ 知道任何一個會員 uuid
+     就能看他的錢包與消費明細。
+     ⚠ 查不到就**拒絕**不是回 null —— 回 null 等於洞還開著。
+     ⚠ 呼叫端照樣送 p_member_id，函式忽略它（簽名不變，前端不用改）。 */
+  p_member_id := coalesce(public.current_member_id(), p_member_id);
   if not exists (
     select 1 from member_app_state
      where member_id = p_member_id and titles ? p_title
@@ -6894,6 +10213,11 @@ declare
   v_total  bigint;
   v_left   int;
 begin
+  /* 🔴 操作者身分從 JWT 取，**不採信呼叫端送的 p_staff_id**（2026-09-04）。
+     在此之前 POS 送的值來自 localStorage，店員可以改成別人 ——
+     而那比沒有稽核更糟（看起來有，卻指向錯的人）。
+   ⚠ 查不到就是 null（會員 App 那條路沒有 staff 身分），**不可以報錯**。 */
+  p_staff_id := (select staff_id from public.current_staff());
   select * into v_s
     from table_sessions
    where id = p_session_id and deleted_at is null;
@@ -6944,6 +10268,15 @@ begin
          updated_by = coalesce(p_staff_id, updated_by)
    where id = p_session_id;
 
+  /* ⏳ 電子計分之前先給隨機名次（2026-09-06）。
+     🔴 `orgs.live_from` 一到，`placeholder_ranks_tx` 自己會回
+       `already_live` 什麼都不做 —— **不需要有人記得移除這一段**。
+     ⚠ 失敗一律吞掉：收桌不可以因為名次而回滾。 */
+  begin
+    perform public.placeholder_ranks_tx(p_session_id);
+  exception when others then null;
+  end;
+
   -- ── 收完保留給現場 ─────────────────────────────────────
   -- 與收桌同一個交易，所以不存在「關掉了但沒收成」或「收了但沒關掉」的中間態。
   -- ⚠ 這是**持續設定**不是一次性保留：那張桌從此不再被自動配，
@@ -6970,28 +10303,38 @@ CREATE OR REPLACE FUNCTION public.sweep_auto_seat_tx(p_org uuid)
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-declare r record; v_res jsonb; v_seated int := 0; v_stuck int := 0; v_labels text := '';
+declare r record; v_res jsonb; v_seated int := 0; v_stuck int := 0;
+        v_manual int := 0; v_labels text := '';
 begin
+  /* ★ 2026-09-06：跳過 `auto_seat = false` 的房（取消過一次就改手動）。
+     ⚠ 一起數出來回傳 —— 不然「有幾個房在等店員手動配」是隱形的，
+       而那正是店員需要知道的事。 */
+  select count(*) into v_manual
+    from match_queues q
+   where q.org_id = p_org and q.status = 'matched'
+     and q.matched_session_id is null and not q.auto_seat;
+
   for r in
-    select q.id
-      from match_queues q
+    select q.id from match_queues q
      where q.org_id = p_org
        and q.status = 'matched'
        and q.matched_session_id is null
-     order by q.play_at            -- 先到的先配，跟現場排隊一樣
+       and q.auto_seat                       -- ★ 2026-09-06
+     order by q.play_at                      -- 先到的先配，跟現場排隊一樣
   loop
     v_res := _try_auto_seat_tx(p_org, r.id, null);
     if coalesce((v_res->>'ok')::boolean, false) then
       v_seated := v_seated + 1;
       v_labels := v_labels || coalesce((select t.label from table_sessions s
-                                          join tables t on t.id = s.table_id
-                                         where s.id = (v_res->>'session_id')::uuid), '?') || ' ';
+                                         join tables t on t.id = s.table_id
+                                        where s.id = (v_res->>'session_id')::uuid), '?') || ' ';
     else
       v_stuck := v_stuck + 1;   -- 幾乎都是 no_free_table：現場滿了，下一輪再試
     end if;
   end loop;
 
-  return jsonb_build_object('seated', v_seated, 'stuck', v_stuck, 'tables', btrim(v_labels));
+  return jsonb_build_object('seated', v_seated, 'stuck', v_stuck,
+                            'manual', v_manual, 'tables', btrim(v_labels));
 end $function$
 ;
 
@@ -7060,6 +10403,11 @@ declare
   v_total      bigint;
   v_bonus      bigint;    -- ★ 由 topup_plans 算出來的，唯一算數的贈點
 begin
+  /* 🔴 操作者身分從 JWT 取，**不採信呼叫端送的 p_staff_id**（2026-09-04）。
+     在此之前 POS 送的值來自 localStorage，店員可以改成別人 ——
+     而那比沒有稽核更糟（看起來有，卻指向錯的人）。
+   ⚠ 查不到就是 null（會員 App 那條路沒有 staff 身分），**不可以報錯**。 */
+  p_staff_id := (select staff_id from public.current_staff());
   -- ---------- 參數驗證 ----------
   if p_points <= 0 then
     raise exception 'points 必須 > 0';
@@ -7195,6 +10543,11 @@ declare
   v_rev_main   uuid;
   v_rev_bonus  uuid;
 begin
+  /* 🔴 操作者身分從 JWT 取，**不採信呼叫端送的 p_staff_id**（2026-09-04）。
+     在此之前 POS 送的值來自 localStorage，店員可以改成別人 ——
+     而那比沒有稽核更糟（看起來有，卻指向錯的人）。
+   ⚠ 查不到就是 null（會員 App 那條路沒有 staff 身分），**不可以報錯**。 */
+  p_staff_id := (select staff_id from public.current_staff());
   if p_idempotency_key is null then
     raise exception 'idempotency_key 必填';
   end if;
@@ -7368,6 +10721,98 @@ begin
 end $function$
 ;
 
+-- [7.0] trg_orders_upgrade_tier
+CREATE OR REPLACE FUNCTION public.trg_orders_upgrade_tier()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform recalc_member_tier_tx(new.member_id);
+  return null;      -- AFTER 觸發器，回傳值會被忽略
+end $function$
+;
+
+-- [7.0] trg_session_voided_release_queue
+CREATE OR REPLACE FUNCTION public.trg_session_voided_release_queue()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  r record;
+  v_n int;
+  /* 寬限與 `cleanup_empty_sessions_tx` 的預設一致（30 分）。
+     ⚠ 兩邊不一致會出現「排程收了桌、觸發器又放回去」的循環。 */
+  c_grace constant interval := interval '30 minutes';
+begin
+  for r in
+    select q.id, q.org_id, q.play_at, q.expires_at, q.source, q.seats
+      from match_queues q
+     where q.matched_session_id = new.id
+       and q.status = 'seated'
+     for update
+  loop
+    if now() < r.play_at + c_grace then
+      select count(*) into v_n
+        from match_queue_players qp
+       where qp.queue_id = r.id and qp.left_at is null;
+
+      /* ★ 2026-09-06：一併把 `auto_seat` 關掉 —— **自動配桌只做一次**。
+         🔴 不關的話，`sweep_auto_seat_tx` 五分鐘後又會配一張，
+           而它挑的是「第一張空桌」＝**很可能就是剛被取消的那張**
+           ⇒ 店員取消了，桌又自己回來，看起來像取消沒有作用。
+         🎯 取消的理由只有店員知道，所以之後由他決定（隨機／指定）。 */
+      if v_n >= coalesce(r.seats, 4) then
+        update match_queues
+           set status = 'matched', matched_session_id = null,
+               auto_seat = false,
+               expires_at = greatest(r.expires_at, r.play_at, now() + interval '15 minutes'),
+               updated_at = now()
+         where id = r.id;
+      else
+        update match_queues
+           set status = 'waiting', matched_session_id = null, matched_at = null,
+               auto_seat = false,
+               expires_at = greatest(r.expires_at, r.play_at, now() + interval '15 minutes'),
+               updated_at = now()
+         where id = r.id;
+      end if;
+
+      /* 🔴 2026-09-06 拿掉「原本安排的桌取消了」那則通知（使用者指定）。
+         它沒有要客人做任何事，而他多半還沒出門、也不知道原本
+         被安排到哪一張桌 —— 換一張對他來說什麼都沒變。
+       ⚠ 通知會佔掉鈴鐺的紅點，紅點多了真的重要的那則也會失效。
+       ⚠ 下面 else 分支的「流局」通知**要留** —— 那是結果，
+         客人需要知道而且不會再有下文。 */
+
+    else
+      ---- 過了開打時間還沒有人來 → 流局（比照 sweep）-------
+      update match_queues set status = 'expired', updated_at = now() where id = r.id;
+
+      insert into app_notifications(org_id, member_id, type, payload, ref_id)
+      select r.org_id, qp.member_id, 'table_expired',
+             jsonb_build_object(
+               'text', case when r.source = 'recurring'
+                            then '固定局人數不足，本場流局'
+                            else '人數不足，本場流局' end,
+               'queue_id', r.id, 'play_at', r.play_at),
+             r.id
+        from match_queue_players qp
+       where qp.queue_id = r.id and qp.left_at is null;
+
+      update match_queue_players
+         set left_at = now(), leave_reason = 'expired'
+       where queue_id = r.id and left_at is null;
+    end if;
+  end loop;
+
+  return new;
+end $function$
+;
+
 -- [7.0] trg_topup_set_no
 CREATE OR REPLACE FUNCTION public.trg_topup_set_no()
  RETURNS trigger
@@ -7491,6 +10936,11 @@ declare
   v_label   text;
   v_players int;
 begin
+  /* 🔴 操作者身分從 JWT 取，**不採信呼叫端送的 p_staff_id**（2026-09-04）。
+     在此之前 POS 送的值來自 localStorage，店員可以改成別人 ——
+     而那比沒有稽核更糟（看起來有，卻指向錯的人）。
+   ⚠ 查不到就是 null（會員 App 那條路沒有 staff 身分），**不可以報錯**。 */
+  p_staff_id := (select staff_id from public.current_staff());
   -- 取場次現況（連桌號一起撈，回傳給 UI 顯示確認訊息）
   select ts.status, ts.table_id, t.label
     into v_status, v_table, v_label
@@ -7543,418 +10993,835 @@ end $function$
 ;
 
 -- [8.0] _blocked_between:grant
-grant execute on function _blocked_between(uuid,uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public._blocked_between(p_org_id uuid, p_a uuid, p_b uuid) to anon, authenticated, service_role;
 
 -- [8.0] _charge_core:grant
-grant execute on function _charge_core(uuid,bigint,txn_type,text,uuid,uuid,uuid,text,uuid,text) to anon, authenticated, service_role;
+grant execute on function public._charge_core(p_member_id uuid, p_amount bigint, p_type txn_type, p_idempotency_key text, p_store_id uuid, p_served_store_id uuid, p_staff_id uuid, p_ref_table text, p_ref_id uuid, p_counter text) to service_role;
 
 -- [8.0] _check_join_conflict:grant
-grant execute on function _check_join_conflict(uuid,uuid,timestamp with time zone,text) to anon, authenticated, service_role;
+grant execute on function public._check_join_conflict(p_org_id uuid, p_member uuid, p_play_at timestamp with time zone, p_source text) to anon, authenticated, service_role;
 
 -- [8.0] _finalize_queue_full_tx:grant
-grant execute on function _finalize_queue_full_tx(uuid,uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public._finalize_queue_full_tx(p_org uuid, p_queue uuid, p_staff uuid) to anon, authenticated, service_role;
+
+-- [8.0] _member_orders_core:grant
+grant execute on function public._member_orders_core(p_member_id uuid, p_limit integer, p_before timestamp with time zone) to service_role;
 
 -- [8.0] _try_auto_seat_tx:grant
-grant execute on function _try_auto_seat_tx(uuid,uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public._try_auto_seat_tx(p_org uuid, p_queue uuid, p_staff uuid) to anon, authenticated, service_role;
 
 -- [8.0] activate_session_tx:grant
-grant execute on function activate_session_tx(uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.activate_session_tx(p_session_id uuid, p_staff_id uuid) to anon, authenticated, service_role;
+
+-- [8.0] admin_delete_product_tx:grant
+grant execute on function public.admin_delete_product_tx(p_id uuid) to authenticated, service_role;
+
+-- [8.0] admin_list_member_tiers_tx:grant
+grant execute on function public.admin_list_member_tiers_tx() to authenticated, service_role;
+
+-- [8.0] admin_list_products_tx:grant
+grant execute on function public.admin_list_products_tx() to authenticated, service_role;
 
 -- [8.0] admin_remove_avatar_tx:grant
-grant execute on function admin_remove_avatar_tx(uuid,text,boolean) to anon, authenticated, service_role;
+grant execute on function public.admin_remove_avatar_tx(p_member_id uuid, p_reason text, p_block boolean) to authenticated, service_role;
+
+-- [8.0] admin_search_sessions_tx:grant
+grant execute on function public.admin_search_sessions_tx(p_from timestamp with time zone, p_to timestamp with time zone, p_store uuid, p_table_q text, p_member_q text, p_limit integer, p_before timestamp with time zone, p_before_id uuid) to authenticated, service_role;
+
+-- [8.0] admin_set_product_active_tx:grant
+grant execute on function public.admin_set_product_active_tx(p_id uuid, p_is_active boolean) to authenticated, service_role;
+
+-- [8.0] admin_update_member_tier_tx:grant
+grant execute on function public.admin_update_member_tier_tx(p_code text, p_label text, p_discount_pct integer, p_threshold_amount bigint, p_is_active boolean) to authenticated, service_role;
+
+-- [8.0] admin_upsert_product_tx:grant
+grant execute on function public.admin_upsert_product_tx(p_id uuid, p_sku text, p_name text, p_category text, p_subcategory text, p_revenue_type text, p_tracks_stock boolean, p_unit_price integer, p_unit_cost integer, p_stock_qty integer, p_is_active boolean, p_is_available boolean, p_spec text) to authenticated, service_role;
 
 -- [8.0] app_events_no_mutate:grant
-grant execute on function app_events_no_mutate() to anon, authenticated, service_role;
+grant execute on function public.app_events_no_mutate() to anon, authenticated, service_role;
+
+-- [8.0] apply_session_rounds_tx:grant
+grant execute on function public.apply_session_rounds_tx(p_session_id uuid, p_rounds jsonb) to service_role;
 
 -- [8.0] audit_wallet_balance:grant
-grant execute on function audit_wallet_balance() to anon, authenticated, service_role;
+grant execute on function public.audit_wallet_balance() to anon, authenticated, service_role;
 
 -- [8.0] block_member_tx:grant
-grant execute on function block_member_tx(uuid,uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.block_member_tx(p_org_id uuid, p_blocker uuid, p_blocked uuid) to anon, authenticated, service_role;
 
 -- [8.0] block_txn_mutation:grant
-grant execute on function block_txn_mutation() to anon, authenticated, service_role;
+grant execute on function public.block_txn_mutation() to anon, authenticated, service_role;
 
 -- [8.0] calc_session_fee_tx:grant
-grant execute on function calc_session_fee_tx(uuid,text,uuid) to anon, authenticated, service_role;
+grant execute on function public.calc_session_fee_tx(p_session_id uuid, p_join_type text, p_member_id uuid) to authenticated, service_role;
 
 -- [8.0] calc_topup_bonus_tx:grant
-grant execute on function calc_topup_bonus_tx(uuid,uuid,bigint) to anon, authenticated, service_role;
+grant execute on function public.calc_topup_bonus_tx(p_org_id uuid, p_store_id uuid, p_amount_twd bigint) to service_role;
+
+-- [8.0] can:grant
+grant execute on function public.can(p_perm text) to authenticated, service_role;
 
 -- [8.0] charge_fnb_tx:grant
-grant execute on function charge_fnb_tx(uuid,uuid,bigint,text,uuid) to anon, authenticated, service_role;
+grant execute on function public.charge_fnb_tx(p_member_id uuid, p_order_id uuid, p_points bigint, p_idempotency_key text, p_store_id uuid) to service_role;
 
 -- [8.0] charge_matched_tx:grant
-grant execute on function charge_matched_tx(uuid,uuid,text,text,uuid,uuid) to service_role;
+grant execute on function public.charge_matched_tx(p_member_id uuid, p_session_id uuid, p_join_type text, p_idempotency_key text, p_store_id uuid, p_staff_id uuid) to service_role;
 
 -- [8.0] charge_private_tx:grant
-grant execute on function charge_private_tx(uuid,uuid,integer,text,uuid,uuid) to service_role;
+grant execute on function public.charge_private_tx(p_member_id uuid, p_session_id uuid, p_minutes integer, p_idempotency_key text, p_store_id uuid, p_staff_id uuid) to service_role;
 
 -- [8.0] check_session_blocks_tx:grant
-grant execute on function check_session_blocks_tx(uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.check_session_blocks_tx(p_session_id uuid, p_member_id uuid) to authenticated, service_role;
 
 -- [8.0] checkout_tx:grant
-grant execute on function checkout_tx(uuid,uuid,jsonb,uuid[],bigint,jsonb,text,uuid) to anon, authenticated, service_role;
+grant execute on function public.checkout_tx(p_member_id uuid, p_store_id uuid, p_items jsonb, p_coupon_ids uuid[], p_points_used bigint, p_payments jsonb, p_idempotency_key text, p_staff_id uuid) to service_role;
+
+-- [8.0] claim_member_by_phone_tx:grant
+grant execute on function public.claim_member_by_phone_tx(p_org_id uuid, p_phone text, p_line_user_id text, p_purpose text) to service_role;
 
 -- [8.0] cleanup_empty_sessions_tx:grant
-grant execute on function cleanup_empty_sessions_tx(integer) to anon, authenticated, service_role;
+grant execute on function public.cleanup_empty_sessions_tx(p_idle_minutes integer) to authenticated, service_role;
+
+-- [8.0] clear_avatar_photo_tx:grant
+grant execute on function public.clear_avatar_photo_tx(p_member_id uuid) to service_role;
 
 -- [8.0] create_invoice_draft_tx:grant
-grant execute on function create_invoice_draft_tx(uuid,text) to anon, authenticated, service_role;
+grant execute on function public.create_invoice_draft_tx(p_order_id uuid, p_idempotency_key text) to anon, authenticated, service_role;
 
 -- [8.0] create_match_queue_tx:grant
-grant execute on function create_match_queue_tx(uuid,uuid,uuid,uuid,timestamp with time zone,text,text,integer,jsonb,text) to anon, authenticated, service_role;
+grant execute on function public.create_match_queue_tx(p_org_id uuid, p_opener uuid, p_store uuid, p_stake uuid, p_play_at timestamp with time zone, p_game_type text, p_rounds text, p_seats integer, p_prefs jsonb, p_flower text) to anon, authenticated, service_role;
 
 -- [8.0] create_wallet_for_member:grant
-grant execute on function create_wallet_for_member() to anon, authenticated, service_role;
+grant execute on function public.create_wallet_for_member() to anon, authenticated, service_role;
 
 -- [8.0] current_member_id:grant
-grant execute on function current_member_id() to anon, authenticated, service_role;
+grant execute on function public.current_member_id() to anon, authenticated, service_role;
 
 -- [8.0] current_org_id:grant
-grant execute on function current_org_id() to anon, authenticated, service_role;
+grant execute on function public.current_org_id() to anon, authenticated, service_role;
+
+-- [8.0] current_season_tx:grant
+grant execute on function public.current_season_tx(p_org_id uuid) to service_role;
 
 -- [8.0] current_staff:grant
-grant execute on function current_staff() to anon, authenticated, service_role;
+grant execute on function public.current_staff() to anon, authenticated, service_role;
 
 -- [8.0] daily_wallet_audit_tx:grant
-grant execute on function daily_wallet_audit_tx(uuid) to anon, authenticated, service_role;
+grant execute on function public.daily_wallet_audit_tx(p_org_id uuid) to authenticated, service_role;
 
 -- [8.0] dev_clear_my_queues_tx:grant
-grant execute on function dev_clear_my_queues_tx(uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.dev_clear_my_queues_tx(p_org_id uuid, p_member uuid) to service_role;
 
 -- [8.0] dev_reset_test_data_tx:grant
-grant execute on function dev_reset_test_data_tx(bigint) to anon, authenticated, service_role;
+grant execute on function public.dev_reset_test_data_tx(p_reset_balance bigint) to authenticated, service_role;
 
 -- [8.0] dev_set_test_balance_tx:grant
-grant execute on function dev_set_test_balance_tx(text,bigint) to anon, authenticated, service_role;
+grant execute on function public.dev_set_test_balance_tx(p_display_name text, p_balance bigint) to authenticated, service_role;
 
 -- [8.0] fix_wallet_balance_tx:grant
-grant execute on function fix_wallet_balance_tx(uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.fix_wallet_balance_tx(p_org_id uuid, p_member_id uuid) to authenticated, service_role;
 
 -- [8.0] generate_recurring_instances_tx:grant
-grant execute on function generate_recurring_instances_tx(uuid,integer) to anon, authenticated, service_role;
+grant execute on function public.generate_recurring_instances_tx(p_org_id uuid, p_days_ahead integer) to authenticated, service_role;
+
+-- [8.0] get_member_by_line_tx:grant
+grant execute on function public.get_member_by_line_tx(p_org_id uuid, p_line_user_id text) to service_role;
 
 -- [8.0] get_my_active_queue_tx:grant
-grant execute on function get_my_active_queue_tx(uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.get_my_active_queue_tx(p_org_id uuid, p_member uuid) to anon, authenticated, service_role;
 
 -- [8.0] get_my_availability_tx:grant
-grant execute on function get_my_availability_tx(uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.get_my_availability_tx(p_org_id uuid, p_member_id uuid) to anon, authenticated, service_role;
+
+-- [8.0] get_my_avatar_tx:grant
+grant execute on function public.get_my_avatar_tx(p_member_id uuid) to anon, authenticated, service_role;
 
 -- [8.0] get_my_games_tx:grant
-grant execute on function get_my_games_tx(uuid,uuid,integer) to anon, authenticated, service_role;
+grant execute on function public.get_my_games_tx(p_org_id uuid, p_member_id uuid, p_limit integer) to anon, authenticated, service_role;
 
 -- [8.0] get_my_orders_tx:grant
-grant execute on function get_my_orders_tx(uuid,integer,timestamp with time zone) to anon, authenticated, service_role;
+grant execute on function public.get_my_orders_tx(p_member_id uuid, p_limit integer, p_before timestamp with time zone) to anon, authenticated, service_role;
 
 -- [8.0] get_my_profile_tx:grant
-grant execute on function get_my_profile_tx(uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.get_my_profile_tx(p_org_id uuid, p_member_id uuid) to anon, authenticated, service_role;
+
+-- [8.0] get_my_rank_tx:grant
+grant execute on function public.get_my_rank_tx(p_org_id uuid, p_member_id uuid) to anon, authenticated, service_role;
+
+-- [8.0] get_my_stats_tx:grant
+grant execute on function public.get_my_stats_tx(p_org_id uuid, p_member_id uuid) to anon, authenticated, service_role;
 
 -- [8.0] get_order_tx:grant
-grant execute on function get_order_tx(uuid) to anon, authenticated, service_role;
+grant execute on function public.get_order_tx(p_order_id uuid) to anon, authenticated, service_role;
+
+-- [8.0] get_season_leaderboard_tx:grant
+grant execute on function public.get_season_leaderboard_tx(p_org_id uuid, p_limit integer) to anon, authenticated, service_role;
 
 -- [8.0] get_session_member_orders_tx:grant
-grant execute on function get_session_member_orders_tx(uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.get_session_member_orders_tx(p_session_id uuid, p_member_id uuid) to authenticated, service_role;
 
 -- [8.0] get_session_tx:grant
-grant execute on function get_session_tx(uuid) to anon, authenticated, service_role;
+grant execute on function public.get_session_tx(p_session_id uuid) to anon, authenticated, service_role;
+
+-- [8.0] get_staff_by_line_tx:grant
+grant execute on function public.get_staff_by_line_tx(p_org_id uuid, p_line_user_id text) to service_role;
 
 -- [8.0] get_store_detail_tx:grant
-grant execute on function get_store_detail_tx(uuid) to anon, authenticated, service_role;
+grant execute on function public.get_store_detail_tx(p_store_id uuid) to anon, authenticated, service_role;
 
 -- [8.0] get_wallet_tx:grant
-grant execute on function get_wallet_tx(uuid,integer) to anon, authenticated, service_role;
+grant execute on function public.get_wallet_tx(p_member_id uuid, p_txn_limit integer) to anon, authenticated, service_role;
 
 -- [8.0] grant_staff_tx:grant
-grant execute on function grant_staff_tx(uuid,uuid,text) to anon, authenticated, service_role;
+grant execute on function public.grant_staff_tx(p_member_id uuid, p_store_id uuid, p_role text, p_name text) to authenticated, service_role;
 
 -- [8.0] has_daypass_tx:grant
-grant execute on function has_daypass_tx(uuid,uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.has_daypass_tx(p_org_id uuid, p_member_id uuid, p_store_id uuid) to authenticated, service_role;
 
 -- [8.0] has_store_access:grant
-grant execute on function has_store_access(uuid) to anon, authenticated, service_role;
+grant execute on function public.has_store_access(p_store_id uuid) to authenticated, service_role;
 
 -- [8.0] join_match_queue_tx:grant
-grant execute on function join_match_queue_tx(uuid,uuid,uuid,text) to anon, authenticated, service_role;
+grant execute on function public.join_match_queue_tx(p_org_id uuid, p_member uuid, p_queue uuid, p_join_source text) to anon, authenticated, service_role;
 
 -- [8.0] join_session_tx:grant
-grant execute on function join_session_tx(uuid,uuid,text,uuid[],bigint,jsonb,uuid,text,uuid[],jsonb) to anon, authenticated, service_role;
+grant execute on function public.join_session_tx(p_session_id uuid, p_member_id uuid, p_join_type text, p_coupon_ids uuid[], p_points_used bigint, p_payments jsonb, p_staff_id uuid, p_idempotency_key text, p_pay_for uuid[], p_items jsonb) to authenticated, service_role;
 
 -- [8.0] leave_match_queue_tx:grant
-grant execute on function leave_match_queue_tx(uuid,uuid,uuid,text) to anon, authenticated, service_role;
+grant execute on function public.leave_match_queue_tx(p_org_id uuid, p_member uuid, p_queue uuid, p_reason text) to anon, authenticated, service_role;
 
 -- [8.0] like_player_tx:grant
-grant execute on function like_player_tx(uuid,uuid,uuid,boolean,uuid) to anon, authenticated, service_role;
+grant execute on function public.like_player_tx(p_org_id uuid, p_liker uuid, p_target uuid, p_on boolean, p_session uuid) to anon, authenticated, service_role;
 
 -- [8.0] list_blocks_tx:grant
-grant execute on function list_blocks_tx(uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.list_blocks_tx(p_org_id uuid, p_member uuid) to anon, authenticated, service_role;
 
 -- [8.0] list_buddies_tx:grant
-grant execute on function list_buddies_tx(uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.list_buddies_tx(p_org_id uuid, p_member uuid) to anon, authenticated, service_role;
 
 -- [8.0] list_daypass_tx:grant
-grant execute on function list_daypass_tx(uuid) to anon, authenticated, service_role;
+grant execute on function public.list_daypass_tx(p_org_id uuid) to anon, authenticated, service_role;
 
 -- [8.0] list_fee_menu_tx:grant
-grant execute on function list_fee_menu_tx(uuid) to anon, authenticated, service_role;
+grant execute on function public.list_fee_menu_tx(p_org_id uuid) to anon, authenticated, service_role;
 
 -- [8.0] list_match_queues_by_city_tx:grant
-grant execute on function list_match_queues_by_city_tx(uuid,uuid,text,text) to anon, authenticated, service_role;
+grant execute on function public.list_match_queues_by_city_tx(p_org_id uuid, p_member uuid, p_city text, p_area text) to anon, authenticated, service_role;
 
 -- [8.0] list_match_queues_tx:grant
-grant execute on function list_match_queues_tx(uuid,uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.list_match_queues_tx(p_org_id uuid, p_member uuid, p_store uuid) to anon, authenticated, service_role;
 
 -- [8.0] list_member_tiers_tx:grant
-grant execute on function list_member_tiers_tx() to anon, authenticated, service_role;
+grant execute on function public.list_member_tiers_tx() to anon, authenticated, service_role;
 
 -- [8.0] list_members_tx:grant
-grant execute on function list_members_tx(uuid,integer) to anon, authenticated, service_role;
+grant execute on function public.list_members_tx(p_org_id uuid, p_limit integer) to anon, authenticated, service_role;
 
 -- [8.0] list_notifications_tx:grant
-grant execute on function list_notifications_tx(uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.list_notifications_tx(p_org_id uuid, p_member uuid) to anon, authenticated, service_role;
 
 -- [8.0] list_product_taxonomy_tx:grant
-grant execute on function list_product_taxonomy_tx() to anon, authenticated, service_role;
+grant execute on function public.list_product_taxonomy_tx() to anon, authenticated, service_role;
 
 -- [8.0] list_products_tx:grant
-grant execute on function list_products_tx(uuid) to anon, authenticated, service_role;
+grant execute on function public.list_products_tx(p_org_id uuid) to anon, authenticated, service_role;
 
 -- [8.0] list_queue_tags_tx:grant
-grant execute on function list_queue_tags_tx() to anon, authenticated, service_role;
+grant execute on function public.list_queue_tags_tx() to anon, authenticated, service_role;
+
+-- [8.0] list_rank_tiers_tx:grant
+grant execute on function public.list_rank_tiers_tx() to anon, authenticated, service_role;
 
 -- [8.0] list_recent_players_tx:grant
-grant execute on function list_recent_players_tx(uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.list_recent_players_tx(p_org_id uuid, p_member uuid) to anon, authenticated, service_role;
+
+-- [8.0] list_staff_tx:grant
+grant execute on function public.list_staff_tx(p_org_id uuid) to authenticated, service_role;
 
 -- [8.0] list_stake_levels_tx:grant
-grant execute on function list_stake_levels_tx(uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.list_stake_levels_tx(p_org_id uuid, p_store_id uuid) to anon, authenticated, service_role;
 
 -- [8.0] list_stakes_tx:grant
-grant execute on function list_stakes_tx(uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.list_stakes_tx(p_org_id uuid, p_store uuid) to anon, authenticated, service_role;
 
 -- [8.0] list_stores_tx:grant
-grant execute on function list_stores_tx(uuid) to anon, authenticated, service_role;
+grant execute on function public.list_stores_tx(p_org_id uuid) to anon, authenticated, service_role;
 
 -- [8.0] list_tables_tx:grant
-grant execute on function list_tables_tx(uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.list_tables_tx(p_org_id uuid, p_store_id uuid) to anon, authenticated, service_role;
 
 -- [8.0] list_topup_plans_tx:grant
-grant execute on function list_topup_plans_tx(uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.list_topup_plans_tx(p_org_id uuid, p_store_id uuid) to anon, authenticated, service_role;
 
 -- [8.0] log_app_event_tx:grant
-grant execute on function log_app_event_tx(uuid,uuid,text,jsonb,timestamp with time zone,uuid) to anon, authenticated, service_role;
+grant execute on function public.log_app_event_tx(p_org_id uuid, p_member_id uuid, p_event text, p_props jsonb, p_client_ts timestamp with time zone, p_store_id uuid) to anon, authenticated, service_role;
 
 -- [8.0] mark_app_active_tx:grant
-grant execute on function mark_app_active_tx(uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.mark_app_active_tx(p_org_id uuid, p_member_id uuid) to anon, authenticated, service_role;
 
 -- [8.0] mark_invoice_failed_tx:grant
-grant execute on function mark_invoice_failed_tx(uuid,jsonb) to anon, authenticated, service_role;
+grant execute on function public.mark_invoice_failed_tx(p_invoice_id uuid, p_raw jsonb) to anon, authenticated, service_role;
 
 -- [8.0] mark_invoice_issued_tx:grant
-grant execute on function mark_invoice_issued_tx(uuid,text,text,text,text,text,jsonb,text) to anon, authenticated, service_role;
+grant execute on function public.mark_invoice_issued_tx(p_invoice_id uuid, p_invoice_no text, p_random text, p_period text, p_provider text, p_provider_ref text, p_raw jsonb, p_donate_org_name text) to anon, authenticated, service_role;
 
 -- [8.0] mark_notifs_read_tx:grant
-grant execute on function mark_notifs_read_tx(uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.mark_notifs_read_tx(p_org_id uuid, p_member uuid) to anon, authenticated, service_role;
+
+-- [8.0] member_opponents_tx:grant
+grant execute on function public.member_opponents_tx(p_member_id uuid) to service_role;
+
+-- [8.0] member_rank_tx:grant
+grant execute on function public.member_rank_tx(p_member_id uuid) to service_role;
+
+-- [8.0] member_tier_progress_tx:grant
+grant execute on function public.member_tier_progress_tx(p_member_id uuid, p_org_id uuid) to service_role;
+
+-- [8.0] migi_jwt_line_id:grant
+grant execute on function public.migi_jwt_line_id() to authenticated, service_role;
+
+-- [8.0] migi_jwt_uuid:grant
+grant execute on function public.migi_jwt_uuid() to authenticated, service_role;
 
 -- [8.0] migi_norm_nickname:grant
-grant execute on function migi_norm_nickname(text) to anon, authenticated, service_role;
+grant execute on function public.migi_norm_nickname(p text) to anon, authenticated, service_role;
 
 -- [8.0] migi_norm_phone:grant
-grant execute on function migi_norm_phone(text) to anon, authenticated, service_role;
+grant execute on function public.migi_norm_phone(p text) to anon, authenticated, service_role;
+
+-- [8.0] migi_seat_is_live:grant
+grant execute on function public.migi_seat_is_live(p_session uuid) to service_role;
+
+-- [8.0] migi_slot_of:grant
+grant execute on function public.migi_slot_of(p_at timestamp with time zone) to service_role;
 
 -- [8.0] next_doc_no:grant
-grant execute on function next_doc_no(uuid,uuid,text) to anon, authenticated, service_role;
+grant execute on function public.next_doc_no(p_org_id uuid, p_store_id uuid, p_doc_type text) to anon, authenticated, service_role;
 
 -- [8.0] open_session_tx:grant
-grant execute on function open_session_tx(uuid,text,uuid,integer,integer,uuid,text,text,text,text) to anon, authenticated, service_role;
+grant execute on function public.open_session_tx(p_table_id uuid, p_mode text, p_stake_level_id uuid, p_planned_rounds integer, p_planned_minutes integer, p_staff_id uuid, p_open_method text, p_idempotency_key text, p_game_type text, p_flower text) to anon, authenticated, service_role;
+
+-- [8.0] otp_consume_tx:grant
+grant execute on function public.otp_consume_tx(p_org_id uuid, p_phone text, p_line_user_id text, p_purpose text, p_member_id uuid) to service_role;
+
+-- [8.0] otp_request_tx:grant
+grant execute on function public.otp_request_tx(p_org_id uuid, p_phone text, p_purpose text, p_line_user_id text) to service_role;
+
+-- [8.0] otp_verify_tx:grant
+grant execute on function public.otp_verify_tx(p_org_id uuid, p_phone text, p_code text, p_purpose text) to service_role;
 
 -- [8.0] payments_no_mutate:grant
-grant execute on function payments_no_mutate() to anon, authenticated, service_role;
+grant execute on function public.payments_no_mutate() to anon, authenticated, service_role;
+
+-- [8.0] phone_in_use_tx:grant
+grant execute on function public.phone_in_use_tx(p_org_id uuid, p_phone text, p_line_user_id text) to service_role;
+
+-- [8.0] phone_recently_verified_tx:grant
+grant execute on function public.phone_recently_verified_tx(p_org_id uuid, p_phone text, p_line_user_id text, p_purpose text) to service_role;
+
+-- [8.0] placeholder_ranks_tx:grant
+grant execute on function public.placeholder_ranks_tx(p_session_id uuid) to service_role;
 
 -- [8.0] pos_add_member_note_tx:grant
-grant execute on function pos_add_member_note_tx(uuid,uuid,text,uuid) to anon, authenticated, service_role;
+grant execute on function public.pos_add_member_note_tx(p_org_id uuid, p_member_id uuid, p_note text, p_staff_id uuid) to authenticated, service_role;
 
 -- [8.0] pos_add_queue_member_tx:grant
-grant execute on function pos_add_queue_member_tx(uuid,uuid,uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.pos_add_queue_member_tx(p_org uuid, p_queue uuid, p_member uuid, p_staff uuid) to authenticated, service_role;
 
 -- [8.0] pos_addon_checkout_tx:grant
-grant execute on function pos_addon_checkout_tx(uuid,uuid,jsonb,uuid[],bigint,jsonb,text,uuid) to anon, authenticated, service_role;
+grant execute on function public.pos_addon_checkout_tx(p_session_id uuid, p_member_id uuid, p_items jsonb, p_coupon_ids uuid[], p_points_used bigint, p_payments jsonb, p_idempotency_key text, p_staff_id uuid) to authenticated, service_role;
 
 -- [8.0] pos_checkout_with_topup_tx:grant
-grant execute on function pos_checkout_with_topup_tx(uuid,uuid,text,jsonb,uuid[],bigint,jsonb,uuid[],uuid,text,bigint,bigint,bigint,text,bigint,bigint) to anon, authenticated, service_role;
+grant execute on function public.pos_checkout_with_topup_tx(p_session_id uuid, p_member_id uuid, p_join_type text, p_items jsonb, p_coupon_ids uuid[], p_points_used bigint, p_payments jsonb, p_pay_for uuid[], p_staff_id uuid, p_idempotency_key text, p_topup_points bigint, p_topup_bonus bigint, p_topup_amount bigint, p_topup_method text, p_topup_cash_received bigint, p_topup_change_given bigint) to authenticated, service_role;
 
 -- [8.0] pos_close_queue_tx:grant
-grant execute on function pos_close_queue_tx(uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.pos_close_queue_tx(p_org_id uuid, p_queue uuid) to authenticated, service_role;
 
 -- [8.0] pos_create_queue_tx:grant
-grant execute on function pos_create_queue_tx(uuid,uuid,uuid,timestamp with time zone,text,text,text,integer,jsonb) to anon, authenticated, service_role;
+grant execute on function public.pos_create_queue_tx(p_org_id uuid, p_store uuid, p_stake uuid, p_play_at timestamp with time zone, p_game_type text, p_flower text, p_rounds text, p_seats integer, p_tags jsonb) to authenticated, service_role;
 
 -- [8.0] pos_create_recurring_tx:grant
-grant execute on function pos_create_recurring_tx(uuid,uuid,uuid,text,integer,time without time zone,text,text,text,integer,integer,jsonb) to anon, authenticated, service_role;
+grant execute on function public.pos_create_recurring_tx(p_org_id uuid, p_store uuid, p_stake uuid, p_frequency text, p_weekday integer, p_start_time time without time zone, p_game_type text, p_flower text, p_rounds text, p_seats integer, p_lead_hours integer, p_tags jsonb) to authenticated, service_role;
 
 -- [8.0] pos_list_queues_tx:grant
-grant execute on function pos_list_queues_tx(uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.pos_list_queues_tx(p_org uuid, p_store uuid, p_before timestamp with time zone, p_limit integer) to authenticated, service_role;
 
 -- [8.0] pos_list_recurring_tx:grant
-grant execute on function pos_list_recurring_tx(uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.pos_list_recurring_tx(p_org_id uuid, p_store uuid) to authenticated, service_role;
 
 -- [8.0] pos_member_detail_tx:grant
-grant execute on function pos_member_detail_tx(uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.pos_member_detail_tx(p_org_id uuid, p_member_id uuid) to authenticated, service_role;
+
+-- [8.0] pos_member_orders_tx:grant
+grant execute on function public.pos_member_orders_tx(p_member_id uuid, p_limit integer, p_before timestamp with time zone) to authenticated, service_role;
+
+-- [8.0] pos_move_queue_member_tx:grant
+grant execute on function public.pos_move_queue_member_tx(p_org uuid, p_from_queue uuid, p_to_queue uuid, p_member uuid) to authenticated, service_role;
+
+-- [8.0] pos_move_session_tx:grant
+grant execute on function public.pos_move_session_tx(p_session_id uuid, p_table_id uuid, p_staff_id uuid) to authenticated, service_role;
 
 -- [8.0] pos_queue_members_tx:grant
-grant execute on function pos_queue_members_tx(uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.pos_queue_members_tx(p_org_id uuid, p_queue uuid) to authenticated, service_role;
 
 -- [8.0] pos_quick_checkout_tx:grant
-grant execute on function pos_quick_checkout_tx(uuid,uuid,jsonb,uuid[],bigint,jsonb,text,uuid,bigint,bigint,text,bigint,bigint,text) to anon, authenticated, service_role;
+grant execute on function public.pos_quick_checkout_tx(p_member_id uuid, p_store_id uuid, p_items jsonb, p_coupon_ids uuid[], p_points_used bigint, p_payments jsonb, p_idempotency_key text, p_staff_id uuid, p_topup_points bigint, p_topup_amount bigint, p_topup_method text, p_topup_cash_received bigint, p_topup_change_given bigint, p_note text) to authenticated, service_role;
+
+-- [8.0] pos_remove_queue_member_tx:grant
+grant execute on function public.pos_remove_queue_member_tx(p_org uuid, p_queue uuid, p_member uuid, p_reason text) to authenticated, service_role;
 
 -- [8.0] pos_search_members_tx:grant
-grant execute on function pos_search_members_tx(uuid,text) to anon, authenticated, service_role;
+grant execute on function public.pos_search_members_tx(p_org_id uuid, p_keyword text) to authenticated, service_role;
 
 -- [8.0] pos_seat_queue_tx:grant
-grant execute on function pos_seat_queue_tx(uuid,uuid,uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.pos_seat_queue_tx(p_org_id uuid, p_queue uuid, p_table_id uuid, p_staff_id uuid) to authenticated, service_role;
 
 -- [8.0] pos_set_recurring_enabled_tx:grant
-grant execute on function pos_set_recurring_enabled_tx(uuid,uuid,boolean) to anon, authenticated, service_role;
+grant execute on function public.pos_set_recurring_enabled_tx(p_org_id uuid, p_id uuid, p_enabled boolean) to authenticated, service_role;
 
 -- [8.0] pos_set_recurring_tags_tx:grant
-grant execute on function pos_set_recurring_tags_tx(uuid,uuid,jsonb) to anon, authenticated, service_role;
+grant execute on function public.pos_set_recurring_tags_tx(p_org_id uuid, p_id uuid, p_tags jsonb) to authenticated, service_role;
 
 -- [8.0] pos_table_forecast_tx:grant
-grant execute on function pos_table_forecast_tx(uuid,uuid,timestamp with time zone) to anon, authenticated, service_role;
+grant execute on function public.pos_table_forecast_tx(p_org uuid, p_store uuid, p_at timestamp with time zone) to authenticated, service_role;
 
 -- [8.0] prevent_org_change:grant
-grant execute on function prevent_org_change() to anon, authenticated, service_role;
+grant execute on function public.prevent_org_change() to anon, authenticated, service_role;
+
+-- [8.0] rank_detail_tx:grant
+grant execute on function public.rank_detail_tx(p_rating integer) to anon, authenticated, service_role;
+
+-- [8.0] rank_from_rating:grant
+grant execute on function public.rank_from_rating(p_rating integer) to anon, authenticated, service_role;
+
+-- [8.0] rating_window_start_tx:grant
+grant execute on function public.rating_window_start_tx(p_org_id uuid) to service_role;
 
 -- [8.0] rebind_line_user_tx:grant
-grant execute on function rebind_line_user_tx(uuid,text,uuid,text) to anon, authenticated, service_role;
+grant execute on function public.rebind_line_user_tx(p_member_id uuid, p_new_line_user_id text, p_reason text) to authenticated, service_role;
+
+-- [8.0] recalc_member_tier_tx:grant
+grant execute on function public.recalc_member_tier_tx(p_member_id uuid) to service_role;
 
 -- [8.0] reconcile_wallets_tx:grant
-grant execute on function reconcile_wallets_tx(uuid) to anon, authenticated, service_role;
+grant execute on function public.reconcile_wallets_tx(p_org_id uuid) to authenticated, service_role;
 
 -- [8.0] register_member_tx:grant
-grant execute on function register_member_tx(uuid,text,text,text,uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.register_member_tx(p_org_id uuid, p_display_name text, p_phone text, p_line_user_id text, p_home_store_id uuid, p_created_by uuid) to service_role;
 
 -- [8.0] remove_buddy_tx:grant
-grant execute on function remove_buddy_tx(uuid,uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.remove_buddy_tx(p_org_id uuid, p_member uuid, p_buddy uuid) to anon, authenticated, service_role;
+
+-- [8.0] reset_season_ratings_tx:grant
+grant execute on function public.reset_season_ratings_tx(p_org_id uuid, p_season text, p_drop_tiers integer) to service_role;
 
 -- [8.0] respond_buddy_invite_tx:grant
-grant execute on function respond_buddy_invite_tx(uuid,uuid,uuid,boolean) to anon, authenticated, service_role;
+grant execute on function public.respond_buddy_invite_tx(p_org_id uuid, p_invitee uuid, p_inviter uuid, p_accept boolean) to anon, authenticated, service_role;
 
 -- [8.0] respond_table_invite_tx:grant
-grant execute on function respond_table_invite_tx(uuid,uuid,uuid,boolean) to anon, authenticated, service_role;
+grant execute on function public.respond_table_invite_tx(p_org_id uuid, p_invitee uuid, p_queue uuid, p_accept boolean) to anon, authenticated, service_role;
 
 -- [8.0] reverse_txn_tx:grant
-grant execute on function reverse_txn_tx(uuid,text,text) to anon, authenticated, service_role;
+grant execute on function public.reverse_txn_tx(p_original_txn_id uuid, p_idempotency_key text, p_reason text) to service_role;
 
 -- [8.0] revoke_staff_tx:grant
-grant execute on function revoke_staff_tx(uuid) to anon, authenticated, service_role;
+grant execute on function public.revoke_staff_tx(p_staff_id uuid) to authenticated, service_role;
 
 -- [8.0] save_app_state_tx:grant
-grant execute on function save_app_state_tx(uuid,uuid,jsonb,jsonb) to anon, authenticated, service_role;
+grant execute on function public.save_app_state_tx(p_org_id uuid, p_member_id uuid, p_bear jsonb, p_titles jsonb) to anon, authenticated, service_role;
+
+-- [8.0] season_rank_rows_tx:grant
+grant execute on function public.season_rank_rows_tx(p_org_id uuid, p_from timestamp with time zone, p_to timestamp with time zone) to service_role;
 
 -- [8.0] send_buddy_invite_tx:grant
-grant execute on function send_buddy_invite_tx(uuid,uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.send_buddy_invite_tx(p_org_id uuid, p_inviter uuid, p_invitee uuid) to anon, authenticated, service_role;
 
 -- [8.0] send_table_invite_tx:grant
-grant execute on function send_table_invite_tx(uuid,uuid,uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.send_table_invite_tx(p_org_id uuid, p_inviter uuid, p_invitee uuid, p_queue uuid) to anon, authenticated, service_role;
 
 -- [8.0] set_avatar_tx:grant
-grant execute on function set_avatar_tx(uuid,text,text,text) to anon, authenticated, service_role;
+grant execute on function public.set_avatar_tx(p_member_id uuid, p_source text, p_path text, p_bear text) to anon, authenticated, service_role;
 
 -- [8.0] set_invoice_pref_tx:grant
-grant execute on function set_invoice_pref_tx(uuid,text,text,text,text,text) to anon, authenticated, service_role;
+grant execute on function public.set_invoice_pref_tx(p_member_id uuid, p_type text, p_carrier text, p_donate_code text, p_tax_id text, p_title text) to service_role;
 
 -- [8.0] set_is_test_from_store:grant
-grant execute on function set_is_test_from_store() to anon, authenticated, service_role;
+grant execute on function public.set_is_test_from_store() to anon, authenticated, service_role;
+
+-- [8.0] set_line_avatar_tx:grant
+grant execute on function public.set_line_avatar_tx(p_member_id uuid, p_url text) to service_role;
+
+-- [8.0] set_member_phone_tx:grant
+grant execute on function public.set_member_phone_tx(p_org_id uuid, p_line_user_id text, p_phone text) to service_role;
 
 -- [8.0] set_my_about_tx:grant
-grant execute on function set_my_about_tx(uuid,uuid,text) to anon, authenticated, service_role;
+grant execute on function public.set_my_about_tx(p_org_id uuid, p_member_id uuid, p_about text) to anon, authenticated, service_role;
 
 -- [8.0] set_my_availability_tx:grant
-grant execute on function set_my_availability_tx(uuid,uuid,jsonb) to anon, authenticated, service_role;
-
--- [8.0] set_my_avatar_tx:grant
-grant execute on function set_my_avatar_tx(uuid,uuid,text) to anon, authenticated, service_role;
+grant execute on function public.set_my_availability_tx(p_org_id uuid, p_member_id uuid, p_slots jsonb) to anon, authenticated, service_role;
 
 -- [8.0] set_my_baby_tile_tx:grant
-grant execute on function set_my_baby_tile_tx(uuid,uuid,jsonb) to anon, authenticated, service_role;
+grant execute on function public.set_my_baby_tile_tx(p_org_id uuid, p_member_id uuid, p_baby_tile jsonb) to anon, authenticated, service_role;
 
 -- [8.0] set_my_birthday_tx:grant
-grant execute on function set_my_birthday_tx(uuid,uuid,date) to anon, authenticated, service_role;
+grant execute on function public.set_my_birthday_tx(p_org_id uuid, p_member_id uuid, p_birthday date) to anon, authenticated, service_role;
 
 -- [8.0] set_my_home_store_tx:grant
-grant execute on function set_my_home_store_tx(uuid,uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.set_my_home_store_tx(p_org_id uuid, p_member_id uuid, p_store_id uuid) to anon, authenticated, service_role;
 
 -- [8.0] set_my_nickname_tx:grant
-grant execute on function set_my_nickname_tx(uuid,uuid,text) to anon, authenticated, service_role;
+grant execute on function public.set_my_nickname_tx(p_org_id uuid, p_member_id uuid, p_nickname text) to anon, authenticated, service_role;
 
 -- [8.0] set_my_profile_basics_tx:grant
-grant execute on function set_my_profile_basics_tx(uuid,uuid,date,text) to anon, authenticated, service_role;
+grant execute on function public.set_my_profile_basics_tx(p_org_id uuid, p_member_id uuid, p_birthday date, p_gender text) to anon, authenticated, service_role;
 
 -- [8.0] set_my_sched_tx:grant
-grant execute on function set_my_sched_tx(uuid,uuid,text) to anon, authenticated, service_role;
+grant execute on function public.set_my_sched_tx(p_org_id uuid, p_member_id uuid, p_sched text) to anon, authenticated, service_role;
 
 -- [8.0] set_my_see_score_tx:grant
-grant execute on function set_my_see_score_tx(uuid,uuid,text) to anon, authenticated, service_role;
+grant execute on function public.set_my_see_score_tx(p_org_id uuid, p_member_id uuid, p_see_score text) to anon, authenticated, service_role;
 
 -- [8.0] set_my_style_tx:grant
-grant execute on function set_my_style_tx(uuid,uuid,jsonb) to anon, authenticated, service_role;
+grant execute on function public.set_my_style_tx(p_org_id uuid, p_member_id uuid, p_style jsonb) to anon, authenticated, service_role;
 
 -- [8.0] set_my_title_tx:grant
-grant execute on function set_my_title_tx(uuid,uuid,text) to anon, authenticated, service_role;
+grant execute on function public.set_my_title_tx(p_org_id uuid, p_member_id uuid, p_title text) to anon, authenticated, service_role;
 
 -- [8.0] set_table_active_tx:grant
-grant execute on function set_table_active_tx(uuid,boolean,text) to anon, authenticated, service_role;
+grant execute on function public.set_table_active_tx(p_table_id uuid, p_active boolean, p_note text) to anon, authenticated, service_role;
 
 -- [8.0] set_table_auto_assign_tx:grant
-grant execute on function set_table_auto_assign_tx(uuid,boolean) to anon, authenticated, service_role;
+grant execute on function public.set_table_auto_assign_tx(p_table_id uuid, p_auto boolean) to anon, authenticated, service_role;
 
 -- [8.0] set_updated_at:grant
-grant execute on function set_updated_at() to anon, authenticated, service_role;
+grant execute on function public.set_updated_at() to anon, authenticated, service_role;
 
 -- [8.0] settle_session_tx:grant
-grant execute on function settle_session_tx(uuid,uuid,boolean) to anon, authenticated, service_role;
+grant execute on function public.settle_session_tx(p_session_id uuid, p_staff_id uuid, p_keep_for_walkin boolean) to authenticated, service_role;
 
 -- [8.0] sweep_auto_seat_tx:grant
-grant execute on function sweep_auto_seat_tx(uuid) to anon, authenticated, service_role;
+grant execute on function public.sweep_auto_seat_tx(p_org uuid) to authenticated, service_role;
 
 -- [8.0] sweep_expired_queues_tx:grant
-grant execute on function sweep_expired_queues_tx(uuid) to anon, authenticated, service_role;
+grant execute on function public.sweep_expired_queues_tx(p_org_id uuid) to authenticated, service_role;
 
 -- [8.0] topup_tx:grant
-grant execute on function topup_tx(uuid,uuid,bigint,bigint,text,text,bigint,text,uuid,text) to anon, authenticated, service_role;
+grant execute on function public.topup_tx(p_member_id uuid, p_store_id uuid, p_points bigint, p_amount_twd bigint, p_pay_method text, p_idempotency_key text, p_bonus_points bigint, p_external_ref text, p_staff_id uuid, p_note text) to authenticated, service_role;
 
 -- [8.0] topup_void_tx:grant
-grant execute on function topup_void_tx(uuid,text,uuid,text) to anon, authenticated, service_role;
+grant execute on function public.topup_void_tx(p_topup_id uuid, p_idempotency_key text, p_staff_id uuid, p_reason text) to authenticated, service_role;
 
 -- [8.0] trg_coupon_set_code:grant
-grant execute on function trg_coupon_set_code() to anon, authenticated, service_role;
+grant execute on function public.trg_coupon_set_code() to anon, authenticated, service_role;
 
 -- [8.0] trg_members_norm_display_name:grant
-grant execute on function trg_members_norm_display_name() to anon, authenticated, service_role;
+grant execute on function public.trg_members_norm_display_name() to anon, authenticated, service_role;
 
 -- [8.0] trg_orders_set_no:grant
-grant execute on function trg_orders_set_no() to anon, authenticated, service_role;
+grant execute on function public.trg_orders_set_no() to anon, authenticated, service_role;
 
 -- [8.0] trg_orders_touch_member_visit:grant
-grant execute on function trg_orders_touch_member_visit() to anon, authenticated, service_role;
+grant execute on function public.trg_orders_touch_member_visit() to anon, authenticated, service_role;
+
+-- [8.0] trg_orders_upgrade_tier:grant
+grant execute on function public.trg_orders_upgrade_tier() to anon, authenticated, service_role;
+
+-- [8.0] trg_session_voided_release_queue:grant
+grant execute on function public.trg_session_voided_release_queue() to anon, authenticated, service_role;
 
 -- [8.0] trg_topup_set_no:grant
-grant execute on function trg_topup_set_no() to anon, authenticated, service_role;
+grant execute on function public.trg_topup_set_no() to anon, authenticated, service_role;
 
 -- [8.0] unblock_member_tx:grant
-grant execute on function unblock_member_tx(uuid,uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.unblock_member_tx(p_org_id uuid, p_blocker uuid, p_blocked uuid) to anon, authenticated, service_role;
 
 -- [8.0] unread_count_tx:grant
-grant execute on function unread_count_tx(uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.unread_count_tx(p_org_id uuid, p_member uuid) to anon, authenticated, service_role;
 
 -- [8.0] update_play_at_tx:grant
-grant execute on function update_play_at_tx(uuid,uuid,timestamp with time zone) to anon, authenticated, service_role;
+grant execute on function public.update_play_at_tx(p_org_id uuid, p_queue uuid, p_new_play_at timestamp with time zone) to anon, authenticated, service_role;
 
 -- [8.0] void_invoice_tx:grant
-grant execute on function void_invoice_tx(uuid,text,boolean,text) to anon, authenticated, service_role;
+grant execute on function public.void_invoice_tx(p_invoice_id uuid, p_reason text, p_reissue boolean, p_idempotency_key text) to service_role;
 
 -- [8.0] void_session_tx:grant
-grant execute on function void_session_tx(uuid,uuid) to anon, authenticated, service_role;
+grant execute on function public.void_session_tx(p_session_id uuid, p_staff_id uuid) to authenticated, service_role;
+
+-- [8.1] _charge_core:revoke-public
+revoke execute on function public._charge_core(p_member_id uuid, p_amount bigint, p_type txn_type, p_idempotency_key text, p_store_id uuid, p_served_store_id uuid, p_staff_id uuid, p_ref_table text, p_ref_id uuid, p_counter text) from public;
+
+-- [8.1] _member_orders_core:revoke-public
+revoke execute on function public._member_orders_core(p_member_id uuid, p_limit integer, p_before timestamp with time zone) from public;
+
+-- [8.1] admin_delete_product_tx:revoke-public
+revoke execute on function public.admin_delete_product_tx(p_id uuid) from public;
+
+-- [8.1] admin_list_member_tiers_tx:revoke-public
+revoke execute on function public.admin_list_member_tiers_tx() from public;
+
+-- [8.1] admin_list_products_tx:revoke-public
+revoke execute on function public.admin_list_products_tx() from public;
+
+-- [8.1] admin_remove_avatar_tx:revoke-public
+revoke execute on function public.admin_remove_avatar_tx(p_member_id uuid, p_reason text, p_block boolean) from public;
+
+-- [8.1] admin_search_sessions_tx:revoke-public
+revoke execute on function public.admin_search_sessions_tx(p_from timestamp with time zone, p_to timestamp with time zone, p_store uuid, p_table_q text, p_member_q text, p_limit integer, p_before timestamp with time zone, p_before_id uuid) from public;
+
+-- [8.1] admin_set_product_active_tx:revoke-public
+revoke execute on function public.admin_set_product_active_tx(p_id uuid, p_is_active boolean) from public;
+
+-- [8.1] admin_update_member_tier_tx:revoke-public
+revoke execute on function public.admin_update_member_tier_tx(p_code text, p_label text, p_discount_pct integer, p_threshold_amount bigint, p_is_active boolean) from public;
+
+-- [8.1] admin_upsert_product_tx:revoke-public
+revoke execute on function public.admin_upsert_product_tx(p_id uuid, p_sku text, p_name text, p_category text, p_subcategory text, p_revenue_type text, p_tracks_stock boolean, p_unit_price integer, p_unit_cost integer, p_stock_qty integer, p_is_active boolean, p_is_available boolean, p_spec text) from public;
+
+-- [8.1] apply_session_rounds_tx:revoke-public
+revoke execute on function public.apply_session_rounds_tx(p_session_id uuid, p_rounds jsonb) from public;
+
+-- [8.1] calc_session_fee_tx:revoke-public
+revoke execute on function public.calc_session_fee_tx(p_session_id uuid, p_join_type text, p_member_id uuid) from public;
+
+-- [8.1] calc_topup_bonus_tx:revoke-public
+revoke execute on function public.calc_topup_bonus_tx(p_org_id uuid, p_store_id uuid, p_amount_twd bigint) from public;
+
+-- [8.1] can:revoke-public
+revoke execute on function public.can(p_perm text) from public;
+
+-- [8.1] charge_fnb_tx:revoke-public
+revoke execute on function public.charge_fnb_tx(p_member_id uuid, p_order_id uuid, p_points bigint, p_idempotency_key text, p_store_id uuid) from public;
+
+-- [8.1] charge_matched_tx:revoke-public
+revoke execute on function public.charge_matched_tx(p_member_id uuid, p_session_id uuid, p_join_type text, p_idempotency_key text, p_store_id uuid, p_staff_id uuid) from public;
+
+-- [8.1] charge_private_tx:revoke-public
+revoke execute on function public.charge_private_tx(p_member_id uuid, p_session_id uuid, p_minutes integer, p_idempotency_key text, p_store_id uuid, p_staff_id uuid) from public;
+
+-- [8.1] check_session_blocks_tx:revoke-public
+revoke execute on function public.check_session_blocks_tx(p_session_id uuid, p_member_id uuid) from public;
+
+-- [8.1] checkout_tx:revoke-public
+revoke execute on function public.checkout_tx(p_member_id uuid, p_store_id uuid, p_items jsonb, p_coupon_ids uuid[], p_points_used bigint, p_payments jsonb, p_idempotency_key text, p_staff_id uuid) from public;
+
+-- [8.1] claim_member_by_phone_tx:revoke-public
+revoke execute on function public.claim_member_by_phone_tx(p_org_id uuid, p_phone text, p_line_user_id text, p_purpose text) from public;
+
+-- [8.1] cleanup_empty_sessions_tx:revoke-public
+revoke execute on function public.cleanup_empty_sessions_tx(p_idle_minutes integer) from public;
+
+-- [8.1] clear_avatar_photo_tx:revoke-public
+revoke execute on function public.clear_avatar_photo_tx(p_member_id uuid) from public;
+
+-- [8.1] current_season_tx:revoke-public
+revoke execute on function public.current_season_tx(p_org_id uuid) from public;
+
+-- [8.1] daily_wallet_audit_tx:revoke-public
+revoke execute on function public.daily_wallet_audit_tx(p_org_id uuid) from public;
+
+-- [8.1] dev_clear_my_queues_tx:revoke-public
+revoke execute on function public.dev_clear_my_queues_tx(p_org_id uuid, p_member uuid) from public;
+
+-- [8.1] dev_reset_test_data_tx:revoke-public
+revoke execute on function public.dev_reset_test_data_tx(p_reset_balance bigint) from public;
+
+-- [8.1] dev_set_test_balance_tx:revoke-public
+revoke execute on function public.dev_set_test_balance_tx(p_display_name text, p_balance bigint) from public;
+
+-- [8.1] fix_wallet_balance_tx:revoke-public
+revoke execute on function public.fix_wallet_balance_tx(p_org_id uuid, p_member_id uuid) from public;
+
+-- [8.1] generate_recurring_instances_tx:revoke-public
+revoke execute on function public.generate_recurring_instances_tx(p_org_id uuid, p_days_ahead integer) from public;
+
+-- [8.1] get_member_by_line_tx:revoke-public
+revoke execute on function public.get_member_by_line_tx(p_org_id uuid, p_line_user_id text) from public;
+
+-- [8.1] get_my_avatar_tx:revoke-public
+revoke execute on function public.get_my_avatar_tx(p_member_id uuid) from public;
+
+-- [8.1] get_season_leaderboard_tx:revoke-public
+revoke execute on function public.get_season_leaderboard_tx(p_org_id uuid, p_limit integer) from public;
+
+-- [8.1] get_session_member_orders_tx:revoke-public
+revoke execute on function public.get_session_member_orders_tx(p_session_id uuid, p_member_id uuid) from public;
+
+-- [8.1] get_staff_by_line_tx:revoke-public
+revoke execute on function public.get_staff_by_line_tx(p_org_id uuid, p_line_user_id text) from public;
+
+-- [8.1] grant_staff_tx:revoke-public
+revoke execute on function public.grant_staff_tx(p_member_id uuid, p_store_id uuid, p_role text, p_name text) from public;
+
+-- [8.1] has_daypass_tx:revoke-public
+revoke execute on function public.has_daypass_tx(p_org_id uuid, p_member_id uuid, p_store_id uuid) from public;
+
+-- [8.1] has_store_access:revoke-public
+revoke execute on function public.has_store_access(p_store_id uuid) from public;
+
+-- [8.1] join_session_tx:revoke-public
+revoke execute on function public.join_session_tx(p_session_id uuid, p_member_id uuid, p_join_type text, p_coupon_ids uuid[], p_points_used bigint, p_payments jsonb, p_staff_id uuid, p_idempotency_key text, p_pay_for uuid[], p_items jsonb) from public;
+
+-- [8.1] list_staff_tx:revoke-public
+revoke execute on function public.list_staff_tx(p_org_id uuid) from public;
+
+-- [8.1] member_opponents_tx:revoke-public
+revoke execute on function public.member_opponents_tx(p_member_id uuid) from public;
+
+-- [8.1] member_rank_tx:revoke-public
+revoke execute on function public.member_rank_tx(p_member_id uuid) from public;
+
+-- [8.1] member_tier_progress_tx:revoke-public
+revoke execute on function public.member_tier_progress_tx(p_member_id uuid, p_org_id uuid) from public;
+
+-- [8.1] migi_jwt_line_id:revoke-public
+revoke execute on function public.migi_jwt_line_id() from public;
+
+-- [8.1] migi_jwt_uuid:revoke-public
+revoke execute on function public.migi_jwt_uuid() from public;
+
+-- [8.1] migi_seat_is_live:revoke-public
+revoke execute on function public.migi_seat_is_live(p_session uuid) from public;
+
+-- [8.1] migi_slot_of:revoke-public
+revoke execute on function public.migi_slot_of(p_at timestamp with time zone) from public;
+
+-- [8.1] otp_consume_tx:revoke-public
+revoke execute on function public.otp_consume_tx(p_org_id uuid, p_phone text, p_line_user_id text, p_purpose text, p_member_id uuid) from public;
+
+-- [8.1] otp_request_tx:revoke-public
+revoke execute on function public.otp_request_tx(p_org_id uuid, p_phone text, p_purpose text, p_line_user_id text) from public;
+
+-- [8.1] otp_verify_tx:revoke-public
+revoke execute on function public.otp_verify_tx(p_org_id uuid, p_phone text, p_code text, p_purpose text) from public;
+
+-- [8.1] phone_in_use_tx:revoke-public
+revoke execute on function public.phone_in_use_tx(p_org_id uuid, p_phone text, p_line_user_id text) from public;
+
+-- [8.1] phone_recently_verified_tx:revoke-public
+revoke execute on function public.phone_recently_verified_tx(p_org_id uuid, p_phone text, p_line_user_id text, p_purpose text) from public;
+
+-- [8.1] placeholder_ranks_tx:revoke-public
+revoke execute on function public.placeholder_ranks_tx(p_session_id uuid) from public;
+
+-- [8.1] pos_add_member_note_tx:revoke-public
+revoke execute on function public.pos_add_member_note_tx(p_org_id uuid, p_member_id uuid, p_note text, p_staff_id uuid) from public;
+
+-- [8.1] pos_add_queue_member_tx:revoke-public
+revoke execute on function public.pos_add_queue_member_tx(p_org uuid, p_queue uuid, p_member uuid, p_staff uuid) from public;
+
+-- [8.1] pos_addon_checkout_tx:revoke-public
+revoke execute on function public.pos_addon_checkout_tx(p_session_id uuid, p_member_id uuid, p_items jsonb, p_coupon_ids uuid[], p_points_used bigint, p_payments jsonb, p_idempotency_key text, p_staff_id uuid) from public;
+
+-- [8.1] pos_checkout_with_topup_tx:revoke-public
+revoke execute on function public.pos_checkout_with_topup_tx(p_session_id uuid, p_member_id uuid, p_join_type text, p_items jsonb, p_coupon_ids uuid[], p_points_used bigint, p_payments jsonb, p_pay_for uuid[], p_staff_id uuid, p_idempotency_key text, p_topup_points bigint, p_topup_bonus bigint, p_topup_amount bigint, p_topup_method text, p_topup_cash_received bigint, p_topup_change_given bigint) from public;
+
+-- [8.1] pos_close_queue_tx:revoke-public
+revoke execute on function public.pos_close_queue_tx(p_org_id uuid, p_queue uuid) from public;
+
+-- [8.1] pos_create_queue_tx:revoke-public
+revoke execute on function public.pos_create_queue_tx(p_org_id uuid, p_store uuid, p_stake uuid, p_play_at timestamp with time zone, p_game_type text, p_flower text, p_rounds text, p_seats integer, p_tags jsonb) from public;
+
+-- [8.1] pos_create_recurring_tx:revoke-public
+revoke execute on function public.pos_create_recurring_tx(p_org_id uuid, p_store uuid, p_stake uuid, p_frequency text, p_weekday integer, p_start_time time without time zone, p_game_type text, p_flower text, p_rounds text, p_seats integer, p_lead_hours integer, p_tags jsonb) from public;
+
+-- [8.1] pos_list_queues_tx:revoke-public
+revoke execute on function public.pos_list_queues_tx(p_org uuid, p_store uuid, p_before timestamp with time zone, p_limit integer) from public;
+
+-- [8.1] pos_list_recurring_tx:revoke-public
+revoke execute on function public.pos_list_recurring_tx(p_org_id uuid, p_store uuid) from public;
+
+-- [8.1] pos_member_detail_tx:revoke-public
+revoke execute on function public.pos_member_detail_tx(p_org_id uuid, p_member_id uuid) from public;
+
+-- [8.1] pos_member_orders_tx:revoke-public
+revoke execute on function public.pos_member_orders_tx(p_member_id uuid, p_limit integer, p_before timestamp with time zone) from public;
+
+-- [8.1] pos_move_queue_member_tx:revoke-public
+revoke execute on function public.pos_move_queue_member_tx(p_org uuid, p_from_queue uuid, p_to_queue uuid, p_member uuid) from public;
+
+-- [8.1] pos_move_session_tx:revoke-public
+revoke execute on function public.pos_move_session_tx(p_session_id uuid, p_table_id uuid, p_staff_id uuid) from public;
+
+-- [8.1] pos_queue_members_tx:revoke-public
+revoke execute on function public.pos_queue_members_tx(p_org_id uuid, p_queue uuid) from public;
+
+-- [8.1] pos_quick_checkout_tx:revoke-public
+revoke execute on function public.pos_quick_checkout_tx(p_member_id uuid, p_store_id uuid, p_items jsonb, p_coupon_ids uuid[], p_points_used bigint, p_payments jsonb, p_idempotency_key text, p_staff_id uuid, p_topup_points bigint, p_topup_amount bigint, p_topup_method text, p_topup_cash_received bigint, p_topup_change_given bigint, p_note text) from public;
+
+-- [8.1] pos_remove_queue_member_tx:revoke-public
+revoke execute on function public.pos_remove_queue_member_tx(p_org uuid, p_queue uuid, p_member uuid, p_reason text) from public;
+
+-- [8.1] pos_search_members_tx:revoke-public
+revoke execute on function public.pos_search_members_tx(p_org_id uuid, p_keyword text) from public;
+
+-- [8.1] pos_seat_queue_tx:revoke-public
+revoke execute on function public.pos_seat_queue_tx(p_org_id uuid, p_queue uuid, p_table_id uuid, p_staff_id uuid) from public;
+
+-- [8.1] pos_set_recurring_enabled_tx:revoke-public
+revoke execute on function public.pos_set_recurring_enabled_tx(p_org_id uuid, p_id uuid, p_enabled boolean) from public;
+
+-- [8.1] pos_set_recurring_tags_tx:revoke-public
+revoke execute on function public.pos_set_recurring_tags_tx(p_org_id uuid, p_id uuid, p_tags jsonb) from public;
+
+-- [8.1] pos_table_forecast_tx:revoke-public
+revoke execute on function public.pos_table_forecast_tx(p_org uuid, p_store uuid, p_at timestamp with time zone) from public;
+
+-- [8.1] rating_window_start_tx:revoke-public
+revoke execute on function public.rating_window_start_tx(p_org_id uuid) from public;
+
+-- [8.1] rebind_line_user_tx:revoke-public
+revoke execute on function public.rebind_line_user_tx(p_member_id uuid, p_new_line_user_id text, p_reason text) from public;
+
+-- [8.1] recalc_member_tier_tx:revoke-public
+revoke execute on function public.recalc_member_tier_tx(p_member_id uuid) from public;
+
+-- [8.1] reconcile_wallets_tx:revoke-public
+revoke execute on function public.reconcile_wallets_tx(p_org_id uuid) from public;
+
+-- [8.1] register_member_tx:revoke-public
+revoke execute on function public.register_member_tx(p_org_id uuid, p_display_name text, p_phone text, p_line_user_id text, p_home_store_id uuid, p_created_by uuid) from public;
+
+-- [8.1] reset_season_ratings_tx:revoke-public
+revoke execute on function public.reset_season_ratings_tx(p_org_id uuid, p_season text, p_drop_tiers integer) from public;
+
+-- [8.1] reverse_txn_tx:revoke-public
+revoke execute on function public.reverse_txn_tx(p_original_txn_id uuid, p_idempotency_key text, p_reason text) from public;
+
+-- [8.1] revoke_staff_tx:revoke-public
+revoke execute on function public.revoke_staff_tx(p_staff_id uuid) from public;
+
+-- [8.1] season_rank_rows_tx:revoke-public
+revoke execute on function public.season_rank_rows_tx(p_org_id uuid, p_from timestamp with time zone, p_to timestamp with time zone) from public;
+
+-- [8.1] set_invoice_pref_tx:revoke-public
+revoke execute on function public.set_invoice_pref_tx(p_member_id uuid, p_type text, p_carrier text, p_donate_code text, p_tax_id text, p_title text) from public;
+
+-- [8.1] set_line_avatar_tx:revoke-public
+revoke execute on function public.set_line_avatar_tx(p_member_id uuid, p_url text) from public;
+
+-- [8.1] set_member_phone_tx:revoke-public
+revoke execute on function public.set_member_phone_tx(p_org_id uuid, p_line_user_id text, p_phone text) from public;
+
+-- [8.1] settle_session_tx:revoke-public
+revoke execute on function public.settle_session_tx(p_session_id uuid, p_staff_id uuid, p_keep_for_walkin boolean) from public;
+
+-- [8.1] sweep_auto_seat_tx:revoke-public
+revoke execute on function public.sweep_auto_seat_tx(p_org uuid) from public;
+
+-- [8.1] sweep_expired_queues_tx:revoke-public
+revoke execute on function public.sweep_expired_queues_tx(p_org_id uuid) from public;
+
+-- [8.1] topup_tx:revoke-public
+revoke execute on function public.topup_tx(p_member_id uuid, p_store_id uuid, p_points bigint, p_amount_twd bigint, p_pay_method text, p_idempotency_key text, p_bonus_points bigint, p_external_ref text, p_staff_id uuid, p_note text) from public;
+
+-- [8.1] topup_void_tx:revoke-public
+revoke execute on function public.topup_void_tx(p_topup_id uuid, p_idempotency_key text, p_staff_id uuid, p_reason text) from public;
+
+-- [8.1] void_invoice_tx:revoke-public
+revoke execute on function public.void_invoice_tx(p_invoice_id uuid, p_reason text, p_reissue boolean, p_idempotency_key text) from public;
+
+-- [8.1] void_session_tx:revoke-public
+revoke execute on function public.void_session_tx(p_session_id uuid, p_staff_id uuid) from public;
 
 -- [9.0] members_norm_display_name
 CREATE TRIGGER members_norm_display_name BEFORE INSERT OR UPDATE OF display_name ON public.members FOR EACH ROW EXECUTE FUNCTION trg_members_norm_display_name();
@@ -8004,6 +11871,9 @@ CREATE TRIGGER trg_orders_touch_visit AFTER INSERT ON public.orders FOR EACH ROW
 -- [9.0] trg_orders_updated
 CREATE TRIGGER trg_orders_updated BEFORE UPDATE ON public.orders FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
+-- [9.0] trg_orders_upgrade_tier
+CREATE TRIGGER trg_orders_upgrade_tier AFTER INSERT OR UPDATE OF status ON public.orders FOR EACH ROW WHEN (((new.status = 'paid'::text) AND (new.member_id IS NOT NULL))) EXECUTE FUNCTION trg_orders_upgrade_tier();
+
 -- [9.0] trg_orgs_updated
 CREATE TRIGGER trg_orgs_updated BEFORE UPDATE ON public.orgs FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
@@ -8021,6 +11891,9 @@ CREATE TRIGGER trg_products_org BEFORE UPDATE ON public.products FOR EACH ROW EX
 
 -- [9.0] trg_products_updated
 CREATE TRIGGER trg_products_updated BEFORE UPDATE ON public.products FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- [9.0] trg_session_voided_release_queue
+CREATE TRIGGER trg_session_voided_release_queue AFTER UPDATE OF status ON public.table_sessions FOR EACH ROW WHEN (((new.status = 'voided'::text) AND (old.status IS DISTINCT FROM 'voided'::text))) EXECUTE FUNCTION trg_session_voided_release_queue();
 
 -- [9.0] trg_sessions_is_test
 CREATE TRIGGER trg_sessions_is_test BEFORE INSERT ON public.table_sessions FOR EACH ROW EXECUTE FUNCTION set_is_test_from_store();
@@ -8690,6 +12563,9 @@ alter table orders enable row level security;
 -- [11.0] orgs
 alter table orgs enable row level security;
 
+-- [11.0] phone_otps
+alter table phone_otps enable row level security;
+
 -- [11.0] pricing_tiers
 alter table pricing_tiers enable row level security;
 
@@ -8702,8 +12578,26 @@ alter table products enable row level security;
 -- [11.0] queue_tags
 alter table queue_tags enable row level security;
 
+-- [11.0] rank_points
+alter table rank_points enable row level security;
+
+-- [11.0] rank_seasons
+alter table rank_seasons enable row level security;
+
+-- [11.0] rank_sub_levels
+alter table rank_sub_levels enable row level security;
+
+-- [11.0] rank_tiers
+alter table rank_tiers enable row level security;
+
 -- [11.0] recurring_tables
 alter table recurring_tables enable row level security;
+
+-- [11.0] season_champions
+alter table season_champions enable row level security;
+
+-- [11.0] season_standings
+alter table season_standings enable row level security;
 
 -- [11.0] session_players
 alter table session_players enable row level security;
@@ -8739,48 +12633,51 @@ alter table wallet_txns enable row level security;
 alter table wallets enable row level security;
 
 -- [12.0] bonus_rules.bonus_org
-create policy bonus_org on bonus_rules as PERMISSIVE for SELECT to public using ((org_id = current_org_id()));
+create policy bonus_org on bonus_rules as PERMISSIVE for SELECT to authenticated using (((org_id = current_org_id()) AND can('ops.read'::text)));
 
 -- [12.0] coupons.coupons_org
-create policy coupons_org on coupons as PERMISSIVE for SELECT to public using ((org_id = current_org_id()));
+create policy coupons_org on coupons as PERMISSIVE for SELECT to authenticated using (((org_id = current_org_id()) AND can('ops.read'::text)));
 
 -- [12.0] mahjong_buddies.buddies_org
-create policy buddies_org on mahjong_buddies as PERMISSIVE for SELECT to public using ((org_id = current_org_id()));
+create policy buddies_org on mahjong_buddies as PERMISSIVE for SELECT to authenticated using (((org_id = current_org_id()) AND can('member.read'::text)));
 
 -- [12.0] member_availability.avail_org
-create policy avail_org on member_availability as PERMISSIVE for SELECT to public using ((org_id = current_org_id()));
+create policy avail_org on member_availability as PERMISSIVE for SELECT to authenticated using (((org_id = current_org_id()) AND can('member.read'::text)));
 
 -- [12.0] member_coupons.mc_org
-create policy mc_org on member_coupons as PERMISSIVE for SELECT to public using ((org_id = current_org_id()));
+create policy mc_org on member_coupons as PERMISSIVE for SELECT to authenticated using (((org_id = current_org_id()) AND can('member.read'::text)));
 
 -- [12.0] member_interactions.interactions_org
-create policy interactions_org on member_interactions as PERMISSIVE for SELECT to public using ((org_id = current_org_id()));
+create policy interactions_org on member_interactions as PERMISSIVE for SELECT to authenticated using (((org_id = current_org_id()) AND can('member.read'::text)));
 
 -- [12.0] member_tiers.member_tiers_read
 create policy member_tiers_read on member_tiers as PERMISSIVE for SELECT to public using (true);
 
 -- [12.0] members.members_org
-create policy members_org on members as PERMISSIVE for SELECT to public using ((org_id = current_org_id()));
+create policy members_org on members as PERMISSIVE for SELECT to authenticated using (((org_id = current_org_id()) AND can('member.read'::text)));
 
 -- [12.0] order_items.oi_org
-create policy oi_org on order_items as PERMISSIVE for SELECT to public using ((EXISTS ( SELECT 1
+create policy oi_org on order_items as PERMISSIVE for SELECT to authenticated using (((EXISTS ( SELECT 1
    FROM orders o
-  WHERE ((o.id = order_items.order_id) AND (o.org_id = current_org_id())))));
+  WHERE ((o.id = order_items.order_id) AND (o.org_id = current_org_id())))) AND can('finance.read'::text)));
 
 -- [12.0] order_items.order_items_org
-create policy order_items_org on order_items as PERMISSIVE for ALL to authenticated using ((org_id = current_org_id())) with check ((org_id = current_org_id()));
+create policy order_items_org on order_items as PERMISSIVE for ALL to authenticated using (((org_id = current_org_id()) AND can('order.write'::text))) with check (((org_id = current_org_id()) AND can('order.write'::text)));
 
 -- [12.0] order_payments.order_payments_org
-create policy order_payments_org on order_payments as PERMISSIVE for ALL to authenticated using ((org_id = current_org_id())) with check ((org_id = current_org_id()));
+create policy order_payments_org on order_payments as PERMISSIVE for ALL to authenticated using (((org_id = current_org_id()) AND can('order.write'::text))) with check (((org_id = current_org_id()) AND can('order.write'::text)));
+
+-- [12.0] order_payments.order_payments_read_org
+create policy order_payments_read_org on order_payments as PERMISSIVE for SELECT to authenticated using (((org_id = current_org_id()) AND can('finance.read'::text)));
 
 -- [12.0] orders.orders_org
-create policy orders_org on orders as PERMISSIVE for SELECT to public using ((org_id = current_org_id()));
+create policy orders_org on orders as PERMISSIVE for SELECT to authenticated using (((org_id = current_org_id()) AND can('finance.read'::text)));
 
 -- [12.0] orgs.org_self
 create policy org_self on orgs as PERMISSIVE for SELECT to public using ((id = current_org_id()));
 
 -- [12.0] pricing_tiers.pricing_org
-create policy pricing_org on pricing_tiers as PERMISSIVE for SELECT to public using ((org_id = current_org_id()));
+create policy pricing_org on pricing_tiers as PERMISSIVE for SELECT to authenticated using (((org_id = current_org_id()) AND can('ops.read'::text)));
 
 -- [12.0] product_taxonomy.product_taxonomy_read
 create policy product_taxonomy_read on product_taxonomy as PERMISSIVE for SELECT to public using (true);
@@ -8789,16 +12686,16 @@ create policy product_taxonomy_read on product_taxonomy as PERMISSIVE for SELECT
 create policy products_org on products as PERMISSIVE for SELECT to public using ((org_id = current_org_id()));
 
 -- [12.0] products.products_org_write
-create policy products_org_write on products as PERMISSIVE for ALL to public using ((org_id = current_org_id())) with check ((org_id = current_org_id()));
+create policy products_org_write on products as PERMISSIVE for ALL to authenticated using (((org_id = current_org_id()) AND can('product.write'::text))) with check (((org_id = current_org_id()) AND can('product.write'::text)));
 
 -- [12.0] queue_tags.queue_tags_read
 create policy queue_tags_read on queue_tags as PERMISSIVE for SELECT to public using (true);
 
 -- [12.0] session_players.sp_org
-create policy sp_org on session_players as PERMISSIVE for SELECT to public using ((org_id = current_org_id()));
+create policy sp_org on session_players as PERMISSIVE for SELECT to authenticated using (((org_id = current_org_id()) AND can('ops.read'::text)));
 
 -- [12.0] staff.staff_org
-create policy staff_org on staff as PERMISSIVE for SELECT to public using ((org_id = current_org_id()));
+create policy staff_org on staff as PERMISSIVE for SELECT to authenticated using (((org_id = current_org_id()) AND can('ops.read'::text)));
 
 -- [12.0] stake_levels.stake_org
 create policy stake_org on stake_levels as PERMISSIVE for SELECT to public using ((org_id = current_org_id()));
@@ -8807,20 +12704,19 @@ create policy stake_org on stake_levels as PERMISSIVE for SELECT to public using
 create policy stores_org on stores as PERMISSIVE for SELECT to public using ((org_id = current_org_id()));
 
 -- [12.0] table_sessions.sessions_org
-create policy sessions_org on table_sessions as PERMISSIVE for SELECT to public using ((org_id = current_org_id()));
+create policy sessions_org on table_sessions as PERMISSIVE for SELECT to authenticated using (((org_id = current_org_id()) AND can('ops.read'::text)));
 
 -- [12.0] tables.tables_org
 create policy tables_org on tables as PERMISSIVE for SELECT to public using ((org_id = current_org_id()));
 
 -- [12.0] topup_orders.topup_org
-create policy topup_org on topup_orders as PERMISSIVE for SELECT to public using ((org_id = current_org_id()));
+create policy topup_org on topup_orders as PERMISSIVE for SELECT to authenticated using (((org_id = current_org_id()) AND can('finance.read'::text)));
 
 -- [12.0] topup_plans.topup_plans_read
 create policy topup_plans_read on topup_plans as PERMISSIVE for SELECT to public using (true);
 
 -- [12.0] wallet_txns.txns_org
-create policy txns_org on wallet_txns as PERMISSIVE for SELECT to public using ((org_id = current_org_id()));
+create policy txns_org on wallet_txns as PERMISSIVE for SELECT to authenticated using (((org_id = current_org_id()) AND can('finance.read'::text)));
 
 -- [12.0] wallets.wallets_org
-create policy wallets_org on wallets as PERMISSIVE for SELECT to public using ((org_id = current_org_id()));
-
+create policy wallets_org on wallets as PERMISSIVE for SELECT to authenticated using (((org_id = current_org_id()) AND can('finance.read'::text)));

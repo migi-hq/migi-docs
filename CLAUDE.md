@@ -134,12 +134,23 @@ migi github/           ← Claude Code 的 project folder 選這層
    ⚠ **baseline 不取代 `applied/`** —— 那是歷史，記著「**為什麼**」；
      baseline 回答「**現在長什麼樣**」。**兩份都要。**
 
-   **產生方式**：`sql/checks/匯出完整結構baseline.sql`
-   （常駐工具，檔名沒有日期）→ Supabase SQL Editor 執行 → 匯出 CSV
-   → 用 Python 轉成 `.sql` 放進 `sql/_baseline/`。
-   🔴 **不要貼進對話** —— 347 KB 會把上下文吃光，而那份是給**人**看的不是給我看的。
+   **產生方式**（三步，2026-09-11 走過一次）：
+   ```
+   ① Supabase SQL Editor 執行 sql/checks/匯出完整結構baseline.sql（常駐工具，檔名沒有日期）
+   ② 右上角**下載 CSV**
+   ③ python "docs/_資產/baseline_csv2sql.py" <下載的.csv>
+   ```
+   🔴 **不要全選複製，要下載 CSV** —— DDL 裡有換行、逗號、單雙引號，
+     貼上會把欄位分隔弄壞，而**產出的東西看起來還是像一份 SQL**。
+   🔴 **不要貼進對話** —— 536 KB 會把上下文吃光，而那份是給**人**看的不是給我看的。
+     ⚠ 2026-09-11 真的發生了一次（整份貼進來）。轉檔仍然需要那個**檔案**。
+   ✅ **`docs/_資產/baseline_csv2sql.py` 2026-09-11 補上** ——
+     在此之前這一節寫著「用 Python 轉」而**那支 Python 根本不存在**
+     （08-29 那次是即席寫的沒留檔）。同 `jsxcomment.py` 那個坑：
+     **文件裡「我們有一個工具」跟真的有，長得一模一樣。**
+     📌 檔頭的產生日期與 `applied` 檔案數**由腳本自己算**，不靠人記得改。
 
-   目前：`2026-08-29_完整結構.sql`（761 個物件、347 KB）
+   目前：`2026-09-11_完整結構.sql`（989 段 DDL、536 KB）
    涵蓋 12 段：擴充套件／列舉型別／資料表／約束／外鍵／索引／
    函式／**函式授權**／觸發器／檢視表／啟用 RLS／RLS policy。
    ⚠ **不含**：種子資料、Storage bucket 與 policy、pg_cron 排程、
@@ -147,6 +158,22 @@ migi github/           ← Claude Code 的 project folder 選這層
 
    📌 **順帶證明了文件會漂**：CLAUDE.md 記「135 支函式」實際 **138**；
      待辦 21 記「24 條 org 級 policy」實際 **28**。
+
+   ### 🎯 2026-09-11 第二次跑，它抓到一個沒有症狀的東西
+   **四支 `v_real_*` 漏掉了後來新增的欄位**：
+   ```
+   v_real_order_items      缺 spec                                    （09-10 加的）
+   v_real_session_players  缺 final_score / rating_after              （09-06 / 08-31）
+   v_real_members          缺 avatar_bear / phone_verified_at / rating / rating_games
+   v_real_match_queues     缺 auto_seat                               （09-06）
+   ```
+   🔴 那些檢視表是**報表唯一該查的東西**，而欄位是寫死的清單 ——
+     底層表加欄位不會跟著進去，**查詢不報錯**，
+     寫報表的人只會得到「這個系統沒有這筆資料」的結論。
+   📌 最貼近的例子就是同一天做的那批：進銷存要算「每項每天賣幾份」
+     （《首店餐飲籌備》拿它決定冷凍櫃買幾台），而那一欄查不到。
+   ⚠ **改用 `select x.*` 也不會自動跟上** —— Postgres 建立當下就展開了。
+     ⇒ 正解是**檢查**不是寫法，所以同一批加進錯誤儀表。
 
    **1.7 讓過期看得見，不要靠記性。**
    快照檔頭記兩個數字：產生時間、**當時 `sql/applied/` 的檔案數與最後一個檔名**。

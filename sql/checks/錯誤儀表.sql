@@ -171,7 +171,7 @@ select 序, 項目, 內容 from (
           **四個數字一個都沒動** —— 而那是一次真正的安全性變更。
           → 所以第 ⑦ 段數的是**授權**：明確授權 anon 的支數，
             以及「只靠 PUBLIC 進來」的支數（**那個應該永遠是 0**）。 */
-  select 6, '⑥ 結構物件數 vs baseline（2026-09-05：表46 函式169 索引85 policy29 帶can20）',
+  select 6, '⑥ 結構物件數 vs baseline（2026-09-11：表46 函式185 索引85 policy29 帶can20）',
          (select '表 ' || (select count(*)::text from pg_class c
                             join pg_namespace n on n.oid=c.relnamespace
                            where n.nspname='public' and c.relkind='r')
@@ -203,7 +203,7 @@ select 序, 項目, 內容 from (
                              join pg_namespace n on n.oid=c.relnamespace
                             where n.nspname='public' and c.relkind='r') = 46
                        and (select count(*) from pg_proc p
-                             where p.pronamespace='public'::regnamespace and p.prokind='f') = 169
+                             where p.pronamespace='public'::regnamespace and p.prokind='f') = 185
                        and (select count(*) from pg_policies where schemaname='public') = 29
                       then E'\n  ✅ 與 baseline 相同'
                       else E'\n  ⚠ 與 baseline 不同 —— 重跑 sql/checks/匯出完整結構baseline.sql'
@@ -218,14 +218,25 @@ select 序, 項目, 內容 from (
         ⚠ 「只靠 PUBLIC」那個數字**應該永遠是 0** ——
           不是 0 就代表有人新建了函式而沒有明確決定它的授權範圍，
           **而新函式預設是 PUBLIC 可執行**（＝任何人叫得動）。 */
-  select 7, '⑦ 函式授權 vs baseline（2026-09-04：明確 anon 129、只靠 PUBLIC 0）',
+  /* 🔴 **2026-09-11：期望值從 129 改成 95，而那個減少是刻意的。**
+        09-05～09-09 之間有 **41 處 `revoke execute … from anon`**，
+        散在 15 個檔案裡（檔名就寫著「收掉 anon」／「pos 函式全面收掉 anon」／
+        「營運函式收掉 anon」）。同一段時間函式從 169 增到 185。
+     🎯 **所以這個數字的兩個方向意思完全不同**：
+       · **變少** ＝ 有人收緊了 ⇒ 提醒一下就好
+       · **變多** ＝ 有人把函式開放給前端 ⇒ 那是**要逐支確認的事**
+     ⚠ 舊版寫 `<> 129` 一律警告 —— 而「收緊之後永遠紅」正是
+       這個專案記過三次的病（永遠紅的檢查會訓練人忽略紅色）。 */
+  select 7, '⑦ 函式授權 vs baseline（2026-09-11：明確 anon 95、只靠 PUBLIC 0）',
          (select '明確授權 anon ' || count(*) filter (where anon明確)::text
               || '　只靠 PUBLIC ' || count(*) filter (where public有 and not anon明確)::text
               || '　兩者都沒有 ' || count(*) filter (where not anon明確 and not public有)::text
               || case when count(*) filter (where public有 and not anon明確) > 0
                       then E'\n  🔴 有函式只靠 PUBLIC 進來 —— 那不是決定，是預設值。逐支確認要不要給 anon'
-                      when count(*) filter (where anon明確) <> 129
-                      then E'\n  ⚠ 明確授權的支數變了 —— 重跑 sql/checks/匯出完整結構baseline.sql'
+                      when count(*) filter (where anon明確) > 95
+                      then E'\n  🔴 明確授權 anon 的支數**變多了** —— 有人把函式開放給前端，逐支確認'
+                      when count(*) filter (where anon明確) < 95
+                      then E'\n  ⚠ 比 baseline 少（有人收緊了，方向是對的）—— 重跑匯出把基準對上'
                       else E'\n  ✅ 與 baseline 相同' end
             from (select
                     exists (select 1 from aclexplode(coalesce(p.proacl,'{}')) a
@@ -428,6 +439,40 @@ select 序, 項目, 內容 from (
          || E'\n  最後一次：'
          || coalesce((select to_char(max(created_at) at time zone 'Asia/Taipei', 'MM-DD HH24:MI')
                         from app_events where event = 'member_session'), '（從來沒有）')
+
+  union all
+  /* ⑫ 報表用的檢視表有沒有漏欄位（2026-09-11 加，由 baseline 抓到）。
+        🔴 `v_real_*` 是**報表唯一該查的東西**（直接查原表會把測試資料
+          算進營運數據且不報錯），而它們的欄位是**寫死的清單** ——
+          底層表加一欄不會跟著進去。
+        ⚠ 症狀是零：查詢不報錯，只是那一欄不存在，
+          而寫報表的人得到的結論是「這個系統沒有這筆資料」。
+        📌 2026-09-11 第一次跑就抓到四支：`v_real_order_items` 缺 `spec`
+          （而進銷存正要用它算「每項每天賣幾份」）、
+          `v_real_session_players` 缺 `final_score`、
+          `v_real_members` 缺 `rating`、`v_real_match_queues` 缺 `auto_seat`。
+        ⚠ **改成 `select x.*` 也不會自動跟上** —— Postgres 建立當下就展開了。
+          所以這一格不是提醒，它是這件事唯一會被發現的方式。 */
+  select 12, '⑫ v_real_* 有沒有漏掉底層表的欄位（漏了不會報錯）',
+         coalesce((
+           select string_agg(z.vname || '：' || z.cols, E'\n  ' order by z.vname)
+             from (
+               select v.table_name as vname,
+                      string_agg(distinct t.column_name, ' · ') as cols
+                 from information_schema.columns v
+                 join information_schema.columns t
+                   on t.table_schema = 'public'
+                  and t.table_name   = replace(v.table_name, 'v_real_', '')
+                where v.table_schema = 'public'
+                  and v.table_name like 'v\_real\_%'
+                  and not exists (
+                    select 1 from information_schema.columns v2
+                     where v2.table_schema = 'public'
+                       and v2.table_name  = v.table_name
+                       and v2.column_name = t.column_name)
+                group by v.table_name
+             ) z),
+           '✅ 12 支都沒有漏（底層表加欄位時這一格會自己變紅）')
 
   union all
   select 5, '⑤ 測試標記（修好前的歷史資料仍標成營運）',
