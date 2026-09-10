@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>品項單位 · 定案</title>
+<!--
+  2026-09-10 定案（使用者選 C，並指定副行只印規格）。
+
+  🔴 卡片與購物車列是從 migi-pos/src/OpenCheckoutPage.jsx 逐項抄的
+    （S.item / S.itemNm / S.itemPr / S.plus /
+     S.lineitem / S.lineNm / S.lineUnit / S.lineAmt / S.stepBtn），
+    token 值取自 @migi/assets v1.10.0。自己編一套差不多的畫面，
+    挑出來的答案套回真畫面就不成立（硬規則 3.85）。
+
+  ⚠ 這一頁原本是三案並排。使用者選 C 之後改成定案版 ——
+    三案的比較過程留在 git 歷史（commit 984bb9e），要看再撈。
+-->
+<style>
+  :root{
+    --brand:#FAD6DC; --brand-tint:#FFECF1; --ink:#2E2B2C;
+    --accent:#C2607A; --accent-deep:#974B5F;
+    --gray-1:#5C5754; --gray-2:#726D69; --hint:#B4AEA9;
+    --gray-3:#ECEAE9; --gray-4:#F2F0EE; --divider:#DED9D5;
+    --white:#FFFFFF; --field-bg:#F8F7F6;
+    --r-pill:999px; --r-card:14px; --r-sm:8px;
+    --xxxs:11px; --xxs:12px; --xs:13px; --s:14px; --m:15px; --l:16px; --xl:18px;
+    --bw-base:1px; --bw-thick:1.5px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:28px 22px 60px;background:#F7F5F3;color:var(--ink);
+       font-family:"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;line-height:1.65}
+  .wrap{max-width:940px;margin:0 auto}
+  h1{font-size:23px;margin:0 0 4px}
+  .sub{color:var(--gray-1);font-size:var(--s);margin:0 0 24px}
+
+  .panel{background:var(--white);border:var(--bw-base) solid var(--divider);
+         border-radius:var(--r-card);padding:18px 20px;margin:0 0 18px}
+  .panel h2{font-size:var(--l);margin:0 0 14px}
+  .lbl{font-size:var(--xxxs);font-weight:800;color:var(--gray-2);
+       letter-spacing:.4px;margin:18px 0 8px}
+  .lbl:first-of-type{margin-top:0}
+  code{background:var(--gray-4);padding:1px 6px;border-radius:5px;
+       font-family:"Cascadia Mono",Consolas,monospace;font-size:12.5px}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;margin:10px 0 0}
+  th,td{border:var(--bw-base) solid var(--divider);padding:8px 11px;text-align:left;vertical-align:top}
+  th{background:var(--gray-4);font-weight:800}
+
+  /* ── 逐項對照 OpenCheckoutPage.jsx 的 S.* ─────────────── */
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;max-width:620px}
+  .item{position:relative;border:var(--bw-thick) solid var(--gray-3);background:var(--white);
+        border-radius:var(--r-card);padding:13px;cursor:pointer;min-height:78px}
+  .itemNm{font-size:var(--xs);font-weight:700;padding-right:30px}
+  .itemPr{font-size:var(--s);font-weight:800;margin-top:6px;font-family:"Segoe UI",sans-serif}
+  .plus{position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;
+        background:var(--gray-4);color:var(--gray-1);display:flex;align-items:center;
+        justify-content:center;font-size:var(--m);font-weight:700}
+  .spec{font-size:11.5px;color:var(--gray-2);margin-top:3px}
+
+  .cart{max-width:420px;border:var(--bw-base) solid var(--divider);
+        border-radius:var(--r-card);padding:4px 16px;background:var(--white)}
+  .lineitem{display:flex;align-items:center;gap:10px;padding:10px 0}
+  .lineitem + .lineitem{border-top:var(--bw-base) solid var(--gray-4)}
+  .lineNm{font-size:var(--xl);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lineUnit{font-size:11.5px;color:var(--gray-2);margin-top:1px}
+  .lineAmt{width:62px;text-align:right;font-size:var(--xl);font-weight:800;
+           font-family:"Segoe UI",sans-serif;flex-shrink:0}
+  .stepBtn{width:26px;height:26px;border-radius:50%;border:none;background:transparent;
+           color:var(--gray-1);font-size:var(--xl);font-weight:700;line-height:1;
+           display:inline-flex;align-items:center;justify-content:center;
+           font-family:"Segoe UI",Arial,sans-serif;padding:0}
+  .qn{font-weight:800;min-width:34px;text-align:center;white-space:nowrap}
+  .tile{width:26px;height:26px;border-radius:var(--r-sm);background:var(--brand);
+        display:flex;align-items:center;justify-content:center;font-size:var(--xxxs);
+        font-weight:800;flex-shrink:0}
+  .cap{font-size:12.5px;color:var(--gray-1);margin:7px 0 0;max-width:620px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>品項單位 · 定案</h1>
+<p class="sub">副行只印規格。卡片與購物車列從 <code>OpenCheckoutPage.jsx</code> 逐項抄，token 取自 v1.10.0。</p>
+
+<div class="panel">
+  <h2>商品卡</h2>
+  <div class="cards">
+    <div class="item">
+      <div class="plus">＋</div>
+      <div class="itemNm">水餃</div>
+      <div class="spec">10 顆／份</div>
+      <div class="itemPr">80 點</div>
+    </div>
+    <div class="item">
+      <div class="plus">＋</div>
+      <div class="itemNm">雞塊</div>
+      <div class="spec">6 個／份</div>
+      <div class="itemPr">50 點</div>
+    </div>
+    <div class="item">
+      <div class="plus">＋</div>
+      <div class="itemNm">厚片</div>
+      <div class="itemPr">60 點</div>
+    </div>
+  </div>
+  <p class="cap">厚片沒有規格 ⇒ <b>整行不畫</b>，不留空位也不寫「1 份／份」。</p>
+</div>
+
+<div class="panel">
+  <h2>購物車</h2>
+  <div class="cart">
+    <div class="lineitem">
+      <div class="tile">餐</div>
+      <div style="flex:1;min-width:0">
+        <div class="lineNm">水餃</div>
+        <div class="lineUnit">10 顆／份</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button class="stepBtn">-</button><span class="qn">1 份</span><button class="stepBtn">+</button>
+      </div>
+      <div class="lineAmt">$80</div>
+    </div>
+
+    <div class="lineitem">
+      <div class="tile">餐</div>
+      <div style="flex:1;min-width:0">
+        <div class="lineNm">雞塊</div>
+        <div class="lineUnit">6 個／份</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button class="stepBtn">-</button><span class="qn">2 份</span><button class="stepBtn">+</button>
+      </div>
+      <div class="lineAmt">$100</div>
+    </div>
+
+    <div class="lineitem">
+      <div class="tile">餐</div>
+      <div style="flex:1;min-width:0">
+        <div class="lineNm">厚片</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button class="stepBtn">-</button><span class="qn">1 份</span><button class="stepBtn">+</button>
+      </div>
+      <div class="lineAmt">$60</div>
+    </div>
+  </div>
+  <p class="cap">
+    規格<b>永遠顯示</b>，不再只在數量大於 1 時出現。<br>
+    數量帶單位詞（<b>2 份</b>），所以「客人要六個」按兩次不會看成兩個。
+  </p>
+</div>
+
+<div class="panel">
+  <h2>要改什麼</h2>
+  <table>
+    <tr><th></th><th>改動</th></tr>
+    <tr>
+      <td><b>資料庫</b></td>
+      <td><code>products</code> 加兩欄：<code>unit</code>（份／杯／個，預設「份」）、
+          <code>spec</code>（<code>10 顆／份</code>，可空）。九筆商品回填一次。</td>
+    </tr>
+    <tr>
+      <td><b>後端</b></td>
+      <td><code>list_products_tx</code> 與 <code>admin_*_product_tx</code> 多回／多收這兩欄。</td>
+    </tr>
+    <tr>
+      <td><b>POS</b></td>
+      <td>卡片多一行 <code>spec</code>；購物車那行 <code>S.lineUnit</code> 改印 <code>spec</code>
+          並拿掉 <code>qty &gt; 1</code> 的條件；數量後面接 <code>unit</code>。</td>
+    </tr>
+    <tr>
+      <td><b>後台</b></td>
+      <td><code>Products.jsx</code> 商品編輯多兩格。</td>
+    </tr>
+    <tr>
+      <td>🔴 <b>不動</b></td>
+      <td>檯費那七支（<code>配桌檯費 · 3 將</code> 這一類）。它們是變體不是規格，
+          不同 SKU 不同價，寫在名字裡是對的。</td>
+    </tr>
+  </table>
+  <p class="cap" style="margin-top:12px">
+    📌 <code>水餃（10 顆／份）</code> 的品名同時要改成 <code>水餃</code> ——
+    規格搬進 <code>spec</code> 之後留在名字裡就是兩份。
+  </p>
+</div>
+
+</div>
+</body>
+</html>
