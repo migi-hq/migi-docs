@@ -2858,6 +2858,56 @@ settled_at 09-03 15:18   ← 8 場全部同一個時間點
     - 順帶：JWT 之後 `rebind_line_user_tx` 等於「改身分」，需要授權控制。
 
 14. 🔴 **會員端沒有真正的身分：LIFF 換 JWT** —— 三件事同一個根，**必須一起解**。
+
+    ### 📊 2026-09-11 盤點：進度比這一條記的前面很多
+    ```
+    簽名含 p_member_id 的函式        53 支
+      ✅ 已改 JWT 優先                22（全部只有 anon 叫得動 ＝ 會員 App 的路徑）
+      🟡 信前端但 anon 叫不動         30（POS／後端，指定客人是設計上必要的）
+      🔴 anon 叫得動又信前端           1 → **已修**（見下）
+    ```
+    | 探針 | 現況 |
+    |---|---|
+    | `member_session` env=liff | **ok 40**、whoami_failed 5、最後 09-09 17:05 |
+    | `member_session` env=ext | no_login 56（本機 dev，**不算失敗**）、ok 1 |
+    | `member_id_src` | jwt 12 · **param 6** · **jwt_override 0** ✅ |
+
+    🎯 **`jwt_override` 是 0** —— 那個值代表「有 session 卻拿別人的 id 查」，
+      它永遠應該是 0，而它是 0。
+    🔴 **但 `param` 還沒歸零 ⇒ 退回還不能拿掉**
+      （`analytics.js` 的註解：收掉 anon 之前要等 param 歸零）。
+    ⚠ **那 5 筆 `whoami_failed` 全在 09-09 14:40–14:59 的 19 分鐘窗口**（prod、nth=1），
+      而同日 17:05 有 ok。**09-10 與 09-11 完全沒有 liff 樣本** ⇒
+      「現在還會不會發生」今天答不出來，要有人在 LINE 裡開一次 App。
+
+    ### ✅ 收掉最後一支「anon 又信前端」的函式（`log_app_event_tx`）
+    `sql/applied/2026-09-11_埋點的會員身分以JWT為準.sql`（6/6）
+    ＋ `sql/checks/2026-09-11_驗埋點身分不會蓋錯人.sql`（行為 4/4）
+
+    🔴 **不可以照抄那 22 支的 `coalesce(current_member_id(), p_member_id)`：**
+    ```
+    POS 的埋點            p_member_id 一律是 null
+    店員登入之後           POS 也有 JWT，而**店員本身是會員**
+    current_member_id()   → 回店員自己的 member_id
+    ⇒ 無條件 coalesce ＝ 每一筆 pos_error 掛到店長帳號上，
+      而且跟著他的 is_test 被標成測試
+    ```
+    ⚠ 而 `app_events` 有 `trg_app_events_no_mutate`（UPDATE 與 DELETE 都擋）
+      ⇒ **蓋錯了永遠改不掉**。
+    ✅ 正解：**只在前端真的送了值時才覆寫** ——
+      `null` 在這一支是有意義的值（「這件事沒有會員」），不是「沒填」。
+    📌 驗證段第 ⑤ 格是**結構性的掃描**不是清單：
+      「anon 叫得動又信前端 member_id」的函式現在是 **0 支**，
+      下一支出現時它會自己變紅。
+
+    ### 🔴 `member_id_src` 原本答不出自己的問題（同日修）
+    它是「還能不能拿掉退回」的判準，而它**沒帶 host**
+    ⇒ 那 6 筆 `param` 分不出是本機還是正式站。
+    🎯 而隔壁的 `member_session` 探針**早就帶了**，它的註解甚至寫著
+      「第三條需要 `host` 才分得出本機」—— **同一個教訓沒有套到第二個探針上**。
+    ✅ `hostKind()` 抽到 `analytics.js`，兩個探針共用（`migi-web` 7384efd）。
+      ⚠ 抽出來的理由**不是共用，是同一個分類不可以有兩份**。
+
     🚧 **開工前先看待辦 21 的「阻擋條件」五項** ——
     那不是建議，是「沒做完就不能開 JWT」。開了之後洞是敞開的。
     現況：`migi-web` 用 anon key，會員身分靠**前端傳 `p_member_id`**，

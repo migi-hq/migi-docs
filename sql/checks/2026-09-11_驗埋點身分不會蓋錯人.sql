@@ -40,6 +40,14 @@ declare
   v_a    uuid; v_a_line text;   -- 有 LINE 的會員（拿來當 JWT 身分）
   v_b    uuid;                  -- 另一個會員（拿來當「前端送別人的」）
   v_got  uuid;
+  /* 🔴 2026-09-11 踩到：第 ⑤ 格原本把 `count(*)` 塞進 `v_got`（uuid）
+     ⇒ `invalid input syntax for type uuid: "4"`。
+     ⚠ **函式完全正確，錯的是這支腳本** —— 同硬規則 3.56 那一族：
+       紅的那一刻先懷疑儀器，不要去改一個本來就對的東西。
+     🎯 而它也證明了下面那個 handler 的設計是對的：**區分「刻意回滾」與
+       「真的出錯」**，所以四格結果都留了下來。一律吞掉的話，
+       看到的會是一份看不出哪裡壞的報告。 */
+  v_n    int;
   v_ev   text := '_probe_id_overwrite';   -- ⚠ 底線開頭會被 CHECK 擋，見下
 begin
   begin
@@ -113,8 +121,8 @@ begin
       else '④ 🔴 被掛到 ' || v_got || ' 身上了 —— 而 app_events 改不掉' end;
 
     /* ── ⑤ 順帶確認測試旗標仍然照原本的規則推 ────────── */
-    select count(*) into v_got from app_events where event = v_ev;
-    v_msg := v_msg || E'\n⑤ ⚪ 這一輪造了 ' || v_got || ' 筆探針事件（等一下全部回滾）';
+    select count(*) into v_n from app_events where event = v_ev;
+    v_msg := v_msg || E'\n⑤ ⚪ 這一輪造了 ' || v_n || ' 筆探針事件（等一下全部回滾）';
 
     raise exception 'migi_rollback';
 
