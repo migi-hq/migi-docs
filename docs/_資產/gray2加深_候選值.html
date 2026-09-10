@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>--gray-2 要不要加深：三個候選值</title>
+<!-- 2026-09-10。起因：對比掃描器掃過會員 App 五頁，47 處文字未達 4.5，
+     而其中絕大多數是同一個 --gray-2 #88827E。
+
+     🔴 這一頁的重點不是「哪個比較好看」，是**同一句話在四種底色上讀不讀得到**。
+       所以每一格都用**真的文案、真的字級、真的底色** ——
+       換成 Lorem 或統一字級就看不出差別了（小字才是問題所在）。
+
+     ⚠ 對比數字全部是算出來的不是估的，算式與掃描器同一份（WCAG 相對亮度）。 -->
+<style>
+  :root{
+    --now:#88827E; --a:#7A7571; --b:#76716D; --c:#726D69;
+    --ink:#2E2B2C; --gray1:#5C5754; --hint:#B4AEA9;
+    --white:#FFFFFF; --paper:#F8F7F6; --field:#F2F0EE; --tint:#FFF6F8;
+  }
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:-apple-system,"Noto Sans TC","PingFang TC",sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 20px 60px}
+  h1{font-size:22px;margin:0 0 6px}
+  .lead{font-size:14px;color:var(--gray1);line-height:1.9;margin:0 0 22px}
+  h2{font-size:16px;margin:34px 0 10px}
+  table{border-collapse:collapse;width:100%;font-size:13px;background:var(--white);
+    border-radius:12px;overflow:hidden}
+  th,td{padding:9px 12px;text-align:left;border-bottom:1px solid #ECEAE9}
+  th{background:#F4F2F1;font-weight:700}
+  td.n{font-variant-numeric:tabular-nums;text-align:right}
+  .ok{color:#1E7A46;font-weight:700}
+  .no{color:#B3261E;font-weight:700}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .col{background:var(--white);border-radius:14px;overflow:hidden;border:1px solid #E4E1DF}
+  .colhd{padding:10px 12px;border-bottom:1px solid #ECEAE9}
+  .colhd b{font-size:14px}
+  .colhd span{display:block;font-size:11px;color:var(--gray1);margin-top:2px;
+    font-variant-numeric:tabular-nums}
+  .band{padding:12px}
+  .band + .band{border-top:1px solid #ECEAE9}
+  .bandname{font-size:10px;font-weight:700;letter-spacing:.5px;color:var(--hint);
+    margin:0 0 7px}
+  .s11{font-size:11px}.s12{font-size:12px}.s13{font-size:13px}.s14{font-size:14px}
+  .row{margin:0 0 6px;line-height:1.65}
+  .row:last-child{margin-bottom:0}
+  .sw{display:flex;height:26px;border-radius:8px;overflow:hidden;margin:8px 0 0}
+  .sw i{flex:1}
+  .note{font-size:12.5px;color:var(--gray1);line-height:1.95;margin:10px 0 0}
+  .warn{background:#FFF6F8;border:1px solid #FAD6DC;border-radius:12px;
+    padding:12px 14px;font-size:13px;line-height:1.95;margin:14px 0 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>次要文字灰要不要加深</h1>
+<p class="lead">
+  現在的 <code>--gray-2</code> 是 <b>#88827E</b>，對白底 3.79，而一般大小的文字門檻是 4.5。
+  它在會員 App 用了 197 處，其中 <b>123 處同一行就寫著小字級</b> —— 也就是這個灰
+  幾乎從來沒有用在大字上，每一處都在門檻以下。<br>
+  下面每一欄是同一批**真的文案、真的字級**，只有顏色不同。
+</p>
+
+<h2>① 四種底色上的對比值</h2>
+<table>
+  <tr><th>值</th><th class="n">白</th><th class="n">紙 #F8F7F6</th>
+      <th class="n">欄位底 #F2F0EE</th><th class="n">淡粉 #FFF6F8</th><th>四種都過 4.5？</th></tr>
+  <tr><td><b>#88827E</b> 現在</td><td class="n no">3.79</td><td class="n no">3.54</td>
+      <td class="n no">3.33</td><td class="n no">3.57</td><td class="no">都不過</td></tr>
+  <tr><td><b>#7A7571</b> A</td><td class="n ok">4.55</td><td class="n no">4.26</td>
+      <td class="n no">4.01</td><td class="n no">4.29</td><td class="no">只有白底過</td></tr>
+  <tr><td><b>#76716D</b> B</td><td class="n ok">4.82</td><td class="n ok">4.51</td>
+      <td class="n no">4.24</td><td class="n ok">4.55</td><td class="no">欄位底不過</td></tr>
+  <tr><td><b>#726D69</b> C</td><td class="n ok">5.11</td><td class="n ok">4.78</td>
+      <td class="n ok">4.50</td><td class="n ok">4.82</td><td class="ok">全過</td></tr>
+</table>
+<p class="note">
+  📌 <b>欄位底那一欄是關鍵</b>：chip、次要按鈕、頭像圈都用 <code>--field-bg</code>，
+  而它是四種底色裡最深的一個。只看白底會選到 A，實際畫面上還是不夠。
+</p>
+
+<h2>② 同一批字，四種顏色</h2>
+<div class="grid">
+
+  <div class="col">
+    <div class="colhd"><b>現在 #88827E</b><span>白 3.79 · 紙 3.54 · 欄位 3.33</span></div>
+    <div class="band" style="background:var(--white)">
+      <p class="bandname">白底</p>
+      <p class="row s14" style="color:var(--now)">配桌　成績　牌咖</p>
+      <p class="row s13" style="color:var(--now)">合得來就邀成牌咖，錯過就找不到人了</p>
+      <p class="row s12" style="color:var(--now)">3 / 25　·　進行中</p>
+      <p class="row s11" style="color:var(--now)">9/6 20:34　·　陌生人在加牌咖之前無法跟你互動</p>
+    </div>
+    <div class="band" style="background:var(--paper)">
+      <p class="bandname">紙底</p>
+      <p class="row s13" style="color:var(--now)">你的推薦碼 · 已揪 3 人</p>
+      <p class="row s11" style="color:var(--now)">打完第一桌之後，這裡會留下紀錄</p>
+    </div>
+    <div class="band" style="background:var(--field)">
+      <p class="bandname">欄位底</p>
+      <p class="row s12" style="color:var(--now)">未解鎖　·　再 3 場就看得到比率</p>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="colhd"><b>A #7A7571</b><span>白 4.55 · 紙 4.26 · 欄位 4.01</span></div>
+    <div class="band" style="background:var(--white)">
+      <p class="bandname">白底</p>
+      <p class="row s14" style="color:var(--a)">配桌　成績　牌咖</p>
+      <p class="row s13" style="color:var(--a)">合得來就邀成牌咖，錯過就找不到人了</p>
+      <p class="row s12" style="color:var(--a)">3 / 25　·　進行中</p>
+      <p class="row s11" style="color:var(--a)">9/6 20:34　·　陌生人在加牌咖之前無法跟你互動</p>
+    </div>
+    <div class="band" style="background:var(--paper)">
+      <p class="bandname">紙底</p>
+      <p class="row s13" style="color:var(--a)">你的推薦碼 · 已揪 3 人</p>
+      <p class="row s11" style="color:var(--a)">打完第一桌之後，這裡會留下紀錄</p>
+    </div>
+    <div class="band" style="background:var(--field)">
+      <p class="bandname">欄位底</p>
+      <p class="row s12" style="color:var(--a)">未解鎖　·　再 3 場就看得到比率</p>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="colhd"><b>B #76716D</b><span>白 4.82 · 紙 4.51 · 欄位 4.24</span></div>
+    <div class="band" style="background:var(--white)">
+      <p class="bandname">白底</p>
+      <p class="row s14" style="color:var(--b)">配桌　成績　牌咖</p>
+      <p class="row s13" style="color:var(--b)">合得來就邀成牌咖，錯過就找不到人了</p>
+      <p class="row s12" style="color:var(--b)">3 / 25　·　進行中</p>
+      <p class="row s11" style="color:var(--b)">9/6 20:34　·　陌生人在加牌咖之前無法跟你互動</p>
+    </div>
+    <div class="band" style="background:var(--paper)">
+      <p class="bandname">紙底</p>
+      <p class="row s13" style="color:var(--b)">你的推薦碼 · 已揪 3 人</p>
+      <p class="row s11" style="color:var(--b)">打完第一桌之後，這裡會留下紀錄</p>
+    </div>
+    <div class="band" style="background:var(--field)">
+      <p class="bandname">欄位底</p>
+      <p class="row s12" style="color:var(--b)">未解鎖　·　再 3 場就看得到比率</p>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="colhd"><b>C #726D69</b><span>白 5.11 · 紙 4.78 · 欄位 4.50</span></div>
+    <div class="band" style="background:var(--white)">
+      <p class="bandname">白底</p>
+      <p class="row s14" style="color:var(--c)">配桌　成績　牌咖</p>
+      <p class="row s13" style="color:var(--c)">合得來就邀成牌咖，錯過就找不到人了</p>
+      <p class="row s12" style="color:var(--c)">3 / 25　·　進行中</p>
+      <p class="row s11" style="color:var(--c)">9/6 20:34　·　陌生人在加牌咖之前無法跟你互動</p>
+    </div>
+    <div class="band" style="background:var(--paper)">
+      <p class="bandname">紙底</p>
+      <p class="row s13" style="color:var(--c)">你的推薦碼 · 已揪 3 人</p>
+      <p class="row s11" style="color:var(--c)">打完第一桌之後，這裡會留下紀錄</p>
+    </div>
+    <div class="band" style="background:var(--field)">
+      <p class="bandname">欄位底</p>
+      <p class="row s12" style="color:var(--c)">未解鎖　·　再 3 場就看得到比率</p>
+    </div>
+  </div>
+
+</div>
+
+<h2>③ 它在整條灰階裡的位置</h2>
+<table>
+  <tr><th>階梯</th><th>hint</th><th>gray-2</th><th>gray-1</th><th>ink</th><th>每階差</th></tr>
+  <tr><td><b>現在</b></td><td>#B4AEA9</td><td>#88827E</td><td>#5C5754</td><td>#2E2B2C</td>
+      <td>44 / 44 / 46　<b>等距</b></td></tr>
+  <tr><td>改成 C</td><td>#B4AEA9</td><td><b>#726D69</b></td><td>#5C5754</td><td>#2E2B2C</td>
+      <td>66 / 22 / 46　<b>歪掉</b></td></tr>
+</table>
+
+<div class="sw">
+  <i style="background:#B4AEA9"></i><i style="background:#88827E"></i>
+  <i style="background:#5C5754"></i><i style="background:#2E2B2C"></i>
+</div>
+<p class="note" style="margin-top:4px">↑ 現在（等距）</p>
+<div class="sw">
+  <i style="background:#B4AEA9"></i><i style="background:#726D69"></i>
+  <i style="background:#5C5754"></i><i style="background:#2E2B2C"></i>
+</div>
+<p class="note" style="margin-top:4px">↓ 改成 C：gray-2 往 gray-1 靠過去，兩者會比較難分</p>
+
+<div class="warn">
+  🔴 <b>歪掉是躲不掉的，不是這個值挑得不好。</b><br>
+  從 4.5 到 <code>--ink</code> 之間放不下四個看得出差別的灰。
+  這條階梯最多只能有 <b>三階</b> 是合格的內文色 ——
+  所以真正的決定不是「挑哪個值」，是
+  <b>「<code>--hint</code> 從此不當內文色用」</b>。<br>
+  ✅ 好消息：<code>--hint</code> 在會員 App 只用了 4 處、其中 2 處是文字色，
+  改起來很小。它本來就叫「提示文字」。
+</div>
+
+<h2>④ 改了會動到誰</h2>
+<p class="note">
+  三端吃同一個 <code>@migi/assets</code>（都在 v1.9.0），所以
+  <b>POS 與總部後台也會一起變深</b>。方向是「字更清楚」，不會弄壞版面，
+  但那是三個 App 同時的視覺變動。<br>
+  流程：改 <code>tokens.json</code> → <code>npm run build</code> → 打 v1.10.0 →
+  三端 <code>package.json</code> bump → <code>npm install</code>。
+</p>
+
+</div>
+</body>
+</html>
