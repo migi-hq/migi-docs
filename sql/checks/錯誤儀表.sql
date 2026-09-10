@@ -439,6 +439,37 @@ select 序, 項目, 內容 from (
          || E'\n  最後一次：'
          || coalesce((select to_char(max(created_at) at time zone 'Asia/Taipei', 'MM-DD HH24:MI')
                         from app_events where event = 'member_session'), '（從來沒有）')
+         /* 🔴 **判準看先後，不看「近 7 天有沒有失敗」**（2026-09-11 改）。
+            那 5 筆 `whoami_failed` 是 09-09 的，當天 15:09 那一版就修好了，
+            而「近 7 天全部 ok」的寫法會讓這一格**一路紅到 09-16** ——
+            問題早就不存在，紅的只是時間窗口還沒滾過去。
+            ⚠ 一個永遠紅的檢查會讓人學會忽略紅色（硬規則 3.5 那一族），
+              而這一格正是待辦 14 的收尾條件，紅錯了代價很高。
+          🎯 真正要問的是：**最後一次失敗之後，有沒有再失敗過。**
+          ⚠ 「完全沒有樣本」要說成 ⚪ 不是 ✅ ——
+            沒有人在 LINE 裡開過 App **不是通過**，是沒有資料。 */
+         || E'\n  '
+         || (with liff as (
+               select max(created_at) filter (where props->>'result' = 'ok')  as ok_at,
+                      max(created_at) filter (where props->>'result' <> 'ok') as bad_at,
+                      count(*) filter (where props->>'result' = 'ok')         as ok_n
+                 from app_events
+                where event = 'member_session' and props->>'env' = 'liff')
+             select case
+               when ok_at is null and bad_at is null
+                 then '⚪ 從來沒有人在 LINE 裡開過 App —— 不是通過，是沒有樣本'
+               when bad_at is null
+                 then '✅ liff 從來沒有失敗過（' || ok_n || ' 次全部 ok）'
+               when ok_at is null or ok_at < bad_at
+                 then '🔴 最後一次 liff 是**失敗**的（'
+                      || to_char(bad_at at time zone 'Asia/Taipei','MM-DD HH24:MI')
+                      || '）—— 這是活著的問題，不是歷史'
+               else '✅ 最後一次失敗是 '
+                    || to_char(bad_at at time zone 'Asia/Taipei','MM-DD HH24:MI')
+                    || '，之後到 '
+                    || to_char(ok_at at time zone 'Asia/Taipei','MM-DD HH24:MI')
+                    || ' 都沒有再失敗過' end
+             from liff)
 
   union all
   /* ⑬ 還有誰靠「退回」拿到資料（2026-09-11 加，待辦 14 的收尾判準）。
