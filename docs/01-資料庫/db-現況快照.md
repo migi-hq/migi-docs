@@ -1,8 +1,8 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 203 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`；
-> 最後歸檔的是 `2026-09-09_隊列成員收掉重複的來源鍵.sql`）
+> **基準：`sql/applied/` 有 208 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`；
+> 最後歸檔的是 `2026-09-10_清掉兩個手打的庫存數字.sql`）
 >
 > 🔴 **這個數字在整份文件裡只出現這一次。** 2026-09-07 之前它同時
 > 寫在檔頭與「怎麼知道它過期了」那一節，而**兩處漂開過三次**
@@ -573,7 +573,7 @@ using (org_id = current_org_id() and can('order.write'))     -- order_items / or
 | `member_likes` | id! │ org_id! │ liker_id! │ target_id! │ session_id │ created_at! |
 | `member_tiers` | **code!**（PK）│ label! │ discount_pct!=0 │ threshold_amount │ sort!=0 │ is_active!=true │ note │ created_at! │ **updated_at** │ **updated_by**<br>⚠ 後兩欄 2026-09-08 新增（後台編輯頁）。在此之前**改折扣完全沒有紀錄**，<br>而那是**不可回溯**的（硬規則 5.6）。<br>🔴 `threshold_amount` 為 **null ＝ 邀請制**（`chef_special`），不是「門檻是 0」。<br>📌 實際值 **0 / 6,000 / 20,000 / null** —— CLAUDE.md 一度記成「暫定 0 / 10,000 / 50,000」，<br>而那個錯的數字被《首店周邊商品規劃》拿去算杯子回本。**「暫定」兩個字讓沒有人回來對過。** |
 | `members` | id! │ org_id! │ **line_user_id** │ display_name! │ phone │ home_store_id │ **tier!=bubble_tea** │ gender │ **birthday** │ occupation │ district │ acquisition_source │ avatar_url │ **last_visit_at** │ **visit_count!=0** │ lifecycle!=new │ **primary_staff_id** │ deleted_at │ created_at! │ updated_at! │ created_by │ updated_by │ **tier_override** │ last_app_active_at │ rank!='銅牌熊 I' │ title!='新手上路' │ likes_count!=0 │ **is_test!=false** │ about │ sched │ style jsonb │ see_score!='牌咖' │ baby_tile jsonb │ avatar_source!=bear │ avatar_photo_path │ avatar_photo_at │ avatar_blocked!=false │ avatar_removed_count!=0 │ inv_type!=member │ inv_carrier │ inv_donate_code │ inv_tax_id │ inv_title │ **phone_verified_at** |
-| `order_items` | id! │ order_id! │ **product_id!** │ qty!=1 │ created_at! │ org_id! │ name │ unit_price! │ line_total │ **revenue_type!** |
+| `order_items` | id! │ order_id! │ **product_id!** │ qty!=1 │ created_at! │ org_id! │ name │ unit_price! │ line_total │ **revenue_type!** │ **spec**（2026-09-10）<br>🆕 **`spec`** ＝ 結帳當下的規格快照，跟 `name` / `unit_price` 同一個道理。<br>🔴 **沒有它的話，商品改過份量之後「那一筆賣了幾顆」永遠算不回來** ——<br>而那正是進銷存第一個要問的數字（每項每日份數 × 進貨週期 = 冷凍櫃容量）。<br>⚠ 由 `checkout_tx` **回查主檔蓋章，不採信前端**（同 `unit_price`）。<br>📌 既有的 224 筆全是 null，那是對的：它們成立時這個欄位還不存在。 |
 | `order_payments` | id! │ org_id! │ store_id! │ order_id! │ method! │ amount! │ cash_received │ change_given │ ref_no │ staff_id │ created_at! |
 | `orders` | id! │ org_id! │ store_id! │ member_id │ table_id │ **session_id** │ status!=open │ **channel!=counter** │ total_points!=0 │ deleted_at │ created_at! │ updated_at! │ **created_by** │ **updated_by** │ order_no │ subtotal!=0 │ coupon_discount!=0 │ tier_discount!=0 │ payable!=0 │ points_used!=0 │ cash_due!=0 │ tier_at_order │ **idempotency_key** │ wallet_txn_id │ paid_at │ entity_id │ is_test!=false │ tier_discount_pct │ txn_no |
 | `orgs` | id! │ name! │ plan!=self │ deleted_at │ created_at! │ updated_at! │ created_by │ updated_by │ 🎯 **live_from**（2026-08-28 新增） |
@@ -663,8 +663,8 @@ update orgs set live_from = '<真實客人開始使用的時間>';
 ⚠ 這些 view **一個授權都沒有** —— 只有 `service_role`／Dashboard 讀得到，
   跟「只有總部分析數據的人看得到」是一致的。
 | `pricing_tiers` | id! │ org_id! │ store_id │ mode! │ rule_key! │ min_unit │ max_unit │ points! │ sort_order!=0 │ is_active!=true │ deleted_at │ created_at! │ updated_at! │ created_by │ updated_by |
-| `product_taxonomy` | **dimension!** │ **code!**（PK 是兩者）│ label! │ parent_code │ sku_prefix │ sort!=0 │ is_active!=true │ note │ created_at! │ default_revenue_type |
-| `products` | id! │ org_id! │ **sku!** │ name! │ **category!** │ **unit_price!** │ unit_cost │ **is_active!=true** │ deleted_at │ created_at! │ updated_at! │ created_by │ updated_by │ **stock_qty!=0** │ **is_available!=true** │ **revenue_type!** │ **subcategory** │ **tracks_stock!=true** │ **is_system!=false** │ **discountable!=true** |
+| `product_taxonomy` | **dimension!** │ **code!**（PK 是兩者）│ label! │ parent_code │ sku_prefix │ sort!=0 │ is_active!=true │ note │ created_at! │ default_revenue_type<br>🆕 **2026-09-10 餐飲底下補到五個子分類**，而它們就是 **POS 結帳頁的商品分頁**：<br>`DRK 飲料 20 · DES 甜點 22 · FRY 炸物 24 · SNK 零嘴 26 · MEAL 主食 28`（數字是 `sort` ＝ 由左到右）。<br>🔴 **`MEAL` 的中文從「餐點」改成「主食」** —— 五類並列之後它會跟上一層的「餐飲」撞名。<br>🔴 **不要為分頁新增 `display_group` 欄位**（《首店餐飲籌備》第 10-1 節的提議已標成不做）：<br>`subcategory` 本來就在回答這件事，再加一個就是「一個事實兩個名字」。<br>🎯 真正會分岔的是**出餐站**（蛋塔歸甜點卻走廚房），那是第三個維度。 |
+| `products` | id! │ org_id! │ **sku!** │ name! │ **category!** │ **unit_price!** │ unit_cost │ **is_active!=true** │ deleted_at │ created_at! │ updated_at! │ created_by │ updated_by │ **stock_qty!=0** │ **is_available!=true** │ **revenue_type!** │ **subcategory** │ **tracks_stock!=true** │ **is_system!=false** │ **discountable!=true** │ **spec**（2026-09-10）<br>🆕 **`spec`** ＝ 規格說明（「10 顆／份」），可空，POS 的商品卡與購物車印在品名下面。<br>🔴 它是**說明不是選項**：同一個商品要賣兩種份量（6 個裝／10 個裝）要**開兩個 SKU**，<br>在這一欄塞兩個值只會讓畫面說一件收不到錢的事。檯費那七支就是那種變體。<br>⚠ 沒填就整行不畫，不留空位。<br>📊 **2026-09-10 起共 39 筆**：32 餐飲（《首店餐飲籌備》第 1 節）＋ 7 檯費。<br>🔴 **餐飲 32 筆的 `stock_qty` 與 `unit_cost` 全是 0，那是刻意的** ——<br>會扣 `stock_qty` 的函式**至今 0 支**，填數字只會生出第二個「水餃 50」<br>（賣掉 224 筆從來沒動過，2026-09-10 一併清成 0）。 |
 | `queue_tags` | code!（PK）│ label! │ sort_order!=0 │ is_active!=true │ created_at! |
 | `recurring_tables` | id! │ org_id! │ store_id! │ weekday │ start_time! │ stake_level_id! │ game_type!='16張' │ **rounds!='2 將'**（同上）│ seats!=4 │ enabled!=true │ note │ created_at! │ frequency!=weekly │ flower │ lead_hours!=24 │ tags jsonb!=[] |
 | `session_players` | id! │ org_id! │ session_id! │ member_id! │ join_type!=opener │ status!=playing │ charged_points!=0 │ **joined_at!** │ created_at! │ created_by │ finish_rank │ score_points │ settled_at │ **order_id** │ seat │ **left_at** │ **paid_by** │ **fee_waived_amount!=0** │ **fee_waived_reason** |
@@ -1403,7 +1403,8 @@ list_stores_tx / get_store_detail_tx / get_order_tx
 admin_list_products_tx()                        STABLE   · authenticated ✅ anon ❌
 admin_upsert_product_tx(p_id, p_sku, p_name, p_category, p_subcategory,
                         p_revenue_type, p_tracks_stock, p_unit_price,
-                        p_unit_cost, p_stock_qty, p_is_active, p_is_available)
+                        p_unit_cost, p_stock_qty, p_is_active, p_is_available,
+                        p_spec default null)          ★ 2026-09-10 加第 13 個參數
 admin_set_product_active_tx(p_id, p_is_active)
 admin_delete_product_tx(p_id)
 admin_remove_avatar_tx(p_member_id, p_reason, p_block)   （既有）
@@ -1421,9 +1422,20 @@ admin_remove_avatar_tx(p_member_id, p_reason, p_block)   （既有）
   而**那個錯誤訊息不會指向後台**。
   ⇒ 系統商品：不可停用、不可刪除、不可改貨號；**品名與價格可以改**（調檯費是正當的）。
 
+🔴 **`p_spec` 放在參數列最後而且給預設值，那兩件事都是刻意的**（2026-09-10）：
+Postgres 要求有預設值的參數排在後面，而這樣也順便是 **expand-safe** ——
+**那份 SQL 可以在前端部署之前先跑**，舊的前端不送它照樣能用。
+⚠ 加參數 ＝ **改簽名** ⇒ 要 `DROP` ＋ 重建 ⇒ **GRANT 會被一起丟掉**（硬規則 2）。
+那份檔案結尾補回 `authenticated, service_role`，驗證段第 ⑦ 格專門盯這件事：
+**只驗「函式在」的話，一支沒人叫得動的函式也會讓其他格變綠，而後台會當場壞掉。**
+
 ⚠ **`admin_list_products_tx` 不是 `list_products_tx`** —— 後者是 **POS** 的清單：
-濾掉停用與 `is_available`、排除 `SVC-TBL-%`、只回 7 個欄位。
+濾掉停用與 `is_available`、排除 `SVC-TBL-%`。
 兩個需求不同，所以是兩支，**不要加參數把它變成兩用**。
+📌 **`list_products_tx` 2026-09-10 從 7 個鍵變 9 個**（`CREATE OR REPLACE`，簽名沒變）：
+加了 **`spec`**（商品卡與購物車那一行）與 **`subcategory`**（結帳頁的商品分頁讀它）。
+🔴 前端拿不到 `subcategory` 就分不了頁，而症狀是**所有商品掉進「其他」分頁**
+（不報錯、點得到、也結得了帳）—— 所以那支 SQL 的驗證段有一格專門盯它。
 
 ⏳ **`products_org_write` 那條 ALL policy 還留著**（expand → migrate → contract
 的中間態）。前端已切走，但要等部署驗證過才 contract。
