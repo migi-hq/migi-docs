@@ -1,8 +1,8 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 208 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`；
-> 最後歸檔的是 `2026-09-10_清掉兩個手打的庫存數字.sql`）
+> **基準：`sql/applied/` 有 209 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`；
+> 最後歸檔的是 `2026-09-11_消費明細帶規格.sql`）
 >
 > 🔴 **這個數字在整份文件裡只出現這一次。** 2026-09-07 之前它同時
 > 寫在檔頭與「怎麼知道它過期了」那一節，而**兩處漂開過三次**
@@ -573,7 +573,7 @@ using (org_id = current_org_id() and can('order.write'))     -- order_items / or
 | `member_likes` | id! │ org_id! │ liker_id! │ target_id! │ session_id │ created_at! |
 | `member_tiers` | **code!**（PK）│ label! │ discount_pct!=0 │ threshold_amount │ sort!=0 │ is_active!=true │ note │ created_at! │ **updated_at** │ **updated_by**<br>⚠ 後兩欄 2026-09-08 新增（後台編輯頁）。在此之前**改折扣完全沒有紀錄**，<br>而那是**不可回溯**的（硬規則 5.6）。<br>🔴 `threshold_amount` 為 **null ＝ 邀請制**（`chef_special`），不是「門檻是 0」。<br>📌 實際值 **0 / 6,000 / 20,000 / null** —— CLAUDE.md 一度記成「暫定 0 / 10,000 / 50,000」，<br>而那個錯的數字被《首店周邊商品規劃》拿去算杯子回本。**「暫定」兩個字讓沒有人回來對過。** |
 | `members` | id! │ org_id! │ **line_user_id** │ display_name! │ phone │ home_store_id │ **tier!=bubble_tea** │ gender │ **birthday** │ occupation │ district │ acquisition_source │ avatar_url │ **last_visit_at** │ **visit_count!=0** │ lifecycle!=new │ **primary_staff_id** │ deleted_at │ created_at! │ updated_at! │ created_by │ updated_by │ **tier_override** │ last_app_active_at │ rank!='銅牌熊 I' │ title!='新手上路' │ likes_count!=0 │ **is_test!=false** │ about │ sched │ style jsonb │ see_score!='牌咖' │ baby_tile jsonb │ avatar_source!=bear │ avatar_photo_path │ avatar_photo_at │ avatar_blocked!=false │ avatar_removed_count!=0 │ inv_type!=member │ inv_carrier │ inv_donate_code │ inv_tax_id │ inv_title │ **phone_verified_at** |
-| `order_items` | id! │ order_id! │ **product_id!** │ qty!=1 │ created_at! │ org_id! │ name │ unit_price! │ line_total │ **revenue_type!** │ **spec**（2026-09-10）<br>🆕 **`spec`** ＝ 結帳當下的規格快照，跟 `name` / `unit_price` 同一個道理。<br>🔴 **沒有它的話，商品改過份量之後「那一筆賣了幾顆」永遠算不回來** ——<br>而那正是進銷存第一個要問的數字（每項每日份數 × 進貨週期 = 冷凍櫃容量）。<br>⚠ 由 `checkout_tx` **回查主檔蓋章，不採信前端**（同 `unit_price`）。<br>📌 既有的 224 筆全是 null，那是對的：它們成立時這個欄位還不存在。 |
+| `order_items` | id! │ order_id! │ **product_id!** │ qty!=1 │ created_at! │ org_id! │ name │ unit_price! │ line_total │ **revenue_type!** │ **spec**（2026-09-10）<br>🆕 **`spec`** ＝ 結帳當下的規格快照，跟 `name` / `unit_price` 同一個道理。<br>🔴 **沒有它的話，商品改過份量之後「那一筆賣了幾顆」永遠算不回來** ——<br>而那正是進銷存第一個要問的數字（每項每日份數 × 進貨週期 = 冷凍櫃容量）。<br>⚠ 由 `checkout_tx` **回查主檔蓋章，不採信前端**（同 `unit_price`）。<br>📌 既有的 224 筆全是 null，那是對的：它們成立時這個欄位還不存在。<br><br>🔴 **所以收據上會有兩種列，而那不是 bug**（2026-09-11 量到）：<br>`89 筆`舊快照的 **`name` 裡還帶著「（10 顆／份）」**，而 `spec` 是 null。<br>```<br>舊　水餃（10 顆／份）　×1<br>新　水餃　10 顆／份　×1<br>```<br>⚠ **不可以回填** —— 快照存的是「當時的品名」，改了就是偽造歷史。<br>2026-09-11 那份 SQL 的第 ⑤ 格就是在盯「有沒有人去回填」。<br>📌 兩種列會並存到那 89 筆滾出查詢範圍為止，這是快照的本質不是缺陷。 |
 | `order_payments` | id! │ org_id! │ store_id! │ order_id! │ method! │ amount! │ cash_received │ change_given │ ref_no │ staff_id │ created_at! |
 | `orders` | id! │ org_id! │ store_id! │ member_id │ table_id │ **session_id** │ status!=open │ **channel!=counter** │ total_points!=0 │ deleted_at │ created_at! │ updated_at! │ **created_by** │ **updated_by** │ order_no │ subtotal!=0 │ coupon_discount!=0 │ tier_discount!=0 │ payable!=0 │ points_used!=0 │ cash_due!=0 │ tier_at_order │ **idempotency_key** │ wallet_txn_id │ paid_at │ entity_id │ is_test!=false │ tier_discount_pct │ txn_no |
 | `orgs` | id! │ name! │ plan!=self │ deleted_at │ created_at! │ updated_at! │ created_by │ updated_by │ 🎯 **live_from**（2026-08-28 新增） |
