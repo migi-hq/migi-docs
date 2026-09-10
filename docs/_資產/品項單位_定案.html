@@ -162,8 +162,17 @@
           九筆商品回填一次。</td>
     </tr>
     <tr>
+      <td>🔴 <b>快照</b></td>
+      <td><code>order_items</code> <b>也要加 <code>spec</code></b>，跟 <code>name</code> 一樣在結帳時蓋章。<br>
+          不加的話：雞塊從 6 個改成 10 個之後，歷史訂單只留著「2 份」，
+          <b>那 2 份是幾個永遠算不回來</b> —— 而那正是進銷存第一個要問的數字。
+          今天加是零成本，事後補<b>不可回溯</b>（硬規則 5.6）。</td>
+    </tr>
+    <tr>
       <td><b>後端</b></td>
-      <td><code>list_products_tx</code> 與 <code>admin_*_product_tx</code> 多回／多收這一欄。</td>
+      <td><code>list_products_tx</code> 與 <code>admin_*_product_tx</code> 多回／多收這一欄；
+          <code>checkout_tx</code> 寫 <code>order_items</code> 時一併蓋章
+          （<b>回查主檔，不採信前端</b> —— 同待辦 2）。</td>
     </tr>
     <tr>
       <td><b>POS</b></td>
@@ -189,6 +198,84 @@
     數量不印單位詞之後，那一欄<b>沒有任何地方會讀它</b> ——
     建了就是這個專案記過很多次的「建了沒人讀」。
     真的要賣杯裝飲料而且需要「1 杯」時再加，那時它才有讀者。
+  </p>
+</div>
+
+<div class="panel">
+  <h2>後台能不能設「10 個 1 份 / 6 個 1 份」</h2>
+  <p class="cap" style="max-width:none">
+    能，但那句話有<b>兩種意思，決定完全不同</b>。
+  </p>
+  <table>
+    <tr><th></th><th>是什麼</th><th>怎麼做</th></tr>
+    <tr>
+      <td><b>A 改規格</b></td>
+      <td>雞塊就一種，店家決定一份幾個。這個月 6 個，下個月 10 個。</td>
+      <td>後台編輯 <code>spec</code>。<b>一個欄位，就是上面那張表。</b></td>
+    </tr>
+    <tr>
+      <td><b>B 兩種同時賣</b></td>
+      <td>6 個裝 $50 與 10 個裝 $80 並存，客人選哪一種。</td>
+      <td>🔴 那不是一個欄位的兩個值，<b>是兩個商品</b>（兩個 SKU、兩個價）——
+          跟檯費那七支一模一樣，系統已經支援，不用新概念。</td>
+    </tr>
+  </table>
+  <p class="cap" style="margin-top:12px;max-width:none">
+    🔴 <b>但 B 一做，<code>stock_qty</code> 就會開始說謊。</b>
+    兩個 SKU 各扣各的數字，而雞塊是<b>同一批貨</b>。
+    進 100 個、賣 5 份 6 個裝，實際少 30 個，
+    而系統只會把「6 個裝」那個數字減 5。
+  </p>
+</div>
+
+<div class="panel">
+  <h2>而進銷存今天不存在</h2>
+  <table>
+    <tr><th></th><th>實查（2026-09-10）</th></tr>
+    <tr><td>會扣 <code>stock_qty</code> 的函式</td><td><b>0 支</b></td></tr>
+    <tr><td>碰得到它的</td><td><code>admin_list_products_tx</code>（讀）、
+        <code>admin_upsert_product_tx</code>（後台手打時整個覆寫）</td></tr>
+    <tr><td>進貨／異動／供應商的表</td><td><b>一張都沒有</b></td></tr>
+    <tr><td>現在的庫存</td><td>水餃 50、厚片 50 —— 賣掉 202 筆品項之後<b>一次都沒動過</b></td></tr>
+  </table>
+  <p class="cap" style="margin-top:12px;max-width:none">
+    ⇒ 那個 50 是<b>有人在後台打上去的裝飾</b>。
+    所以「會不會影響進銷存」今天的答案是：<b>沒有進銷存可以被影響。</b>
+  </p>
+</div>
+
+<div class="panel">
+  <h2>順序</h2>
+  <table>
+    <tr><th></th><th>做什麼</th><th>為什麼是這個順序</th></tr>
+    <tr>
+      <td><b>① 現在</b></td>
+      <td><code>products.spec</code> ＋ <code>order_items.spec</code> 快照，後台可編輯</td>
+      <td>快照那一半是<b>不可回溯</b>的，今天加零成本，事後補就永遠缺一段歷史</td>
+    </tr>
+    <tr>
+      <td><b>② 要同時賣兩種份量時</b></td>
+      <td>開第二個 SKU</td>
+      <td>不用新機制。接受 <code>stock_qty</code> 只是各自的計數</td>
+    </tr>
+    <tr>
+      <td><b>③ 真的要管進銷存時</b></td>
+      <td>進貨單 → 異動紀錄 → 盤點 →（才輪到）配方 BOM</td>
+      <td>🔴 <b>配方不是第一步是最後一步</b>。沒有進貨與盤點的 BOM
+          會算出一個持續偏離現實的帳面庫存，而<b>一個永遠不準的數字
+          會訓練人忽略它</b> —— 比沒有更糟</td>
+    </tr>
+  </table>
+  <p class="cap" style="margin-top:12px;max-width:none">
+    🎯 <b>③ 的第一個問題不是技術，是「誰每天盤點」</b>（硬規則 5.5）。
+    耗損、試吃、報廢都不會自己進系統，而它們每天都在發生。
+  </p>
+  <p class="cap" style="margin-top:8px;max-width:none">
+    📌 <b>進銷存放 migi-admin</b> —— 待辦 18 早就拍板：
+    「前場與後台是兩套 App（Square Register 上沒有進貨單），
+    放進 POS 就是同一件事兩個地方維護」。
+    ⚠ 唯一要注意的是<b>盤點</b>：它是在店裡拿著平板走動做的，
+    所以那一頁仍然屬於後台，但版型要能在平板上用。
   </p>
 </div>
 
