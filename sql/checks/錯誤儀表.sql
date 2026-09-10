@@ -441,6 +441,46 @@ select 序, 項目, 內容 from (
                         from app_events where event = 'member_session'), '（從來沒有）')
 
   union all
+  /* ⑬ 還有誰靠「退回」拿到資料（2026-09-11 加，待辦 14 的收尾判準）。
+        🔴 **`member_id_src` 自己答不出這個問題** —— 它只有 `src`，
+          而 `param` 6 筆到底是真實客人還是本機 dev，差別是天與地：
+          前者代表退回還不能拿掉，後者代表已經可以。
+        🎯 **答案在同一個 `_sid` 的 `member_session` 事件裡**（它有 host）。
+          2026-09-11 實查：六筆 param **全部** 對應 `ext/no_login/local`。
+        ⚠ 教訓：一個埋點答不出問題時，先問「有沒有別的事件在同一個 session 裡」，
+          不要直接下「資料不足」的結論 —— 那會讓一件已經成立的事被當成待辦。
+        📌 2026-09-11 起 `member_id_src` 自己也帶 host 了（`migi-web` 7384efd），
+          所以新資料不必關聯；這一格仍然留著，因為**舊資料只能靠關聯**。 */
+  select 13, '⑬ 誰靠退回拿到資料（param 且不是本機 ⇒ 退回還不能拿掉）',
+         coalesce((
+           select string_agg(g.k || '　' || g.n || ' 次', E'\n  ' order by g.k)
+             from (
+               select coalesce(s.props->>'src','?')
+                      || ' · '
+                      || coalesce(s.props->>'host',      -- 新資料自己有
+                                  (select e.props->>'host' from app_events e
+                                    where e.event='member_session'
+                                      and e.props->>'_sid' = s.props->>'_sid'
+                                    limit 1),            -- 舊資料靠同一次的登入探針
+                                  '(不知道從哪打的)') as k,
+                      count(*) as n
+                 from app_events s
+                where s.event = 'member_id_src'
+                group by 1
+             ) g), '（還沒有任何一筆 —— 可能是這版還沒部署，也可能是沒人開過 App）')
+         || E'\n  '
+         || case when (select count(*) from app_events s
+                        where s.event='member_id_src'
+                          and s.props->>'src' = 'param'
+                          and coalesce(s.props->>'host',
+                                (select e.props->>'host' from app_events e
+                                  where e.event='member_session'
+                                    and e.props->>'_sid' = s.props->>'_sid' limit 1),
+                                '?') <> 'local') > 0
+                 then '🔴 有非本機的 param —— **退回還不能拿掉**，逐筆看是誰'
+                 else '✅ param 全部來自本機（等同歸零）⇒ 退回可以拿掉了' end
+
+  union all
   /* ⑫ 報表用的檢視表有沒有漏欄位（2026-09-11 加，由 baseline 抓到）。
         🔴 `v_real_*` 是**報表唯一該查的東西**（直接查原表會把測試資料
           算進營運數據且不報錯），而它們的欄位是**寫死的清單** ——
