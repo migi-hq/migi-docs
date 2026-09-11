@@ -1,8 +1,8 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 209 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`；
-> 最後歸檔的是 `2026-09-11_消費明細帶規格.sql`）
+> **基準：`sql/applied/` 有 214 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`；
+> 最後歸檔的是 `2026-09-11_牌咖團函式_加入與治理.sql`）
 >
 > 🔴 **這個數字在整份文件裡只出現這一次。** 2026-09-07 之前它同時
 > 寫在檔頭與「怎麼知道它過期了」那一節，而**兩處漂開過三次**
@@ -683,6 +683,70 @@ update orgs set live_from = '<真實客人開始使用的時間>';
 ⚠ **`tables` 沒有 `status`** —— 桌況是從 `table_sessions` 動態算的。
 
 ---
+
+## 🆕 牌咖團（2026-09-11 建立，三張表）
+
+牌咖團**等同公會**（使用者 2026-09-11 拍板），不是一桌四個人。
+前端 `buddies.jsx:136` 那個 `團員 · N/4` 是錯的，要拿掉。
+
+```
+teams          15 欄  org_id · name · intro · crest_emoji · crest_path · crest_blocked
+                      home_store_id · join_policy · monthly_goal · member_limit
+                      created_by · created_at · updated_at · deleted_at
+team_members    9 欄  team_id · member_id · role · joined_at · left_at · left_reason
+team_requests  11 欄  team_id · member_id · kind · status · created_by
+                      decided_by · decided_at · expires_at
+```
+· `join_policy ∈ open | approval | closed` —— **三態**。八個朋友的團最常見
+  的狀態就是「不要陌生人」，兩態少掉的正是那一個。
+· `kind ∈ apply | invite` —— 申請與邀請是同一張表的兩個方向。
+  🔴 `uq_team_request_pending` 保證同一組人同時只在談一筆。
+  🎯 兩個方向撞在一起時**直接成交**，那正是雙方都同意的意思。
+· `left_reason ∈ quit | kicked | disband` —— 移除寫 `kicked` 不重用 `quit`，
+  否則那個欄位會說一件沒發生的事（同 2026-09-10 配桌那批的決定）。
+· 三張表都 **RLS 開啟、0 條 policy** ⇒ 完全鎖死，只有 DEFINER 進得去。
+
+### 🔴 「一起打了 N 場」只有一份定義：`_team_session_ids(team)`
+```
+一場算進團的戰績  ⇔  該場次每一位在座玩家，坐下的那一刻都還在團裡
+                 且  在座人數 ≥ 2
+```
+· **整桌都是團員才算**（使用者明確推翻「兩位以上」）。兩個團員加兩個
+  陌生人那桌不算 —— 那是配桌不是團的活動，正好對上包桌的語意。
+· **資格看當時不看現在**（比對 `joined_at ~ left_at` 區間）。
+  🔴 不這樣做的話，一個人退團會讓他參與過的每一場全部失效，
+    團的總場數突然掉下來而且沒有任何地方會說為什麼。
+· 下限放 2 不放 4 —— 只來三人的包桌是真的會發生（檯費就收三份）。
+· 時間戳**只用 `session_players.joined_at`**，同時當「當時在不在團裡」
+  與「這場算哪個月」用。刻意不碰 `table_sessions.started_at`
+  （測試 fixture 那一欄比 `ended_at` 還晚）。
+⚠ 驗證：`sql/checks/2026-09-11_驗牌咖團場次判定.sql`（12 格，含兩個方向的時間區間）。
+
+### 函式 22 支（18 支對外給 `authenticated`，4 支內部誰都叫不到）
+```
+讀    list_my_teams_tx · get_team_tx · search_teams_tx · list_hot_teams_tx
+建改  create_team_tx · update_team_tx · set_team_crest_tx · disband_team_tx
+加入  apply_team_tx · invite_to_team_tx · respond_team_request_tx
+      cancel_team_request_tx · list_team_requests_tx
+治理  leave_team_tx · kick_team_member_tx · transfer_team_leader_tx
+      claim_team_leader_tx
+總部  admin_remove_team_crest_tx（`can('member.write')`，與頭像下架同一個碼）
+內部  _team_session_ids · _team_card · _team_expire_requests · _team_notify
+```
+🔴 **這一批一律不收 `p_member_id`，身分只從 JWT 取**，而且
+  `revoke from anon, public` ＋ `grant to authenticated`。
+  全庫已經有 53 支簽名帶那個參數，不要變成 54（待辦 14）。
+  ⚠ 已知代價：某個客人的 Supabase session 沒發成功時，牌咖團整頁 403，
+    而其他頁照常。**那是大聲失敗**，比靜靜拿到別人的資料好。
+
+🔴 **名冊只有團長拿得到 `member_id`**（2026-09-04 排行榜定的原則：
+  不需要身分就不要交出身分）。
+🔴 **名冊不給「上次來店」** —— 每一款手遊的公會名冊都有那一欄，但
+  2026-08-26 為「常來時段」畫的那條線擋著：對別人的單向側寫不給客人看。
+  給的是「本月一起打了幾場」，那是共同事實。
+
+⏳ **還沒做**：團徽照片的 bucket 與 Edge Function、前端（`buddies.jsx`
+  現在仍是 `useState([寫死一團])`）、預約包桌（待辦 33 第 2 階段）。
 
 ## 二、CHECK 約束（全部）
 
