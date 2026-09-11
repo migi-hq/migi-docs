@@ -546,6 +546,55 @@ select 序, 項目, 內容 from (
            '✅ 12 支都沒有漏（底層表加欄位時這一格會自己變紅）')
 
   union all
+  /* ⑭ Storage 用量與孤兒檔（2026-09-11 加，做團徽 bucket 時浮出來的）。
+        🔴 **換頭像、換團徽、解散團、刪帳號，四種都會留下檔案，
+          而沒有任何東西在收。** 頭像那支的註解自己寫著
+          「交給日後的清理排程」，而那個排程不存在。
+
+        🟢 今天零成本：三個 bucket 加起來 0 個檔案 —— 頭像那條路實測
+          通過但正式站從來沒有人真的傳過照片。
+        🎯 **打卡照片一上線就會變成真的成本**（那是第一個有量的：
+          每個人每次來店一張，而且遠大於 512 KB）。
+
+        ⚠ 判準刻意**不是「孤兒 > 0 就紅」** —— 換一次頭像就會留一個，
+          那種檢查會永遠紅，而永遠紅的檢查會讓人學會忽略紅色
+          （這個專案記過四次的症狀）。所以少量算正常累積。
+        ⚠ `store-photos` 目前**沒有寫入端**（全庫只有 `get_store_detail_tx`
+          讀 `stores.photos`），所以它的檔案一律不判孤兒，只印數量。 */
+  select 14, '⑭ Storage 用量與孤兒檔（換一次就留一個，沒有人在收）',
+         case when (select count(*) from storage.objects) = 0
+           then '⚪ 三個 bucket 全空（0 個檔案）—— 孤兒清理今天零成本，不要先做'
+           else (
+             with f as (
+               select o.bucket_id,
+                      count(*) as n,
+                      coalesce(sum((o.metadata->>'size')::bigint), 0) as bytes,
+                      count(*) filter (where case o.bucket_id
+                        when 'member-avatars'
+                          then not exists (select 1 from members m
+                                            where m.avatar_photo_path = o.name)
+                        when 'team-crests'
+                          then not exists (select 1 from teams t
+                                            where t.crest_path = o.name)
+                        else false end) as orphan
+                 from storage.objects o
+                group by o.bucket_id)
+             select (select string_agg(f.bucket_id || '  ' || f.n || ' 個 · '
+                              || round(f.bytes / 1024.0)::text || ' KB'
+                              || case when f.orphan > 0
+                                      then '　🧟 孤兒 ' || f.orphan || ' 個' else '' end,
+                              E'\n  ' order by f.bucket_id) from f)
+                 || E'\n  ' ||
+                    (select case
+                       when coalesce(sum(f.orphan), 0) = 0
+                         then '✅ 沒有孤兒檔'
+                       when coalesce(sum(f.orphan), 0) <= 20
+                         then '⚪ 孤兒 ' || sum(f.orphan) || ' 個 —— 換過頭像或團徽就會留一個，這個量不用動'
+                       else '🔴 孤兒 ' || sum(f.orphan) || ' 個 —— 清理排程該做了，'
+                            || '**一次涵蓋全部 bucket**，不要為單一種照片做一個'
+                     end from f)) end
+
+  union all
   select 5, '⑤ 測試標記（修好前的歷史資料仍標成營運）',
          (select 'is_test=true ' || count(*) filter (where is_test)::text ||
                  '　is_test=false ' || count(*) filter (where not is_test)::text ||

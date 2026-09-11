@@ -1,8 +1,8 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 214 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`；
-> 最後歸檔的是 `2026-09-11_牌咖團函式_加入與治理.sql`）
+> **基準：`sql/applied/` 有 219 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`；
+> 最後歸檔的是 `2026-09-11_包桌預約函式.sql`）
 >
 > 🔴 **這個數字在整份文件裡只出現這一次。** 2026-09-07 之前它同時
 > 寫在檔頭與「怎麼知道它過期了」那一節，而**兩處漂開過三次**
@@ -745,8 +745,89 @@ team_requests  11 欄  team_id · member_id · kind · status · created_by
   2026-08-26 為「常來時段」畫的那條線擋著：對別人的單向側寫不給客人看。
   給的是「本月一起打了幾場」，那是共同事實。
 
-⏳ **還沒做**：團徽照片的 bucket 與 Edge Function、前端（`buddies.jsx`
-  現在仍是 `useState([寫死一團])`）、預約包桌（待辦 33 第 2 階段）。
+### ✅ 團徽照片（2026-09-11，使用者決定**不審核**）
+```
+bucket   team-crests   公開 · 512 KB · webp/jpeg   ← 與 member-avatars 逐項相同
+         🔴 0 條 storage policy ⇒ 寫入只剩 service_role
+函式     _is_team_leader（內部）—— 「誰能換團徽」全系統只有這一份
+         team_crest_guard_tx / clear_team_crest_tx —— **只給 service_role**
+Edge     team-crest（已部署，Verify JWT 開著）
+```
+🔴 後兩支收 `p_member_id` 是刻意的也是安全的：Edge Function 手上只有
+  驗過簽的 LINE `sub`，**沒有會員 JWT** ⇒ `current_member_id()` 必為 null。
+  同 `get_staff_by_line_tx` 的先例。**它們不算待辦 14 那 53 支。**
+🔴 `set_team_crest_tx` 多一道牆：路徑必須以自己的 `team_id` 開頭 ——
+  少了它，前端可以把**別人的圖**掛到自己團上，而且不會報錯。
+⚠ 實機打過五項（無 key 401／無 token／`../` 路徑／假 token 真的去問了 LINE／
+  CORS 200），`bad_team_id` 在任何事發生之前就擋掉路徑注入。
+
+⚠ **已知缺口，四個 bucket 共通**：換頭像、換團徽、解散團、刪帳號
+  都會留下孤兒檔，而**沒有任何東西在收**。
+  🟢 今天零成本 —— `storage.objects` 目前 **0 個檔案**（三個 bucket 全空）。
+  🎯 打卡照片一上線就會變成真成本（那是第一個有量的）。清理要做時
+    一次涵蓋全部 bucket，不要為團徽單獨做一個。
+📌 `store-photos` 是**建了沒人寫**：全庫只有 `get_store_detail_tx` 讀
+  `stores.photos`，沒有任何寫入端，7 間門市 0 筆有值。
+
+## 🆕 包桌預約（2026-09-11 建立，`bookings` 一張表）
+
+使用者 2026-09-11：「**牌咖團最重要的功能就是預約包桌，這是首要**」。
+
+```
+bookings  17 欄  org_id · store_id · team_id · member_id
+                 play_at · planned_hours · table_count · party_size · note
+                 status · table_id · seated_session_id
+                 cancelled_reason · created_by_staff_id
+函式      客人  booking_capacity_tx · create_booking_tx
+                cancel_booking_tx   · list_my_bookings_tx        身分＝JWT
+          店員  pos_list_bookings_tx · pos_seat_booking_tx
+                pos_mark_booking_tx                              身分＝current_staff()
+          內部  _booking_capacity · _booking_expire
+```
+· RLS 開著、**0 條 policy** ⇒ 完全鎖死，只有 DEFINER 進得去。
+· `planned_hours ∈ 2 / 5 / 24`，對齊既有三支包桌商品（`SVC-TBL-P02/P05/P24`，
+  **單人計價** 100／150／200）。存的是**時長級距不是價格** —— 價格結帳時查主檔。
+· `status ∈ booked · seated · cancelled · no_show · expired`。
+  🔴 **五個值不可以合併** —— `cancelled` 是客人取消、`no_show` 是他沒來、
+  `expired` 是系統過時收掉。合成一個的話**爽約率永遠算不出來**，
+  而那是日後要不要收訂金的唯一依據。
+
+### 🔴 預約佔的是「容量」不是某一張桌
+```
+建立時   只記「幾桌」，table_id 是 null
+當天     店員才指定桌（pos_seat_booking_tx）
+```
+⚠ 一建立就綁死一張桌的話，那是自動帶桌「湊滿就佔桌、空等兩小時」
+  （待辦 34）的放大版 —— 預約可以提前 90 天。
+📌 所以**我文件裡原本那句「接上 `list_tables_tx` 既有的 `is_hold`」只對一半** ——
+  那支的 `hold_kind` 只有 `queue` 與 `setup`，兩個都是「現在就佔住」。
+  要不要多一個值，是**指定桌之後**的事。
+
+### 🔴 容量判定刻意不管現在有沒有人在打
+```
+free = 店裡可用桌數 − 同時段其他「還活著的預約」佔走的桌數
+```
+⚠ **不扣掉正在打的桌**：現場客人幾點走沒有人知道，把猜測算進去會讓系統
+  **用一個假的精確度拒絕真的預約**。這道牆防的是「同一個時段答應兩組人」，
+  現場滿不滿是店員當下的判斷。
+🔴 區間重疊只有一種寫法：`a < b+hb 且 b < a+ha`。
+  寫成「開始時間在區間內」會漏掉**被整個包住**的那一種
+  （別人 10:00 訂 24 小時，你 14:00 訂 2 小時）。
+  ⚠ 假資料六種相對位置 ＋ 真資料各驗過一次。
+
+### 🔴 `team_id` 可空，那是刻意的
+沒有團的客人打電話來訂位**一定會發生**，而系統做不到時櫃檯就會
+另外發明一套（紙本、LINE 訊息、店長的腦袋）。
+⇒ **一個預約機制，牌咖團只是它的入口之一**，所以這張表不叫 `team_bookings`。
+
+⚠ 驗證：`sql/checks/2026-09-11_驗包桌預約流程.sql`（16 格＋2 格回滾確認）。
+
+⏳ **還沒做**：前端（會員 App 的預約抽屜、POS 的當日預約清單）。
+
+---
+
+⏳ **牌咖團還沒做**：前端已改完但**還沒實機看過**（`buddies.jsx`
+  2026-09-11 接上真後端，`npm run build` 與四個靜態檢查器都過）。
 
 ## 二、CHECK 約束（全部）
 
