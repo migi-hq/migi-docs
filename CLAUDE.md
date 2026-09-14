@@ -2189,6 +2189,7 @@ settled_at 09-03 15:18   ← 8 場全部同一個時間點
    cleanup-empty-sessions   */10 * * * *   cleanup_empty_sessions_tx(30)
    gen-recurring-instances  0 */6 * * *    generate_recurring_instances_tx
    daily-wallet-audit       0 21 * * *     daily_wallet_audit_tx
+   team-leader-handover     0 20 * * *     sweep_team_leaders_tx   ← 2026-09-13 新增
    ```
 
    ⚠ ~~**但它從來沒成功配過一次**~~ → ✅ **2026-09-06 端到端跑通了**：

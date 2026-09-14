@@ -1,8 +1,35 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **基準：`sql/applied/` 有 219 個 `.sql`**（＋ 2 個非 SQL 的 `.ts` / `.py`；
-> 最後歸檔的是 `2026-09-11_包桌預約函式.sql`）
+> **最後校對：2026-09-14**
+> **基準：`sql/applied/` 有 223 個 `.sql`**（其中 200 個以日期開頭、23 個是更早的；
+> 最後歸檔的是 `2026-09-14_解散團收歸總部.sql`）
+>
+> ### 📊 2026-09-14 重新量過的整體數字
+> ```
+> 資料表 50 　函式 225 　檢視表 22 　RLS policy 29 　CHECK 約束 112 　pg_cron 6
+> ```
+> ⚠ **這幾個數字是當場查的，不是從上一版抄的**（硬規則 3.56：
+> 「數量」這一類的期望值一律當場查出來再寫）。
+> 🔴 但**數字對不代表內容沒變** —— 一支函式被改掉、一條 policy 被改鬆，
+> 這幾個數字完全不會動。它們只回答「有沒有多／少了東西」。
+>
+> ### ⏰ pg_cron 六個排程（2026-09-14 查 `cron.job`）
+> ```
+> auto-seat-matched        */5  * * * *   湊滿的房自動帶桌
+> migi_sweep_expired       */5  * * * *   過期的配桌房
+> cleanup-empty-sessions   */10 * * * *   空桌回收
+> gen-recurring-instances  0 */6 * * *    常態局產生
+> daily-wallet-audit       0 21 * * *     錢包稽核（台北 05:00）
+> team-leader-handover     0 20 * * *     🆕 團長失聯自動推舉（台北 04:00）
+> ```
+> ⚠ 時間都是 **UTC**，台北要 +8。最後一個是 2026-09-13 新增的。
+>
+> ⚠ **這一次是校對不是重新產生**：下面每一節的敘述沒有整份重跑
+> `sql/checks/2026-08-28_現況全匯出.sql` 去逐行對照，
+> 只把**這一輪改到的東西**（牌咖團那一節）與上面那組數字對過線上。
+> 🎯 所以它仍然適用那句話：**要動 schema 一律先
+> `pg_get_functiondef` 撈線上版**，這份只當背景。
 >
 > 🔴 **這個數字在整份文件裡只出現這一次。** 2026-09-07 之前它同時
 > 寫在檔頭與「怎麼知道它過期了」那一節，而**兩處漂開過三次**
@@ -423,6 +450,14 @@ invalid input syntax for type uuid: "U4af4980629abc..."
 
 ### 🔒 46 張表全部開了 RLS，其中 20 張是 **0 policy**
 
+> 🔴 **2026-09-14 重查：現在是 50 張全開、24 張 0 policy。**
+> 多出來的四張是後來建的（牌咖團三張 ＋ `bookings`），它們**一建立就是
+> 0 policy**，所以下面那份清單少列了它們。
+> 🎯 **0 policy 是這個系統裡最安全的狀態**，不是漏掉的意思 ——
+> 只有 SECURITY DEFINER 進得去，開了 JWT 之後照樣讀不到。
+> ⚠ 下面那張表沒有重新列，因為它是 2026-09-04 逐張看過的**判讀結果**
+> 而不是機器產物；要補的是那四張的**決定**，而那個決定就在牌咖團／包桌那兩節。
+
 ```
 app_events        app_notifications  buddy_invites     doc_counters
 invoices          legal_entities     match_queue_players  match_queues
@@ -702,6 +737,16 @@ team_requests  11 欄  team_id · member_id · kind · status · created_by
 · `kind ∈ apply | invite` —— 申請與邀請是同一張表的兩個方向。
   🔴 `uq_team_request_pending` 保證同一組人同時只在談一筆。
   🎯 兩個方向撞在一起時**直接成交**，那正是雙方都同意的意思。
+· 🆕 `role ∈ leader | co_leader | member`（2026-09-14 加了副團長）。
+  **副團長只能做一件事：邀請人入團**（規格，不是省略）。撈全庫 16 支團相關
+  函式逐行看過，每一支的權限都寫成 `role = 'leader'`（正向）
+  ⇒ 多一個角色值**不會讓任何一支自動放行**，那一批只改了 `invite_to_team_tx`。
+  📌 判準記著：權限寫成「**是不是** leader」時加角色是安全的；
+    寫成「**不是** leader 就…」時加角色會靜靜擴權。這個系統目前沒有反向的。
+  ⚠ **團長一位 vs 副團長無上限**是兩種不同的東西在保證：
+    團長由 `uq_team_one_leader`（部分唯一索引）擋，函式寫錯也插不進第二個；
+    副團長是**完全沒有限制**（沒索引、沒 CHECK、函式裡也沒計數），0 位到全團都行。
+    那個不對稱是對的：團長是位子，副團長是能力。
 · `left_reason ∈ quit | kicked | disband` —— 移除寫 `kicked` 不重用 `quit`，
   否則那個欄位會說一件沒發生的事（同 2026-09-10 配桌那批的決定）。
 · 三張表都 **RLS 開啟、0 條 policy** ⇒ 完全鎖死，只有 DEFINER 進得去。
@@ -722,17 +767,48 @@ team_requests  11 欄  team_id · member_id · kind · status · created_by
   （測試 fixture 那一欄比 `ended_at` 還晚）。
 ⚠ 驗證：`sql/checks/2026-09-11_驗牌咖團場次判定.sql`（12 格，含兩個方向的時間區間）。
 
-### 函式 22 支（18 支對外給 `authenticated`，4 支內部誰都叫不到）
+### 函式 30 支（19 支對外給 `authenticated`，11 支內部誰都叫不到）
+（2026-09-14 當場查 `pg_proc` ＋ `aclexplode` 重列，不是從上一版抄的）
 ```
 讀    list_my_teams_tx · get_team_tx · search_teams_tx · list_hot_teams_tx
-建改  create_team_tx · update_team_tx · set_team_crest_tx · disband_team_tx
+建改  create_team_tx · update_team_tx · set_team_crest_tx
 加入  apply_team_tx · invite_to_team_tx · respond_team_request_tx
       cancel_team_request_tx · list_team_requests_tx
 治理  leave_team_tx · kick_team_member_tx · transfer_team_leader_tx
-      claim_team_leader_tx
+      claim_team_leader_tx · 🆕 set_team_co_leader_tx
 總部  admin_remove_team_crest_tx（`can('member.write')`，與頭像下架同一個碼）
+      🆕 disband_team_tx（`can('team.disband')` —— **已經不是團長的功能了**）
 內部  _team_session_ids · _team_card · _team_expire_requests · _team_notify
+      _is_team_leader · _team_claim_check · _team_top_contributor
+      🆕 _team_disband · sweep_team_leaders_tx
+      team_crest_guard_tx · clear_team_crest_tx（見下面團徽那一節）
 ```
+🔴 **`disband_team_tx` 2026-09-14 從「團長」收成「總部」**（使用者決定）。
+  只藏前端按鈕不算做完 —— 它本來 authenticated 叫得動而且只認「你是不是團長」，
+  規則會只活在畫面上。
+  ⚠ **而收它有一個地雷**：`leave_team_tx` 在「團長是最後一個人」時
+  **直接呼叫它**，只收那一支的話**一人團的團長會永遠出不來**，
+  而且他看到的訊息是「只有總部可以解散」——跟他按的動作完全對不上。
+  ✅ 所以收尾抽成 `_team_disband(team, by)`（不含任何權限），
+  退出走收尾、不走那道門。同一個名字兩件事，拆開才收得動。
+  ⚠ **migi-admin 今天沒有牌咖團畫面** ⇒ 總部要解散團只能從 SQL Editor 叫。
+    那是已知取捨，寫在 `sql/applied/2026-09-14_解散團收歸總部.sql` 的檔頭。
+
+🆕 **`_team_card` 多回一個 `my_request`**（`'apply'` / `'invite'` / `null`，
+  2026-09-14）＝「我跟這個團之間有沒有一筆還在談的」。
+  🔴 **回文字不回布林**，因為那兩種的下一步完全相反：`apply` 再按一次必定回
+  `already_pending`（要擋），`invite` 按下去**當場入團**（要鼓勵）。
+  🔴 **必須自己算過期**（`expires_at > now()`）—— `_team_expire_requests`
+  是被動的，過期的申請會一直停在 `pending`，只看 status 會讓畫面永遠鎖著
+  「申請中」。線上已經有四支這樣算（`get_team_tx`／`list_my_teams_tx`／
+  `list_notifications_tx`／`list_team_requests_tx`），這是跟上不是發明第二套。
+  ⚠ 這張卡從此**與看的人有關**（同一個團不同人拿到的值不同）
+  ⇒ 日後要快取團卡**不可以跨使用者共用**。
+
+⚠ `get_team_tx` 的名冊排序 2026-09-14 改成**明寫的名次**（leader 0 / co_leader 1
+  / member 2）。原本是 `order by role` 字串序，而 `'co_leader' < 'leader'`
+  ⇒ **副團長會排到團長上面**。它先前看起來對，純粹因為 leader 剛好排在
+  member 前面 —— 同「收據排序不要靠字母巧合」那個坑。
 🔴 **這一批一律不收 `p_member_id`，身分只從 JWT 取**，而且
   `revoke from anon, public` ＋ `grant to authenticated`。
   全庫已經有 53 支簽名帶那個參數，不要變成 54（待辦 14）。
