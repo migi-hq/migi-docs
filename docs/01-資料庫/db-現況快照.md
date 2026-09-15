@@ -1,9 +1,11 @@
 # MIGI 資料庫現況快照
 
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
-> **最後校對：2026-09-14**
-> **基準：`sql/applied/` 有 223 個 `.sql`**（其中 200 個以日期開頭、23 個是更早的；
-> 最後歸檔的是 `2026-09-14_解散團收歸總部.sql`）
+> **最後校對：2026-09-15**
+> **基準：`sql/applied/` 有 224 個 `.sql`**（其中 201 個以日期開頭、23 個是更早的；
+> 最後歸檔的是 `2026-09-15_離開團要讓當事人知道.sql`）
+> **2026-09-15 重數：資料表 50 ／ 函式 225 ／ 檢視表 22 ／ policy 29 ／ CHECK 112 —— 與前一版相同**
+> （那一批只 `CREATE OR REPLACE` 兩支既有函式、加寬一個 CHECK 的白名單，沒有新增任何物件）
 >
 > ### 📊 2026-09-14 重新量過的整體數字
 > ```
@@ -998,7 +1000,7 @@ free = 店裡可用桌數 − 同時段其他「還活著的預約」佔走的�
 |---|---|
 | `app_events.app_events_event_check` | 🔴 **不是白名單，是格式** —— `event ~ '^[a-z][a-z0-9_]{0,49}$'` |
 | `app_events.app_events_props_check` | `pg_column_size(props) <= 8192` |
-| `app_notifications.*_type_check` | settle / buddy_req / buddy_ok / table_req / table_ok / system / **table_expired** |
+| `app_notifications.*_type_check` | settle / buddy_req / buddy_ok / table_req / table_ok / system / table_expired / **team_req** / **team_ok** / **team_out** ＝ 10 個<br>⚠ 這一行 2026-09-15 補過：它先前停在 7 個，漏了牌咖團那批（`team_req`／`team_ok`，2026-09-11 加的）。<br>📌 `team_out` ＝「你不在這個團了」（被移出／團解散）。**刻意不借用 `team_ok`** —— 那個名字的意思是「團的好消息」。 |
 | `invoices.invoices_amount_chk` | `sales_amount + tax_amount = total_amount` |
 | `invoices.invoices_status_chk` | pending / issued / void / failed |
 | `invoices.invoices_kind_chk` | invoice / allowance |
