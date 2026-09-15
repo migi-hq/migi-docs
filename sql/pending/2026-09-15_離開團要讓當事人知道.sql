@@ -167,15 +167,21 @@ declare
   v_msg  text := '';
   v_vals text[];
   v_n    int;
-  v_a    boolean;
-  v_p    boolean;
+  v_txt  text;
   v_row  record;
 begin
   /* ① 白名單：9 個舊值 ＋ 1 個新值 = 10
-        （期望值用算式寫出來，下次紅的時候才知道是哪一項變了，硬規則 3.56） */
-  select array_agg(x order by x) into v_vals
-    from regexp_matches(pg_get_constraintdef(c.oid), '''([a-z_]+)''::text', 'g') as m(x1),
-         lateral (select x1[1]) as t(x)
+        （期望值用算式寫出來，下次紅的時候才知道是哪一項變了，硬規則 3.56）
+     🔴 第一版把 `pg_constraint` 漏在 FROM 外面（直接寫 `c.oid` 而沒有
+       `from pg_constraint c`）⇒ `42P01 missing FROM-clause entry for table "c"`。
+       ⚠ 而它炸的位置是**驗證段**，Supabase SQL Editor 是單一交易
+         ⇒ **整份回滾，前面的 DDL 一行都沒留下**（硬規則 1.8 的另一面：
+         那一次不是「綠燈但沒生效」，是「紅燈而且真的沒生效」—— 這樣才對）。 */
+  select array_agg(m.x order by m.x) into v_vals
+    from pg_constraint c
+    cross join lateral (
+      select (regexp_matches(pg_get_constraintdef(c.oid), '''([a-z_]+)''::text', 'g'))[1] as x
+    ) m
    where c.conrelid = 'public.app_notifications'::regclass
      and c.conname  = 'app_notifications_type_check';
 
@@ -206,33 +212,39 @@ begin
      and p.proname = '_team_disband';
   v_msg := v_msg || '　收尾函式 版本數 ' || v_n;
 
-  /* ④ 授權沒被 REPLACE 弄掉。
-        兩個方向都印（硬規則 2.6b）：明確授權 與 PUBLIC 各自有沒有，
-        因為 has_function_privilege 分不出這兩種。 */
-  select exists (select 1 from aclexplode(p.proacl) a
-                  where a.grantee = 'anon'::regrole::oid and a.privilege_type = 'EXECUTE'),
-         (p.proacl is null or exists (select 1 from aclexplode(p.proacl) a
-                  where a.grantee = 0 and a.privilege_type = 'EXECUTE'))
-    into v_a, v_p
+  /* ④⑤ 授權沒被 REPLACE 弄掉。
+     🔴 **直接把角色清單印出來讓人判讀，不回傳是非題**（硬規則 3.5 的精神）。
+       第一版寫成「anon 有沒有」的布林，而**期望值是錯的**：
+       牌咖團那一族全部要真的登入，授權給的是 `authenticated` 不是 `anon`
+       —— 照那個寫法會對一支完全正確的函式印 🔴（硬規則 3.56：先懷疑期望值）。
+     ⚠ 用 `aclexplode` 不用 `has_function_privilege`：後者分不出
+       「明確授權」與「從 PUBLIC 繼承」（硬規則 2.6）。
+       這裡把 PUBLIC 直接印成 PUBLIC，兩種來源一眼分得開。 */
+  select coalesce(string_agg(distinct case when a.grantee = 0 then 'PUBLIC'
+                                           else a.grantee::regrole::text end, '、'), '（完全沒有授權）')
+    into v_txt
     from pg_proc p
+    left join lateral aclexplode(p.proacl) a on a.privilege_type = 'EXECUTE'
    where p.pronamespace = 'public'::regnamespace and p.prokind = 'f'
      and p.proname = 'kick_team_member_tx';
-  v_msg := v_msg || E'\n' || case when v_a then '✅' else '🔴' end
-        || ' ④ 移出團員 anon 明確授權 ' || coalesce(v_a::text, '?')
-        || '（前端要叫得動）　PUBLIC ' || coalesce(v_p::text, '?');
+  v_msg := v_msg || E'\n' || case when v_txt like '%authenticated%'
+                                   and v_txt not like '%anon%'
+                                   and v_txt not like '%PUBLIC%' then '✅' else '🔴' end
+        || ' ④ 移出團員 可執行：' || v_txt
+        || E'\n      （要有 authenticated＝前端叫得動；不可以有 anon 或 PUBLIC）';
 
-  select exists (select 1 from aclexplode(p.proacl) a
-                  where a.grantee in ('anon'::regrole::oid, 'authenticated'::regrole::oid)
-                    and a.privilege_type = 'EXECUTE'),
-         (p.proacl is null or exists (select 1 from aclexplode(p.proacl) a
-                  where a.grantee = 0 and a.privilege_type = 'EXECUTE'))
-    into v_a, v_p
+  select coalesce(string_agg(distinct case when a.grantee = 0 then 'PUBLIC'
+                                           else a.grantee::regrole::text end, '、'), '（完全沒有授權）')
+    into v_txt
     from pg_proc p
+    left join lateral aclexplode(p.proacl) a on a.privilege_type = 'EXECUTE'
    where p.pronamespace = 'public'::regnamespace and p.prokind = 'f'
      and p.proname = '_team_disband';
-  v_msg := v_msg || E'\n' || case when (not v_a) and (not v_p) then '✅' else '🔴' end
-        || ' ⑤ 收尾函式 仍然收著：前端明確授權 ' || coalesce(v_a::text, '?')
-        || '　PUBLIC ' || coalesce(v_p::text, '?') || '（兩個都要是 false）';
+  v_msg := v_msg || E'\n' || case when v_txt not like '%anon%'
+                                   and v_txt not like '%authenticated%'
+                                   and v_txt not like '%PUBLIC%' then '✅' else '🔴' end
+        || ' ⑤ 收尾函式 可執行：' || v_txt
+        || E'\n      （它是內部函式，前端三個角色一個都不可以有）';
 
   /* ⑥ 既有資料沒被動到。逐行印出讓人判讀，不回傳是非題（硬規則 3.5）。
         ⚠ 這一格永遠不會是 🔴 —— 它的工作是讓人看見「加寬白名單沒有
