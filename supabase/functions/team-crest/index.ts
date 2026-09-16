@@ -91,15 +91,59 @@ async function whoAmI(idToken: string): Promise<
     return { ok: false, status: 401, body: { ok: false, reason: 'aud_mismatch', message: '授權來源不符' } }
   }
 
+  return memberByLine(sub)
+}
+
+type Who = { ok: true; memberId: string } | { ok: false; status: number; body: unknown }
+
+/* LINE 帳號 → 會員。兩條認人的路最後都走這一段，**只寫一份**。 */
+async function memberByLine(lineId: string): Promise<Who> {
   const found = await api(
     `rest/v1/members?select=id&org_id=eq.${MIGI_ORG_ID}` +
-    `&line_user_id=eq.${encodeURIComponent(sub)}&deleted_at=is.null&limit=1`)
+    `&line_user_id=eq.${encodeURIComponent(lineId)}&deleted_at=is.null&limit=1`)
   const rows = await found.json().catch(() => null)
   const memberId = Array.isArray(rows) && rows[0]?.id
   if (!memberId) {
     return { ok: false, status: 404, body: { ok: false, reason: 'not_registered', message: '請先完成註冊' } }
   }
   return { ok: true, memberId }
+}
+
+/* 🔴 **2026-09-17：先用 Supabase 登入狀態認人，LINE id_token 只當退路。**
+   使用者實機回報：上傳團徽 →「LINE 授權已失效，請重新開啟一次」。
+
+   根因：LINE 的 id_token **登入之後大約一小時就過期**，而 LIFF 在 App 開著的
+   時候**不會自己換新**（`liff.getIDToken()` 回的一直是登入那一刻拿到的那張）。
+   ⇒ App 開超過一小時，任何走 id_token 的動作都會失敗 —— 頭像上傳也一樣。
+
+   ✅ 會員 App 從 2026-09-05 起就有 **Supabase session**，而 supabase-js
+     **會自己刷新**那張 JWT。前端把它放在 `Authorization` 送過來，
+     這裡拿去問 `/auth/v1/user` 認人 —— 與資料庫的 `current_member_id()`
+     是**同一條身分路徑**（`app_metadata.line_user_id`）。
+   🔴 **只讀 `app_metadata`，絕對不讀 `user_metadata`** ——
+     後者客戶端自己就改得到，讀它等於「填任何 LINE id 就變成他」（CLAUDE.md 待辦 14）。
+
+   ⚠ 回 `null` 只代表「**沒有可用的 session**」（送的是 anon key、過期、
+     或這個 user 沒有 LINE id），那時才退回 id_token。
+     session 有效但查不到會員，照實回 404，不要退回去換一句話。
+   ⚠ id_token 那條留著是 expand-safe：還沒更新的前端（舊版快取）照樣能用。 */
+async function whoAmIFromSession(req: Request): Promise<Who | null> {
+  const tok = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '').trim()
+  if (!tok) return null
+  let res: Response
+  try {
+    res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${tok}` },
+    })
+  } catch (e) {
+    console.error('[team-crest] 查 session 失敗，退回 id_token', e)
+    return null
+  }
+  if (!res.ok) return null
+  const u = await res.json().catch(() => null)
+  const lineId = u?.app_metadata?.line_user_id
+  if (!lineId || typeof lineId !== 'string') return null
+  return memberByLine(lineId)
 }
 
 /* 🔴 `team_id` 會被組進 Storage 的路徑，所以**一定要驗格式**。
@@ -117,15 +161,17 @@ Deno.serve(async (req) => {
     return json({ ok: false, reason: 'bad_json', message: '請求格式錯誤' }, 400)
   }
 
-  const idToken = (body.id_token ?? '').trim()
-  if (!idToken) return json({ ok: false, reason: 'id_token_required', message: '缺少 LINE 授權資訊' }, 400)
-
   const teamId = (body.team_id ?? '').trim()
   if (!UUID.test(teamId)) {
     return json({ ok: false, reason: 'bad_team_id', message: '牌咖團識別碼不正確' }, 400)
   }
 
-  const me = await whoAmI(idToken)
+  /* 先 session、再 id_token（理由見 `whoAmIFromSession`）。兩個都沒有才擋。 */
+  const idToken = (body.id_token ?? '').trim()
+  const me = (await whoAmIFromSession(req)) ?? (idToken ? await whoAmI(idToken) : null)
+  if (!me) {
+    return json({ ok: false, reason: 'not_logged_in', message: '登入狀態已過期，請關閉 MIGI 再重新開啟' }, 401)
+  }
   if (!me.ok) return json(me.body, me.status)
 
   /* ── sign_upload ───────────────────────────────────

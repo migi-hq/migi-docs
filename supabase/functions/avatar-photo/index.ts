@@ -99,15 +99,50 @@ async function whoAmI(idToken: string): Promise<
     return { ok: false, status: 401, body: { ok: false, reason: 'aud_mismatch', message: '授權來源不符' } }
   }
 
+  return memberByLine(sub)
+}
+
+type Who = { ok: true; memberId: string } | { ok: false; status: number; body: unknown }
+
+/* LINE 帳號 → 會員。兩條認人的路最後都走這一段，**只寫一份**。 */
+async function memberByLine(lineId: string): Promise<Who> {
   const found = await api(
     `rest/v1/members?select=id&org_id=eq.${MIGI_ORG_ID}` +
-    `&line_user_id=eq.${encodeURIComponent(sub)}&deleted_at=is.null&limit=1`)
+    `&line_user_id=eq.${encodeURIComponent(lineId)}&deleted_at=is.null&limit=1`)
   const rows = await found.json().catch(() => null)
   const memberId = Array.isArray(rows) && rows[0]?.id
   if (!memberId) {
     return { ok: false, status: 404, body: { ok: false, reason: 'not_registered', message: '請先完成註冊' } }
   }
   return { ok: true, memberId }
+}
+
+/* 🔴 **2026-09-17：先用 Supabase 登入狀態認人，LINE id_token 只當退路。**
+   與 `team-crest` 逐行相同（Edge Function 沒有共用模組，理由見上）。
+   使用者實機在團徽撞到「LINE 授權已失效」，**這一支有一樣的病**：
+   LINE 的 id_token 登入後約一小時過期，LIFF 開著時不會換新 ⇒
+   App 開超過一小時就傳不了頭像。
+   ✅ 改認 Supabase session（supabase-js 會自己刷新），走的是與
+     `current_member_id()` 同一條路：**`app_metadata.line_user_id`**。
+   🔴 只讀 `app_metadata`，**絕對不讀 `user_metadata`**（客戶端自己改得到）。
+   ⚠ 回 `null` 只代表沒有可用的 session，那時才退回 id_token（expand-safe）。 */
+async function whoAmIFromSession(req: Request): Promise<Who | null> {
+  const tok = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '').trim()
+  if (!tok) return null
+  let res: Response
+  try {
+    res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${tok}` },
+    })
+  } catch (e) {
+    console.error('[avatar-photo] 查 session 失敗，退回 id_token', e)
+    return null
+  }
+  if (!res.ok) return null
+  const u = await res.json().catch(() => null)
+  const lineId = u?.app_metadata?.line_user_id
+  if (!lineId || typeof lineId !== 'string') return null
+  return memberByLine(lineId)
 }
 
 Deno.serve(async (req) => {
@@ -119,10 +154,12 @@ Deno.serve(async (req) => {
     return json({ ok: false, reason: 'bad_json', message: '請求格式錯誤' }, 400)
   }
 
+  /* 先 session、再 id_token（理由見 `whoAmIFromSession`）。兩個都沒有才擋。 */
   const idToken = (body.id_token ?? '').trim()
-  if (!idToken) return json({ ok: false, reason: 'id_token_required', message: '缺少 LINE 授權資訊' }, 400)
-
-  const me = await whoAmI(idToken)
+  const me = (await whoAmIFromSession(req)) ?? (idToken ? await whoAmI(idToken) : null)
+  if (!me) {
+    return json({ ok: false, reason: 'not_logged_in', message: '登入狀態已過期，請關閉 MIGI 再重新開啟' }, 401)
+  }
   if (!me.ok) return json(me.body, me.status)
 
   /* ── sign_upload ───────────────────────────────────
