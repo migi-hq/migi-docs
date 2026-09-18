@@ -43,8 +43,8 @@ begin
   select id into v_other from members where org_id = v_org and is_test and deleted_at is null and id <> v_me order by created_at limit 1;
 
   if v_store is null or v_me is null or v_other is null then
+    /* ⚠ 訊息只存進**變數**，不要在這裡 set_config —— 見檔尾那段。 */
     v_msg := '⚪ 取不到樣本（門市或測試會員不足）—— 這一份測不了，不要當成通過';
-    perform set_config('migi.verify_settle_behavior', v_msg, true);
     raise exception 'migi_rollback';
   end if;
 
@@ -129,15 +129,20 @@ begin
     then '✅ ⑦ 紀錄清單仍然是陣列、鍵沒少（' || jsonb_array_length(v_out) || ' 筆）'
     else '🔴 ⑦ 清單形狀變了：' || left(coalesce(v_out::text,'null'), 120) end;
 
-  /* ⚠ 訊息一定要在 raise **之前**用 set_config 寫進去（硬規則 3.9）。 */
-  perform set_config('migi.verify_settle_behavior', v_msg, true);
   raise exception 'migi_rollback';
 
+/* 🔴 **訊息一定要設在 exception 處理器裡，不可以設在 raise 之前**（硬規則 3.9）。
+   `set_config(..., true)` 是**交易內**的設定 ⇒ 寫在 raise 之前會跟著一起被回滾，
+   最後印出「🔴 沒有驗證訊息」。
+   ⚠ 2026-09-19 第一版就是這樣錯的，而它看起來像「測試整個沒跑」——
+     實際上七格都跑完了，只是話被回滾掉了。
+   📌 變數 `v_msg` 不受回滾影響（那是記憶體不是資料），所以整段訊息在這裡還在。 */
 exception when others then
-  if sqlerrm <> 'migi_rollback' then
+  if sqlerrm = 'migi_rollback' then
+    perform set_config('migi.verify_settle_behavior', v_msg, true);
+  else
     perform set_config('migi.verify_settle_behavior',
-      coalesce(current_setting('migi.verify_settle_behavior', true), '')
-      || E'\n🔴 中途炸了：' || sqlerrm, true);
+      coalesce(v_msg, '') || E'\n🔴 中途炸了：' || sqlerrm, true);
   end if;
 end $$;
 
