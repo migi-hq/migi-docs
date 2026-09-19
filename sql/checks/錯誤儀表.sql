@@ -171,7 +171,7 @@ select 序, 項目, 內容 from (
           **四個數字一個都沒動** —— 而那是一次真正的安全性變更。
           → 所以第 ⑦ 段數的是**授權**：明確授權 anon 的支數，
             以及「只靠 PUBLIC 進來」的支數（**那個應該永遠是 0**）。 */
-  select 6, '⑥ 結構物件數 vs baseline（2026-09-11：表46 函式185 索引85 policy29 帶can20）',
+  select 6, '⑥ 結構物件數 vs baseline（2026-09-19：表50 函式231 索引96 policy29 帶can20）',
          (select '表 ' || (select count(*)::text from pg_class c
                             join pg_namespace n on n.oid=c.relnamespace
                            where n.nspname='public' and c.relkind='r')
@@ -201,9 +201,9 @@ select 序, 項目, 內容 from (
                       else '' end
               || case when (select count(*) from pg_class c
                              join pg_namespace n on n.oid=c.relnamespace
-                            where n.nspname='public' and c.relkind='r') = 46
+                            where n.nspname='public' and c.relkind='r') = 50
                        and (select count(*) from pg_proc p
-                             where p.pronamespace='public'::regnamespace and p.prokind='f') = 185
+                             where p.pronamespace='public'::regnamespace and p.prokind='f') = 231
                        and (select count(*) from pg_policies where schemaname='public') = 29
                       then E'\n  ✅ 與 baseline 相同'
                       else E'\n  ⚠ 與 baseline 不同 —— 重跑 sql/checks/匯出完整結構baseline.sql'
@@ -227,15 +227,15 @@ select 序, 項目, 內容 from (
        · **變多** ＝ 有人把函式開放給前端 ⇒ 那是**要逐支確認的事**
      ⚠ 舊版寫 `<> 129` 一律警告 —— 而「收緊之後永遠紅」正是
        這個專案記過三次的病（永遠紅的檢查會訓練人忽略紅色）。 */
-  select 7, '⑦ 函式授權 vs baseline（2026-09-11：明確 anon 95、只靠 PUBLIC 0）',
+  select 7, '⑦ 函式授權 vs baseline（2026-09-19：明確 anon 96、只靠 PUBLIC 0）',
          (select '明確授權 anon ' || count(*) filter (where anon明確)::text
               || '　只靠 PUBLIC ' || count(*) filter (where public有 and not anon明確)::text
               || '　兩者都沒有 ' || count(*) filter (where not anon明確 and not public有)::text
               || case when count(*) filter (where public有 and not anon明確) > 0
                       then E'\n  🔴 有函式只靠 PUBLIC 進來 —— 那不是決定，是預設值。逐支確認要不要給 anon'
-                      when count(*) filter (where anon明確) > 95
+                      when count(*) filter (where anon明確) > 96
                       then E'\n  🔴 明確授權 anon 的支數**變多了** —— 有人把函式開放給前端，逐支確認'
-                      when count(*) filter (where anon明確) < 95
+                      when count(*) filter (where anon明確) < 96
                       then E'\n  ⚠ 比 baseline 少（有人收緊了，方向是對的）—— 重跑匯出把基準對上'
                       else E'\n  ✅ 與 baseline 相同' end
             from (select
