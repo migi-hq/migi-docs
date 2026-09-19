@@ -70,6 +70,12 @@ def applied_state() -> tuple[int, str]:
 
 
 def main() -> None:
+    # ⚠ Windows 主控台預設 cp950，印 ✅ 會拋 UnicodeEncodeError（2026-09-19 踩到）。
+    #   檔案那時其實已經寫好了，只有訊息炸掉 —— 而那看起來像整支失敗。
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
     if len(sys.argv) != 2:
         sys.exit(__doc__)
 
@@ -106,6 +112,29 @@ def main() -> None:
      而 `applied/` 記的是「為什麼」，這份記的是「現在長什麼樣」。
      兩份都要。
    ============================================================ */
+
+/* 🔴 **不要在有資料的資料庫上跑這一份。**
+   2026-09-19 真的發生過一次：有人把它整份貼進正式站的 SQL Editor 按下 Run，
+   在第一個 `create type` 就炸（`42710: type "txn_status" already exists`）。
+   🟢 當天零損害 —— Supabase 的 SQL Editor 是**單一交易**，整份回滾了。
+   ⚠ **但那是運氣不是設計**：只要它跑得再深一點，
+     後面全是 `create table` / `create policy`，
+     而中途任何一個成功都可能改動正在營運的結構。
+
+   ✅ 所以這道牆在這裡：`public` 只要已經有表就**什麼都不做**，
+     而且訊息會告訴你現在有幾張。要重建就在**空的資料庫**上跑。
+   📌 這不是提醒，是機制 —— 提醒需要有人記得，而那個人就是會忘的那個。 */
+do $$
+declare v_n int;
+begin
+  select count(*) into v_n
+    from pg_class c join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname = 'public' and c.relkind = 'r';
+  if v_n > 0 then
+    raise exception
+      '🔴 這份是 baseline（現況快照），只能在**空的資料庫**上重建。目前 public 已經有 % 張表 —— 一行都沒有執行。', v_n;
+  end if;
+end $$;
 
 """
 
