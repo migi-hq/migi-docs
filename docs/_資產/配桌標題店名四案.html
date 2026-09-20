@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>配桌標題店名四案</title>
+<style>
+  /* 🔴 值全部從 @migi/assets 的 tokens.css 抄來（2026-09-20），不要在這裡自己調。
+        要改顏色請改 migi-assets，這一頁只是拿來看的。 */
+  :root{
+    --brand:#FAD6DC; --brand-tint:#FFECF1; --brand-light:#FFE7EE;
+    --ink:#2E2B2C; --accent:#C2607A; --accent-deep:#974B5F;
+    --gray-1:#5C5754; --gray-2:#726D69; --gray-3:#ECEAE9; --gray-4:#F2F0EE;
+    --divider:#DED9D5; --white:#FFFFFF; --danger:#B23B3B;
+    --field-bg:#F2F0EE;
+    --xxxs:11px; --xxs:12px; --xs:13px; --s:14px; --m:15px; --l:16px; --xl:18px;
+    --r-card:14px; --r-pill:999px; --r-field:10px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#EFEDEB;font-family:-apple-system,"Segoe UI","PingFang TC","Noto Sans TC",sans-serif;color:var(--ink);padding:24px 12px 60px}
+  h1{font-size:18px;margin:0 0 6px}
+  .note{font-size:13px;color:var(--gray-1);max-width:760px;line-height:1.7;margin:0 0 22px}
+  .note b{color:var(--ink)}
+  .row{display:flex;flex-wrap:wrap;gap:18px;justify-content:center}
+  .col{width:360px}
+  .tag{font-size:13px;font-weight:700;margin:0 0 8px;color:var(--ink)}
+  .tag em{font-style:normal;color:var(--gray-2);font-weight:400}
+  .phone{background:var(--white);border-radius:18px;padding:14px 0 18px;box-shadow:0 2px 14px rgba(0,0,0,.08)}
+
+  /* ── 目前門市那張卡（照 match.jsx 抄）────────────────── */
+  .sec{padding:0 20px}
+  .seclab{margin:0 0 8px;font-size:var(--l);font-weight:700;color:var(--ink)}
+  .storecard{background:var(--brand-tint);border:1px solid var(--brand);border-radius:var(--r-card);padding:12px;display:flex;gap:10px;align-items:center}
+  .pin{flex:0 0 46px;width:46px;height:46px;border-radius:var(--r-field);background:var(--brand);display:flex;align-items:center;justify-content:center;font-size:20px}
+  .sname{font-size:var(--m);font-weight:700;color:var(--ink);display:flex;align-items:center;gap:6px}
+  .spill{background:var(--field-bg);border:1px solid var(--gray-3);border-radius:var(--r-pill);padding:2px 9px;font-size:var(--xxxs);font-weight:700;color:var(--gray-1)}
+  .ssub{font-size:var(--xs);color:var(--gray-1);margin-top:3px}
+
+  /* ── 牌局區 ──────────────────────────────────────── */
+  .h{margin:0 0 8px;font-size:var(--l);font-weight:700;color:var(--ink)}
+  .sub{margin:0 0 8px;font-size:var(--xs);color:var(--gray-2)}
+  .card{background:var(--brand-light);border-radius:var(--r-card);padding:12px 14px;margin-bottom:8px}
+  .freq{display:inline-block;background:var(--accent-deep);color:var(--white);border-radius:var(--r-pill);padding:3px 10px;font-size:var(--xxxs);font-weight:700}
+  .when{font-size:var(--l);font-weight:700;margin-top:8px}
+  .stake{font-size:var(--xs);font-weight:700;color:var(--accent-deep);margin-left:8px}
+
+  /* ── 四案差異只在這幾個 class ──────────────────────── */
+  .a-name{color:var(--ink)}                                  /* A 現況 */
+  .b-name{color:var(--accent-deep)}                          /* B 店名強調色 */
+  .c-suf{color:var(--gray-1);font-weight:400}                /* C 後綴退場 */
+  .d-name{color:var(--accent-deep)}
+  .d-suf{color:var(--gray-1);font-weight:400}
+</style>
+
+<h1>配桌首頁標題：店名要不要區分（四案）</h1>
+<p class="note">
+  🔴 <b>連著上面那張「目前門市」卡一起看</b> —— 店名在那張卡裡已經出現過一次（<code>--m</code> 700 <code>--ink</code>）。
+  標題再寫一次是刻意的，但顏色不一樣的話，<b>同一個店名在同一個畫面上會有兩種樣子</b>。<br>
+  ⚠ <b>「紅字」不用 <code>--danger</code></b>（那是錯誤／警示紅，拿來當店名是同一個顏色兩個意思）。
+  這個系統的「強調文字」是 <code>--accent-deep</code> <code>#974B5F</code>，白底對比 6.02，值是量出來的。<br>
+  ⚠ <b>「粗體」單獨不成立</b> —— 標題整行本來就是 700，所以 C／D 是反過來把<b>後綴</b>削弱（400 ＋ <code>--gray-1</code>）來讓店名浮出來。
+</p>
+
+<div class="row">
+
+  <div class="col">
+    <p class="tag">A · 現況（今天線上這一版）<em>　店名與後綴同色同粗</em></p>
+    <div class="phone">
+      <div class="sec">
+        <p class="seclab">目前門市</p>
+        <div class="storecard"><div class="pin">📍</div><div>
+          <div class="sname">MIGI 高雄自由店 <span class="spill">門市</span></div>
+          <div class="ssub">目前沒有等待中的牌局</div></div></div>
+      </div>
+      <div class="sec" style="padding-top:14px">
+        <p class="h"><span class="a-name">MIGI 高雄自由店</span>的牌局</p>
+        <p class="sub">固定牌局</p>
+        <div class="card"><span class="freq">每天開桌</span>
+          <div class="when">今天 21:00<span class="stake">積分：50/20</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <p class="tag">B · 店名用強調色<em>　--accent-deep，後綴不動</em></p>
+    <div class="phone">
+      <div class="sec">
+        <p class="seclab">目前門市</p>
+        <div class="storecard"><div class="pin">📍</div><div>
+          <div class="sname">MIGI 高雄自由店 <span class="spill">門市</span></div>
+          <div class="ssub">目前沒有等待中的牌局</div></div></div>
+      </div>
+      <div class="sec" style="padding-top:14px">
+        <p class="h"><span class="b-name">MIGI 高雄自由店</span>的牌局</p>
+        <p class="sub">固定牌局</p>
+        <div class="card"><span class="freq">每天開桌</span>
+          <div class="when">今天 21:00<span class="stake">積分：50/20</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <p class="tag">C · 後綴退場<em>　店名不動，「的牌局」降成 400 ＋ --gray-1</em></p>
+    <div class="phone">
+      <div class="sec">
+        <p class="seclab">目前門市</p>
+        <div class="storecard"><div class="pin">📍</div><div>
+          <div class="sname">MIGI 高雄自由店 <span class="spill">門市</span></div>
+          <div class="ssub">目前沒有等待中的牌局</div></div></div>
+      </div>
+      <div class="sec" style="padding-top:14px">
+        <p class="h">MIGI 高雄自由店<span class="c-suf">的牌局</span></p>
+        <p class="sub">固定牌局</p>
+        <div class="card"><span class="freq">每天開桌</span>
+          <div class="when">今天 21:00<span class="stake">積分：50/20</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <p class="tag">D · 兩個都做<em>　店名強調色 ＋ 後綴退場</em></p>
+    <div class="phone">
+      <div class="sec">
+        <p class="seclab">目前門市</p>
+        <div class="storecard"><div class="pin">📍</div><div>
+          <div class="sname">MIGI 高雄自由店 <span class="spill">門市</span></div>
+          <div class="ssub">目前沒有等待中的牌局</div></div></div>
+      </div>
+      <div class="sec" style="padding-top:14px">
+        <p class="h"><span class="d-name">MIGI 高雄自由店</span><span class="d-suf">的牌局</span></p>
+        <p class="sub">固定牌局</p>
+        <div class="card"><span class="freq">每天開桌</span>
+          <div class="when">今天 21:00<span class="stake">積分：50/20</span></div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p class="note" style="margin-top:26px">
+  🎯 <b>我的建議是 C。</b> 理由是三個：<br>
+  ① 店名在卡片裡與標題裡<b>保持同一種樣子</b>（都是 700 ＋ <code>--ink</code>），
+     不會讓人以為那是兩個不同的東西；<br>
+  ② 真正要區分的是「哪一段是店名、哪一段是句子」，
+     <b>削弱後綴就達到了</b>，不必再引入一個顏色；<br>
+  ③ <code>--accent-deep</code> 在這一頁已經有工作了 ——
+     「每天開桌」膠囊的底、「積分：50/20」的字都是它。
+     標題再用一次會讓這個顏色變成「到處都是」，
+     <b>而一個到處都是的強調色等於沒有強調</b>。<br>
+  ⚠ 想要更明顯就選 D；<b>B 我不建議</b> ——
+  它把店名變成畫面上第三個桃紅色的東西，而後綴仍然是 700，兩段的份量沒有拉開。
+</p>
+</html>
