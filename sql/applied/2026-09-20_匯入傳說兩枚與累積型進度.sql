@@ -28,7 +28,10 @@
    🎯 那與 C 區 31 枚牌型的處理**不一樣**，是刻意的：
      使用者拍板「成就要讓人知道有什麼可以追」⇒ 旗艦那兩枚要看得見。
    📌 C 區與 A 區那 11 枚今天仍是 `is_active = false`（清單上看不到）——
-     要不要一起打開是另一個決定，不在這一批。 */
+     要不要一起打開是另一個決定，不在這一批。
+   ✅ **使用者當天就拍板「全部打開」** → `2026-09-20_打開其餘42枚成就.sql`。
+     ⚠ 那份**要在這一份之後跑**（它的驗證段會數「關著的還有幾枚」，
+       而這兩枚是 active 的，先後順序會讓那個期望值對不上）。 */
 insert into achievements (
   org_id, code, name, description, condition_text, group_key, ui_category,
   struct, motivation, rarity, visibility, trigger, is_signature, sort, is_active)
