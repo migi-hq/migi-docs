@@ -5,6 +5,17 @@
 > **基準：`sql/applied/` 有 232 個 `.sql`**（最後歸檔的是
 > `2026-09-19_收桌發結算通知與單場詳情.sql`）
 > **2026-09-19 重數：資料表 50 ／ 函式 231 ／ 索引 96 ／ policy 29（帶 `can()` 20）**
+>
+> 🔴 **2026-09-20 這四個數字對不起來，而且我算不回去** ——
+> 當天實測 `資料表 54 ／ 函式 240 ／ 索引 163 ／ policy 33（帶 can 21）`。
+> 表與函式的差額大致解釋得了（09-19～20 新增了成就系統三張表與七支 RPC），
+> **但索引 96 → 163 差太多，那不是一天的工作量** ⇒ 兩邊的量法不同。
+> 試過幾種量法都湊不出 96（扣掉 pkey 是 109、只算唯一索引是 89、
+> 只算部分索引是 59）。
+> ⚠ **刻意不覆蓋那一行** —— 用一個量法不明的數字去蓋掉另一個，
+> 只會讓下一個人同樣無法判斷（硬規則 3.5：先懷疑儀器）。
+> → **要重數就連「怎麼數的」一起寫進去**，否則這一行只能當作「有變動」的訊號，
+> 不能當事實用。
 > **🧱 baseline：`sql/_baseline/2026-09-19_完整結構.sql`**（前一份是 09-11 的）
 > 🔴 **那份 09-11 的 baseline 過期了八天而沒有人發現** —— 中間新增了
 > `teams` / `team_members` / `team_requests` / `bookings` 四張表與 46 支函式。
@@ -1062,10 +1073,20 @@ free = 店裡可用桌數 − 同時段其他「還活著的預約」佔走的�
 | `member_coupons.member_coupons_org_code_uq` | `(org_id, code)` |
 | `products.uq_products_sku` | `(org_id, sku)` WHERE deleted_at IS NULL |
 | `tables.uq_tables_store_label` | `(store_id, label)` WHERE deleted_at IS NULL |
+| 🆕 `stake_levels.uq_stake_label` | `(org_id, label)` WHERE deleted_at IS NULL —— **同 org 內唯一，含店限定**（2026-09-20）|
 | `stores.stores_org_code_uq` | `(org_id, code)` |
 | `topup_plans.uq_topup_plans_tier` | `(org_id, coalesce(store_id,'000…'), min_amount)` |
 
 ✅ 全部 `indisvalid = true`（INVALID 的索引會存在、看得到、但完全不擋，而且沒有症狀）。
+
+### 🎯 `uq_stake_label` 為什麼含店限定（2026-09-20）
+一般的做法會拆成「全連鎖」與「店限定」兩個部分索引
+（`topup_plans.uq_topup_plans_tier` 就是用 `coalesce(store_id,'000…')` 繞開
+**Postgres 的唯一索引視多個 NULL 為相異**這件事）。
+**這一個刻意不拆** —— 拍板的規則是「積分全台統一，要客製也由總部設定」，
+而且 **label 本身就是底台的寫法**（`50/20` ＝ 底 50 台 20）
+⇒ 同名不同值是一個會說謊的名字，沒有正當用途。
+📌 它同時讓前端 `match.jsx` 用 label 回推級距的寫法變成安全的。
 
 ### 約束型唯一
 
