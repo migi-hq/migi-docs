@@ -1,0 +1,146 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>摸彩・史詩 — 紫框改前改後</title>
+<style>
+  /* 值逐字取自 @migi/assets（改前 v1.10.0 / 改後 v1.11.0） */
+  :root{
+    --brand:#FAD6DC; --violet:#C9A9D4; --gold:#E8B89B; --milktea:#EFE3DA;
+    --ink:#2E2B2C; --white:#FFFFFF; --gray-1:#5C5754; --gray-2:#726D69;
+    --xxxs:11px; --xxs:12px; --xs:13px; --s:14px; --m:15px; --l:16px; --xl:18px; --xxl:22px;
+    --r-pill:999px; --bw-heavy:2px;
+    --page:#F7F4F2; --line:#E4DEDA; --panel:#fff;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --page:#171514; --line:#35302D; --panel:#201D1C; --ink:#EDE8E5 }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink);
+    font:14px/1.7 -apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif}
+  .wrap{max-width:900px;margin:0 auto;padding:36px 20px 70px}
+  h1{margin:0;font-size:24px;font-weight:700;letter-spacing:.5px}
+  .lede{margin:10px 0 0;color:var(--gray-1);max-width:60ch;font-size:14.5px}
+  .row{display:flex;gap:26px;flex-wrap:wrap;margin-top:28px;justify-content:center}
+  figure{margin:0}
+  figcaption{text-align:center;margin-top:10px;font-size:13px;font-weight:700}
+  figcaption small{display:block;font-weight:400;color:var(--gray-2);font-size:11.5px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;margin-top:3px}
+
+  /* ── 以下逐項抄自 rewards.jsx 的 reveal 畫面 ─────────────── */
+  .phone{width:300px;height:620px;border-radius:26px;overflow:hidden;position:relative;
+    background:var(--white);box-shadow:0 16px 36px rgba(0,0,0,.2)}
+  .ovl{position:absolute;inset:0;background:rgba(46,43,44,0.62);
+    display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .tier{font-size:var(--xl);font-weight:800;letter-spacing:2px;margin-bottom:16px}
+  .icon{width:112px;height:112px;border-radius:50%;background:var(--white);
+    display:flex;align-items:center;justify-content:center;font-size:54px;margin:0 auto 16px}
+  .pname{margin:0 0 4px;font-size:var(--l);font-weight:800;color:var(--white)}
+  .psub{margin:0;font-size:var(--s);font-weight:700;color:rgba(255,255,255,.9)}
+  .btn{border:none;border-radius:var(--r-pill);padding:11px 0;font-size:var(--s);
+    font-weight:700;width:180px;color:var(--ink);margin-top:20px;cursor:pointer}
+
+  /* 改之前：粉框 ＋ 粉光暈（rgba(250,214,220) ＝ --brand 寫死在 keyframes 裡） */
+  .before .tier{color:var(--brand)}
+  .before .icon{border:var(--bw-heavy) solid var(--brand);animation:glowPink 1.4s ease-in-out infinite}
+  .before .btn{background:var(--brand)}
+  @keyframes glowPink{0%,100%{box-shadow:0 0 16px 3px rgba(250,214,220,.55)}50%{box-shadow:0 0 28px 9px rgba(250,214,220,.9)}}
+
+  /* 改之後：紫框 ＋ 紫光暈（rgba(201,169,212) ＝ --violet） */
+  .after .tier{color:var(--violet)}
+  .after .icon{border:var(--bw-heavy) solid var(--violet);animation:glowViolet 1.4s ease-in-out infinite}
+  .after .btn{background:var(--violet)}
+  @keyframes glowViolet{0%,100%{box-shadow:0 0 16px 3px rgba(201,169,212,.55)}50%{box-shadow:0 0 28px 9px rgba(201,169,212,.9)}}
+
+  /* ── 四階梯度對照 ─────────────────────────────── */
+  .scale{margin-top:44px;padding-top:26px;border-top:1px solid var(--line)}
+  .scale h2{margin:0 0 4px;font-size:17px;font-weight:700}
+  .scale p{margin:0 0 16px;color:var(--gray-1);font-size:14px;max-width:62ch}
+  .chips{display:flex;gap:10px;flex-wrap:wrap}
+  .chip{flex:1 1 150px;background:var(--panel);border:1px solid var(--line);
+    border-radius:14px;padding:14px;text-align:center}
+  .ring{width:58px;height:58px;border-radius:50%;margin:0 auto 9px;background:#F8F7F6;
+    display:flex;align-items:center;justify-content:center;font-size:26px}
+  .chip b{display:block;font-size:14px}
+  .chip small{display:block;color:var(--gray-2);font-size:11px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;margin-top:2px}
+  .chip.dim{opacity:.55}
+  ul.notes{margin:22px 0 0;padding-left:0;list-style:none;display:grid;gap:8px}
+  ul.notes li{font-size:13.5px;color:var(--gray-1);padding-left:18px;position:relative}
+  ul.notes li::before{content:"";position:absolute;left:2px;top:9px;width:6px;height:6px;
+    border-radius:50%;background:var(--violet)}
+  ul.notes li b{color:var(--ink)}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em;
+    background:rgba(0,0,0,.06);padding:1px 5px;border-radius:5px}
+</style></head><body>
+<div class="wrap">
+  <h1>摸彩 · 史詩 — 紫框改前改後</h1>
+  <p class="lede">
+    抽中史詩時的中獎畫面。版型、尺寸、動畫節奏<strong>逐項抄自 <code>rewards.jsx</code> 的
+    reveal 區塊</strong>，兩欄唯一的差別是那一個顏色。
+  </p>
+
+  <div class="row">
+    <figure>
+      <div class="phone before">
+        <div class="ovl">
+          <div class="tier">史詩</div>
+          <div class="icon">🖼️</div>
+          <p class="pname">MIGI 熊限定頭像</p>
+          <p class="psub">收進你的獎勵</p>
+          <button class="btn">收下</button>
+        </div>
+      </div>
+      <figcaption>改之前<small>--brand #FAD6DC</small></figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone after">
+        <div class="ovl">
+          <div class="tier">史詩</div>
+          <div class="icon">🖼️</div>
+          <p class="pname">MIGI 熊限定頭像</p>
+          <p class="psub">收進你的獎勵</p>
+          <button class="btn">收下</button>
+        </div>
+      </div>
+      <figcaption>改之後<small>--violet #C9A9D4</small></figcaption>
+    </figure>
+  </div>
+
+  <div class="scale">
+    <h2>放回四階梯度看</h2>
+    <p>稀有度是一條梯度，單看一個顏色沒有意義 —— 要看的是「史詩有沒有比稀有更重、又不跟傳說打架」。</p>
+    <div class="chips">
+      <div class="chip dim">
+        <div class="ring" style="border:2px solid #726D69">🍪</div>
+        <b>普通</b><small>--gray-2 #726D69</small>
+      </div>
+      <div class="chip">
+        <div class="ring" style="border:2px solid #FAD6DC">🍰</div>
+        <b>稀有</b><small>--brand #FAD6DC</small>
+      </div>
+      <div class="chip">
+        <div class="ring" style="border:2px solid #C9A9D4">🖼️</div>
+        <b>史詩</b><small>--violet #C9A9D4</small>
+      </div>
+      <div class="chip">
+        <div class="ring" style="border:2px solid #E8B89B;background:#2E2B2C">👑</div>
+        <b>傳說</b><small>--gold #E8B89B</small>
+      </div>
+    </div>
+
+    <ul class="notes">
+      <li><b>改之前史詩與稀有是同一個顏色</b>（兩格都是 <code>--brand</code>）——
+        摸彩的 <code>TIER_UI</code> 裡 epic 與 rare 的差別只剩「有沒有 glow」。</li>
+      <li><b>挑偏紅的藕紫不是藍紫。</b> MIGI 全套是暖色（蜜桃粉／奶茶／金棕），
+        藍紫放進去會像別的品牌的元件。</li>
+      <li><b>明度刻意放在 <code>--gold</code>(76%) 附近、比 <code>--brand</code>(87%) 深</b> ——
+        紫比粉淺就沒有升級感。</li>
+      <li><b>光暈也要一起改。</b> <code>migiGlowPink</code> 的
+        <code>rgba(250,214,220)</code> 是 <code>--brand</code> 寫死在 keyframes 裡的 ——
+        只改框會變成「紫框配粉光暈」。</li>
+      <li>同一份顏色也給成就牆的史詩框與圓點
+        （<code>lib/rarity.js</code>，全站唯一一份）。</li>
+    </ul>
+  </div>
+</div>
+</body></html>
