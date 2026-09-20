@@ -188,13 +188,25 @@ begin
 
   -- ④ 🔴 負對照：既有的觸發器一個都不可以不見
   --    只驗「新的加上去了」的話，把舊的刪掉也會全綠（硬規則 3.55）
-  --    期望值用算式寫出來：orders 5 原有 ＋ order_items 0→1 ＋ topup_orders 1→2
+  --
+  -- 🔴 **比對名字，不要數數量。** 2026-09-20 第一版寫 `count = 8`，
+  --   而 orders 實際有 **6** 個不是 5（我把撈出來的清單數錯了，
+  --   硬規則 3.56 又一次「數量」那一類）。
+  --   ⚠ 而且就算數字改對，**數量對得上但被換掉一個，計數照樣通過** ——
+  --     所以這一格改成逐個名字比對。
   select count(*) into v_n
-    from pg_trigger t join pg_class c on c.oid=t.tgrelid
-   where c.relname in ('orders','order_items','topup_orders') and not t.tgisinternal;
-  v_msg := v_msg || E'\n' || case when v_n = 8
-    then '✅ ④ 三張表共 8 個觸發器（orders 5 ＋ order_items 1 ＋ topup_orders 2）'
-    else '🔴 ④ 共 ' || v_n || ' 個，應為 8（5 ＋ 1 ＋ 2）' end;
+    from unnest(array['orders|trg_orders_is_test','orders|trg_orders_no',
+                      'orders|trg_orders_org','orders|trg_orders_touch_visit',
+                      'orders|trg_orders_updated','orders|trg_orders_upgrade_tier',
+                      'topup_orders|trg_topup_no',
+                      'order_items|trg_order_items_ach','topup_orders|trg_topup_ach']) w
+   where exists (select 1 from pg_trigger t join pg_class c on c.oid=t.tgrelid
+                  where not t.tgisinternal
+                    and c.relname = split_part(w, '|', 1)
+                    and t.tgname  = split_part(w, '|', 2));
+  v_msg := v_msg || E'\n' || case when v_n = 9
+    then '✅ ④ 九個觸發器逐個對上（既有 7 個都還在 ＋ 這批新增 2 個）'
+    else '🔴 ④ 只對上 ' || v_n || ' 個，應為 9 —— 有既有的不見了或改名了' end;
   v_msg := v_msg || E'\n' || coalesce(
     (select '　　' || string_agg(c.relname || '.' || t.tgname, '　' order by c.relname, t.tgname)
        from pg_trigger t join pg_class c on c.oid=t.tgrelid

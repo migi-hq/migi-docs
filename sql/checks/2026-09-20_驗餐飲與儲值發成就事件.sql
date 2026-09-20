@@ -48,9 +48,16 @@ begin
     -- ---------- ① 🔴 負對照先跑：只買甜點，不可以解鎖任何一枚 ----------
     -- 🎯 先跑它是刻意的 —— 後面的正對照會把成就解鎖掉，
     --    那之後就再也分不出「沒被誤發」與「早就解鎖了」。
-    insert into orders(org_id, store_id, member_id, status, subtotal, payable,
+    /* 🔴 `cash_due` 一定要一起填（2026-09-20 第一版漏了，整份炸在第一個 INSERT）：
+         orders_amount_balance CHECK (
+           payable  = subtotal - coupon_discount - tier_discount
+           AND cash_due = payable - points_used  ← 少填就吃預設 0 ⇒ 0 = 60 不成立
+           AND 五個欄位 >= 0)
+       ⚠ 同硬規則 3.8：錯誤訊息只給約束**名字**不給定義，
+         看到 `orders_amount_balance` 就猜它在管什麼是猜的 —— 撈 `pg_get_constraintdef`。 */
+    insert into orders(org_id, store_id, member_id, status, subtotal, payable, cash_due,
                        idempotency_key, paid_at)
-    values (v_org, v_store, v_member, 'paid', 60, 60, 'chk-des-'||gen_random_uuid(), now())
+    values (v_org, v_store, v_member, 'paid', 60, 60, 60, 'chk-des-'||gen_random_uuid(), now())
     returning id into v_oid;
     insert into order_items(org_id, order_id, product_id, name, revenue_type, qty,
                             unit_price, line_total)
@@ -65,9 +72,9 @@ begin
       else '🔴 ① 甜點解鎖了 ' || v_n || ' 枚 —— 判準寫錯了（可能是看 revenue_type）' end;
 
     -- ---------- ② 🔴 負對照：未付款的單不可以觸發 ----------
-    insert into orders(org_id, store_id, member_id, status, subtotal, payable,
+    insert into orders(org_id, store_id, member_id, status, subtotal, payable, cash_due,
                        idempotency_key)
-    values (v_org, v_store, v_member, 'open', 70, 70, 'chk-open-'||gen_random_uuid())
+    values (v_org, v_store, v_member, 'open', 70, 70, 70, 'chk-open-'||gen_random_uuid())
     returning id into v_oid;
     insert into order_items(org_id, order_id, product_id, name, revenue_type, qty,
                             unit_price, line_total)
@@ -83,7 +90,7 @@ begin
     -- ---------- ③ 🔴 負對照：匿名（member_id is null）不可以炸 ----------
     insert into orders(org_id, store_id, member_id, status, subtotal, payable,
                        idempotency_key, paid_at)
-    values (v_org, v_store, null, 'paid', 70, 70, 'chk-anon-'||gen_random_uuid(), now())
+    values (v_org, v_store, null, 'paid', 70, 70, 70, 'chk-anon-'||gen_random_uuid(), now())
     returning id into v_oid;
     insert into order_items(org_id, order_id, product_id, name, revenue_type, qty,
                             unit_price, line_total)
@@ -93,7 +100,7 @@ begin
     -- ---------- ④ 正對照：飲料 ----------
     insert into orders(org_id, store_id, member_id, status, subtotal, payable,
                        idempotency_key, paid_at)
-    values (v_org, v_store, v_member, 'paid', 70, 70, 'chk-drk-'||gen_random_uuid(), now())
+    values (v_org, v_store, v_member, 'paid', 70, 70, 70, 'chk-drk-'||gen_random_uuid(), now())
     returning id into v_oid;
     insert into order_items(org_id, order_id, product_id, name, revenue_type, qty,
                             unit_price, line_total)
@@ -110,7 +117,7 @@ begin
     -- 🎯 這一格順便驗 statement 級：一個 INSERT 帶兩列，只該燒一次
     insert into orders(org_id, store_id, member_id, status, subtotal, payable,
                        idempotency_key, paid_at)
-    values (v_org, v_store, v_member, 'paid', 200, 200, 'chk-meal-'||gen_random_uuid(), now())
+    values (v_org, v_store, v_member, 'paid', 200, 200, 200, 'chk-meal-'||gen_random_uuid(), now())
     returning id into v_oid;
     insert into order_items(org_id, order_id, product_id, name, revenue_type, qty,
                             unit_price, line_total)
