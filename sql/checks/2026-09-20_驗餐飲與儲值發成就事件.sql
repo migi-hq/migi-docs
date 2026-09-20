@@ -88,7 +88,7 @@ begin
       else '🔴 ② 未付款的單也發了 —— 作廢與草稿都會送成就' end;
 
     -- ---------- ③ 🔴 負對照：匿名（member_id is null）不可以炸 ----------
-    insert into orders(org_id, store_id, member_id, status, subtotal, payable,
+    insert into orders(org_id, store_id, member_id, status, subtotal, payable, cash_due,
                        idempotency_key, paid_at)
     values (v_org, v_store, null, 'paid', 70, 70, 70, 'chk-anon-'||gen_random_uuid(), now())
     returning id into v_oid;
@@ -98,7 +98,7 @@ begin
     v_msg := v_msg || E'\n' || '✅ ③ 匿名訂單沒有讓觸發器爆掉（能跑到這一行就是通過）';
 
     -- ---------- ④ 正對照：飲料 ----------
-    insert into orders(org_id, store_id, member_id, status, subtotal, payable,
+    insert into orders(org_id, store_id, member_id, status, subtotal, payable, cash_due,
                        idempotency_key, paid_at)
     values (v_org, v_store, v_member, 'paid', 70, 70, 70, 'chk-drk-'||gen_random_uuid(), now())
     returning id into v_oid;
@@ -115,7 +115,7 @@ begin
 
     -- ---------- ⑤ 正對照：餐點，而且是**多列一次插入** ----------
     -- 🎯 這一格順便驗 statement 級：一個 INSERT 帶兩列，只該燒一次
-    insert into orders(org_id, store_id, member_id, status, subtotal, payable,
+    insert into orders(org_id, store_id, member_id, status, subtotal, payable, cash_due,
                        idempotency_key, paid_at)
     values (v_org, v_store, v_member, 'paid', 200, 200, 200, 'chk-meal-'||gen_random_uuid(), now())
     returning id into v_oid;
