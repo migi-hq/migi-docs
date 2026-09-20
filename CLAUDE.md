@@ -3405,6 +3405,41 @@ settled_at 09-03 15:18   ← 8 場全部同一個時間點
     | | 現況 | 判斷 |
     |---|---|---|
     | **A 營運函式** ×12<br>`open_session_tx`／`checkout_tx`／`topup_tx`／`settle_session_tx`… | anon ✅ 零檢查 | 🟡 **現況的必然** —— POS 用 anon key，而在店員登入之前**沒有身分可以檢查**。**收了會當場打壞收銀機**。那是待辦 14 的範圍 |
+
+    ### ✅ 2026-09-20：A 類的 anon **全部收完了**，上面那句話已經過期
+    「收了會當場打壞收銀機」停在**店員登入之前**。POS 2026-09-04 起有真的
+    Supabase session ⇒ 它是 `authenticated` 不是 `anon`。
+    ```
+    先前某批收掉   checkout_tx · topup_tx · settle_session_tx · void_session_tx
+                  join_session_tx · pos_addon_checkout_tx · pos_quick_checkout_tx
+    2026-09-20 收  open_session_tx · activate_session_tx · set_table_active_tx
+                  set_table_auto_assign_tx · _try_auto_seat_tx
+    ```
+    📄 `sql/applied/2026-09-20_收掉POS寫入函式的anon.sql`（6/6 ＋ 線上複查 ＋ 實機）
+
+    🔴 **而我在提這件事時講錯過一句**：說 `open_session_tx` 是「唯一還留著
+      anon ＋ PUBLIC 的營運函式」—— 那是從 **8 支樣本**推出來的全稱。
+      實查：**anon 98 支、PUBLIC 95 支**，它一點都不特別。
+      ⚠ 同硬規則 3.56 那一族：**範圍沒查就說「唯一」「全部」「沒有」。**
+
+    📌 **「只靠 PUBLIC 進來的 = 0 支」** —— 每一支有 PUBLIC 的也都有明確的
+      anon ⇒ **單收 PUBLIC 完全不會有效果**（硬規則 2.6b 的反面），兩行都要寫。
+
+    ### 🔴 「它是 DEFINER 所以內部呼叫不用管權限」是**錯的**
+    內部呼叫**一樣會檢查 EXECUTE**，看的是**呼叫當下的有效身分**。
+    這一批安全是因為查證過：
+    ```
+    五支被收的 ＋ 三支呼叫它們的包裝   全部 DEFINER，owner = postgres
+    pg_cron auto-seat-matched          username = postgres
+    ```
+    ⇒ 進到包裝裡身分就是 owner（永遠有 EXECUTE）⇒ 鏈路不斷。
+    ⚠ 少查這一格的話，症狀會是**自動配桌那條 pg_cron 靜靜失效**。
+
+    ### ⚠ 讀取那 16 支刻意不動
+    POS 叫的 50 支裡還有 14 支讀取函式給 anon，而 `list_stores_tx`／
+    `list_member_tiers_tx`／`list_product_taxonomy_tx` 那一類**本來就該公開**
+    （會員 App 也在讀）。**一起掃掉就是「過度阻擋跟沒擋一樣糟」**（硬規則 3.55）
+    —— 要逐支看過再決定，那是另一批。驗證第 ④ 格就是在盯它們沒被誤收。
     | **B `rebind_line_user_tx`** | anon ✅ 零檢查 | 🔴 **真的洞** |
     | **C `grant_staff_tx`／`revoke_staff_tx`** | anon ❌ authenticated ✅ 零檢查 | 🔴 **提權** |
 
