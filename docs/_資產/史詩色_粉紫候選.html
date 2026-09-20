@@ -1,0 +1,170 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>史詩色 — 粉紫候選</title>
+<style>
+  :root{
+    --brand:#FAD6DC; --gold:#E8B89B; --ink:#2E2B2C; --white:#fff;
+    --field:#F8F7F6; --gray-1:#5C5754; --gray-2:#726D69; --gray-3:#ECEAE9;
+    --page:#F7F4F2; --line:#E4DEDA; --panel:#fff;
+    --xxxs:11px; --xs:13px; --s:14px; --l:16px; --xl:18px; --r-pill:999px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --page:#171514; --line:#35302D; --panel:#201D1C; --ink:#EDE8E5; --gray-1:#B9B1AC }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink);
+    font:14px/1.7 -apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:34px 20px 70px}
+  h1{margin:0;font-size:25px;font-weight:700}
+  .lede{margin:10px 0 0;color:var(--gray-1);max-width:64ch;font-size:14.5px}
+  .key{margin:18px 0 0;padding:14px 16px;background:var(--panel);border:1px solid var(--line);
+    border-radius:12px;font-size:14px}
+  .key b{color:var(--ink)}
+
+  h2{margin:38px 0 4px;font-size:17px;font-weight:700}
+  h2 + p{margin:0 0 14px;color:var(--gray-1);font-size:13.5px;max-width:62ch}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:14px}
+  .cand{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:14px 14px 12px;text-align:center}
+  .cand.pick{border-color:#E1B2E0;box-shadow:0 0 0 2px #E1B2E0 inset}
+  .cand h3{margin:0 0 2px;font-size:14px;font-weight:700}
+  .hex{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--gray-2)}
+  .badge{display:inline-block;margin-top:8px;font-size:11px;padding:2px 8px;border-radius:999px;
+    background:var(--gray-3);color:var(--gray-1)}
+  .badge.good{background:#E1F0E6;color:#2F6B47}
+  .badge.bad{background:#FBE4E4;color:#9A3B3B}
+
+  /* 摸彩：深色遮罩上 */
+  .dark{background:rgba(46,43,44,.88);border-radius:12px;padding:16px 10px 14px;margin-top:10px}
+  .dark .t{font-size:var(--xs);font-weight:800;letter-spacing:2px;margin-bottom:9px}
+  .dark .o{width:62px;height:62px;border-radius:50%;background:var(--white);margin:0 auto 9px;
+    display:flex;align-items:center;justify-content:center;font-size:30px}
+  .dark .b{border:none;border-radius:var(--r-pill);padding:6px 0;width:96px;
+    font-size:11px;font-weight:700;color:var(--ink)}
+
+  /* 成就牆：淺底上（這裡才看得出框糊不糊） */
+  .light{background:var(--white);border-radius:12px;padding:16px 10px 12px;margin-top:10px;
+    border:1px solid var(--line)}
+  .light .o{width:62px;height:62px;border-radius:50%;background:var(--field);margin:0 auto 7px;
+    display:flex;align-items:center;justify-content:center;font-size:28px}
+  .light .o span{filter:grayscale(1);opacity:.4}
+  .light .n{font-size:var(--xs);font-weight:700;color:var(--gray-2);line-height:1.3}
+  .light .s{font-size:11px;color:var(--gray-2);margin-top:2px}
+
+  .scale{display:flex;gap:9px;flex-wrap:wrap;margin-top:6px}
+  .scale div{flex:1 1 96px;text-align:center;background:var(--panel);
+    border:1px solid var(--line);border-radius:12px;padding:12px 6px 10px}
+  .scale .o{width:52px;height:52px;border-radius:50%;background:var(--field);margin:0 auto 7px;
+    display:flex;align-items:center;justify-content:center;font-size:24px}
+  .scale b{font-size:12.5px;display:block}
+  .scale small{font-size:10px;color:var(--gray-2);
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+
+  ul.notes{margin:20px 0 0;padding-left:0;list-style:none;display:grid;gap:8px}
+  ul.notes li{font-size:13.5px;color:var(--gray-1);padding-left:18px;position:relative}
+  ul.notes li::before{content:"";position:absolute;left:2px;top:9px;width:6px;height:6px;
+    border-radius:50%;background:#E1B2E0}
+  ul.notes li b{color:var(--ink)}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em;
+    background:rgba(0,0,0,.06);padding:1px 5px;border-radius:5px}
+</style></head><body>
+<div class="wrap">
+  <h1>史詩色 — 粉紫候選</h1>
+  <p class="lede">
+    從 <code>--brand</code> 蜜桃粉到 <code>--violet</code> 藕紫之間切五等分（HSL 插值）。
+    每個候選都放<strong>兩種底</strong>看 —— 因為這個顏色同時要用在摸彩（深色遮罩）
+    與成就牆（白底）。
+  </p>
+
+  <div class="key">
+    🎯 <b>你覺得「改之前比較好」很可能是因為只看了摸彩那張</b> ——
+    它站在深色遮罩上，粉色在那裡柔和又清楚。<br>
+    🔴 但<b>成就牆是白底</b>，同一個粉當框對比只有 <b>1.25</b>，
+    而現行金框是 <b>1.67</b>。粉框在那裡會糊掉。<br>
+    ⇒ 兩邊<b>不能各用一色</b>（那就回到這次要收掉的「同一件事兩個答案」），
+    所以要挑一個兩種底都成立的。
+  </div>
+
+  <h2>① 摸彩 · 深色遮罩上</h2>
+  <p>這裡五個看起來都可以，差別只是氣質：越往右越「冷」。</p>
+  <div class="grid">
+    <div class="cand"><h3>原粉</h3><div class="hex">#FAD6DC · 改之前</div>
+      <div class="dark"><div class="t" style="color:#FAD6DC">史詩</div>
+        <div class="o" style="border:2px solid #FAD6DC">🖼️</div>
+        <button class="b" style="background:#FAD6DC">收下</button></div></div>
+    <div class="cand"><h3>粉紫 · 偏粉</h3><div class="hex">#F4C8DB · 25%</div>
+      <div class="dark"><div class="t" style="color:#F4C8DB">史詩</div>
+        <div class="o" style="border:2px solid #F4C8DB">🖼️</div>
+        <button class="b" style="background:#F4C8DB">收下</button></div></div>
+    <div class="cand"><h3>粉紫 · 正中</h3><div class="hex">#ECBCDE · 50%</div>
+      <div class="dark"><div class="t" style="color:#ECBCDE">史詩</div>
+        <div class="o" style="border:2px solid #ECBCDE">🖼️</div>
+        <button class="b" style="background:#ECBCDE">收下</button></div></div>
+    <div class="cand pick"><h3>粉紫 · 偏紫</h3><div class="hex">#E1B2E0 · 75%</div>
+      <div class="dark"><div class="t" style="color:#E1B2E0">史詩</div>
+        <div class="o" style="border:2px solid #E1B2E0">🖼️</div>
+        <button class="b" style="background:#E1B2E0">收下</button></div></div>
+    <div class="cand"><h3>原紫</h3><div class="hex">#C9A9D4 · 現在線上</div>
+      <div class="dark"><div class="t" style="color:#C9A9D4">史詩</div>
+        <div class="o" style="border:2px solid #C9A9D4">🖼️</div>
+        <button class="b" style="background:#C9A9D4">收下</button></div></div>
+  </div>
+
+  <h2>② 成就牆 · 白底上（這裡才是分勝負的地方）</h2>
+  <p>未解鎖的史詩格子。括號裡是框與格子底 <code>#F8F7F6</code> 的對比，現行金框是 <b>1.67</b>。</p>
+  <div class="grid">
+    <div class="cand"><h3>原粉</h3><div class="hex">#FAD6DC</div>
+      <div class="light"><div class="o" style="border:2px solid #FAD6DC"><span>🐉</span></div>
+        <div class="n">大三元</div><div class="s">未解鎖</div></div>
+      <span class="badge bad">對比 1.25 · 看不太出框</span></div>
+    <div class="cand"><h3>粉紫 · 偏粉</h3><div class="hex">#F4C8DB</div>
+      <div class="light"><div class="o" style="border:2px solid #F4C8DB"><span>🐉</span></div>
+        <div class="n">大三元</div><div class="s">未解鎖</div></div>
+      <span class="badge bad">對比 1.39 · 仍然偏弱</span></div>
+    <div class="cand"><h3>粉紫 · 正中</h3><div class="hex">#ECBCDE</div>
+      <div class="light"><div class="o" style="border:2px solid #ECBCDE"><span>🐉</span></div>
+        <div class="n">大三元</div><div class="s">未解鎖</div></div>
+      <span class="badge">對比 1.53 · 略低於金框</span></div>
+    <div class="cand pick"><h3>粉紫 · 偏紫</h3><div class="hex">#E1B2E0</div>
+      <div class="light"><div class="o" style="border:2px solid #E1B2E0"><span>🐉</span></div>
+        <div class="n">大三元</div><div class="s">未解鎖</div></div>
+      <span class="badge good">對比 1.69 · 與金框相當</span></div>
+    <div class="cand"><h3>原紫</h3><div class="hex">#C9A9D4</div>
+      <div class="light"><div class="o" style="border:2px solid #C9A9D4"><span>🐉</span></div>
+        <div class="n">大三元</div><div class="s">未解鎖</div></div>
+      <span class="badge good">對比 1.94 · 最清楚</span></div>
+  </div>
+
+  <h2>③ 放回四階梯度：#E1B2E0 長這樣</h2>
+  <p>稀有度是一條梯度，單看一個顏色沒有意義 —— 要看史詩有沒有比稀有更重、又不跟傳說打架。</p>
+  <div class="scale">
+    <div><div class="o" style="border:2px solid #726D69;opacity:.55">🍪</div><b>普通</b><small>--gray-2</small></div>
+    <div><div class="o" style="border:2px solid #FAD6DC">🍰</div><b>稀有</b><small>--brand</small></div>
+    <div><div class="o" style="border:2px solid #E1B2E0">🐉</div><b>史詩</b><small>#E1B2E0</small></div>
+    <div><div class="o" style="border:2px solid #E8B89B;background:#2E2B2C">👑</div><b>傳說</b><small>--gold</small></div>
+  </div>
+
+  <h2>④ 對照：現在線上那版（#C9A9D4）</h2>
+  <div class="scale">
+    <div><div class="o" style="border:2px solid #726D69;opacity:.55">🍪</div><b>普通</b><small>--gray-2</small></div>
+    <div><div class="o" style="border:2px solid #FAD6DC">🍰</div><b>稀有</b><small>--brand</small></div>
+    <div><div class="o" style="border:2px solid #C9A9D4">🐉</div><b>史詩</b><small>#C9A9D4</small></div>
+    <div><div class="o" style="border:2px solid #E8B89B;background:#2E2B2C">👑</div><b>傳說</b><small>--gold</small></div>
+  </div>
+
+  <ul class="notes">
+    <li><b>我的建議是 #E1B2E0（偏紫那一格）。</b> 它是「粉紫」裡唯一對比
+      （1.69）與現行金框（1.67）相當的 —— 再往粉走框就開始糊。</li>
+    <li><b>對比 1.6 上下不是無障礙標準</b>，框不是文字。那個數字在這裡只是
+      「跟已經在用的金框一樣看得見」的參照點。</li>
+    <li><b>#ECBCDE（正中）也可以</b>，只是史詩的框會比傳說的略淡一點 ——
+      而史詩本來就該比傳說低一階，所以那不算錯，是另一種取捨。</li>
+    <li>選好之後改的是 <code>@migi/assets</code> 的 <code>--violet</code>
+      一個值，<b>三端跟著變</b>，程式碼一行都不用動。</li>
+    <li>⚠ 還有一個地方要一起改：摸彩中獎的光暈
+      <code>migiGlowViolet</code> —— keyframes 吃不到 <code>var()</code>，
+      色值是寫死的。</li>
+  </ul>
+</div>
+</body></html>
