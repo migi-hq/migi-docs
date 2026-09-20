@@ -1,0 +1,213 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>稀有色 — 奶茶淺 vs 奶茶深</title>
+<style>
+  :root{
+    --milktea:#EFE3DA; --milktea-bd:#DECDBC; --mauve:#F4C8DB; --gold:#E8B89B;
+    --brand:#FAD6DC; --ink:#2E2B2C; --white:#fff; --field:#F8F7F6;
+    --gray-1:#5C5754; --gray-2:#726D69; --gray-3:#ECEAE9; --divider:#DED9D5;
+    --page:#F7F4F2; --line:#E4DEDA; --panel:#fff;
+    --xxxs:11px; --xxs:12px; --xs:13px; --s:14px; --m:15px; --l:16px; --xl:18px; --r-pill:999px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --page:#171514; --line:#35302D; --panel:#201D1C;
+      --ink:#EDE8E5; --gray-1:#B9B1AC }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink);
+    font:14px/1.7 -apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif}
+  .wrap{max-width:1060px;margin:0 auto;padding:34px 20px 70px}
+  h1{margin:0;font-size:25px;font-weight:700}
+  .lede{margin:10px 0 0;color:var(--gray-1);max-width:64ch;font-size:14.5px}
+  .key{margin:18px 0 0;padding:14px 16px;background:var(--panel);border:1px solid var(--line);
+    border-radius:12px;font-size:14px}
+  .key b{color:var(--ink)}
+  .nums{margin-top:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:12px;color:var(--gray-1);white-space:pre;overflow-x:auto}
+
+  h2{margin:36px 0 4px;font-size:17px;font-weight:700}
+  h2 + p{margin:0 0 14px;color:var(--gray-1);font-size:13.5px;max-width:64ch}
+
+  .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+  .col{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+  .col.pick{border-color:var(--milktea-bd);box-shadow:0 0 0 2px var(--milktea-bd) inset}
+  .col > h3{margin:0 0 2px;font-size:14.5px;font-weight:700}
+  .col > .hex{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;
+    color:var(--gray-2);margin-bottom:12px}
+
+  /* 成就牆：白底上的分組標題（逐項抄自 rewards.jsx） */
+  .wall{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:6px 14px 14px}
+  .grp{display:flex;align-items:center;gap:7px;margin:16px 0 10px}
+  .grp i{width:7px;height:7px;border-radius:50%;display:block}
+  .grp b{font-size:var(--m);font-weight:700;color:var(--ink)}
+  .grp s{font-size:var(--xs);color:var(--gray-2);text-decoration:none}
+  .cells{display:flex;gap:9px}
+  .cell{flex:0 0 calc(33.33% - 6px);text-align:center}
+  .cell .o{width:100%;aspect-ratio:1;border-radius:50%;background:var(--field);
+    display:flex;align-items:center;justify-content:center;font-size:26px}
+  .cell .o span{filter:grayscale(1);opacity:.4}
+  .cell p{margin:5px 0 0;font-size:var(--xs);font-weight:700;color:var(--gray-2);line-height:1.3}
+  .cell p.s{margin:2px 0 0;font-size:var(--xxs);font-weight:400}
+
+  /* 摸彩：深遮罩上 */
+  .dark{background:rgba(46,43,44,.55);border-radius:12px;padding:18px 10px 16px;text-align:center}
+  .dark .t{font-size:var(--s);font-weight:800;letter-spacing:2px;margin-bottom:10px}
+  .dark .o{width:74px;height:74px;border-radius:50%;background:var(--white);margin:0 auto 10px;
+    display:flex;align-items:center;justify-content:center;font-size:36px}
+  .dark .n{margin:0 0 2px;font-size:var(--s);font-weight:800;color:#fff}
+  .dark .s{margin:0;font-size:var(--xxs);font-weight:700;color:rgba(255,255,255,.9)}
+  .dark .b{border:none;border-radius:var(--r-pill);padding:7px 0;width:110px;
+    font-size:var(--xxs);font-weight:700;color:var(--ink);margin-top:12px}
+
+  .scale{display:flex;gap:8px;margin-top:10px}
+  .scale div{flex:1;text-align:center}
+  .scale .o{width:46px;height:46px;border-radius:50%;background:var(--field);margin:0 auto 6px;
+    display:flex;align-items:center;justify-content:center;font-size:21px}
+  .scale b{font-size:11.5px;display:block;font-weight:700}
+
+  .tag{display:inline-block;margin-top:10px;font-size:11px;padding:2px 8px;border-radius:999px;
+    background:var(--gray-3);color:var(--gray-1)}
+  .tag.good{background:#E1F0E6;color:#2F6B47}
+  .tag.bad{background:#FBE4E4;color:#9A3B3B}
+
+  ul.notes{margin:20px 0 0;padding-left:0;list-style:none;display:grid;gap:8px}
+  ul.notes li{font-size:13.5px;color:var(--gray-1);padding-left:18px;position:relative}
+  ul.notes li::before{content:"";position:absolute;left:2px;top:9px;width:6px;height:6px;
+    border-radius:50%;background:var(--milktea-bd)}
+  ul.notes li b{color:var(--ink)}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em;
+    background:rgba(0,0,0,.06);padding:1px 5px;border-radius:5px}
+</style></head><body>
+<div class="wrap">
+  <h1>稀有色 — 奶茶淺 vs 奶茶深</h1>
+  <p class="lede">
+    你指定「稀有比照摸彩用奶茶色，兩邊統一」。<strong>兩個選項都仍然是統一的</strong> ——
+    差別只在用奶茶色的哪一階。
+  </p>
+
+  <div class="key">
+    🎯 <b>同一個顏色在兩種底上差 9 倍</b> ——
+    摸彩站在深遮罩上，奶茶色在那裡是全場最亮的；成就牆是白底，它變成最不亮的。
+    <div class="nums">                  白底(成就牆)   深底(摸彩)
+A 奶茶淺 --milktea      1.18        11.13   ← 現在線上
+B 奶茶深 --milktea-bd   1.55         9.05
+  史詩   --mauve        1.49         9.43
+  傳說   --gold         1.67         7.85</div>
+  </div>
+
+  <h2>① 成就牆 · 白底（分組標題那顆 7px 圓點）</h2>
+  <p>這是今天唯一看得到「稀有色」的地方 —— 稀有在成就牆上沒有框。</p>
+  <div class="two">
+    <div class="col">
+      <h3>A · 奶茶淺（現在線上）</h3><div class="hex">--milktea #EFE3DA</div>
+      <div class="wall">
+        <div class="grp"><i style="background:#E8B89B"></i><b>傳說</b><s>MIGI 牌型</s></div>
+        <div class="grp"><i style="background:#F4C8DB"></i><b>史詩</b><s>極高難度</s></div>
+        <div class="grp"><i style="background:#EFE3DA"></i><b>稀有</b><s>高難度</s></div>
+        <div class="cells">
+          <div class="cell"><div class="o"><span>🎓</span></div><p>新手畢業</p><p class="s">未解鎖</p></div>
+          <div class="cell"><div class="o"><span>🔐</span></div><p>門清自摸</p><p class="s">未解鎖</p></div>
+          <div class="cell"><div class="o"><span>🐲</span></div><p>小三元</p><p class="s">未解鎖</p></div>
+        </div>
+        <div class="grp"><i style="background:#726D69"></i><b>普通</b><s>日常</s></div>
+      </div>
+      <span class="tag bad">那顆圓點幾乎融進白底</span>
+    </div>
+
+    <div class="col pick">
+      <h3>B · 奶茶深</h3><div class="hex">--milktea-bd #DECDBC</div>
+      <div class="wall">
+        <div class="grp"><i style="background:#E8B89B"></i><b>傳說</b><s>MIGI 牌型</s></div>
+        <div class="grp"><i style="background:#F4C8DB"></i><b>史詩</b><s>極高難度</s></div>
+        <div class="grp"><i style="background:#DECDBC"></i><b>稀有</b><s>高難度</s></div>
+        <div class="cells">
+          <div class="cell"><div class="o"><span>🎓</span></div><p>新手畢業</p><p class="s">未解鎖</p></div>
+          <div class="cell"><div class="o"><span>🔐</span></div><p>門清自摸</p><p class="s">未解鎖</p></div>
+          <div class="cell"><div class="o"><span>🐲</span></div><p>小三元</p><p class="s">未解鎖</p></div>
+        </div>
+        <div class="grp"><i style="background:#726D69"></i><b>普通</b><s>日常</s></div>
+      </div>
+      <span class="tag good">四顆圓點都看得見</span>
+    </div>
+  </div>
+
+  <h2>② 摸彩 · 深遮罩（抽中稀有）</h2>
+  <p>兩個在這裡都很清楚。A 比較柔、B 比較有份量 —— 這一格是氣質問題不是可讀性問題。</p>
+  <div class="two">
+    <div class="col">
+      <h3>A · 奶茶淺</h3><div class="hex">--milktea #EFE3DA</div>
+      <div class="dark">
+        <div class="t" style="color:#EFE3DA">稀有</div>
+        <div class="o" style="border:2px solid #EFE3DA">🍰</div>
+        <p class="n">高級點心 · 提拉米蘇</p><p class="s">收進你的獎勵</p>
+        <button class="b" style="background:#EFE3DA">收下</button>
+      </div>
+      <span class="tag good">對比 11.13</span>
+    </div>
+    <div class="col pick">
+      <h3>B · 奶茶深</h3><div class="hex">--milktea-bd #DECDBC</div>
+      <div class="dark">
+        <div class="t" style="color:#DECDBC">稀有</div>
+        <div class="o" style="border:2px solid #DECDBC">🍰</div>
+        <p class="n">高級點心 · 提拉米蘇</p><p class="s">收進你的獎勵</p>
+        <button class="b" style="background:#DECDBC">收下</button>
+      </div>
+      <span class="tag good">對比 9.05</span>
+    </div>
+  </div>
+
+  <h2>③ 日後稀有也加框的話（B 的主要理由）</h2>
+  <p>今天稀有沒有框。但四階裡已經有兩階有框，哪天要補上第三階，A 的值會撐不住。</p>
+  <div class="two">
+    <div class="col">
+      <h3>A · 奶茶淺當框</h3><div class="hex">--milktea #EFE3DA</div>
+      <div class="wall"><div class="cells">
+        <div class="cell"><div class="o" style="border:2px solid #EFE3DA"><span>🐲</span></div><p>小三元</p><p class="s">未解鎖</p></div>
+        <div class="cell"><div class="o" style="border:2px solid #F4C8DB"><span>🐉</span></div><p>大三元</p><p class="s">未解鎖</p></div>
+        <div class="cell"><div class="o" style="border:2px solid #E8B89B;background:#2E2B2C"><span style="opacity:.5">👑</span></div><p>十次 MIGI</p><p class="s">未解鎖</p></div>
+      </div></div>
+      <span class="tag bad">左邊那圈框看不太出來</span>
+    </div>
+    <div class="col pick">
+      <h3>B · 奶茶深當框</h3><div class="hex">--milktea-bd #DECDBC</div>
+      <div class="wall"><div class="cells">
+        <div class="cell"><div class="o" style="border:2px solid #DECDBC"><span>🐲</span></div><p>小三元</p><p class="s">未解鎖</p></div>
+        <div class="cell"><div class="o" style="border:2px solid #F4C8DB"><span>🐉</span></div><p>大三元</p><p class="s">未解鎖</p></div>
+        <div class="cell"><div class="o" style="border:2px solid #E8B89B;background:#2E2B2C"><span style="opacity:.5">👑</span></div><p>十次 MIGI</p><p class="s">未解鎖</p></div>
+      </div></div>
+      <span class="tag good">三階都站得住</span>
+    </div>
+  </div>
+
+  <h2>④ 四階圓點並排</h2>
+  <div class="two">
+    <div class="col"><h3>A</h3><div class="hex">灰 · 奶茶淺 · 粉紫 · 金</div>
+      <div class="scale">
+        <div><div class="o" style="border:2px solid #726D69;opacity:.55">🍪</div><b>普通</b></div>
+        <div><div class="o" style="border:2px solid #EFE3DA">🍰</div><b>稀有</b></div>
+        <div><div class="o" style="border:2px solid #F4C8DB">🐉</div><b>史詩</b></div>
+        <div><div class="o" style="border:2px solid #E8B89B;background:#2E2B2C">👑</div><b>傳說</b></div>
+      </div></div>
+    <div class="col pick"><h3>B</h3><div class="hex">灰 · 奶茶深 · 粉紫 · 金</div>
+      <div class="scale">
+        <div><div class="o" style="border:2px solid #726D69;opacity:.55">🍪</div><b>普通</b></div>
+        <div><div class="o" style="border:2px solid #DECDBC">🍰</div><b>稀有</b></div>
+        <div><div class="o" style="border:2px solid #F4C8DB">🐉</div><b>史詩</b></div>
+        <div><div class="o" style="border:2px solid #E8B89B;background:#2E2B2C">👑</div><b>傳說</b></div>
+      </div></div>
+  </div>
+
+  <ul class="notes">
+    <li><b>兩個都是「兩邊統一」</b> —— 成就牆與摸彩讀同一個
+      <code>lib/rarity.js</code>，差別只在那一格填哪個 token。</li>
+    <li><b>B 的代價</b>：稀有(1.55) 會比史詩(1.49) 略高一點點，梯度在那一格反過來 ——
+      實際看第 ④ 排，肉眼分不出來。</li>
+    <li><b>A 的代價</b>：稀有那顆圓點在白底上等於不存在；而且哪天要給稀有加框，
+      這個值撐不住（第 ③ 排左邊）。</li>
+    <li>⚠ <code>--milktea-bd</code> 現在的用途是「固定牌局卡外框」——
+      拿它當稀有色是<b>借用</b>。如果選 B，我會把它的說明補上這個用途，
+      免得日後有人只改一邊。</li>
+    <li>選好我改 <code>lib/rarity.js</code> <b>一行</b>，兩邊跟著變。</li>
+  </ul>
+</div>
+</body></html>
