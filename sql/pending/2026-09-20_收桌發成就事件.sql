@@ -241,9 +241,18 @@ begin
 
   -- ③ 🔴 順序：成就那一段一定要排在 placeholder_ranks_tx 之後
   --    排在前面的話 final_score 還是 null ⇒ session_won 永遠不發，而且不報錯
+  --
+  -- 🔴 **錨點一定要用「會產生行為的那一行」**（`perform public.xxx`），
+  --   不可以只搜函式名 —— 2026-09-20 第一版就是這樣紅的：
+  --   `already_settled` 區塊裡有一句註解寫著「成就事件不在這條路重發：
+  --   fire_event_tx 本身對 specific 型是冪等的」，而 `position()` 取的是
+  --   **第一次出現**，於是它回那句註解的位置 ⇒ ③ 與 ⑥ 同時假紅。
+  --   （硬規則 3.5 第五次，而且這次禁字正好是「函式名」那一類。
+  --     驗順序比驗存在更脆弱：任何一句在前面的註解都會把結果翻過來。）
   v_msg := v_msg || E'\n' || case
-    when position('placeholder_ranks_tx' in v_def) > 0
-     and position('fire_event_tx' in v_def) > position('placeholder_ranks_tx' in v_def)
+    when position('perform public.placeholder_ranks_tx' in v_def) > 0
+     and position('perform public.fire_event_tx' in v_def)
+       > position('perform public.placeholder_ranks_tx' in v_def)
     then '✅ ③ 成就事件排在 placeholder_ranks_tx 之後（final_score 已經寫好）'
     else '🔴 ③ 順序不對 —— session_won 會讀到 null 而永遠不發' end;
 
@@ -265,9 +274,11 @@ begin
   v_msg := v_msg || E'\n' || '　　⑤ 既有段落：' || coalesce(v_txt, '⚪ 取不到');
 
   -- ⑥ 🔴 已收桌那條路**不可以**發成就（累積型會被多加一次）
-  --    判準：already_settled 的 return 排在第一個 fire_event_tx 之前
+  --    判準：already_settled 的 return 排在第一次**真的呼叫**成就之前
+  --    ⚠ 錨點同 ③ —— 用 `perform public.` 不要只搜函式名
   v_msg := v_msg || E'\n' || case
-    when position('already_settled' in v_def) < position('fire_event_tx' in v_def)
+    when position('already_settled' in v_def)
+       < position('perform public.fire_event_tx' in v_def)
     then '✅ ⑥ 已收桌那條路在成就之前就 return 了（不會重發）'
     else '🔴 ⑥ 重複收桌會再發一次成就事件' end;
 
@@ -281,7 +292,15 @@ begin
     from unnest(array['anon','authenticated','service_role','PUBLIC'])
          with ordinality t(g, ord);
   v_msg := v_msg || E'\n' || '　　⑦ 授權：' || coalesce(v_txt, '⚪ 取不到')
-    || E'\n' || '　　（POS 用 anon ⇒ anon 必須是「有」，收掉會當場打壞收銀機）';
+    -- 🔴 期望值 2026-09-20 更正過：原本寫「POS 用 anon ⇒ anon 必須是有」，
+    --   **那是 2026-09-04 店員登入做完之前的事實**。POS 現在有真的
+    --   Supabase session ⇒ 它是 `authenticated` 不是 `anon`。
+    --   實查同儕：join_session_tx／pos_addon_checkout_tx／pos_quick_checkout_tx／
+    --   topup_tx／void_session_tx **全部都是 authenticated 沒有 anon** ⇒ 一致。
+    --   （`checkout_tx` 連 authenticated 都沒有 —— 它是 INVOKER，
+    --     前端永遠不可以直接叫，只能走 DEFINER 包裝。）
+    || E'\n' || '　　（POS 有真的登入 ⇒ 要的是 authenticated。'
+    || 'anon 沒有是對的，與同儕一致）';
 
   perform set_config('migi.verify', v_msg, true);
 end $$;
