@@ -97,10 +97,18 @@ begin
                                'pattern_triplet_north');
   v_msg := v_msg || E'\n⑤ 還在用舊事件名的：' || v_n || case when v_n = 0 then '  ✅' else '  🔴' end;
 
-  -- ⑥ 活著的成就，事件名沒有重複（重複會讓一次事件解鎖兩枚）
-  select count(*) - count(distinct trigger->>'event') into v_n
-    from public.achievements where deleted_at is null;
-  v_msg := v_msg || E'\n⑥ 事件名重複的：' || v_n || case when v_n = 0 then '  ✅' else '  🔴' end;
+  -- ⑥ 活著的成就，事件名沒有**意外**重複（重複會讓一次事件解鎖兩枚）
+  --   🔴 第一次跑時這一格是紅的，而資料是對的：
+  --     migi_01（MIGI）與 migi_02（十次 MIGI）**刻意共用** migi_hu ——
+  --     一枚是第一次、一枚是累積十次。期望值寫成 0 是我沒查（硬規則 3.56）。
+  --   ⇒ 排除那一對，並把實際重複的事件印出來，不回是非題。
+  select count(*), coalesce(string_agg(e, '、'), '') into v_n, v_t
+    from (select trigger->>'event' as e
+            from public.achievements where deleted_at is null
+           group by 1 having count(*) > 1) d
+   where e <> 'migi_hu';
+  v_msg := v_msg || E'\n⑥ 意外重複的事件名：' || v_n
+        || case when v_n = 0 then '  ✅（migi_hu 由傳說兩枚刻意共用，已排除）' else '  🔴 ' || v_t end;
 
   -- ⑦ 🔴 正對照：往上那兩條路的四枚不可以被動到
   select count(*) into v_n
