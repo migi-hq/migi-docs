@@ -28,6 +28,7 @@ push 之前的自動檢查 —— 由各 repo 的 `.git/hooks/pre-push` 呼叫�
   ⑤ tests/pure.test.mjs    ✅ 閘門　零相依，node 直接跑（沒有這個檔就跳過）
   ⑥ 兩份 discount.js 一致  ✅ 閘門　跨 repo，擋「漂」不是擋「錯」
   ⑦ pillcheck.py           ⚪ **只印給人看**，永遠不擋　見下
+  ⑧ badgecheck.py          ✅ 閘門　成就徽章在圓形容器裡會不會露白（只有 migi-web 有 ach_*.webp）
 
   🎯 ⑤ 與 ⑥ 是**兩種不同的保護，缺一不可**：
     2026-09-08 的 9.5 折是**兩個 repo 同時錯** ⇒ 兩邊各自的測試都會過，
@@ -220,6 +221,16 @@ def main():
             fails.append('純函式測試')
     else:
         print('\n⑥ 純函式測試　⚪ 這個 repo 還沒有（%s 不存在）' % os.path.relpath(test, repo))
+
+    # ── ⑧ 成就徽章圓不圓 ───────────────────────────────────────
+    #   🔴 2026-09-21：29 枚裡 17 枚在 App 裡露白（使用者看到「不是正圓」），
+    #     build 與其他檢查器全部沒說話 —— 圖檔不是程式碼，沒有人在看它。
+    #     而新徽章會一直進來（C 區 31 枚還沒畫），所以綁在 push 上。
+    assets = os.path.join(src, 'assets')
+    if any(f.startswith('ach_') and f.endswith('.webp') for f in (os.listdir(assets) if os.path.isdir(assets) else [])):
+        print('\n⑧ badgecheck.py（成就徽章在圓形容器裡會不會露白）')
+        if run([sys.executable, os.path.join(ASSETS, 'badgecheck.py'), assets]) != 0:
+            fails.append('徽章不是正圓')
 
     # ── ⑦ 跨 repo：兩份 discount.js 不可以漂 ───────────────────
     #   🎯 這一項比測試更直接命中 2026-09-08 那個 bug ——
