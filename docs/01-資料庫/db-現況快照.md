@@ -1,5 +1,30 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-09-23 增補（歸檔時量的，**連量法一起寫**）
+> **基準：`sql/applied/` 有 265 個 `.sql`**（最後歸檔的是 `2026-09-23_電子計分_資料表.sql`）
+> ```
+> 資料表 58   ← pg_class relkind='r'，schema public
+> 函式  256   ← pg_proc prokind='f'
+> 檢視表 22   ← pg_class relkind='v'
+> 索引  176   ← pg_indexes（含 pkey 與唯一約束產生的索引）
+> policy 33   ← pg_policies
+> CHECK 144   ← pg_constraint contype='c'
+> ```
+> ⚠ 下面舊段落的數字用的量法不明（見 2026-09-20 那段），**不要拿來跟這組相減**。
+>
+> **09-22～23 的結構變動**（下面的正文還沒整合進去）：
+> | | |
+> |---|---|
+> | 🆕 `scoring_patterns` | 計台表主檔，27 項，無 org_id（全台統一） |
+> | 🆕 `table_devices` | 桌邊平板，`token_hash` 存 SHA-256 不存明文 |
+> | 🆕 `session_rounds` | 一將（`round_no`、`first_dealer_seat`、`status`） |
+> | 🆕 `hands` | 一把（`wind` 圈風、`patterns` jsonb、`tai_pattern`、`score_delta` jsonb、`status` 待確認／已確認…） |
+> | 🔁 `session_players.seat` | text → **smallint 1–4**（下家鏈序號），＋ `device_id` |
+> | 🆕 `table_sessions.score_channel` | 記分板廣播頻道（隨機 32 字元） |
+> | 🆕 函式 | `_member_titles`、`get_my_titles_tx`、`_season_rank_rows_core`、`season_rank_rows_display_tx` |
+> | 🔁 函式 | `get_my_achievements_tx` 多回 `grants_title`；`set_my_title_tx`／`save_app_state_tx`／`get_my_profile_tx` 改讀 `_member_titles` |
+> | 🔴 已知問題 | 22 個檢視表 anon 讀得到且繞過 RLS（另開任務處理） |
+
 > **產生日期：2026-08-28**（前一版是 2026-08-14，已整份取代）
 > **最後校對：2026-09-19**
 > **基準：`sql/applied/` 有 232 個 `.sql`**（最後歸檔的是
