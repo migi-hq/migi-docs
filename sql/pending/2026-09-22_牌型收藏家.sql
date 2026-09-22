@@ -22,6 +22,11 @@ select a.org_id, 'tile_32', '牌型收藏家', '什麼牌型你都胡過', '解�
  where a.code = 'tile_31' and a.deleted_at is null
    and not exists (select 1 from achievements x where x.code = 'tile_32' and x.org_id = a.org_id);
 
+-- 同一批：十次 MIGI 的稱號 MIGI → MIGI 代言人（使用者 2026-09-22）
+-- ⚠ 線上目前沒有人解鎖過 migi_02（查過 0 人），所以沒有人戴著舊名字。
+update achievements set grants_title = 'MIGI 代言人', updated_at = now()
+ where code = 'migi_02' and deleted_at is null;
+
 -- ════════════════════════════════════════════════════════════════════
 -- 驗證（單一 SELECT，不 raise —— 硬規則 1.8）
 -- ════════════════════════════════════════════════════════════════════
@@ -42,7 +47,10 @@ select * from (
          case when (select count(*) from achievements where group_key = '牌型收藏' and deleted_at is null) = 27 then '✅' else '🔴' end,
          (select count(*)::text from achievements where group_key = '牌型收藏' and deleted_at is null)
   union all
-  -- 算式：新手村制霸 ＋ MIGI ＋ 胡牌天花板 = 3
+  -- 算式：新手村制霸 ＋ MIGI 代言人 ＋ 胡牌天花板 = 3
+  select 6, '⑥ 十次 MIGI 的稱號是 MIGI 代言人',
+         case when (select grants_title from achievements where code = 'migi_02' and deleted_at is null) = 'MIGI 代言人' then '✅' else '🔴' end, null
+  union all
   select 5, '⑤ 線上會發稱號的成就共 3 枚',
          case when (select count(*) from achievements where deleted_at is null and grants_title is not null) = 3 then '✅' else '🔴' end,
          (select string_agg(code || '→' || grants_title, '、' order by sort) from achievements where deleted_at is null and grants_title is not null)
