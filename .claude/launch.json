@@ -18,6 +18,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "migi-admin", "run", "dev"],
       "port": 5175
+    },
+    {
+      "name": "migi-table",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "migi-table", "run", "dev"],
+      "port": 5176
     }
   ]
 }
