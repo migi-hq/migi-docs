@@ -28,8 +28,10 @@ begin
   if v_staff is null then
     return jsonb_build_object('ok', false, 'reason', 'not_staff', 'message', '請先登入');
   end if;
-  /* 🔴 權限走 can()，不自己寫 role in (...)（待辦 29 ①）——
-     「誰有權限」與「怎麼判斷」分家，之後改成查表時呼叫點一行都不用動。 */
+  /* 🔴 權限一律問 can()，這支不自己比對角色欄位（待辦 29 ①）——
+     「誰有權限」與「怎麼判斷」分家，之後改成查表時呼叫點一行都不用動。
+     ⚠ 這段註解刻意不寫出那個比對的寫法：寫了會被驗證段的全文掃描命中
+       （硬規則 3.5，2026-09-23 第五次踩到，就是這一支）。 */
   if not public.can('device.write') then
     return jsonb_build_object('ok', false, 'reason', 'forbidden',
                               'message', '平板配對是總部的權限，請聯絡總部');
@@ -118,9 +120,12 @@ select * from (
                                 and proname like 'pos\_%table\_device%' escape '\')
               then '✅' else '🔴' end
   union all
-  select 3, '③ 配對走 can() 不自己寫 role（待辦 29 ①）',
+  /* 🔴 第一版寫成「全文不可以出現那個比對寫法」，而**命中的是我自己的註解**
+     （硬規則 3.5 第五次）。掃「有沒有提到」永遠會咬到說明文字 ——
+     改成問「**有沒有真的拿來判斷**」：只看會產生行為的形狀。 */
+  select 3, '③ 配對問 can()，而且沒有自己比對角色欄位（待辦 29 ①）',
          case when pg_get_functiondef('public.admin_pair_table_device_tx'::regproc) ~ 'can\(''device\.write''\)'
-               and pg_get_functiondef('public.admin_pair_table_device_tx'::regproc) !~ 'role in'
+               and pg_get_functiondef('public.admin_pair_table_device_tx'::regproc) !~ '(if|and|where|select)[^\n]{0,40}cs?\.role'
               then '✅' else '🔴' end
   union all
   select 4, '④ 查看與停用不要求總部（店員做得到）',
