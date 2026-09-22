@@ -125,10 +125,16 @@ begin
   -- 駁回
   r := public.tbl_confirm_hand_tx(v_tok[2], v_hand, false);
   st := public.tbl_state_tx(v_tok[3]);
+  /* ⚠ 沒有待確認時 tbl_state_tx 回的是 JSON 的 null ⇒ `st -> 'pending'` 是一個
+       「JSON null 值」不是 SQL 的 NULL，`is null` 永遠是假的（2026-09-23 第一次跑就紅在這裡，
+       函式是對的、期望值寫錯了 —— 硬規則 3.56）。要用 jsonb_typeof 判斷。 */
   v_msg := v_msg || (case when r ->> 'status' = 'rejected' and (st -> 'last_reject' ->> 'rejected_seat')::int = 2
-                           and st -> 'pending' is null and (st -> 'round' ->> 'renzhuang')::int = 1
+                           and coalesce(jsonb_typeof(st -> 'pending'), 'null') = 'null'
+                           and (st -> 'round' ->> 'renzhuang')::int = 1
                           then ok else bad end)
-           || '⑧-2 駁回後回到原狀、送出的人看得到被誰駁回：' || coalesce(st -> 'last_reject' ->> 'rejected_seat', '∅') || E'\n';
+           || '⑧-2 駁回後回到原狀、送出的人看得到被誰駁回：被 ' || coalesce(st -> 'last_reject' ->> 'rejected_seat', '∅')
+           || ' 駁回／待確認 ' || coalesce(jsonb_typeof(st -> 'pending'), 'SQL null')
+           || '／連莊 ' || coalesce(st -> 'round' ->> 'renzhuang', '∅') || E'\n';
 
   -- ⑨ 撤銷上一把（⑥ 那一把）⇒ 莊家回到 2、連莊回到 0；任何人都能按
   r := public.tbl_undo_last_tx(v_tok[4]);
