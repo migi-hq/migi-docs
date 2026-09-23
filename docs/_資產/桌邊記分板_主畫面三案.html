@@ -58,21 +58,18 @@ h1{font-size:23px;margin-bottom:6px}
 /* 🔴 全畫面**唯一**的膠囊：莊家。它是這一把最重要的身分，所以只有它有外框 */
 .zh{display:inline-block;background:var(--brand);color:var(--ink);border-radius:999px;
   padding:3px 14px;font-weight:800;white-space:nowrap}
-/* 段位膠囊：照會員 App 的 `Pill tone="glass"`（半透明白底 ＋ --ink 字），
-   內容照 `fmtRank()`：「段位: 黃金熊 II」。稱號照 App 用直角引號「」。 */
-.rkp{display:inline-block;background:rgba(255,255,255,.7);color:var(--ink);border-radius:999px;
+/* 段位膠囊：粉底黑字（2026-09-23 使用者指定）。
+   ⚠ 原本照 App 的 `tone="glass"`（半透明白），但那是為粉色卡片設計的 —— 站在深色 HERO 卡上會變成灰色。
+   內容仍照 `fmtRank()`：「段位: 黃金熊 II」。稱號照 App 用直角引號「」。 */
+.rkp{display:inline-block;background:var(--brand);color:var(--ink);border-radius:999px;
   padding:3px 13px;font-weight:700;white-space:nowrap}
 .meline{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .q{font-size:24px;font-weight:800;color:var(--dk-text-2);flex-shrink:0}
 .score{font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
 .pri{background:var(--brand);color:var(--ink);border-color:var(--brand)}
 .pri .sub{color:var(--ink)}
-/* 我自己的 HERO 卡：粉底墨字（2026-09-23 使用者指定）。
-   段位膠囊因此回到 App 原本的處境 —— 半透明白站在粉底上，正是 `tone="glass"` 設計的用法。
-   ⚠ 莊家膠囊在粉底上會消失，所以這張卡裡的莊家反過來用墨底粉字。 */
-.A .me,.B .hero,.C .me{background:var(--brand);color:var(--ink);border-color:var(--brand)}
-.A .me .sub,.B .hero .sub,.C .me .sub{color:var(--ink)}
-.A .me .zh,.B .hero .zh,.C .me .zh{background:var(--ink);color:var(--brand)}
+/* 我自己的 HERO 卡：深色（一度改成粉底，2026-09-23 使用者改回來）。 */
+.A .me,.B .hero,.C .me{background:var(--dk-raised)}
 
 /* ── A 座位圖 ───────────────────────── */
 .A .body{flex:1;min-height:0;padding:16px 18px;display:grid;gap:14px;
@@ -143,9 +140,9 @@ h1{font-size:23px;margin-bottom:6px}
 <div class="rules">
   <b>① 一張卡只回答一個問題。</b>選「誰放槍」只需要認得人 → 對手卡只留<b>頭像＋名字</b>。
   稱號、段位是「他是誰」的資料，不是「這一把誰付錢」要用的，從對手卡上拿掉。<br />
-  <b>② 膠囊只留兩種：莊家（粉底）、我的段位（照會員 App：半透明白底＋黑字「段位: 黃金熊 II」）。</b>
+  <b>② 膠囊只留兩種：莊家、我的段位（「段位: 黃金熊 II」），都是粉底黑字。</b>
   其餘說明（放槍、另外三家一起付…）改成淺灰字，不是膠囊。<br />
-  <b>③ 粉色只給三件事</b>：莊家、最常按的「我自摸」、我自己的 HERO 卡（粉底墨字）。其他一律深灰卡配灰框。<br />
+  <b>③ 粉色只給三件事</b>：莊家、最常按的「我自摸」、我的段位膠囊。其他一律深灰卡配灰框。<br />
   <b>④ 頂條只留值不留欄位名</b>：「台麻 · 無花 · 3 將　100/20　A3 東風圈 第 1 將 第 3 把　22:53」。
   我自己照 App 個人檔案的順序：稱號「新手村制霸」在名字上面，段位膠囊在名字下面。
 </div>
