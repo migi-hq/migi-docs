@@ -108,6 +108,11 @@ h1{font-size:23px;margin-bottom:6px}
 .A .opp .ren{height:38px;padding:0 12px;background:var(--dk-line);color:var(--brand);
   display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800}
 .A .act{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+/* 一格切成上下兩顆：跟六格用同一種卡，只是各佔半高，中間留 12px */
+.A .split{display:flex;flex-direction:column;gap:12px;min-height:0}
+.A .split .card{flex:1;min-height:0;gap:2px}
+.A .split .card b{font-size:30px}
+.A .split .card .sub{font-size:18px}
 .A .act b{font-size:34px}
 .A .act .sub{font-size:22px}
 .A .me{grid-area:me;display:flex;align-items:center;gap:18px;padding:0 24px}
@@ -223,7 +228,11 @@ const A = () => {
     <div class="q" style="grid-area:q"><span class="n">1</span>這一局誰要付錢？</div>
     <div class="card act" style="grid-area:draw"><b>流局</b><span class="sub">沒有人付分</span></div>
     ${opp('top')}
-    <div class="card act" style="grid-area:bao"><b>我包牌</b><span class="sub">我付給另外三家</span></div>
+    <!-- 右上那一格切成上下兩顆（2026-09-24 使用者指定）：上「我包牌」、下「咔啦碰」 -->
+    <div class="split" style="grid-area:bao">
+      <div class="card act"><b>我包牌</b><span class="sub">我付給另外三家</span></div>
+      <div class="card act"><b>咔啦碰</b></div>
+    </div>
     ${opp('left')}
     <div class="card act zimo" style="grid-area:zimo"><b>我自摸</b><span class="sub">另外三家一起付</span></div>
     ${opp('right')}
