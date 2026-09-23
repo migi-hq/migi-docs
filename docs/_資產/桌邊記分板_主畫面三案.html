@@ -34,12 +34,12 @@ h1{font-size:23px;margin-bottom:6px}
 /* ── 共用 ───────────────────────────── */
 /* 頂條：照「四台同步」那一版（2026-09-23 使用者貼截圖指定）——
    欄位名小一號灰字、值是白色大字、中間用分隔線隔開。 */
-.top{display:flex;align-items:center;gap:12px;padding:12px 20px;background:var(--dk-bar);
+.top{display:flex;align-items:center;gap:22px;padding:12px 20px;background:var(--dk-bar);
   border-bottom:1px solid var(--dk-line);flex-shrink:0;font-size:20px;font-weight:800;white-space:nowrap;color:var(--dk-text)}
 .top .logo{font-size:24px;letter-spacing:3px;color:var(--brand)}
 /* 欄位名用 --dk-text-2（比 --dk-text-3 亮一階）—— 使用者：「玩法 積分 字再白一點」 */
 .top em{font-style:normal;font-size:15px;color:var(--dk-text-2);margin-right:7px}
-.top .sep{width:2px;height:24px;background:var(--dk-line);flex-shrink:0}
+/* 分隔線「｜」拿掉（2026-09-23 使用者：這個不用），各項改靠間距分開 */
 .top .sp{flex:1}
 .top .clock{font-variant-numeric:tabular-nums}
 
@@ -156,8 +156,8 @@ h1{font-size:23px;margin-bottom:6px}
   <b>② 膠囊只留兩種：莊家、我的段位（「段位: 黃金熊 II」），都是粉底黑字。</b>
   其餘說明（放槍、另外三家一起付…）改成淺灰字，不是膠囊。<br />
   <b>③ 粉色只給少數幾件事</b>：莊家、我的段位膠囊（B、C 的「我自摸」也還是粉色；A 已改成跟其他格一樣的深色）。其他一律深灰卡配灰框。<br />
-  <b>④ 頂條照「四台同步」那一版</b>：小字欄位名＋白色值，分隔線隔開 ——
-  「MIGI｜桌號 A3｜玩法 台麻 · 無花 · 3 將｜積分 100/20｜總積分 2000｜第 1 將 · 東風圈 · 第 3 局　已使用 1:42」。
+  <b>④ 頂條照「四台同步」那一版</b>：小字欄位名＋白色值，靠間距分開（不用分隔線）——
+  「MIGI　桌號 A3　玩法 台麻 · 無花 · 3 將　積分 100/20　總積分 2000　第 1 將 · 東風圈 · 第 3 局　已使用 1:42」。
   寬度剛好塞滿 1024，右邊只剩約 2px。
   我自己照 App 個人檔案的順序：稱號「新手村制霸」在名字上面，段位膠囊在名字下面。
 </div>
@@ -184,11 +184,11 @@ const meTitle = (fs) => `<span class="sub" style="font-size:${fs}px">「${P[ME].
 const meRank = (fs) => `<span class="rkp" style="font-size:${fs}px">段位: ${P[ME].rank}</span>`;
 
 const topBar = () => `<div class="top">
-  <span class="logo">MIGI</span><span class="sep"></span>
-  <span><em>桌號</em>A3</span><span class="sep"></span>
-  <span><em>玩法</em>台麻 · 無花 · 3 將</span><span class="sep"></span>
-  <span><em>積分</em>100/20</span><span class="sep"></span>
-  <span><em>總積分</em>2000</span><span class="sep"></span>
+  <span class="logo">MIGI</span>
+  <span><em>桌號</em>A3</span>
+  <span><em>玩法</em>台麻 · 無花 · 3 將</span>
+  <span><em>積分</em>100/20</span>
+  <span><em>總積分</em>2000</span>
   <span>第 1 將 · 東風圈 · 第 3 局</span>
   <span class="sp"></span>
   <span class="clock"><em>已使用</em>1:42</span></div>`;
