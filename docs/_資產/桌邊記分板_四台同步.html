@@ -72,9 +72,12 @@ h1{font-size:23px;margin-bottom:6px}
 /* ── 平板內部 ─────────────────────────── */
 /* 頂條：只放這一桌的事實 —— 玩法／積分級距／桌號與圈將把／時間（2026-09-23 使用者指定）。
    莊家資訊與「我的幕前積分」都搬走了：莊家看人物卡，積分看右下。 */
-.top{display:flex;align-items:center;gap:22px;padding:12px 24px;background:var(--dk-bar);
+.top{display:flex;align-items:center;gap:16px;padding:12px 22px;background:var(--dk-bar);
   border-bottom:1px solid var(--dk-line);flex-shrink:0;font-size:24px;font-weight:800;white-space:nowrap}
 .top .dim{color:var(--dk-text-2)}
+.top .logo{font-size:26px;letter-spacing:3px;color:var(--brand)}
+/* 欄位名（玩法／積分／桌號）小一號、灰一階 —— 跟會員 App 的牌局資訊同一組名字 */
+.top em{font-style:normal;font-size:16px;color:var(--dk-text-3);margin-right:8px}
 .top .sep{width:2px;height:26px;background:var(--dk-line)}
 .top .sp{flex:1}
 .top .clock{font-size:28px;font-variant-numeric:tabular-nums}
@@ -98,7 +101,6 @@ h1{font-size:23px;margin-bottom:6px}
 .hero .pills{display:flex;gap:8px;flex-wrap:wrap}
 .hero .pill{font-size:17px}
 .score{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;padding:0 24px}
-.score small{font-size:16px;font-weight:800;color:var(--dk-text-3)}
 .score b{font-size:72px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
 
 .body{flex:1;min-height:0;display:flex;flex-direction:column;padding:14px 20px;gap:12px}
@@ -223,7 +225,9 @@ code{background:#F2F0EE;border-radius:5px;padding:1px 6px;font-size:.92em}
 
 <div class="sec">
   <h3>0. 版面（2026-09-23 使用者指定）</h3>
-  <b>頂條只放這一桌的事實</b>：玩法／積分級距／桌號與圈將把／時間，字放大到 24px。
+  <b>頂條只放這一桌的事實</b>：MIGI → 玩法 → 積分 → 桌號 → 打到哪一把 → 時間，字放大到 24px。
+  「玩法」「積分」這兩格<b>比照會員 App 的牌局資訊</b>：玩法 ＝ 台麻 · 無花 · 3 將，積分 ＝ 100/20。<br />
+  ⚠ 頂條右邊只剩約 22px 空間。「1000/500」這種比較長的積分級距還放得下，再長就要縮字。
   原本頂條的莊家卡與「我的幕前積分・第 N 位」都拿掉了。<br />
   <b>莊家只標在人物卡上</b>：「莊家 · 連莊 N」墨底粉字膠囊，放在「放槍」旁邊（浮貼在角落會壓到頭像，量過重疊 28px）。
   我自己是莊家時，標在左下的 HERO 卡上。<br />
@@ -277,8 +281,13 @@ const PROF = {
   3: { title: '連莊之王',   rank: '鑽石熊 I',  av: BEAR('diamond') },
   4: { title: '新手上路',   rank: '青銅熊 III', av: BEAR('bronze') },
 };
-/* 桌的事實（頂條）：玩法、積分級距、桌號與圈將把 */
-const TABLE = { game: '台灣麻將', stake: '100/20', where: 'A3 · 東風圈 第 1 將 第 3 把' };
+/* 桌的事實（頂條）—— 維度比照會員 App 的「牌局資訊」（2026-09-23 使用者指定）：
+     玩法 ＝ [fmtType(game_type, flower), rounds].join(' · ')   → 台麻 · 無花 · 3 將
+     積分 ＝ stake_levels 的標籤                                  → 100/20
+   （來源：migi-web match.jsx 的 `play` 與 GameDetailSheet 的「玩法／積分」兩列）
+   另外兩格是平板才有的：桌號、現在打到哪一把。 */
+const TABLE = { type: '台麻', flower: '無花', rounds: '3 將', stake: '100/20', table: 'A3', now: '東風圈 第 1 將 第 3 把' };
+const PLAY = [TABLE.type, TABLE.flower, TABLE.rounds].filter(Boolean).join(' · ');
 
 /* 名字越長字越小，但有下限 —— 平板要隔著牌桌看得到。
    ⚠ 這是版面驅動的尺寸（跟著名字長度變），不是字階 token。 */
@@ -344,9 +353,11 @@ function topHTML() {
   const now = new Date();
   const hm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   return `<div class="top">
-    <span>${TABLE.game}</span><span class="sep"></span>
-    <span>積分 ${TABLE.stake}</span><span class="sep"></span>
-    <span class="dim">${TABLE.where}</span>
+    <span class="logo">MIGI</span><span class="sep"></span>
+    <span><em>玩法</em>${PLAY}</span><span class="sep"></span>
+    <span><em>積分</em>${TABLE.stake}</span><span class="sep"></span>
+    <span><em>桌號</em>${TABLE.table}</span><span class="sep"></span>
+    <span class="dim">${TABLE.now}</span>
     <span class="sp"></span>
     <span class="clock">${hm}</span>
   </div>`;
@@ -369,7 +380,7 @@ function meHTML(s) {
         <span class="pills"><span class="pill rk">${p.rank}</span>${d ? dealerPill() : ''}</span>
       </div>
     </div>
-    <div class="score"><small>幕前積分</small><b>${G.total[s].toLocaleString()}</b></div>
+    <div class="score"><b>${G.total[s].toLocaleString()}</b></div>
   </div>`;
 }
 
