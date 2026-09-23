@@ -101,7 +101,7 @@ h1{font-size:23px;margin-bottom:6px}
   border-radius:8px;overflow:hidden}
 /* 左上角寫座位（對家／上家／下家），右上角留給莊家標記（2026-09-23 使用者指定） */
 /* 座位字改灰（2026-09-24 使用者指定）：它是「在哪裡」，不是狀態，不該跟莊家標籤搶粉色 */
-.A .opp .pos{position:absolute;top:10px;left:14px;font-size:26px;font-weight:800;color:var(--dk-text-2);line-height:1.2}
+.A .opp .pos{position:absolute;top:10px;left:14px;font-size:20px;font-weight:800;color:var(--dk-text-2);line-height:1.2}
 /* 莊家標記：一張「莊」字麻將牌（粉底墨字、牌的比例），旁邊粉字寫連莊數 */
 .A .opp .zhtile{height:38px;padding:0 12px;background:var(--brand);color:var(--ink);
   display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800}
@@ -112,6 +112,7 @@ h1{font-size:23px;margin-bottom:6px}
 .A .act .sub{font-size:22px}
 .A .me{grid-area:me;display:flex;align-items:center;gap:18px;padding:0 24px}
 .A .me .who{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.A .me .nm{margin-top:-4px}   /* 名字往上貼著稱號（2026-09-24 使用者指定） */
 .A .me .nm{font-size:28px}
 .A .me .sub{font-size:20px}
 .A .me .score{font-size:76px}
