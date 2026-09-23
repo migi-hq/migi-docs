@@ -32,11 +32,11 @@ h1{font-size:23px;margin-bottom:6px}
   display:flex;flex-direction:column;overflow:hidden}
 
 /* ── 共用 ───────────────────────────── */
-/* 頂條：拿掉欄位名，只留值；次要的用灰 */
-.top{display:flex;align-items:center;gap:18px;padding:14px 24px;background:var(--dk-bar);
-  flex-shrink:0;font-size:24px;font-weight:800;white-space:nowrap}
-.top .logo{font-size:24px;letter-spacing:3px;color:var(--brand)}
-.top .dim{color:var(--dk-text)}
+/* 頂條：淺灰、小一號（2026-09-23 使用者指定）—— 它是背景資訊，不該跟下面的按鈕搶。
+   左：玩法／積分級距／總積分；右：桌號與打到哪一把／時間。 */
+.top{display:flex;align-items:center;gap:18px;padding:12px 24px;background:var(--dk-bar);
+  flex-shrink:0;font-size:20px;font-weight:800;white-space:nowrap;color:var(--dk-text-2)}
+.top .logo{font-size:22px;letter-spacing:3px;color:var(--brand)}
 .top .sp{flex:1}
 .top .clock{font-variant-numeric:tabular-nums}
 
@@ -64,7 +64,10 @@ h1{font-size:23px;margin-bottom:6px}
 .rkp{display:inline-block;background:var(--brand);color:var(--ink);border-radius:999px;
   padding:3px 13px;font-weight:700;white-space:nowrap}
 .meline{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.q{font-size:24px;font-weight:800;color:var(--dk-text-2);flex-shrink:0}
+/* 問句：照第一版 ——「①」粉色圓圈 ＋ 白色粗字（2026-09-23 使用者：改回來） */
+.q{display:flex;align-items:center;gap:12px;font-size:26px;font-weight:800;color:var(--dk-text);flex-shrink:0}
+.q .n{width:34px;height:34px;border-radius:50%;background:var(--brand);color:var(--ink);
+  display:flex;align-items:center;justify-content:center;font-size:16px}
 .score{font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
 .pri{background:var(--brand);color:var(--ink);border-color:var(--brand)}
 .pri .sub{color:var(--ink)}
@@ -75,8 +78,8 @@ h1{font-size:23px;margin-bottom:6px}
 .A .body{flex:1;min-height:0;padding:16px 18px;display:grid;gap:14px;
   /* 六格一樣大（2026-09-23 使用者：「A 大小都不一樣」）—— 原本上排 212px、中排撐滿、
      中間那欄 1.25 倍寬，六格三種尺寸。「我自摸」靠粉色分出來就夠，不靠比較大。 */
-  grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:1fr 1fr 136px;
-  grid-template-areas:"draw top bao" "left zimo right" "me me me"}
+  grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:auto 1fr 1fr 136px;
+  grid-template-areas:"q q q" "draw top bao" "left zimo right" "me me me"}
 .A .opp{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
   padding:52px 10px 10px;text-align:center}
 .A .opp .nm{font-size:22px}
@@ -144,7 +147,8 @@ h1{font-size:23px;margin-bottom:6px}
   <b>② 膠囊只留兩種：莊家、我的段位（「段位: 黃金熊 II」），都是粉底黑字。</b>
   其餘說明（放槍、另外三家一起付…）改成淺灰字，不是膠囊。<br />
   <b>③ 粉色只給少數幾件事</b>：莊家、我的段位膠囊（B、C 的「我自摸」也還是粉色；A 已改成跟其他格一樣的深色）。其他一律深灰卡配灰框。<br />
-  <b>④ 頂條只留值不留欄位名</b>：「台麻 · 無花 · 3 將　100/20　A3 東風圈 第 1 將 第 3 把　22:53」。
+  <b>④ 頂條只留值不留欄位名，淺灰 20px</b>：左邊「台麻 · 無花 · 3 將　100/20　總積分 2000」，
+  右邊「A3　東風圈 第 1 將 第 3 把　22:53」。
   我自己照 App 個人檔案的順序：稱號「新手村制霸」在名字上面，段位膠囊在名字下面。
 </div>
 
@@ -173,8 +177,10 @@ const topBar = () => `<div class="top">
   <span class="logo">MIGI</span>
   <span>台麻 · 無花 · 3 將</span>
   <span>100/20</span>
-  <span class="dim">A3　東風圈 第 1 將 第 3 把</span>
-  <span class="sp"></span><span class="clock">22:53</span></div>`;
+  <span>總積分 2000</span>
+  <span class="sp"></span>
+  <span>A3　東風圈 第 1 將 第 3 把</span>
+  <span class="clock">22:53</span></div>`;
 
 /* ── A 座位圖 ── */
 const A = () => {
@@ -188,6 +194,7 @@ const A = () => {
       <span class="nm">${P[x].name}</span>
       <span class="rkp" style="font-size:16px">段位: ${P[x].rank}</span></div>`; };
   return `<div class="frame A">${topBar()}<div class="body">
+    <div class="q" style="grid-area:q"><span class="n">1</span>這一把誰要付錢？</div>
     <div class="card act" style="grid-area:draw"><b>流局</b><span class="sub">沒有人付分</span></div>
     ${opp('top')}
     <div class="card act" style="grid-area:bao"><b>我包牌</b><span class="sub">我付給另外三家</span></div>
@@ -212,7 +219,7 @@ const B = () => {
       ${meTitle(18)}<span class="nm">${P[ME].name}</span><span class="meline" style="justify-content:center">${meRank(16)}${zh(ME, 16)}</span>
       <span class="score">${SCORE}</span></div>
     <div class="right">
-      <div class="q">這一把誰要付錢？</div>
+      <div class="q"><span class="n">1</span>這一把誰要付錢？</div>
       <div class="g6">
         ${act('我自摸', '另外三家一起付', 'pri')}
         ${opp(2)}${opp(3)}${opp(4)}
@@ -230,7 +237,7 @@ const C = () => {
       <span class="nm">${P[x].name}</span>
       <span class="sub">放槍</span>${zh(x)}</div>`;
   return `<div class="frame C">${topBar()}<div class="body">
-    <div class="q">這一把誰要付錢？</div>
+    <div class="q"><span class="n">1</span>這一把誰要付錢？</div>
     ${opp(2)}${opp(3)}${opp(4)}
     <div class="acts">
       <div class="card pri"><b>我自摸</b><span class="sub">另外三家一起付</span></div>
