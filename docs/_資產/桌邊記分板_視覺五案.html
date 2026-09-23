@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MIGI 桌邊記分板 · 視覺五案</title>
+<!--
+  2026-09-23　使用者：「覺得 UI 很醜，參考世界級 POS 給 5 種」
+
+  🔴 五案的**版面完全一樣**（動作 → 牌型 → 確定 → 我的超大積分＋HERO，
+     按鈕尺寸也一模一樣）—— 這樣比較的才是純粹的視覺語言，不是版面。
+     版面本身見 `桌邊記分板_版型.html`。
+
+  🔴 上一版「醜」的具體原因有三個，五案各自用不同方式解決：
+     ① 整頁白底灰框 —— 沒有層次，26 顆按鈕像一張試算表
+     ② 每顆按鈕的視覺權重一樣 —— 眼睛不知道要先看哪裡
+     ③ 粉色 HERO 卡貼在白色區塊下面 —— 兩個世界硬接在一起
+
+  ⚠ 顏色**全部來自 @migi/assets v1.10.0 既有的 token**，一個新色都沒有加
+    （硬規則 13）。② 案用的 --tile-face / --tile-face-bd 本來就是「牌面」的顏色。
+-->
+<style>
+:root{
+  --brand:#FAD6DC; --brand-tint:#FFECF1; --brand-light:#FFE7EE;
+  --milktea:#EFE3DA; --milktea-bd:#DECDBC; --milktea-light:#FAF5EF; --milktea-ink:#7A5C42;
+  --ink:#2E2B2C; --accent:#C2607A; --accent-deep:#974B5F; --gold:#E8B89B;
+  --gray-1:#5C5754; --gray-2:#726D69; --hint:#B4AEA9;
+  --gray-3:#ECEAE9; --gray-4:#F2F0EE; --divider:#DED9D5;
+  --white:#fff; --field-bg:#F8F7F6; --page-bg:#F6F5F4; --danger:#B23B3B;
+  --tile-face:#FFFDF9; --tile-face-bd:#E5DCCF; --tile-face-lip:#E0D6C6; --ok:#63B58C;
+  --r-pill:999px; --r-lg:16px; --r-card:14px; --r-field:12px; --r-sm:8px;
+  --xxxs:11px; --xxs:12px; --xs:13px; --s:14px; --m:15px; --l:16px; --xl:18px; --xxl:22px;
+  --font:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:#DEDBD8;color:var(--ink);padding:28px 20px 80px}
+h1{font-size:24px;margin-bottom:6px}
+.lead{font-size:14px;color:var(--gray-1);line-height:1.8;max-width:960px;margin-bottom:24px}
+.lead b{color:var(--accent-deep)}
+.case{margin-bottom:46px}
+.case>h2{font-size:20px;margin-bottom:3px}
+.case>.ref{font-size:12px;color:var(--gray-2);font-weight:700;letter-spacing:.5px;margin-bottom:6px}
+.case>p{font-size:13px;color:var(--gray-1);line-height:1.75;margin-bottom:12px;max-width:960px}
+.case>p b{color:var(--accent-deep)}
+.wrap{overflow:hidden}
+.frame{width:1024px;height:768px;transform-origin:top left;box-shadow:0 10px 40px rgba(0,0,0,.24);
+  display:flex;flex-direction:column;overflow:hidden}
+
+/* ══ 骨架（五案共用，尺寸一律相同）══════════════ */
+.bar{display:flex;align-items:center;gap:10px;padding:7px 18px;flex-shrink:0}
+.bar .logo{font-size:var(--xl);font-weight:800;letter-spacing:2px}
+.bar .tb{font-size:var(--l);font-weight:700}
+.bar .sub,.bar .dev{font-size:var(--xs)}
+.bar .now{font-size:var(--s);font-weight:700}
+.bar .sp{flex:1}
+.body{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px;padding:10px 16px}
+.act{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;flex-shrink:0}
+.act button{height:92px;border-radius:var(--r-field);font-family:inherit;font-size:26px;font-weight:800;
+  cursor:pointer;line-height:1.15;border:2px solid transparent;transition:.12s}
+.act button small{display:block;font-size:var(--m);font-weight:700;margin-top:3px;opacity:.62}
+.pat{flex:1;min-height:0;border-radius:var(--r-card);padding:10px 12px;overflow:hidden}
+.rows{height:100%;display:flex;flex-direction:column;gap:8px}
+.row{flex:1;min-height:0;display:grid;grid-template-columns:repeat(8,1fr);gap:8px}
+.bchip{border-radius:var(--r-field);font-family:inherit;cursor:pointer;border:2px solid transparent;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  min-width:0;overflow:hidden;padding:4px;transition:.12s}
+.bchip b{font-size:26px;font-weight:800;line-height:1.1;white-space:nowrap}
+.bchip i{font-style:normal;font-size:var(--l);font-weight:700;opacity:.6}
+.go{display:flex;align-items:center;gap:14px;flex-shrink:0}
+.go .tai{font-size:var(--xxl);font-weight:800;white-space:nowrap}
+.go .tai em{font-style:normal;font-size:44px;line-height:1;margin-right:4px}
+.go .hint{font-size:var(--s);line-height:1.5;opacity:.72}
+.go .sp{flex:1}
+.go .ghost,.go .ok{height:76px;border-radius:var(--r-field);font-family:inherit;font-weight:800;
+  cursor:pointer;line-height:1.25;border:2px solid transparent}
+.go .ghost{padding:0 24px;font-size:var(--l)}
+.go .ok{padding:0 44px;font-size:26px}
+.mine{display:flex;align-items:center;gap:18px;flex-shrink:0;border-radius:var(--r-lg);padding:10px 24px}
+.mine .ava{width:64px;height:64px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;
+  justify-content:center;font-size:26px;font-weight:800}
+.mine .nm{font-size:var(--xxl);font-weight:800;display:flex;align-items:center;gap:8px}
+.mine .ttl{font-size:var(--xxs);font-weight:800;border-radius:var(--r-pill);padding:2px 10px;border:1px solid var(--gold)}
+.mine .meta{font-size:var(--s);font-weight:700;margin-top:4px;display:flex;gap:14px;opacity:.82}
+.mine .sp{flex:1}
+.mine .num{text-align:right;line-height:1}
+.mine .num .lab{font-size:var(--xs);font-weight:800;letter-spacing:1px;opacity:.8}
+.mine .num .v{font-size:104px;line-height:.95;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-3px}
+.mine .num .d{font-size:var(--l);font-weight:700;margin-top:2px;opacity:.8}
+.rkpill{display:inline-block;font-size:var(--m);font-weight:800;border-radius:var(--r-pill);
+  padding:3px 14px;margin-left:10px;vertical-align:4px}
+
+/* ══ ① 深色駕駛艙 ═══════════════════════════ */
+.s1{background:#221F20;color:var(--white)}
+.s1 .bar{background:#191718;border-bottom:1px solid rgba(255,255,255,.08)}
+.s1 .bar .sub,.s1 .bar .dev{color:rgba(255,255,255,.45)}
+.s1 .act button{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.14);color:#fff}
+.s1 .act button.on{background:var(--brand);border-color:var(--brand);color:var(--ink)}
+.s1 .act button.draw{border-style:dashed}
+.s1 .pat{background:rgba(255,255,255,.05)}
+.s1 .bchip{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.1);color:#fff}
+.s1 .bchip.on{background:var(--brand);border-color:#fff;color:var(--ink)}
+.s1 .go .hint{color:rgba(255,255,255,.6)}
+.s1 .go .ghost{background:transparent;border-color:rgba(255,255,255,.28);color:rgba(255,255,255,.82)}
+.s1 .go .ok{background:var(--brand);color:var(--ink)}
+.s1 .mine{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12)}
+.s1 .mine .ava{background:var(--brand);color:var(--ink)}
+.s1 .mine .ttl{background:rgba(255,255,255,.1)}
+.s1 .mine .num .lab,.s1 .mine .num .d{color:var(--brand)}
+.s1 .rkpill{background:var(--brand);color:var(--ink)}
+
+/* ══ ② 牌面象牙白（磚就是一張牌）═══════════════ */
+.s2{background:var(--milktea);color:var(--milktea-ink)}
+.s2 .bar{background:var(--milktea-light);border-bottom:1px solid var(--milktea-bd)}
+.s2 .bar .logo,.s2 .bar .tb,.s2 .bar .now{color:var(--ink)}
+.s2 .act button{background:var(--tile-face);border-color:var(--tile-face-bd);color:var(--ink);
+  box-shadow:0 3px 0 var(--tile-face-lip)}
+.s2 .act button.on{background:var(--ink);border-color:var(--ink);color:#fff;box-shadow:none;transform:translateY(2px)}
+.s2 .act button.draw{border-style:dashed}
+.s2 .pat{background:var(--milktea-light);border:1px solid var(--milktea-bd)}
+.s2 .bchip{background:var(--tile-face);border-color:var(--tile-face-bd);color:var(--ink);
+  box-shadow:0 3px 0 var(--tile-face-lip)}
+.s2 .bchip i{color:var(--milktea-ink)}
+.s2 .bchip.on{background:var(--brand);border-color:var(--accent-deep);box-shadow:0 3px 0 var(--accent-deep);transform:translateY(1px)}
+.s2 .go .tai{color:var(--ink)}
+.s2 .go .ghost{background:var(--tile-face);border-color:var(--tile-face-bd);color:var(--milktea-ink)}
+.s2 .go .ok{background:var(--ink);color:#fff;box-shadow:0 3px 0 rgba(0,0,0,.25)}
+.s2 .mine{background:var(--tile-face);border:1px solid var(--tile-face-bd);color:var(--ink)}
+.s2 .mine .ava{background:var(--brand);color:var(--accent-deep)}
+.s2 .mine .ttl{background:var(--milktea-light)}
+.s2 .mine .meta{color:var(--milktea-ink)}
+.s2 .mine .num .lab,.s2 .mine .num .d{color:var(--milktea-ink)}
+.s2 .rkpill{background:var(--accent-deep);color:#fff}
+
+/* ══ ③ 極簡黑白 ═════════════════════════════ */
+.s3{background:var(--white);color:var(--ink)}
+.s3 .bar{border-bottom:1px solid var(--divider)}
+.s3 .bar .sub,.s3 .bar .dev{color:var(--gray-2)}
+.s3 .act button{background:var(--white);border-color:var(--divider);color:var(--ink)}
+.s3 .act button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.s3 .act button.draw{border-style:dashed}
+.s3 .pat{background:var(--white);border:1px solid var(--divider);padding:12px}
+.s3 .bchip{background:var(--white);border-color:var(--divider);color:var(--ink)}
+.s3 .bchip i{color:var(--gray-2)}
+.s3 .bchip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.s3 .bchip.on i{color:rgba(255,255,255,.7);opacity:1}
+.s3 .go .hint{color:var(--gray-2)}
+.s3 .go .ghost{background:var(--white);border-color:var(--divider);color:var(--gray-1)}
+.s3 .go .ok{background:var(--ink);color:#fff}
+.s3 .mine{background:var(--white);border:1px solid var(--ink);padding:12px 24px}
+.s3 .mine .ava{background:var(--ink);color:#fff}
+.s3 .mine .ttl{background:var(--white);border-color:var(--ink)}
+.s3 .mine .meta{color:var(--gray-1)}
+.s3 .mine .num .lab,.s3 .mine .num .d{color:var(--gray-1)}
+.s3 .rkpill{background:var(--ink);color:#fff}
+
+/* ══ ④ 品牌粉（跟會員 App 同一個世界）══════════ */
+.s4{background:var(--brand-tint);color:var(--ink)}
+.s4 .bar{background:var(--white);border-bottom:1px solid var(--brand)}
+.s4 .bar .sub,.s4 .bar .dev{color:var(--accent-deep)}
+.s4 .act button{background:var(--white);border-color:var(--brand);color:var(--ink);box-shadow:0 2px 8px rgba(46,43,44,.06)}
+.s4 .act button.on{background:var(--accent-deep);border-color:var(--accent-deep);color:#fff}
+.s4 .act button.draw{border-style:dashed;border-color:var(--divider)}
+.s4 .pat{background:var(--white);box-shadow:0 2px 8px rgba(46,43,44,.06)}
+.s4 .bchip{background:var(--brand-tint);border-color:transparent;color:var(--ink)}
+.s4 .bchip i{color:var(--accent-deep)}
+.s4 .bchip.on{background:var(--brand);border-color:var(--accent-deep)}
+.s4 .go .hint{color:var(--accent-deep)}
+.s4 .go .ghost{background:var(--white);border-color:var(--brand);color:var(--accent-deep)}
+.s4 .go .ok{background:var(--ink);color:#fff}
+.s4 .mine{background:linear-gradient(135deg,var(--brand-light),var(--brand));box-shadow:0 2px 8px rgba(46,43,44,.08)}
+.s4 .mine .ava{background:var(--white);color:var(--accent-deep);border:3px solid #fff}
+.s4 .mine .ttl{background:rgba(255,255,255,.8)}
+.s4 .mine .meta,.s4 .mine .num .lab,.s4 .mine .num .d{color:var(--accent-deep)}
+.s4 .rkpill{background:var(--accent-deep);color:#fff}
+
+/* ══ ⑤ 數字舞台（積分反過來放最上面）═══════════ */
+.s5{background:var(--page-bg);color:var(--ink)}
+.s5 .body{gap:10px}
+.s5 .mine{order:-1;background:var(--ink);color:#fff;padding:16px 28px;border-radius:var(--r-lg)}
+.s5 .mine .ava{background:rgba(255,255,255,.14);color:#fff}
+.s5 .mine .ttl{background:rgba(255,255,255,.1);color:var(--gold)}
+.s5 .mine .meta{color:rgba(255,255,255,.7)}
+.s5 .mine .num .v{font-size:132px;letter-spacing:-4px}
+.s5 .mine .num .lab,.s5 .mine .num .d{color:var(--brand)}
+.s5 .rkpill{background:var(--brand);color:var(--ink)}
+.s5 .bar{background:var(--white);border-bottom:1px solid var(--divider)}
+.s5 .bar .sub,.s5 .bar .dev{color:var(--gray-2)}
+.s5 .act button{background:var(--white);border-color:var(--gray-3);color:var(--ink)}
+.s5 .act button.on{background:var(--accent-deep);border-color:var(--accent-deep);color:#fff}
+.s5 .act button.draw{border-style:dashed}
+.s5 .pat{background:var(--white)}
+.s5 .bchip{background:var(--field-bg);border-color:var(--gray-3);color:var(--ink)}
+.s5 .bchip i{color:var(--gray-2)}
+.s5 .bchip.on{background:var(--brand);border-color:var(--accent-deep)}
+.s5 .go .hint{color:var(--gray-2)}
+.s5 .go .ghost{background:var(--white);border-color:var(--gray-3);color:var(--gray-1)}
+.s5 .go .ok{background:var(--accent-deep);color:#fff}
+
+.note{font-size:var(--xs);color:var(--gray-2);margin-top:8px;line-height:1.7;max-width:960px}
+.note b{color:var(--danger)}
+</style>
+</head>
+<body>
+
+<h1>桌邊記分板 · 視覺五案</h1>
+<p class="lead">
+  <b>五案的版面、按鈕尺寸完全一樣</b>（動作 92px、牌型 114×79、確定 76px）——
+  這樣比較的才是純粹的視覺語言。牌型 chip 都點得動。<br />
+  上一版「醜」的三個具體原因：① 整頁白底灰框，26 顆按鈕像一張試算表 ②
+  每顆按鈕的視覺權重一樣，眼睛不知道先看哪 ③ 粉色 HERO 卡直接貼在白色區塊下面，兩個世界硬接。<br />
+  ⚠ 顏色<b>全部來自 @migi/assets 既有的 token，一個新色都沒有加</b>（硬規則 13）。
+</p>
+
+<section class="case">
+  <h2>① 深色駕駛艙</h2>
+  <div class="ref">參考：Toast POS · iCHEF · 專業廚房出單螢幕</div>
+  <p>深底把 26 顆按鈕從「一張表格」變成「一片儀表」，<b>白字自己會跳出來</b>，
+     選中的粉色磚在深底上是全場最亮的東西 —— 視覺權重的問題一次解決。<br />
+     🎯 而它對這個場景特別合理：<b>牌桌是暗場</b>（燈光打在桌面上），
+     一塊全白的 1024×768 在客人眼前亮一整晚是會累的。</p>
+  <div class="wrap"><div class="frame s1" data-f></div></div>
+  <p class="note">代價：與會員 App／POS 的白底世界完全不同調，<b>它會看起來像「別家的機器」</b>。</p>
+</section>
+
+<section class="case">
+  <h2>② 牌面象牙白 —— 每一顆按鈕就是一張麻將牌</h2>
+  <div class="ref">參考：Clover 的實體磚感 · 任天堂式的「可按」立體感</div>
+  <p>底是奶茶色，按鈕用 <b>既有的 <code>--tile-face</code>／<code>--tile-face-bd</code>／<code>--tile-face-lip</code></b>
+     —— 那三個 token 本來就是為了畫麻將牌而存在的。下緣那條 3px 的深邊讓每顆都像一張立著的牌，
+     按下去會沉下去 2px。<br />
+     🎯 <b>這是五案裡唯一「只有麻將店會長這樣」的一案</b>，其餘四案換個行業照樣能用。</p>
+  <div class="wrap"><div class="frame s2" data-f></div></div>
+  <p class="note">代價：立體感用多了容易顯得舊（那是 2010 年代的 skeuomorphism）——
+     所以只給按鈕下緣一條，不加漸層、不加內陰影。</p>
+</section>
+
+<section class="case">
+  <h2>③ 極簡黑白</h2>
+  <div class="ref">參考：Shopify POS · Square 的新版介面</div>
+  <p>只有黑、白、一條細線。<b>選中＝反白（黑底白字）</b>，那是整頁唯一的顏色事件，
+     所以「我現在選了什麼」不可能看錯。<br />
+     🎯 這一案的賭注是：<b>牌型按鈕不需要漂亮，需要的是「按下去看得出來」</b>。</p>
+  <div class="wrap"><div class="frame s3" data-f></div></div>
+  <p class="note">代價：<b>跟上一版最像</b>——如果「醜」的感覺來自「太素」，這一案不會解決它。
+     它解決的是層次，不是氣氛。</p>
+</section>
+
+<section class="case">
+  <h2>④ 品牌粉 —— 跟會員 App 同一個世界</h2>
+  <div class="ref">參考：Square for Restaurants 的品牌化主題 · MIGI 會員 App 現有語言</div>
+  <p>淡粉底 ＋ 白卡片 ＋ 桃紅強調，<b>跟客人手機裡那個 App 是同一套語言</b>——
+     他在手機上看到的粉色卡片、在桌上又看到一次。<br />
+     🎯 順便解決了問題 ③：HERO 卡不再是「唯一的粉色」，<b>整頁本來就是粉的</b>，它自然融進去。</p>
+  <div class="wrap"><div class="frame s4" data-f></div></div>
+  <p class="note">代價：粉色大面積出現時，<b>墨黑的「確定」會變成全場最重的東西</b>——
+     這是刻意的（它是最後一步），但如果覺得太搶，改成桃紅底就會柔下來。</p>
+</section>
+
+<section class="case">
+  <h2>⑤ 數字舞台 —— 積分搬到最上面</h2>
+  <div class="ref">參考：Mリーグ 轉播記分板 · 運動場館計分螢幕</div>
+  <p>🔴 <b>這一案把你定的順序反過來</b>：積分不在最下面，而是最上面的一條深色橫幅，
+     數字放到 <b>132px</b>（其餘四案 104px）。<br />
+     理由：記分板的主角是數字，而<b>人的視線從上往下</b>——
+     放最下面等於每次都要先掃過 26 顆按鈕才看到它。
+     深色橫幅也讓它跟下面的操作區明確分成兩件事。</p>
+  <div class="wrap"><div class="frame s5" data-f></div></div>
+  <p class="note">⚠ 我知道這違背你說的順序，所以<b>只當一個對照</b>——
+     不喜歡就丟掉，但值得看一眼「數字在上」跟「數字在下」的差別有多大。</p>
+</section>
+
+<script>
+/* 牌型主檔：2026-09-23 從線上 scoring_patterns 撈的。
+   ⚠「自摸」不列 —— 後端自動帶（lib/rules.js 的 selectable 就是這樣寫的）。 */
+const G = [
+  [['門清',1],['門清自摸',3],['平胡',2],['獨聽',1],['全求',2],['海底撈月',1],['槓上開花',1],['搶槓',1]],
+  [['三元牌',1],['風牌',1],['小三元',4],['大三元',8],['小四喜',8],['大四喜',16],['字一色',16]],
+  [['混一色',4],['清一色',8],['碰碰胡',4],['三暗刻',2],['四暗刻',5],['五暗刻',8]],
+  [['正花',1],['花槓',2],['七搶一',8],['八仙過海',8],['天胡',24]],
+];
+const BASE = 100, PER_TAI = 20;
+
+const HTML = `
+  <div class="bar"><span class="logo">MIGI</span><span class="tb">A3</span>
+    <span class="sub">積分 100/20 · 底 2000 · 有花</span><span class="sp"></span>
+    <span class="now">東風圈 第 1 將 · 第 3 把 · 連莊 1</span>
+    <span class="dev" style="margin-left:12px">A3-1</span></div>
+  <div class="body">
+    <div class="act" data-act>
+      <button data-r="ron" data-who="小美">小美<small>放槍</small></button>
+      <button data-r="ron" data-who="阿哲">阿哲<small>放槍</small></button>
+      <button data-r="ron" data-who="大雄">大雄<small>放槍</small></button>
+      <button data-r="tsumo" class="on">自摸<small>三家付</small></button>
+      <button data-r="draw" class="draw">流局<small>不用確認</small></button>
+    </div>
+    <div class="pat"><div class="rows">${
+      G.map((list) => `<div class="row">${
+        list.map(([l, t]) => `<button class="bchip" data-t="${t}"><b>${l}</b><i>${t} 台</i></button>`).join('')
+      }</div>`).join('')
+    }</div></div>
+    <div class="go">
+      <span class="tai"><em data-tai>1</em>台</span>
+      <span class="hint">另加莊家台<br /><span data-est>自摸　三家各付 120</span></span>
+      <span class="sp"></span>
+      <button class="ghost">找不到牌型？直接輸台數</button>
+      <button class="ok">確定　送出等三家確認</button>
+    </div>
+    <div class="mine">
+      <span class="ava">咖</span>
+      <div><div class="nm">咖勁凱 <span class="ttl">社牛</span></div>
+        <div class="meta"><span>金熊 II · 段位分 486</span><span>本季 24 場 · 平均順位 2.1</span></div></div>
+      <span class="sp"></span>
+      <div class="num"><div class="lab">我的幕前積分<span class="rkpill">第 2 位</span></div>
+        <div class="v">2,320</div><div class="d">這將 +320</div></div>
+    </div>
+  </div>`;
+
+document.querySelectorAll('[data-f]').forEach((f) => { f.innerHTML = HTML; });
+
+document.querySelectorAll('.frame').forEach((f) => {
+  const acts = f.querySelectorAll('[data-act] button');
+  const tai = f.querySelector('[data-tai]');
+  const est = f.querySelector('[data-est]');
+  const recalc = () => {
+    const on = f.querySelector('[data-act] button.on');
+    const draw = on && on.dataset.r === 'draw';
+    const tsumo = on && on.dataset.r === 'tsumo';
+    let t = [...f.querySelectorAll('.bchip.on')].reduce((s, c) => s + +c.dataset.t, 0);
+    if (tsumo && !f.querySelector('.bchip.on[data-t="3"]')) t += 1;   // 自摸自動帶 1 台
+    tai.textContent = draw ? 0 : t;
+    est.textContent = draw ? '流局　莊家連莊，沒有人付分'
+      : tsumo ? `自摸　三家各付 ${BASE + t * PER_TAI}`
+      : `${on ? on.dataset.who : '－'} 一家付 ${(BASE + t * PER_TAI) * 3}`;
+  };
+  acts.forEach((b) => b.addEventListener('click', () => {
+    acts.forEach((x) => x.classList.remove('on'));
+    b.classList.add('on');
+    if (b.dataset.r === 'draw') f.querySelectorAll('.bchip.on').forEach((c) => c.classList.remove('on'));
+    recalc();
+  }));
+  f.querySelectorAll('.bchip').forEach((c) => c.addEventListener('click', () => { c.classList.toggle('on'); recalc(); }));
+  recalc();
+});
+
+const fit = () => {
+  const s = Math.min(document.body.clientWidth - 40, 1024) / 1024;
+  document.querySelectorAll('.frame').forEach((f) => {
+    f.style.transform = `scale(${s})`;
+    f.parentElement.style.height = 768 * s + 'px';
+  });
+};
+addEventListener('resize', fit); fit();
+</script>
+</body>
+</html>

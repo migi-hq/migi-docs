@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MIGI 桌邊記分板 · 精靈版</title>
+<!--
+  2026-09-23　使用者定案：用「① 一次只問一件事」延伸，加兩個重點
+    1. 要很明確顯示莊家是誰、連莊多少
+    2. 要有包牌的按鈕
+
+  🔴 為什麼莊家與連莊值得佔那麼大的版面：**它們是錢**。
+     莊家附加台 ＝ 1 ＋ 連莊，所以連莊 2 的時候每一家多付 3 台
+     —— 在 100/20 的桌上就是每人多 60。把它畫成裝飾性的小字，
+     等於把一個會被問「為什麼這把要多付」的數字藏起來。
+
+  🔴 包牌的計分規則**還沒定**（那是店規不是程式問題）——
+     這份稿先把入口做出來，算式的兩種可能寫在頁面最下面。
+
+  可以真的走一遍：選怎麼結束 → 選包牌 → 選牌型 → 確定。
+  1024×768 平板橫放。分數算式是假的（真的一律由後端 tbl_submit_hand_tx 算）。
+  顏色全部來自 @migi/assets v1.10.0 既有 token。
+-->
+<style>
+:root{
+  --brand:#FAD6DC; --gold:#E8B89B; --danger:#B23B3B; --accent-deep:#974B5F;
+  --bg:#221F20; --bar:#191718; --tile:rgba(255,255,255,.08);
+  --line:rgba(255,255,255,.12); --dim:rgba(255,255,255,.45); --dim2:rgba(255,255,255,.66);
+  --r-lg:16px; --r-card:14px; --r-field:12px; --r-pill:999px;
+  --xxs:12px; --xs:13px; --s:14px; --m:15px; --l:16px; --xl:18px; --xxl:22px;
+  --font:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:#DEDBD8;color:#2E2B2C;padding:28px 20px 80px}
+h1{font-size:24px;margin-bottom:6px}
+.lead{font-size:14px;color:#5C5754;line-height:1.8;max-width:960px;margin-bottom:20px}
+.lead b{color:var(--accent-deep)}
+.wrap{overflow:hidden;margin-bottom:14px}
+.viewbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#2E2B2C;color:#fff;
+  border-radius:10px 10px 0 0;padding:10px 14px;max-width:1024px}
+.viewbar .t{font-size:13px;font-weight:700;color:rgba(255,255,255,.6)}
+.viewbar .hint{font-size:12px;color:rgba(255,255,255,.45)}
+.viewbar .hint b{color:var(--brand)}
+.viewbar button{border:none;border-radius:999px;padding:7px 16px;font-size:14px;font-weight:800;
+  cursor:pointer;font-family:inherit;background:rgba(255,255,255,.14);color:#fff;margin-right:6px}
+.viewbar button.on{background:var(--brand);color:#2E2B2C}
+.viewbar button .z{font-size:11px;opacity:.75;margin-left:4px}
+.frame{width:1024px;height:768px;transform-origin:top left;box-shadow:0 10px 40px rgba(0,0,0,.28);
+  display:flex;flex-direction:column;overflow:hidden;background:var(--bg);color:#fff}
+.sec{background:#fff;border-radius:14px;padding:16px 20px;margin-bottom:18px;max-width:960px;
+  font-size:14px;line-height:1.8;color:#5C5754}
+.sec h3{font-size:16px;color:#2E2B2C;margin-bottom:6px}
+.sec b{color:var(--accent-deep)}
+.sec .bad{color:var(--danger);font-weight:700}
+code{background:#F2F0EE;border-radius:5px;padding:1px 6px;font-size:.92em}
+
+/* ── 頂條：莊家是主角之一 ───────────────────── */
+.bar{display:flex;align-items:center;gap:12px;padding:8px 18px;background:var(--bar);
+  border-bottom:1px solid var(--line);flex-shrink:0}
+.bar .logo{font-size:var(--xl);font-weight:800;letter-spacing:2px}
+.bar .tb{font-size:var(--l);font-weight:700}
+.bar .sub{font-size:var(--xs);color:var(--dim)}
+.bar .sp{flex:1}
+.bar .wind{font-size:var(--s);font-weight:700;color:var(--dim2)}
+/* 🔴 莊家區塊：整個頂條最亮的東西，因為它決定這一把要多付多少 */
+.dealer{display:flex;align-items:center;gap:8px;background:var(--brand);color:#2E2B2C;
+  border-radius:var(--r-pill);padding:5px 8px 5px 14px}
+.dealer .w{font-size:var(--xs);font-weight:800;opacity:.7}
+.dealer .n{font-size:var(--xl);font-weight:800}
+.dealer .ren{background:#2E2B2C;color:var(--brand);border-radius:var(--r-pill);
+  padding:3px 11px;font-size:var(--s);font-weight:800}
+.bar .me{display:flex;align-items:center;gap:8px;margin-left:4px}
+.bar .me .lb{font-size:var(--xxs);color:var(--brand);font-weight:800;text-align:right;line-height:1.3}
+.bar .me .v{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+
+/* ── 步驟 ───────────────────────────────── */
+.step{flex:1;min-height:0;display:flex;flex-direction:column;padding:14px 20px;gap:12px}
+.q{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.q .n{width:36px;height:36px;border-radius:50%;background:var(--brand);color:#2E2B2C;
+  display:flex;align-items:center;justify-content:center;font-size:var(--l);font-weight:800}
+.q h3{font-size:30px;font-weight:800}
+.q .sp{flex:1}
+
+.tile{background:var(--tile);border:2px solid var(--line);border-radius:var(--r-field);color:#fff;
+  font-family:inherit;cursor:pointer;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:3px;min-width:0;overflow:hidden;padding:6px;transition:.12s;position:relative}
+.tile b{font-weight:800;line-height:1.1;white-space:nowrap}
+.tile i{font-style:normal;font-weight:700;color:var(--dim)}
+.tile.on{background:var(--brand);border-color:#fff;color:#2E2B2C}
+.tile.on i{color:var(--accent-deep)}
+/* 莊家角標：人名出現的每一個地方都要標，不是只有頂條 */
+.tile .zhuang{position:absolute;top:8px;left:8px;background:var(--brand);color:#2E2B2C;
+  border-radius:var(--r-pill);padding:2px 10px;font-size:var(--xs);font-weight:800}
+.tile.on .zhuang{background:#2E2B2C;color:var(--brand)}
+
+.g5{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:1fr 1fr;gap:12px}
+.g5 .tile b{font-size:34px}
+.g5 .tile i{font-size:var(--l)}
+
+/* 🔴 莊家大卡：每一個步驟都在，因為每一步都要知道「這把多幾台」。
+   頂條那顆膠囊是「隨時瞄一眼」，這張卡是「不可能沒看到」。 */
+.dcard{display:flex;align-items:center;gap:16px;background:var(--brand);color:#2E2B2C;
+  border-radius:var(--r-card);padding:12px 22px;flex-shrink:0;box-shadow:0 0 0 4px rgba(250,214,220,.28)}
+.dcard .lb{font-size:var(--s);font-weight:800;opacity:.7;line-height:1.3;letter-spacing:1px}
+.dcard .nm{font-size:44px;font-weight:800;line-height:1.05}
+.dcard .ren{background:#2E2B2C;color:var(--brand);border-radius:var(--r-pill);
+  padding:7px 16px;font-size:var(--xl);font-weight:800;white-space:nowrap}
+.dcard .add{border-left:2px solid rgba(46,43,44,.25);padding-left:16px;line-height:1.25}
+.dcard .add .v{font-size:28px;font-weight:800}
+.dcard .add .s{font-size:var(--xs);font-weight:700;opacity:.72}
+/* 莊家是自己：墨底粉字，跟「別人是莊」明確分成兩種狀態 */
+.dcard.mine{background:#2E2B2C;color:var(--brand);box-shadow:0 0 0 4px var(--brand)}
+.dcard.mine .ren{background:var(--brand);color:#2E2B2C}
+.dcard.mine .add{border-left-color:rgba(250,214,220,.3)}
+
+/* 🔴 莊家那一格的磚**整顆**標出來，不是只有一個小角標 ——
+   「很顯眼」的意思是不用找。 */
+.tile.isdealer{border-color:var(--brand)}
+.tile .zhuang{top:10px;left:10px;padding:4px 14px;font-size:var(--l)}
+
+/* 包牌那一格：跟「誰付錢」並列的第六種答案，用外框區分 */
+.tile.bao{border-color:var(--gold);border-style:dashed}
+.tile.bao.on{background:var(--gold);border-style:solid;border-color:#fff;color:#2E2B2C}
+
+.grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:1fr;gap:10px}
+.grid .tile b{font-size:26px}
+.grid .tile i{font-size:var(--m)}
+/* 🔴 可疊加的那四個要**先講**，不要讓人自己發現 ——
+   沒有這行標記的話，「風牌可以點第二次」是一個藏起來的功能。 */
+.tile .mx{position:absolute;top:7px;right:9px;font-size:var(--xxs);font-weight:800;
+  color:var(--dim);border:1px solid var(--line);border-radius:var(--r-pill);padding:1px 7px}
+.tile.on .mx{color:var(--accent-deep);border-color:rgba(151,75,95,.4)}
+
+.foot{display:flex;align-items:center;gap:16px;flex-shrink:0}
+.foot .sum{font-size:var(--xxl);font-weight:800;white-space:nowrap}
+.foot .sum em{font-style:normal;font-size:46px;line-height:1;margin-right:4px}
+/* 🔴 莊家台要**列式**寫出來，不是寫「另加莊家台」——
+   客人問「為什麼這把多 60」的時候，答案要在畫面上 */
+.foot .calc{font-size:var(--s);color:var(--dim2);line-height:1.55}
+.foot .calc b{color:var(--brand)}
+.foot .sp{flex:1}
+.btn{border:2px solid transparent;border-radius:var(--r-field);font-family:inherit;font-weight:800;
+  cursor:pointer;line-height:1.2;transition:.12s}
+.btn.pri{background:var(--brand);color:#2E2B2C}
+.btn.gho{background:transparent;border-color:var(--line);color:var(--dim2)}
+.btn:disabled{opacity:.3;cursor:default}
+.foot .btn{height:80px;font-size:26px;padding:0 44px}
+.foot .btn.gho{font-size:var(--l);padding:0 24px;height:60px}
+.q .btn{height:50px;padding:0 20px;font-size:var(--l)}
+
+/* 完成畫面 */
+.done{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px}
+.done .big{font-size:40px;font-weight:800}
+.done .who{font-size:var(--xxl);color:var(--dim2);font-weight:700}
+.done .pays{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;width:100%;margin-top:6px}
+.done .pay{background:var(--tile);border-radius:var(--r-card);padding:14px;text-align:center}
+.done .pay .n{font-size:var(--l);font-weight:700}
+.done .pay .v{font-size:42px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:4px}
+.done .pay .v.neg{color:#FF9B9B}
+.done .pay .s{font-size:var(--xs);color:var(--dim)}
+</style>
+</head>
+<body>
+
+<h1>桌邊記分板 · 精靈版</h1>
+<p class="lead" style="background:#fff;border-left:4px solid #B23B3B;padding:10px 14px;border-radius:8px">
+  🔴 <b>這一頁的包牌流程已經過期</b>（2026-09-23）。這裡做的是「選誰包 → 他一個人付給胡牌的人」，
+  使用者確認的規則是<b>「我包牌」＝ 按的人付給另外三家</b>，不選牌型、按下就生效。<br />
+  正確的流程在 <b>桌邊記分板_四台同步.html</b>。這一頁其餘部分（莊家卡、六格、可疊加牌型）仍然有效。
+</p>
+<p class="lead">
+  「一次只問一件事」的完整流程，加上你要的兩件事：<b>莊家與連莊明確化</b>、<b>包牌</b>。<br />
+  可以真的走一遍：<b>選怎麼結束 → 選包牌 → 選牌型 → 確定</b>，右上角可以重來。
+</p>
+
+<!-- 🧪 預覽工具列：切換「這是哪一台平板」。不是產品的一部分。 -->
+<div class="viewbar">
+  <span class="t">🧪 現在看的是哪一台平板</span>
+  <span id="views"></span>
+  <span class="hint">莊家是阿哲 —— 切到<b>阿哲</b>那台看「我是莊」長什麼樣</span>
+</div>
+<div class="wrap"><div class="frame" id="f"></div></div>
+
+<div class="sec">
+  <h3>1. 莊家與連莊為什麼值得佔那麼大的版面</h3>
+  <b>因為它們是錢。</b>莊家附加台 ＝ <code>1 ＋ 連莊</code>，所以連莊 2 的時候每一家多付 3 台
+  —— 在 100/20 的桌上就是<b>每人多 60</b>。<br />
+  所以這一版做了三件事：<br />
+  · 頂條的<b>莊家膠囊是整條最亮的東西</b>（粉底墨字），連莊數反白成墨底粉字<br />
+  · <b>人名出現的每一個地方都標「莊」</b>——第一步的放槍磚、包牌的選項、最後的付款明細<br />
+  · 🔴 台數不再寫「另加莊家台」，而是<b>把算式列出來</b>：
+  <code>牌型 8 台 ＋ 莊家 3 台（1 ＋ 連莊 2）</code>
+  —— 客人問「為什麼這把多 60」時，答案要在畫面上，不是在店員腦袋裡。
+</div>
+
+<div class="sec">
+  <h3>2. 可以重複點的牌型有四個</h3>
+  點一下 ＋1，<b>到上限再點才歸零</b>（不做長按減一——平板上長按會跟捲動打架）。
+  右上角那個「最多 N」是刻意先講的：<b>沒有它的話，「風牌可以點第二次」是一個藏起來的功能</b>。<br />
+  <code>三元牌 ×3</code>　<code>風牌 ×4</code>　<code>正花 ×2</code>　<code>花槓 ×2</code><br />
+  🔴 <b>「大三元」的 <code>max_count</code> 是 1</b>，不能疊 ——
+  它的意思是「三個三元刻子都有」，本來就不可能重複。
+  你說的應該是<b>三元牌</b>（那個已經可以點三次）；
+  如果真的要大三元也能疊，<span class="bad">那是改主檔的店規決定</span>，不是改畫面。
+</div>
+
+<div class="sec">
+  <h3>3. 包牌是第六格，不是附加選項</h3>
+  第一步問的其實不是「怎麼胡的」，是<b>「誰要付錢」</b>——
+  自摸是三家付、放槍是一家付，而<b>包牌就是「某一個人付掉全部」</b>，
+  跟其他五格是同一個層級的答案。<br />
+  所以它不需要先選自摸／放槍再勾一次：<b>點包牌 → 問誰包 → 直接進牌型</b>，
+  跟其他格一樣是兩步。<br />
+  🎯 這也讓算式只有一種：<b>包的人付掉三家的份</b>（每一份仍然照那個座位算，
+  莊家那一份含莊家台）—— 不管他是放槍造成的還是餵牌造成的，總額都一樣。
+</div>
+
+<div class="sec">
+  <h3>🔴 4. 包牌還有兩件事要你定（店規，不是程式問題）</h3>
+  · <b>什麼情況才算包牌？</b>（大三元餵第三張？大四喜？清一色餵牌？）<br />
+  　沒寫下來的話，同一桌兩個店員會判得不一樣，而那是錢。<br />
+  · <b>被包的那一把如果是自摸，自摸 1 台算不算？</b>
+  　這份預覽<span class="bad">沒有算</span>（包牌走的不是自摸那條路），
+  　但如果你們的規則是「餵牌讓他自摸大三元」，那自摸台應該要算。<br />
+  ⚠ 還有一個更遠的問題：包牌要不要記進 <code>hands</code> 的哪個欄位 ——
+  現在後端沒有這個概念，<b>它會是 <code>tbl_submit_hand_tx</code> 的第二次改動</b>
+  （第一次是收掉手動台數）。
+</div>
+
+<script>
+/* [名稱, 台, 最多幾次]　max 來自線上 scoring_patterns.max_count（2026-09-23 撈的）
+   🔴 可疊加的只有四個：三元牌 ×3、風牌 ×4、正花 ×2、花槓 ×2。
+   ⚠ **大三元的 max_count 是 1** —— 它的意思是「三個三元刻子都有」，
+     本來就不可能重複。要它可疊加的話是改主檔（店規），不是改畫面。 */
+const PAT = [
+  ['門清',1,1],['門清自摸',3,1],['平胡',2,1],['獨聽',1,1],['全求',2,1],['海底撈月',1,1],['槓上開花',1,1],['搶槓',1,1],
+  ['三元牌',1,3],['風牌',1,4],['小三元',4,1],['大三元',8,1],['小四喜',8,1],['大四喜',16,1],['字一色',16,1],
+  ['混一色',4,1],['清一色',8,1],['碰碰胡',4,1],['三暗刻',2,1],['四暗刻',5,1],['五暗刻',8,1],
+  ['正花',1,2],['花槓',2,2],['七搶一',8,1],['八仙過海',8,1],['天胡',24,1],
+];
+const maxOf = (l) => PAT.find((p) => p[0] === l)[2];
+const taiOf = (l) => PAT.find((p) => p[0] === l)[1];
+const BASE = 100, PER_TAI = 20, START = 2000;
+/* 這一桌：莊家是「阿哲」（坐 3），連莊 2。
+   🔴 **四台平板的第一人稱都不一樣** —— 同一把牌，四台看到的畫面不同：
+     · 「我自摸」那一格永遠是自己，另外三格才是別人放槍
+     · 「我的幕前積分」與名次跟著換
+     · 🔴 **莊家是自己的那一台**，莊家卡要說的是「你是莊家」不是「莊家 阿哲」
+   所以這份預覽可以切視角 —— 不切的話，「我是莊」那一台永遠看不到。 */
+const DEALER = 3, REN = 2;
+const P = { 1:'咖勁凱', 2:'小美', 3:'阿哲', 4:'大雄' };
+const TOTAL = { 1:2320, 2:1820, 3:2090, 4:1770 };
+let ME = 1;
+let OTHERS = [2,3,4];
+const setView = (s) => { ME = s; OTHERS = [1,2,3,4].filter((x) => x !== s); };
+/* 名次：分數高的在前，同分用座位序（畫面不可以每次重畫就跳動） */
+const rankOf = (seat) => [1,2,3,4].sort((a,b) => TOTAL[b]-TOTAL[a] || a-b).indexOf(seat) + 1;
+
+/* step: 1 誰付錢 → 1.5 誰包（只有選了包牌才走）→ 2 牌型 → 3 完成
+   act: 'tsumo' | 'ron' | 'draw' | 'bao'
+   🔴 包牌是**第六種「誰付錢」的答案**，不是自摸／放槍的附加選項 ——
+     它的意思就是「這一把由某一個人付掉全部」。 */
+/* sel 是 { 牌型名: 選了幾次 } —— 可疊加的那四個要記次數，不是有／沒有 */
+const st = { step: 1, act: null, who: null, bao: null, sel: {} };
+const f = document.getElementById('f');
+const selNames = () => Object.entries(st.sel).map(([l, n]) => l + (n > 1 ? ' ×' + n : ''));
+
+const zh = (s) => s === DEALER ? '<span class="zhuang">莊</span>' : '';
+const tai = () => {
+  let t = Object.entries(st.sel).reduce((s, [l, n]) => s + taiOf(l) * n, 0);
+  if (st.act === 'tsumo' && !st.sel['門清自摸']) t += 1;   // 自摸自動帶 1 台
+  return t;
+};
+/* 🔴 假算式（真的在後端）：每個付款人付 底 ＋ 台 ×（牌型台 ＋ 莊家台）
+
+   ── 2026-09-23 使用者給的三條規則 ─────────────────
+   ① **連莊是 1 ＋ 2N**（連 N 拉 N），不是 1 ＋ N
+      連莊 0 → 1 台　連莊 1 → 3 台　連莊 2 → 5 台
+      🔴 線上 tbl_submit_hand_tx 寫的是 `1 + v_ren`，**那是錯的**（少算一半）
+   ② **包牌固定 1 底 3 台**，不看牌型；莊家那一份再加莊家台
+      ⇒ 連莊 0 時莊家那份是 1 底 4 台，正好對上使用者說的「莊家 1 底 4」
+   ③ **包牌並下莊** —— 那一把之後莊家換人，連莊歸零 */
+const extra = 1 + 2 * REN;      // ① 連 N 拉 N
+const BAO_TAI = 3;              // ② 包牌固定 3 台
+const unitFor = (payer) => {
+  const t = st.act === 'bao' ? BAO_TAI : tai();
+  return BASE + PER_TAI * (t + (ME === DEALER || payer === DEALER ? extra : 0));
+};
+function deltas() {
+  const d = { 1:0, 2:0, 3:0, 4:0 };
+  if (st.act === 'draw' || st.act === null) return d;
+  /* 包牌 ＝ 三家的份全部由一個人付。
+     ⚠ 每一份仍然**各自照那個座位算**（莊家那一份含莊家台）——
+       不是「用包牌者的身分算三次」。 */
+  const payers = st.act === 'ron' ? [st.who] : OTHERS;
+  let sum = 0;
+  payers.forEach((s) => { sum += unitFor(s); });
+  if (st.act === 'bao') d[st.bao] = -sum;
+  else payers.forEach((s) => { d[s] = -unitFor(s); });
+  d[ME] = sum;
+  return d;
+}
+
+const barHTML = () => `
+  <div class="bar">
+    <span class="logo">MIGI</span><span class="tb">A3</span>
+    <span class="sub">積分 100/20 · 底 2000 · 有花</span>
+    <span class="sp"></span>
+    <span class="wind">東風圈 · 第 1 將 · 第 3 把</span>
+    <span class="me"><span class="lb">${P[ME]} 的幕前積分<br>第 ${rankOf(ME)} 位</span>
+      <span class="v">${TOTAL[ME].toLocaleString()}</span></span>
+  </div>`;
+
+/* 🔴 莊家大卡：每一步都出現在問題列右邊。
+   它不只寫「誰是莊」，還把**這一把因此多幾台**寫出來 ——
+   那才是莊家與連莊在畫面上的真正意義（它們是錢）。 */
+const dealerHTML = () => {
+  const mine = ME === DEALER;
+  /* 🔴 莊家是自己的那一台要說**不同的話**：
+     「本把莊家 阿哲」對阿哲自己是一句廢話，他要知道的是「我是莊，所以這把多 3 台」。
+     底色也反過來（墨底粉字），因為那對他是另一種狀態不是同一種。 */
+  return `
+  <span class="dcard${mine ? ' mine' : ''}">
+    ${mine
+      ? `<span><span class="lb">這一把</span><br><span class="nm">我是莊家</span></span>`
+      : `<span><span class="lb">本把莊家</span><br><span class="nm">${P[DEALER]}</span></span>`}
+    ${REN > 0 ? `<span class="ren">連莊 ${REN}</span>` : ''}
+    <span class="add"><span class="v">＋${extra} 台</span><br>
+      <span class="s">${REN > 0 ? `1 ＋ 2×${REN}` : '莊家台'}</span></span>
+  </span>`;
+};
+
+function draw() {
+  if (st.step === 1) {
+    /* 🔴 六格：自摸／三家放槍／流局／**包牌**。
+       包牌跟其他五格是同一個層級的答案 —— 它就是「這一把由某一個人付掉全部」。 */
+    f.innerHTML = barHTML() + `
+      <div class="step">
+        <div class="q"><span class="n">1</span><h3>這一把誰要付錢？</h3>
+          <span class="sp"></span>${dealerHTML()}</div>
+        <div class="g5">
+          <button class="tile" data-a="tsumo"><b>我自摸</b><i>另外三家一起付</i></button>
+          ${OTHERS.map((s) => `<button class="tile${s === DEALER ? ' isdealer' : ''}" data-a="ron" data-s="${s}">
+            ${zh(s)}<b>${P[s]}</b><i>放槍</i></button>`).join('')}
+          <button class="tile" data-a="draw"><b>流局</b><i>不用別人確認</i></button>
+          <button class="tile bao" data-a="bao"><b>包牌</b><i>一個人付掉全部</i></button>
+        </div>
+      </div>`;
+    f.querySelectorAll('[data-a]').forEach((b) => b.onclick = () => {
+      st.act = b.dataset.a; st.who = b.dataset.s ? +b.dataset.s : null;
+      st.bao = null; st.sel = {};
+      st.step = st.act === 'bao' ? 1.5 : st.act === 'draw' ? 3 : 2;
+      draw();
+    });
+  }
+
+  else if (st.step === 1.5) {
+    f.innerHTML = barHTML() + `
+      <div class="step">
+        <div class="q"><span class="n">1</span><h3>誰包？</h3>
+          <span class="sp"></span>${dealerHTML()}
+          <button class="btn gho" data-back style="margin-left:14px">‹ 改上一步</button></div>
+        <div class="g5" style="grid-template-rows:1fr">
+          ${OTHERS.map((s) => `<button class="tile${s === DEALER ? ' isdealer' : ''}" data-s="${s}">${zh(s)}<b>${P[s]}</b><i>這一把他全付</i></button>`).join('')}
+        </div>
+        <div class="foot">
+          <span class="calc">包的人要替另外兩家一起付 —— <b>三家的份全部由他出</b></span>
+        </div>
+      </div>`;
+    f.querySelector('[data-back]').onclick = () => { st.step = 1; st.act = null; draw(); };
+    f.querySelectorAll('[data-s]').forEach((b) => b.onclick = () => { st.bao = +b.dataset.s; st.step = 2; draw(); });
+  }
+
+  else if (st.step === 2) {
+    const t = tai();
+    /* 🔴 莊家台**不是每一家都加**，所以不可以印成一個總數。
+       · 我是莊     → 三家都多 extra 台（大數字才等於 t + extra）
+       · 我不是莊   → 只有「付款人是莊家」那一份多，其餘就是 t 台
+       第一版把它寫成「10 台」——而另外兩家其實只付 7 台，那是一句錯的話。 */
+    const iAmDealer = ME === DEALER;
+    const payers = st.act === 'ron' ? [st.who] : OTHERS;
+    const dealerPays = payers.includes(DEALER);
+    const shown = st.act === 'bao' ? BAO_TAI : t;
+    const headline = iAmDealer ? shown + extra : shown;
+    f.innerHTML = barHTML() + `
+      <div class="step">
+        <div class="q"><span class="n">2</span><h3>胡了什麼牌型？</h3><span class="sp"></span>
+          ${dealerHTML()}
+          <button class="btn gho" data-back style="margin-left:14px">‹ 改上一步</button></div>
+        <div class="grid">${PAT.map(([l, v, mx]) => {
+          const n = st.sel[l] || 0;
+          return `<button class="tile${n ? ' on' : ''}" data-l="${l}">
+            ${mx > 1 ? `<span class="mx">最多 ${mx}</span>` : ''}
+            <b>${l}${n > 1 ? ' ×' + n : ''}</b><i>${n > 1 ? n * v : v} 台</i></button>`;
+        }).join('')}</div>
+        <div class="foot">
+          <span class="sum"><em>${headline}</em>台</span>
+          <span class="calc">
+            ${st.act === 'bao'
+              ? `包牌固定 <b>${BAO_TAI} 台</b>（牌型 ${t} 台只記錄、不計分）·　<b>這把之後下莊</b><br>`
+              : `牌型 <b>${t} 台</b>${iAmDealer ? ` ＋ 我是莊 <b>${extra} 台</b>（1 ＋ 2×${REN}）` : ''}<br>`}
+            ${!iAmDealer && dealerPays ? (payers.length > 1
+              ? `莊家 ${P[DEALER]} 那一家多 <b>${extra} 台</b>（1 ＋ 2×${REN}），其餘 ${st.act === 'bao' ? BAO_TAI : t} 台<br>`
+              : `${P[DEALER]} 是莊家，多 <b>${extra} 台</b>（1 ＋ 2×${REN}）<br>`) : ''}
+            ${st.act === 'bao' ? `${P[st.bao]} 包牌，一個人付 <b>${Math.abs(deltas()[st.bao]).toLocaleString()}</b>`
+              : st.act === 'tsumo'
+                ? OTHERS.map((s) => `${P[s]} <b>${unitFor(s).toLocaleString()}</b>`).join('　')
+                : `${P[st.who]} 一家付 <b>${unitFor(st.who).toLocaleString()}</b>`}
+          </span>
+          <span class="sp"></span>
+          <button class="btn pri" data-go>確定　送出等確認</button>
+        </div>
+      </div>`;
+    f.querySelector('[data-back]').onclick = () => { st.step = 1; draw(); };
+    /* 🔴 可疊加的那四個：點一下 +1，到上限再點才歸零。
+       ⚠ 不做「長按減一」—— 平板上長按與捲動會打架，而歸零重點兩下就好。 */
+    f.querySelectorAll('[data-l]').forEach((b) => b.onclick = () => {
+      const l = b.dataset.l, n = st.sel[l] || 0;
+      if (n > 0 && n < maxOf(l)) st.sel[l] = n + 1;
+      else if (n > 0) delete st.sel[l];
+      else st.sel[l] = 1;
+      draw();
+    });
+    f.querySelector('[data-go]').onclick = () => { st.step = 3; draw(); };
+  }
+
+  else {
+    const d = deltas();
+    f.innerHTML = barHTML() + `
+      <div class="done">
+        <div class="big">${st.act === 'draw' ? '記下流局'
+          : st.act === 'bao' ? `${P[ME]} 胡　·　${P[st.bao]} 包牌`
+          : `${P[ME]} ${st.act === 'tsumo' ? '自摸' : '胡 ' + P[st.who]}`}</div>
+        <div class="who">${st.act === 'draw' ? '莊家連莊，沒有人付分'
+          : `${selNames().length ? selNames().join('、') + '　' : ''}`
+            + (st.act === 'bao' ? `包牌 ${BAO_TAI} 台（牌型 ${tai()} 台只記錄）` : `牌型 ${tai()} 台`)
+            + (ME === DEALER ? `　·　我是莊 ＋${extra} 台` : '')}</div>
+        ${st.act === 'bao' ? `<div class="who" style="color:var(--brand)">這一把之後 <b>下莊</b> —— 莊家換人，連莊歸零</div>` : ''}
+        <div class="pays">${[1,2,3,4].map((s) => `
+          <div class="pay"><div class="n">${s === DEALER ? '〔莊〕' : ''}${P[s]}${s === ME ? '（我）' : ''}</div>
+            <div class="v${d[s] < 0 ? ' neg' : ''}">${(TOTAL[s] + d[s]).toLocaleString()}</div>
+            <div class="s">${d[s] === 0 ? '不變' : (d[s] > 0 ? '+' : '') + d[s].toLocaleString()}</div></div>`).join('')}</div>
+        <button class="btn pri" data-again style="height:72px;font-size:24px;padding:0 40px;margin-top:8px">再記一把</button>
+      </div>`;
+    f.querySelector('[data-again]').onclick = () => {
+      st.step = 1; st.act = null; st.who = null; st.bao = null; st.sel = {}; draw();
+    };
+  }
+}
+/* 🧪 視角切換（預覽工具，不是產品的一部分） */
+function drawViews() {
+  document.getElementById('views').innerHTML = [1,2,3,4].map((s) =>
+    `<button class="${s === ME ? 'on' : ''}" data-v="${s}">${P[s]}${s === DEALER ? '<span class="z">莊</span>' : ''}</button>`).join('');
+  document.querySelectorAll('[data-v]').forEach((b) => b.onclick = () => {
+    setView(+b.dataset.v);
+    st.step = 1; st.act = null; st.who = null; st.bao = null; st.sel = {};
+    drawViews(); draw();
+  });
+}
+drawViews();
+draw();
+
+const fit = () => {
+  const s = Math.min(document.body.clientWidth - 40, 1024) / 1024;
+  f.style.transform = `scale(${s})`;
+  f.parentElement.style.height = 768 * s + 'px';
+};
+addEventListener('resize', fit); fit();
+</script>
+</body>
+</html>

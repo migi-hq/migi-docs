@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MIGI 桌邊記分板 · 版型</title>
+<!--
+  2026-09-23　使用者定的四件事：
+    ① 類似 POS 的極快速介面：最上面 胡牌／自摸／流局 → 牌型 → 確定 → 超大積分 → HERO
+    ② 顯示「**幕前現在有多少分**」不是增減。預設 100/20、開局 2000
+    ③ 🔴 **不顯示其他三家的分數** —— 四台平板各自只顯示自己的
+    ④ 🔴 **牌型按鈕的字與框放大、填滿那一區**
+
+  兩案的骨架完全一樣（就是 ① 那個順序），**只差牌型區怎麼填滿**。
+  1024×768 平板橫放，整塊縮放塞進這一頁。chip 點得動，台數與預估分數會跟著變。
+
+  🔴 這是版型稿不是實作：分數算式是假的（真的一律由後端 tbl_submit_hand_tx 算）。
+  🔴 token 值 2026-09-23 抄自 @migi/assets v1.10.0 的 dist/tokens.css。
+-->
+<style>
+:root{
+  --brand:#FAD6DC; --brand-tint:#FFECF1; --brand-light:#FFE7EE;
+  --ink:#2E2B2C; --accent:#C2607A; --accent-deep:#974B5F; --gold:#E8B89B;
+  --gray-1:#5C5754; --gray-2:#726D69; --hint:#B4AEA9;
+  --gray-3:#ECEAE9; --gray-4:#F2F0EE; --divider:#DED9D5;
+  --white:#fff; --field-bg:#F8F7F6; --page-bg:#F6F5F4; --danger:#B23B3B;
+  --r-pill:999px; --r-lg:16px; --r-card:14px; --r-field:12px;
+  --xxxs:11px; --xxs:12px; --xs:13px; --s:14px; --m:15px; --l:16px; --xl:18px; --xxl:22px;
+  --shadow-sm:0 2px 8px rgba(46,43,44,.08);
+  --font:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:#E8E6E4;color:var(--ink);padding:28px 20px 80px}
+h1{font-size:24px;margin-bottom:6px}
+.lead{font-size:14px;color:var(--gray-1);line-height:1.8;max-width:920px;margin-bottom:14px}
+.lead b{color:var(--accent-deep)}
+.box{background:var(--white);border-radius:var(--r-card);padding:14px 18px;margin-bottom:28px;max-width:920px;
+     font-size:14px;line-height:1.8;color:var(--gray-1)}
+.box b{color:var(--accent-deep)}
+.case{margin-bottom:44px}
+.case>h2{font-size:19px;margin-bottom:4px}
+.case>p{font-size:13px;color:var(--gray-1);line-height:1.7;margin-bottom:12px;max-width:920px}
+.case>p b{color:var(--accent-deep)}
+.wrap{overflow:hidden}
+.frame{width:1024px;height:768px;background:var(--page-bg);transform-origin:top left;
+       box-shadow:0 10px 40px rgba(0,0,0,.22);display:flex;flex-direction:column;overflow:hidden}
+
+.bar{display:flex;align-items:center;gap:10px;padding:7px 18px;background:var(--white);border-bottom:1px solid var(--divider);flex-shrink:0}
+.bar .logo{font-size:var(--xl);font-weight:800;letter-spacing:2px}
+.bar .tb{font-size:var(--l);font-weight:700}
+.bar .sub{font-size:var(--s);color:var(--gray-1)}
+.bar .now{font-size:var(--s);font-weight:700}
+.bar .sp{flex:1}
+.bar .dev{font-size:var(--xs);color:var(--gray-2)}
+
+/* 動作列：放槍要指名，所以三個人名各一顆 —— 那是輸入，不是在顯示別人的分數 */
+.act{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;flex-shrink:0}
+.act button{height:92px;border:2px solid var(--gray-3);background:var(--white);border-radius:var(--r-field);
+  font-family:inherit;font-size:26px;font-weight:800;color:var(--ink);cursor:pointer;line-height:1.15}
+.act button small{display:block;font-size:var(--m);font-weight:700;color:var(--gray-2);margin-top:3px}
+.act button.on{background:var(--ink);color:var(--white);border-color:var(--ink)}
+.act button.on small{color:rgba(255,255,255,.72)}
+.act button.draw{border-style:dashed}
+
+/* ── 牌型區（兩案的差別只在這裡）───────────────── */
+.pat{flex:1;min-height:0;background:var(--white);border-radius:var(--r-card);padding:10px 12px;overflow:hidden}
+
+/* 大 chip：名字一行、台數一行，整顆可以長高長寬 */
+.bchip{border:2px solid var(--gray-3);background:var(--white);border-radius:var(--r-field);
+  font-family:inherit;color:var(--ink);cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  min-width:0;overflow:hidden;padding:4px}
+.bchip b{font-size:26px;font-weight:800;line-height:1.1;white-space:nowrap}
+.bchip i{font-style:normal;font-size:var(--l);font-weight:700;color:var(--gray-2)}
+.bchip.on{background:var(--brand);border-color:var(--accent-deep)}
+.bchip.on i{color:var(--accent-deep)}
+/* 🔴 A 案的按鈕比 B 案窄（同一列要擠 8 個），所以字級不能一樣 ——
+   「門清自摸」四個字在 A 案是最寬的那一顆，26px 會溢出。 */
+.rows .bchip b{font-size:26px}
+.grid .bchip b{font-size:28px}
+
+/* A 案：每一組一橫列，組名當左側標籤（不再獨佔一行） */
+.rows{height:100%;display:flex;flex-direction:column;gap:8px}
+.row{flex:1;min-height:0;display:flex;align-items:stretch;gap:10px}
+.rowlab{flex:0 0 52px;display:flex;align-items:center;justify-content:center;text-align:center;
+  font-size:var(--m);font-weight:800;color:var(--gray-2);background:var(--gray-4);border-radius:var(--r-field);line-height:1.2}
+.rowchips{flex:1;min-width:0;display:grid;gap:8px}
+
+/* B 案：不分組，一整片 7×4 網格 */
+.grid{height:100%;display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:1fr;gap:8px}
+
+.go{display:flex;align-items:center;gap:14px;flex-shrink:0}
+.go .tai{font-size:var(--xxl);font-weight:800;white-space:nowrap}
+.go .tai em{font-style:normal;font-size:44px;line-height:1;margin-right:4px}
+.go .hint{font-size:var(--s);color:var(--gray-2);line-height:1.5}
+.go .sp{flex:1}
+.go .ghost{height:76px;padding:0 24px;border-radius:var(--r-field);border:2px solid var(--gray-3);background:var(--white);
+  font-family:inherit;font-size:var(--l);font-weight:800;cursor:pointer;color:var(--gray-1);line-height:1.25}
+.go .ok{height:76px;padding:0 44px;border:none;border-radius:var(--r-field);background:var(--ink);color:#fff;
+  font-family:inherit;font-size:26px;font-weight:800;cursor:pointer;line-height:1.25}
+
+/* 我的幕前積分 ＋ HERO（同一張卡） */
+.mine{display:flex;align-items:center;gap:18px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--brand-light),var(--brand));border-radius:var(--r-lg);
+  padding:10px 24px;box-shadow:var(--shadow-sm)}
+.mine .ava{width:64px;height:64px;border-radius:50%;background:var(--white);border:3px solid #fff;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:var(--accent-deep)}
+.mine .nm{font-size:var(--xxl);font-weight:800;display:flex;align-items:center;gap:8px}
+.mine .ttl{font-size:var(--xxs);font-weight:800;background:rgba(255,255,255,.8);border:1px solid var(--gold);
+  border-radius:var(--r-pill);padding:2px 10px}
+.mine .meta{font-size:var(--s);color:var(--accent-deep);font-weight:700;margin-top:4px;display:flex;gap:14px;flex-wrap:wrap}
+.mine .sp{flex:1}
+.mine .num{text-align:right;line-height:1}
+.mine .num .lab{font-size:var(--xs);color:var(--accent-deep);font-weight:800;letter-spacing:1px}
+.mine .num .v{font-size:104px;line-height:.95;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-3px}
+.mine .num .v.neg{color:var(--danger)}
+.mine .num .d{font-size:var(--l);font-weight:700;color:var(--accent-deep);margin-top:2px}
+.rkpill{display:inline-block;font-size:var(--m);font-weight:800;border-radius:var(--r-pill);padding:3px 14px;
+  background:var(--accent-deep);color:#fff;margin-left:10px;vertical-align:4px}
+
+.note{font-size:var(--xs);color:var(--gray-2);margin-top:8px;line-height:1.7;max-width:920px}
+.note b{color:var(--danger)}
+code{background:var(--gray-4);border-radius:5px;padding:1px 6px;font-size:.92em}
+</style>
+</head>
+<body>
+
+<h1>桌邊記分板 · 版型</h1>
+<p class="lead">
+  兩案的骨架一模一樣（動作 → 牌型 → 確定 → 我的超大積分＋HERO），
+  <b>差別只有牌型區怎麼填滿</b>。1024×768 平板橫放的真實尺寸，chip 點得動。
+</p>
+<div class="box">
+  <b>牌型按鈕從 44px 高／15px 字，放大成 ~70px 高／26px 字。</b>
+  在此之前 26 個牌型剛好塞滿 386px，字一放大就會溢出 ——
+  所以「放大」真正要解決的是<b>那五個組名標題吃掉的 90px</b>。
+  兩案就是兩種處理方式。<br />
+  ⚠ 動作列上仍然有另外三個人的<b>名字</b>——放槍必須指名是誰，那是輸入不是在秀別人的分數。
+</div>
+
+<!-- ══════════ A 案 ══════════ -->
+<section class="case">
+  <h2>A 案 · 沒有組名，但一組一橫列</h2>
+  <p>組名（基本／字牌／花色與刻子…）<b>全部拿掉</b>，那 52px 還給按鈕。
+     但<b>換行就是換組</b>——第一列是基本、第二列字牌、第三列花色與刻子、第四列花牌＋天胡
+     —— 所以分組資訊其實沒有消失，只是不再用文字講。</p>
+  <div class="wrap"><div class="frame" id="fa">
+    <div class="bar"><span class="logo">MIGI</span><span class="tb">A3</span>
+      <span class="sub">積分 100/20 · 底 2000 · 有花</span><span class="sp"></span>
+      <span class="now">東風圈 第 1 將 · 第 3 把 · 連莊 1</span>
+      <span class="dev" style="margin-left:12px">A3-1</span></div>
+
+    <div style="flex:1;min-height:0;display:flex;flex-direction:column;gap:8px;padding:10px 16px">
+      <div class="act" data-act>
+        <button data-r="ron" data-who="小美">小美<small>放槍</small></button>
+        <button data-r="ron" data-who="阿哲">阿哲<small>放槍</small></button>
+        <button data-r="ron" data-who="大雄">大雄<small>放槍</small></button>
+        <button data-r="tsumo" class="on">自摸<small>三家付</small></button>
+        <button data-r="draw" class="draw">流局<small>不用確認</small></button>
+      </div>
+
+      <div class="pat"><div class="rows" data-rows></div></div>
+
+      <div class="go">
+        <span class="tai"><em data-tai>1</em>台</span>
+        <span class="hint">另加莊家台<br /><span data-est>自摸　三家各付 120</span></span>
+        <span class="sp"></span>
+        <button class="ok">確定　送出等三家確認</button>
+      </div>
+
+      <div class="mine">
+        <span class="ava">咖</span>
+        <div>
+          <div class="nm">咖勁凱 <span class="ttl">社牛</span></div>
+          <div class="meta"><span>金熊 II · 段位分 486</span><span>本季 24 場 · 平均順位 2.1</span></div>
+        </div>
+        <span class="sp"></span>
+        <div class="num">
+          <div class="lab">我的幕前積分<span class="rkpill">第 2 位</span></div>
+          <div class="v">2,320</div>
+          <div class="d">這將 +320</div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <p class="note">🔴 <b>2026-09-23 起沒有「直接輸台數」</b>（使用者：會影響日後數據統計與成就）。<br />
+     每一列固定 8 格、靠左排，所以<b>每一顆按鈕永遠一樣大、位置永遠不變</b>
+     —— 那是 POS 點餐最重要的一件事（肌肉記憶）。代價是後面幾列右邊會留白。<br />
+     「特殊」只有天胡一顆，<b>顯示上併進花牌那一列</b>（主檔分組沒改）——
+     它自己佔一列的話，其他四列各矮 20px。</p>
+  <p class="note">⚠ 那些留白其實有用途：<b>之後要加新牌型就補進該組的空格</b>，
+     其他按鈕的位置一格都不會動。</p>
+</section>
+
+<!-- ══════════ B 案 ══════════ -->
+<section class="case">
+  <h2>B 案 · 連組別的斷行也不留，一整片 7×4</h2>
+  <p>兩案都沒有組名了，<b>差別只剩「要不要在組與組之間換行」</b>。
+     B 案不換 —— 26 顆一路排滿 7 欄 × 4 列，<b>每顆 131px 寬</b>（A 案 114px）。
+     ⚠ 留白沒有真的消失，<b>只是全部集中到最後一列的尾巴</b>（26 ＝ 7×3 ＋ 5，右邊空 2 格）。</p>
+  <div class="wrap"><div class="frame" id="fb">
+    <div class="bar"><span class="logo">MIGI</span><span class="tb">A3</span>
+      <span class="sub">積分 100/20 · 底 2000 · 有花</span><span class="sp"></span>
+      <span class="now">東風圈 第 1 將 · 第 3 把 · 連莊 1</span>
+      <span class="dev" style="margin-left:12px">A3-1</span></div>
+
+    <div style="flex:1;min-height:0;display:flex;flex-direction:column;gap:8px;padding:10px 16px">
+      <div class="act" data-act>
+        <button data-r="ron" data-who="小美">小美<small>放槍</small></button>
+        <button data-r="ron" data-who="阿哲">阿哲<small>放槍</small></button>
+        <button data-r="ron" data-who="大雄">大雄<small>放槍</small></button>
+        <button data-r="tsumo" class="on">自摸<small>三家付</small></button>
+        <button data-r="draw" class="draw">流局<small>不用確認</small></button>
+      </div>
+
+      <div class="pat"><div class="grid" data-grid></div></div>
+
+      <div class="go">
+        <span class="tai"><em data-tai>1</em>台</span>
+        <span class="hint">另加莊家台<br /><span data-est>自摸　三家各付 120</span></span>
+        <span class="sp"></span>
+        <button class="ok">確定　送出等三家確認</button>
+      </div>
+
+      <div class="mine">
+        <span class="ava">咖</span>
+        <div>
+          <div class="nm">咖勁凱 <span class="ttl">社牛</span></div>
+          <div class="meta"><span>金熊 II · 段位分 486</span><span>本季 24 場 · 平均順位 2.1</span></div>
+        </div>
+        <span class="sp"></span>
+        <div class="num">
+          <div class="lab">我的幕前積分<span class="rkpill">第 2 位</span></div>
+          <div class="v">2,320</div>
+          <div class="d">這將 +320</div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <p class="note"><b>代價：找牌型要一顆一顆掃過 26 顆。</b>
+     A 案的第二列一定是字牌、第三列一定是花色與刻子，眼睛有落點；
+     B 案排滿之後「搶槓」與「三元牌」黏在同一列，組與組之間沒有任何界線。<br />
+     🔴 <b>還有一個更實際的差別：之後加一個新牌型，B 案後面每一顆的位置都會往後推一格</b>
+     ——而店員已經記住它們在哪裡了。A 案只會填掉該組的留白。</p>
+</section>
+
+<script>
+/* 牌型主檔：2026-09-23 從線上 scoring_patterns 撈的 27 筆。
+   ⚠ 「自摸」不列 —— 後端自動帶，給人手點會變成兩份定義（lib/rules.js 的 selectable 就是這樣寫的）。 */
+const G = [
+  ['基本', [['門清',1],['門清自摸',3],['平胡',2],['獨聽',1],['全求',2],['海底撈月',1],['槓上開花',1],['搶槓',1]]],
+  ['字牌', [['三元牌',1],['風牌',1],['小三元',4],['大三元',8],['小四喜',8],['大四喜',16],['字一色',16]]],
+  ['花色刻子', [['混一色',4],['清一色',8],['碰碰胡',4],['三暗刻',2],['四暗刻',5],['五暗刻',8]]],
+  ['花牌', [['正花',1],['花槓',2],['七搶一',8],['八仙過海',8]]],
+  ['特殊', [['天胡',24]]],
+];
+const BASE = 100, PER_TAI = 20;      // 預設級距 100/20
+const chipHTML = ([l, t]) => `<button class="bchip" data-t="${t}"><b>${l}</b><i>${t} 台</i></button>`;
+
+/* A 案：一組一列，列內等寬。
+   🔴 「特殊」只有天胡一顆，自己佔一列會讓其他四列各矮 20px ——
+     所以**顯示上**跟花牌併成一列（主檔的分組沒有改，只是畫面）。 */
+const ROWS_A = [G[0], G[1], G[2], ['花牌特殊', [...G[3][1], ...G[4][1]]]];
+document.querySelectorAll('[data-rows]').forEach((box) => {
+  box.innerHTML = ROWS_A.map(([, list]) => `
+    <div class="row">
+      <div class="rowchips" style="grid-template-columns:repeat(8,1fr)">
+        ${list.map(chipHTML).join('')}
+      </div>
+    </div>`).join('');
+});
+
+/* B 案：整片網格 */
+document.querySelectorAll('[data-grid]').forEach((box) => {
+  box.innerHTML = G.flatMap(([, list]) => list).map(chipHTML).join('');
+});
+
+document.querySelectorAll('.frame').forEach((f) => {
+  const acts = f.querySelectorAll('[data-act] button');
+  const tai = f.querySelector('[data-tai]');
+  const est = f.querySelector('[data-est]');
+  const recalc = () => {
+    const on = f.querySelector('[data-act] button.on');
+    const draw = on && on.dataset.r === 'draw';
+    const tsumo = on && on.dataset.r === 'tsumo';
+    let t = [...f.querySelectorAll('.bchip.on')].reduce((s, c) => s + +c.dataset.t, 0);
+    if (tsumo && !f.querySelector('.bchip.on[data-t="3"]')) t += 1;   // 自摸自動帶 1 台
+    tai.textContent = draw ? 0 : t;
+    est.textContent = draw ? '流局　莊家連莊，沒有人付分'
+      : tsumo ? `自摸　三家各付 ${BASE + t * PER_TAI}`
+      : `${on ? on.dataset.who : '－'} 一家付 ${(BASE + t * PER_TAI) * 3}`;
+  };
+  acts.forEach((b) => b.addEventListener('click', () => {
+    acts.forEach((x) => x.classList.remove('on'));
+    b.classList.add('on');
+    if (b.dataset.r === 'draw') f.querySelectorAll('.bchip.on').forEach((c) => c.classList.remove('on'));
+    recalc();
+  }));
+  f.querySelectorAll('.bchip').forEach((c) => c.addEventListener('click', () => { c.classList.toggle('on'); recalc(); }));
+  recalc();
+});
+
+/* 整塊縮放：永遠維持 1024×768 的比例，不讓版面因為視窗寬度自己重排 */
+const fit = () => {
+  const s = Math.min(document.body.clientWidth - 40, 1024) / 1024;
+  document.querySelectorAll('.frame').forEach((f) => {
+    f.style.transform = `scale(${s})`;
+    f.parentElement.style.height = 768 * s + 'px';
+  });
+};
+addEventListener('resize', fit); fit();
+</script>
+</body>
+</html>

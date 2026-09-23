@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MIGI 桌邊記分板 · 深色三架構</title>
+<!--
+  2026-09-23　使用者：「你只是改配色，我要的是改整個 UI。① 深色駕駛艙 用這個配色改 3 種」
+
+  🔴 所以這三案**配色完全一樣**，不同的是**互動架構** ——
+     「一把牌怎麼被記下來」這件事有三種完全不同的答案：
+       ① 一次問一件事（精靈）      ② 看得到購物車（POS 標準）   ③ 常用 ＋ 台數鍵盤（老手優先）
+     版面、按鈕數量、資訊出現的時機、甚至「要點幾下」都不一樣。
+
+  三案都可以真的點：選動作 → 選牌型 → 台數與誰付多少會即時變。
+  1024×768 平板橫放。
+
+  🔴 版型稿不是實作：分數算式是假的（真的一律由後端 tbl_submit_hand_tx 算）。
+  🔴 顏色全部來自 @migi/assets v1.10.0 既有 token（深底是 --ink 的暗階，強調是 --brand）。
+-->
+<style>
+:root{
+  --brand:#FAD6DC; --gold:#E8B89B; --danger:#B23B3B; --accent-deep:#974B5F;
+  --bg:#221F20; --bar:#191718; --panel:rgba(255,255,255,.05); --tile:rgba(255,255,255,.08);
+  --line:rgba(255,255,255,.12); --dim:rgba(255,255,255,.45); --dim2:rgba(255,255,255,.66);
+  --r-lg:16px; --r-card:14px; --r-field:12px; --r-pill:999px;
+  --xxs:12px; --xs:13px; --s:14px; --m:15px; --l:16px; --xl:18px; --xxl:22px;
+  --font:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:#DEDBD8;color:#2E2B2C;padding:28px 20px 80px}
+h1{font-size:24px;margin-bottom:6px}
+.lead{font-size:14px;color:#5C5754;line-height:1.8;max-width:960px;margin-bottom:24px}
+.lead b{color:var(--accent-deep)}
+.case{margin-bottom:46px}
+.case>h2{font-size:20px;margin-bottom:3px}
+.case>.ref{font-size:12px;color:#726D69;font-weight:700;letter-spacing:.5px;margin-bottom:6px}
+.case>p{font-size:13px;color:#5C5754;line-height:1.75;margin-bottom:12px;max-width:960px}
+.case>p b{color:var(--accent-deep)}
+.wrap{overflow:hidden}
+.frame{width:1024px;height:768px;transform-origin:top left;box-shadow:0 10px 40px rgba(0,0,0,.28);
+  display:flex;flex-direction:column;overflow:hidden;background:var(--bg);color:#fff}
+.note{font-size:13px;color:#726D69;margin-top:8px;line-height:1.7;max-width:960px}
+.note b{color:var(--danger)}
+
+/* ── 共用：頂條 ───────────────────────────── */
+.bar{display:flex;align-items:center;gap:10px;padding:8px 18px;background:var(--bar);
+  border-bottom:1px solid var(--line);flex-shrink:0}
+.bar .logo{font-size:var(--xl);font-weight:800;letter-spacing:2px}
+.bar .tb{font-size:var(--l);font-weight:700}
+.bar .sub{font-size:var(--xs);color:var(--dim)}
+.bar .now{font-size:var(--s);font-weight:700;color:var(--dim2)}
+.bar .sp{flex:1}
+.bar .me{display:flex;align-items:center;gap:8px}
+.bar .me .v{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+.bar .me .lb{font-size:var(--xxs);color:var(--brand);font-weight:800;text-align:right;line-height:1.3}
+
+/* ── 共用：大磚 ───────────────────────────── */
+.tile{background:var(--tile);border:2px solid var(--line);border-radius:var(--r-field);color:#fff;
+  font-family:inherit;cursor:pointer;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:3px;min-width:0;overflow:hidden;padding:6px;transition:.12s}
+.tile b{font-weight:800;line-height:1.1;white-space:nowrap}
+.tile i{font-style:normal;font-weight:700;color:var(--dim)}
+.tile.on{background:var(--brand);border-color:#fff;color:#2E2B2C}
+.tile.on i{color:var(--accent-deep)}
+.btn{border:2px solid transparent;border-radius:var(--r-field);font-family:inherit;font-weight:800;
+  cursor:pointer;line-height:1.2;transition:.12s}
+.btn.pri{background:var(--brand);color:#2E2B2C}
+.btn.gho{background:transparent;border-color:var(--line);color:var(--dim2)}
+.btn:disabled{opacity:.3;cursor:default}
+
+/* ══ ① 精靈：一頁只問一件事 ═══════════════════ */
+.w-step{flex:1;min-height:0;display:flex;flex-direction:column;padding:16px 20px;gap:14px}
+.w-q{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.w-q .n{width:38px;height:38px;border-radius:50%;background:var(--brand);color:#2E2B2C;
+  display:flex;align-items:center;justify-content:center;font-size:var(--xl);font-weight:800}
+.w-q h3{font-size:32px;font-weight:800}
+.w-q .sp{flex:1}
+.w1{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:1fr 1fr;gap:14px}
+.w1 .tile b{font-size:36px}
+.w1 .tile i{font-size:var(--l)}
+.w2{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px}
+.w2 .grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:1fr;gap:10px}
+.w2 .tile b{font-size:28px}
+.w2 .tile i{font-size:var(--l)}
+.w-foot{display:flex;align-items:center;gap:14px;flex-shrink:0}
+.w-foot .sum{font-size:var(--xxl);font-weight:800}
+.w-foot .sum em{font-style:normal;font-size:48px;line-height:1;margin-right:6px}
+.w-foot .sub{font-size:var(--s);color:var(--dim);line-height:1.5}
+.w-foot .sp{flex:1}
+.w-foot .btn{height:84px;font-size:28px;padding:0 48px}
+.w-foot .btn.gho{font-size:var(--l);padding:0 26px}
+
+/* ══ ② 購物車：左邊看得到這一把長什麼樣 ═════════ */
+.c-body{flex:1;min-height:0;display:flex}
+.c-left{width:340px;flex-shrink:0;background:var(--bar);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;padding:14px 16px;gap:10px}
+.c-me{background:var(--tile);border-radius:var(--r-card);padding:12px 14px;flex-shrink:0}
+.c-me .row{display:flex;align-items:center;gap:10px}
+.c-me .ava{width:44px;height:44px;border-radius:50%;background:var(--brand);color:#2E2B2C;
+  display:flex;align-items:center;justify-content:center;font-size:var(--xl);font-weight:800}
+.c-me .nm{font-size:var(--l);font-weight:800}
+.c-me .mt{font-size:var(--xxs);color:var(--dim)}
+.c-me .v{font-size:56px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.05;margin-top:6px}
+.c-me .d{font-size:var(--s);color:var(--brand);font-weight:700}
+.c-ttl{font-size:var(--s);font-weight:800;color:var(--dim);letter-spacing:1px;flex-shrink:0}
+.c-list{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+.c-item{display:flex;align-items:center;gap:8px;background:var(--tile);border-radius:var(--r-field);
+  padding:10px 12px;font-size:var(--l);font-weight:700}
+.c-item .sp{flex:1}
+.c-item .t{color:var(--brand);font-weight:800}
+.c-item .x{width:30px;height:30px;border-radius:50%;border:none;background:rgba(255,255,255,.12);
+  color:#fff;font-size:var(--l);font-weight:800;cursor:pointer;font-family:inherit}
+.c-empty{font-size:var(--s);color:var(--dim);padding:8px 2px;line-height:1.7}
+.c-sum{border-top:1px solid var(--line);padding-top:10px;flex-shrink:0}
+.c-sum .big{display:flex;align-items:baseline;gap:8px}
+.c-sum .big em{font-style:normal;font-size:52px;font-weight:800;line-height:1}
+.c-sum .pay{font-size:var(--m);color:var(--brand);font-weight:800;margin-top:2px}
+.c-sum .btn{width:100%;height:72px;font-size:24px;margin-top:10px}
+.c-right{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px;padding:14px 16px}
+.c-act{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;flex-shrink:0}
+.c-act .tile{height:86px}
+.c-act .tile b{font-size:24px}
+.c-act .tile i{font-size:var(--xs)}
+.c-grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(6,1fr);grid-auto-rows:1fr;gap:10px}
+.c-grid .tile b{font-size:22px}
+.c-grid .tile i{font-size:var(--s)}
+
+/* ══ ③ 常用 ＋ 台數鍵盤 ═══════════════════════ */
+.k-act{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;flex-shrink:0;padding:12px 16px 0}
+.k-act .tile{height:88px}
+.k-act .tile b{font-size:26px}
+.k-act .tile i{font-size:var(--s)}
+.k-body{flex:1;min-height:0;display:flex;gap:12px;padding:12px 16px}
+.k-left{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px}
+.k-lab{font-size:var(--s);font-weight:800;color:var(--dim);letter-spacing:1px;flex-shrink:0}
+.k-fav{flex:1;min-height:0;display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:1fr;gap:10px}
+.k-fav .tile b{font-size:26px}
+.k-fav .tile i{font-size:var(--l)}
+.k-more{height:62px;font-size:var(--xl)}
+.k-right{width:330px;flex-shrink:0;display:flex;flex-direction:column;gap:10px}
+.k-read{background:var(--tile);border-radius:var(--r-card);padding:10px 14px;text-align:center;flex-shrink:0}
+.k-read .v{font-size:60px;font-weight:800;line-height:1.05}
+.k-read .s{font-size:var(--s);color:var(--brand);font-weight:800}
+.k-pad{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;gap:8px}
+.k-pad .tile b{font-size:34px}
+.k-foot{display:flex;align-items:center;gap:14px;flex-shrink:0;padding:0 16px 14px}
+.k-foot .me{display:flex;align-items:center;gap:10px}
+.k-foot .me .ava{width:46px;height:46px;border-radius:50%;background:var(--brand);color:#2E2B2C;
+  display:flex;align-items:center;justify-content:center;font-size:var(--xl);font-weight:800}
+.k-foot .me .v{font-size:46px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+.k-foot .me .lb{font-size:var(--xxs);color:var(--brand);font-weight:800;line-height:1.3}
+.k-foot .sp{flex:1}
+.k-foot .btn{height:76px;font-size:26px;padding:0 44px}
+</style>
+</head>
+<body>
+
+<h1>桌邊記分板 · 深色三架構</h1>
+<p class="lead">
+  <b>配色三案完全一樣</b>（就是「深色駕駛艙」那一套）——不一樣的是<b>互動架構</b>：
+  一把牌怎麼被記下來，這三案給的是三個不同的答案。<br />
+  三案都可以真的點：選動作 → 選牌型 → 台數與「誰付多少」會即時變。
+</p>
+
+<!-- ══════════ ① 精靈 ══════════ -->
+<section class="case">
+  <h2>① 一次只問一件事</h2>
+  <div class="ref">參考：麥當勞 KIOSK · Square 的 checkout 流程 · 提款機</div>
+  <p>把「一把牌」拆成兩個畫面，<b>每個畫面只有一個問題</b>。
+     第一步五塊超大磚（每塊 <b>319×309</b>，是原本 114×79 的 <b>11 倍面積</b>）；
+     第二步整個畫面都是牌型，每顆 <b>132×123</b>。<br />
+     🎯 <b>這是唯一一個「按鈕大到不可能按錯」的架構</b> ——
+     代價是多一次點擊，但換來的是**每一次點擊都不會錯**。客人不是店員，他沒有受過訓練。</p>
+  <div class="wrap"><div class="frame" id="w"></div></div>
+  <p class="note">點第一步的任一塊會直接進第二步，左上角可以回去。<br />
+     <b>代價：多一個畫面。</b>老手會覺得慢 —— 他明明一眼就知道要按哪兩顆。</p>
+</section>
+
+<!-- ══════════ ② 購物車 ══════════ -->
+<section class="case">
+  <h2>② 左邊是購物車，右邊是菜單</h2>
+  <div class="ref">參考：Square POS · Toast · 幾乎每一台餐飲 POS 的標準形狀</div>
+  <p>左欄常駐一張「這一把」的單子：<b>你點了哪些牌型會一條一條列出來，每一條都可以單獨刪掉</b>，
+     下面即時累計台數與「誰付多少」。<br />
+     🎯 它解決的是上一版真正的問題：<b>選了五個牌型之後，你只能靠「哪幾顆是粉的」回想自己選了什麼</b>
+     —— 而那些粉色磚散在 26 顆裡面。購物車讓它變成一份清單。<br />
+     我的積分就放在購物車最上面，因為那也是「我的狀態」。</p>
+  <div class="wrap"><div class="frame" id="c"></div></div>
+  <p class="note">🔴 <b>代價比想像中大</b>：左欄吃掉 340px，牌型只剩 6 欄 5 列，
+     <b>每顆 100×113</b> —— 比 ① 的 132×123 小，甚至比原本那版的 114×79 還窄。
+     那 340px 是花在「看得見自己選了什麼」上面，<b>值不值得要你決定</b>。</p>
+</section>
+
+<!-- ══════════ ③ 台數鍵盤 ══════════ -->
+<section class="case">
+  <h2 style="text-decoration:line-through;opacity:.55">③ 常用八顆 ＋ 台數鍵盤</h2>
+  <div class="ref" style="color:#B23B3B">🔴 2026-09-23 否決 —— 使用者：「不能直接輸入台數，會影響日後數據統計與成就」</div>
+  <p>留著是為了<b>記錄它為什麼被否決</b>，免得下一個人再提一次。<br />
+     它確實是三案裡最快的（常見的一把兩下就結束），賭的是「老手心裡算的是幾台，不是哪些牌型」。
+     <b>但那個賭注輸掉的是整個牌型資料庫</b>：<br />
+     · 牌型收藏那 31 枚成就沒有東西可以解鎖<br />
+     · 「你最常胡什麼牌」「這間店最常出現什麼牌型」永遠答不出來<br />
+     · 而<b>那份資料事後補不回來</b>（硬規則 5.6：稽核與行為資料是不可回溯的）<br />
+     🎯 更關鍵的是：<b>捷徑只要跟正路一樣順手，所有人都會走捷徑</b> ——
+     設計文件 §4 原本把「直接輸台數」藏一層就是為了這件事，而這一案把它擺到了主畫面。</p>
+  <div class="wrap" style="opacity:.5;filter:grayscale(.6)"><div class="frame" id="k"></div></div>
+  <p class="note">🟢 <b>今天收掉是零成本</b>：<code>hands</code> 目前 0 筆，
+     沒有任何一把用手動台數記過。</p>
+</section>
+
+<script>
+/* 牌型主檔：2026-09-23 從線上 scoring_patterns 撈的 26 筆（自摸由後端自動帶，不列）。 */
+const PAT = [
+  ['門清',1],['門清自摸',3],['平胡',2],['獨聽',1],['全求',2],['海底撈月',1],['槓上開花',1],['搶槓',1],
+  ['三元牌',1],['風牌',1],['小三元',4],['大三元',8],['小四喜',8],['大四喜',16],['字一色',16],
+  ['混一色',4],['清一色',8],['碰碰胡',4],['三暗刻',2],['四暗刻',5],['五暗刻',8],
+  ['正花',1],['花槓',2],['七搶一',8],['八仙過海',8],['天胡',24],
+];
+const FAV = ['門清自摸','平胡','碰碰胡','混一色','清一色','獨聽','正花','三元牌'];
+const BASE = 100, PER_TAI = 20;
+const ACTS = [['tsumo','自摸','三家付'],['ron','小美','放槍'],['ron','阿哲','放槍'],['ron','大雄','放槍'],['draw','流局','不用確認']];
+const tileOf = ([l,t]) => `<button class="tile" data-t="${t}" data-l="${l}"><b>${l}</b><i>${t} 台</i></button>`;
+const barHTML = (me) => `
+  <div class="bar"><span class="logo">MIGI</span><span class="tb">A3</span>
+    <span class="sub">積分 100/20 · 底 2000 · 有花</span><span class="sp"></span>
+    <span class="now">東風圈 第 1 將 · 第 3 把 · 連莊 1</span>
+    ${me ? `<span class="me" style="margin-left:18px"><span class="lb">我的幕前積分<br>第 2 位</span><span class="v">2,320</span></span>` : ''}
+    <span class="sub" style="margin-left:14px">A3-1</span></div>`;
+
+/* 這一把選到目前為止是幾台、誰付多少（假算式，真的在後端） */
+function calc(state) {
+  if (state.act === 'draw') return { tai: 0, pay: '流局　莊家連莊，沒有人付分' };
+  let tai = state.manual != null ? state.manual : state.sel.reduce((s, l) => s + PAT.find((p) => p[0] === l)[1], 0);
+  if (state.manual == null && state.act === 'tsumo' && !state.sel.includes('門清自摸')) tai += 1;
+  const unit = BASE + tai * PER_TAI;
+  return { tai, pay: state.act === 'tsumo' ? `自摸　三家各付 ${unit}` : `${state.who} 一家付 ${unit * 3}` };
+}
+
+/* ══ ① 精靈 ══ */
+(function () {
+  const f = document.getElementById('w');
+  const st = { step: 1, act: 'tsumo', who: '', sel: [], manual: null };
+  const draw = () => {
+    const { tai, pay } = calc(st);
+    f.innerHTML = barHTML(true) + (st.step === 1 ? `
+      <div class="w-step">
+        <div class="w-q"><span class="n">1</span><h3>這一把怎麼結束？</h3></div>
+        <div class="w1">${ACTS.map(([r, l, s], i) =>
+          `<button class="tile" data-a="${i}"><b>${l}</b><i>${s}</i></button>`).join('')}</div>
+      </div>` : `
+      <div class="w-step">
+        <div class="w-q"><span class="n">2</span><h3>什麼牌型？</h3><span class="sp"></span>
+          <button class="btn gho" data-back style="height:52px;padding:0 22px;font-size:16px">‹ 改上一步</button></div>
+        <div class="w2"><div class="grid">${PAT.map(tileOf).join('')}</div></div>
+        <div class="w-foot">
+          <span class="sum"><em>${tai}</em>台</span>
+          <span class="sub">另加莊家台<br>${pay}</span>
+          <span class="sp"></span>
+          <button class="btn pri">確定</button>
+        </div>
+      </div>`);
+    if (st.step === 1) f.querySelectorAll('[data-a]').forEach((b) => b.onclick = () => {
+      const [r, l] = ACTS[+b.dataset.a]; st.act = r; st.who = r === 'ron' ? l : ''; st.sel = []; st.step = 2; draw();
+    });
+    else {
+      f.querySelector('[data-back]').onclick = () => { st.step = 1; draw(); };
+      f.querySelectorAll('.tile').forEach((t) => {
+        if (st.sel.includes(t.dataset.l)) t.classList.add('on');
+        t.onclick = () => {
+          const i = st.sel.indexOf(t.dataset.l);
+          i < 0 ? st.sel.push(t.dataset.l) : st.sel.splice(i, 1);
+          draw();
+        };
+      });
+    }
+  };
+  draw();
+})();
+
+/* ══ ② 購物車 ══ */
+(function () {
+  const f = document.getElementById('c');
+  const st = { act: 'tsumo', who: '', sel: [], manual: null };
+  const draw = () => {
+    const { tai, pay } = calc(st);
+    const actLabel = st.act === 'tsumo' ? '自摸' : st.act === 'draw' ? '流局' : `${st.who} 放槍`;
+    f.innerHTML = barHTML(false) + `
+      <div class="c-body">
+        <div class="c-left">
+          <div class="c-me">
+            <div class="row"><span class="ava">咖</span>
+              <div><div class="nm">咖勁凱</div><div class="mt">金熊 II · 第 2 位</div></div></div>
+            <div class="v">2,320</div><div class="d">這將 +320</div>
+          </div>
+          <div class="c-ttl">這一把</div>
+          <div class="c-list">
+            <div class="c-item"><span>${actLabel}</span><span class="sp"></span>
+              <span class="t">${st.act === 'tsumo' ? '＋1 台' : ''}</span></div>
+            ${st.sel.length ? st.sel.map((l) => {
+              const t = PAT.find((p) => p[0] === l)[1];
+              return `<div class="c-item"><span>${l}</span><span class="sp"></span>
+                <span class="t">${t} 台</span><button class="x" data-del="${l}">×</button></div>`;
+            }).join('') : `<p class="c-empty">還沒選牌型。<br>右邊點一顆，它就會出現在這裡。</p>`}
+          </div>
+          <div class="c-sum">
+            <div class="big"><em>${tai}</em><span>台　另加莊家台</span></div>
+            <div class="pay">${pay}</div>
+            <button class="btn pri c-sum-ok" ${st.sel.length || st.act === 'draw' ? '' : 'disabled'}>確定　送出等確認</button>
+          </div>
+        </div>
+        <div class="c-right">
+          <div class="c-act">${ACTS.map(([r, l, s], i) =>
+            `<button class="tile${(r === st.act && (r !== 'ron' || l === st.who)) ? ' on' : ''}" data-a="${i}"><b>${l}</b><i>${s}</i></button>`).join('')}</div>
+          <div class="c-grid">${PAT.map(tileOf).join('')}</div>
+        </div>
+      </div>`;
+    f.querySelectorAll('[data-a]').forEach((b) => b.onclick = () => {
+      const [r, l] = ACTS[+b.dataset.a]; st.act = r; st.who = r === 'ron' ? l : ''; if (r === 'draw') st.sel = []; draw();
+    });
+    f.querySelectorAll('[data-del]').forEach((b) => b.onclick = () => {
+      st.sel.splice(st.sel.indexOf(b.dataset.del), 1); draw();
+    });
+    f.querySelectorAll('.c-grid .tile').forEach((t) => {
+      if (st.sel.includes(t.dataset.l)) t.classList.add('on');
+      t.onclick = () => {
+        const i = st.sel.indexOf(t.dataset.l);
+        i < 0 ? st.sel.push(t.dataset.l) : st.sel.splice(i, 1);
+        draw();
+      };
+    });
+  };
+  draw();
+})();
+
+/* ══ ③ 常用 ＋ 台數鍵盤 ══ */
+(function () {
+  const f = document.getElementById('k');
+  const st = { act: 'tsumo', who: '', sel: [], manual: null };
+  const draw = () => {
+    const { tai, pay } = calc(st);
+    f.innerHTML = barHTML(false) + `
+      <div class="k-act">${ACTS.map(([r, l, s], i) =>
+        `<button class="tile${(r === st.act && (r !== 'ron' || l === st.who)) ? ' on' : ''}" data-a="${i}"><b>${l}</b><i>${s}</i></button>`).join('')}</div>
+      <div class="k-body">
+        <div class="k-left">
+          <div class="k-lab">最常出現的八種</div>
+          <div class="k-fav">${FAV.map((l) => tileOf(PAT.find((p) => p[0] === l))).join('')}</div>
+          <button class="btn gho k-more">其餘 18 種牌型 ›</button>
+        </div>
+        <div class="k-right">
+          <div class="k-read"><div class="v">${tai} 台</div><div class="s">${pay}</div></div>
+          <div class="k-pad">
+            ${[1,2,3,4,5,6,7,8,9].map((n) => `<button class="tile${st.manual === n ? ' on' : ''}" data-k="${n}"><b>${n}</b></button>`).join('')}
+            <button class="tile" data-k="0"><b>0</b></button>
+            <button class="tile" data-k="clr"><b>清除</b></button>
+            <button class="tile" data-k="10"><b>+10</b></button>
+          </div>
+        </div>
+      </div>
+      <div class="k-foot">
+        <span class="me"><span class="ava">咖</span>
+          <span><span class="lb">我的幕前積分 · 第 2 位</span><br><span class="v">2,320</span></span></span>
+        <span class="sp"></span>
+        <button class="btn pri">確定　送出等確認</button>
+      </div>`;
+    f.querySelectorAll('[data-a]').forEach((b) => b.onclick = () => {
+      const [r, l] = ACTS[+b.dataset.a]; st.act = r; st.who = r === 'ron' ? l : ''; if (r === 'draw') { st.sel = []; st.manual = null; } draw();
+    });
+    f.querySelectorAll('.k-fav .tile').forEach((t) => {
+      if (st.sel.includes(t.dataset.l)) t.classList.add('on');
+      t.onclick = () => {
+        st.manual = null;
+        const i = st.sel.indexOf(t.dataset.l);
+        i < 0 ? st.sel.push(t.dataset.l) : st.sel.splice(i, 1);
+        draw();
+      };
+    });
+    f.querySelectorAll('[data-k]').forEach((b) => b.onclick = () => {
+      const k = b.dataset.k;
+      st.sel = [];
+      if (k === 'clr') st.manual = null;
+      else if (k === '10') st.manual = (st.manual || 0) + 10;
+      else st.manual = +k;
+      draw();
+    });
+  };
+  draw();
+})();
+
+const fit = () => {
+  const s = Math.min(document.body.clientWidth - 40, 1024) / 1024;
+  document.querySelectorAll('.frame').forEach((f) => {
+    f.style.transform = `scale(${s})`;
+    f.parentElement.style.height = 768 * s + 'px';
+  });
+};
+addEventListener('resize', fit); fit();
+</script>
+</body>
+</html>

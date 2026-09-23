@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MIGI 桌邊記分板 · 四台同步</title>
+<!--
+  2026-09-23　使用者要的：
+    「包牌的人按了 會跳出確定要給這三人XXX，確定後 其他三人畫面出現（收到XXX給的積分XXX）」
+    → 做一個四分割、能實際操作的預覽
+
+  🔴 這一頁的重點不是版面，是**時序**：同一把牌，四台在同一時間看到的東西不一樣。
+     ① 送出的人   選完 → 自己先跳一次確認（要付／要收多少）
+     ② 送出之後   要付錢的那幾台跳出確認；不用付的那幾台只看到「等待中」
+     ③ 全部確認   四台同時更新分數，各自顯示「你付了 / 你收到 / 這把沒你的事」
+
+  ⚠ 四台的狀態是**同一份**（就像後端那一份）。在任何一台上操作，另外三台立刻跟著變
+     —— 正式環境靠 realtime 廣播 ＋ 5 秒輪詢（lib/sync.js），這裡直接重畫。
+
+  🔴 計分是假的（真的一律由後端 tbl_submit_hand_tx 算）。
+     規則照 2026-09-23 拍板：連莊 1＋2N、包牌固定 3 台且下莊。
+-->
+<style>
+:root{
+  --brand:#FAD6DC; --gold:#E8B89B; --danger:#B23B3B; --accent-deep:#974B5F;
+  /* 🔴 不要用綠色（--ok）：MIGI 的標準色沒有綠。@migi/assets 的 --ok 只給 POS 桌況
+     「空桌」那顆圓點用（token 說明：「之後若有第二處要用綠，先確認講的是不是同一件事」）。
+     「收到」「已確認」「確認鈕」一律用 --brand 粉。（2026-09-23 使用者指定） */
+  /* 🌙 深色一律用 @migi/assets v1.13.0 的 dark 群組（值從 dist/tokens.css 抄來，名字一字不改）——
+     這一頁是獨立 HTML 載不到套件，但**名字一樣**，實作時可以一對一照搬。
+     ⚠ 在此之前這裡是自己取的名字（--bg／--dim／寫死的淺紅），而且 --dim 是 rgba(.45)，
+       在按鈕底上對比只有 4.4 —— 正式 token 的 --dk-text-3 是算過的 4.86。 */
+  --dk-bg:#221F20; --dk-bar:#191718; --dk-raised:#2B2829; --dk-tile:#343132; --dk-line:#524D4E;
+  --dk-text:#FFFFFF; --dk-text-2:#C9C4C1; --dk-text-3:#A39E9B; --dk-danger:#FF9B9B;
+  --dk-scrim:rgba(20,18,19,.82);
+  --font:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:#DEDBD8;color:#2E2B2C;padding:24px 20px 60px}
+h1{font-size:23px;margin-bottom:6px}
+.lead{font-size:13.5px;color:#5C5754;line-height:1.75;max-width:1040px;margin-bottom:14px}
+.lead b{color:var(--accent-deep)}
+.bar2{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#2E2B2C;color:#fff;
+  border-radius:10px;padding:10px 14px;max-width:1040px;margin-bottom:12px}
+.bar2 .t{font-size:13px;font-weight:700;color:rgba(255,255,255,.6)}
+.bar2 button{border:none;border-radius:999px;padding:7px 15px;font-size:13px;font-weight:800;
+  cursor:pointer;font-family:inherit;background:rgba(255,255,255,.14);color:#fff}
+.bar2 button.on{background:var(--brand);color:#2E2B2C}
+.bar2 .sp{flex:1}
+.bar2 .hint{font-size:12px;color:rgba(255,255,255,.5)}
+
+/* ⚠ minmax(0,1fr) 不是 1fr：裡面那塊 1024px 的平板只是被 transform 縮小，
+   排版上它仍然是 1024 寬 —— 用 1fr 的話格子會被撐開，2×2 變成一欄還出現水平捲軸。 */
+.quad{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;max-width:1040px}
+.quad.solo{grid-template-columns:minmax(0,1fr)}
+.cell{position:relative}
+.cap{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:#5C5754;margin-bottom:5px}
+.cap .z{background:#2E2B2C;color:var(--brand);border-radius:999px;padding:1px 8px;font-size:11px}
+.cap .sp{flex:1}
+.cap button{border:1px solid #BEB9B5;background:#fff;border-radius:999px;padding:3px 10px;
+  font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;color:#5C5754}
+.cap .wait{color:var(--accent-deep)}
+.shell{overflow:hidden;border-radius:10px}
+.frame{width:1024px;height:768px;transform-origin:top left;display:flex;flex-direction:column;
+  overflow:hidden;background:var(--dk-bg);color:var(--dk-text)}
+
+/* ── 平板內部 ─────────────────────────── */
+.top{display:flex;align-items:center;gap:12px;padding:10px 20px;background:var(--dk-bar);
+  border-bottom:1px solid var(--dk-line);flex-shrink:0}
+.top .logo{font-size:20px;font-weight:800;letter-spacing:2px}
+.top .sub{font-size:14px;color:var(--dk-text-3)}
+.top .sp{flex:1}
+.top .lb{font-size:13px;color:var(--brand);font-weight:800;text-align:right;line-height:1.3;
+  display:inline-block;max-width:200px;word-break:break-all}
+.top .v{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+.dcard{display:flex;align-items:center;gap:14px;background:var(--brand);color:#2E2B2C;
+  border-radius:14px;padding:10px 18px;flex-shrink:0}
+.dcard.mine{background:#2E2B2C;color:var(--brand);box-shadow:0 0 0 3px var(--brand)}
+.dcard .lb2{font-size:13px;font-weight:800;opacity:.7;line-height:1.2}
+/* 莊家名字：字級跟著名字長度縮（nameFs），最多兩行 ——
+   莊家卡是頂條最重要的東西，但它不能把「我的幕前積分」擠出畫面 */
+.dcard .nm{font-weight:800;line-height:1.1;display:block;max-width:250px;word-break:break-all}
+.dcard .ren{background:#2E2B2C;color:var(--brand);border-radius:999px;padding:5px 13px;font-size:15px;font-weight:800}
+.dcard.mine .ren{background:var(--brand);color:#2E2B2C}
+.dcard .add{border-left:2px solid rgba(46,43,44,.25);padding-left:13px;line-height:1.2}
+.dcard.mine .add{border-left-color:rgba(250,214,220,.3)}
+.dcard .add .v2{font-size:24px;font-weight:800}
+.dcard .add .s2{font-size:12px;font-weight:700;opacity:.7}
+
+.body{flex:1;min-height:0;display:flex;flex-direction:column;padding:14px 20px;gap:12px}
+.q{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.q .n{width:34px;height:34px;border-radius:50%;background:var(--brand);color:#2E2B2C;
+  display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800}
+.q h3{font-size:28px;font-weight:800}
+.q .sp{flex:1}
+
+.tile{background:var(--dk-tile);border:2px solid var(--dk-line);border-radius:12px;color:var(--dk-text);
+  font-family:inherit;cursor:pointer;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:3px;min-width:0;overflow:hidden;padding:6px;position:relative}
+.tile b{font-weight:800;line-height:1.1;white-space:nowrap}
+.tile i{font-style:normal;font-weight:700;color:var(--dk-text-3)}
+.tile.on{background:var(--brand);border-color:var(--dk-text);color:#2E2B2C}
+.tile.on i{color:var(--accent-deep)}
+.tile.bao{border-color:var(--gold);border-style:dashed}
+.tile.isdealer{border-color:var(--brand)}
+.tile .zh{position:absolute;top:8px;left:8px;background:var(--brand);color:#2E2B2C;
+  border-radius:999px;padding:3px 11px;font-size:14px;font-weight:800}
+.tile .mx{position:absolute;top:6px;right:8px;font-size:11px;font-weight:800;color:var(--dk-text-3);
+  border:1px solid var(--dk-line);border-radius:999px;padding:1px 7px}
+.tile.on .mx{color:var(--accent-deep);border-color:rgba(151,75,95,.4)}
+
+/* 🔴 人名磚要能**換行**：12 個全形字 × 32px ＝ 384px，比一格 320px 還寬。
+   不換行就是被裁掉（overflow:hidden），而被裁掉的名字等於選不到人。
+   ⚠ 牌型磚刻意維持不換行 —— 牌型名最長 4 個字，換行只會讓它們高低不齊。 */
+.tile.nm b{white-space:normal;word-break:break-all;text-align:center;padding:0 10px;line-height:1.2}
+.g6{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:1fr 1fr;gap:12px}
+.g6 .tile b{font-size:32px}
+.g6 .tile i{font-size:15px}
+.g3{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.g3 .tile b{font-size:32px}
+.grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:1fr;gap:9px}
+.grid .tile b{font-size:24px}
+.grid .tile i{font-size:14px}
+
+.foot{display:flex;align-items:center;gap:14px;flex-shrink:0}
+.foot .sum{font-size:20px;font-weight:800;white-space:nowrap}
+.foot .sum em{font-style:normal;font-size:42px;line-height:1;margin-right:4px}
+.foot .calc{font-size:14px;color:var(--dk-text-2);line-height:1.5}
+.foot .calc b{color:var(--brand)}
+.foot .sp{flex:1}
+.btn{border:2px solid transparent;border-radius:12px;font-family:inherit;font-weight:800;
+  cursor:pointer;line-height:1.2}
+.btn.pri{background:var(--brand);color:#2E2B2C}
+.btn.gho{background:transparent;border-color:var(--dk-line);color:var(--dk-text-2)}
+/* ⚠ 邊框也用 --dk-danger：淺色的 --danger 在深底上只有 2.2，「駁回」鈕的外框會看不見 */
+.btn.no{background:transparent;border-color:var(--dk-danger);color:var(--dk-danger)}
+.btn:disabled{opacity:.3;cursor:default}
+.foot .btn{height:74px;font-size:24px;padding:0 40px}
+.foot .btn.gho{height:56px;font-size:16px;padding:0 22px}
+.q .btn{height:46px;padding:0 18px;font-size:16px}
+
+/* 疊在畫面上的那一層（確認／等待／結果） */
+.sheet{position:absolute;inset:0;background:var(--dk-scrim);display:flex;align-items:center;
+  justify-content:center;padding:36px}
+.card{background:var(--dk-raised);border:2px solid var(--dk-line);border-radius:18px;padding:28px 32px;
+  width:100%;max-width:760px;text-align:center}
+.card .k{font-size:17px;font-weight:800;color:var(--dk-text-3);letter-spacing:1px}
+.card .h{font-size:34px;font-weight:800;margin-top:6px;line-height:1.3}
+.card .money{font-size:82px;font-weight:800;line-height:1.05;margin:10px 0;font-variant-numeric:tabular-nums}
+.card .money.pay{color:var(--dk-danger)}
+.card .money.get{color:var(--brand)}
+.card .who{font-size:18px;color:var(--dk-text-2);line-height:1.6}
+.card .rows{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:16px 0 6px}
+.card .row{background:var(--dk-tile);border-radius:11px;padding:10px 6px}
+.card .row .n2{font-size:14px;font-weight:700;word-break:break-all;line-height:1.3}
+.card .row .v2{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:3px}
+.card .row .v2.neg{color:var(--dk-danger)}
+.card .row .s2{font-size:12px;color:var(--dk-text-3)}
+.card .row.done{outline:2px solid var(--brand)}
+.card .acts{display:flex;gap:12px;justify-content:center;margin-top:18px}
+.card .acts .btn{height:72px;font-size:23px;padding:0 38px}
+.dots{font-size:17px;color:var(--dk-text-3);margin-top:10px}
+
+.sec{background:#fff;border-radius:14px;padding:16px 20px;margin:18px 0;max-width:1040px;
+  font-size:13.5px;line-height:1.8;color:#5C5754}
+.sec h3{font-size:15.5px;color:#2E2B2C;margin-bottom:6px}
+.sec b{color:var(--accent-deep)}
+.sec .bad{color:var(--danger);font-weight:700}
+code{background:#F2F0EE;border-radius:5px;padding:1px 6px;font-size:.92em}
+</style>
+</head>
+<body>
+
+<h1>桌邊記分板 · 四台同步</h1>
+<p class="lead">
+  四台平板<b>共用同一份狀態</b>（就像後端那一份）—— 在任何一台上操作，另外三台立刻跟著變。<br />
+  試試看：在<b>任一台</b>選「誰要付錢」→ 選牌型 → 確定，然後看另外三台各自跳出什麼。<br />
+  包牌更短：在<b>包牌那個人自己的平板</b>按「我包牌」→ 確定，另外三台立刻收到。
+</p>
+
+<div class="bar2">
+  <span class="t">放大看</span>
+  <span id="zoom"></span>
+  <span class="sp"></span>
+  <span class="hint">莊家是阿哲 · 連莊 2 · 積分 100/20 · 底 2000</span>
+  <button id="reset">整桌重來</button>
+</div>
+
+<div class="quad" id="quad"></div>
+
+<div class="sec">
+  <h3>1. 胡牌（自摸／放槍）有兩個時刻</h3>
+  <b>① 按「送出」就送出</b>，不再跳「再確認一次」（2026-09-23 使用者指定）。
+  送出之後，<b>要付錢的那幾台跳出確認</b>；不用付的那幾台不跳確認框，只看到「等 ○○ 確認」。<br />
+  🎯 拿掉自己那一道是對的：<b>真正核對金額的是付錢的人</b>，送出的人自己再看一次只是多一次點擊。
+  送錯了也還有退路 —— 等待畫面上有「收回重填」。<br />
+  <b>② 全部確認完，四台同時更新。</b>各自顯示「收到 ○○○」「付給 ○○ ○○○」
+  或「這一把沒有你的事」。
+</div>
+
+<div class="sec">
+  <h3>2. 包牌只有兩個時刻，因為付錢的人就是按的人</h3>
+  <b>包牌 ＝ 按的那個人付給另外三家</b>（2026-09-23 使用者確認）。沒有胡牌的人，所以<b>不選牌型</b>。<br />
+  <b>① 包牌的人在自己的平板按「我包牌」</b> → 跳出「確定要給這三家 ○○○ 嗎」，列出每家各多少。<br />
+  <b>② 確定之後立刻生效</b>，另外三台跳出「<b>收到 ○○ 給的積分 ○○○</b>」。<br />
+  🎯 <b>為什麼不用別人確認</b>：確認這件事存在的理由，是「要從你身上拿錢，要你同意」。
+  包牌是付錢的人自己按的，他在 ① 已經同意了；收錢的三家不需要同意收錢。<br />
+  <b>算式</b>：每家 1 底 3 台；<b>牽涉莊家的那一份再加莊家台</b>（1 ＋ 2×連莊），
+  所以連莊 0 時莊家那份是 1 底 4 台。包牌的人自己是莊家的話，三份都加。
+  <b>包牌之後下莊。</b>
+</div>
+
+<script>
+/* 牌型主檔：2026-09-23 從線上 scoring_patterns 撈的（[名稱, 台, 最多幾次]）。
+   ⚠「自摸」不列 —— 後端自動帶。 */
+const PAT = [
+  ['門清',1,1],['門清自摸',3,1],['平胡',2,1],['獨聽',1,1],['全求',2,1],['海底撈月',1,1],['槓上開花',1,1],['搶槓',1,1],
+  ['三元牌',1,3],['風牌',1,4],['小三元',4,1],['大三元',8,1],['小四喜',8,1],['大四喜',16,1],['字一色',16,1],
+  ['混一色',4,1],['清一色',8,1],['碰碰胡',4,1],['三暗刻',2,1],['四暗刻',5,1],['五暗刻',8,1],
+  ['正花',1,2],['花槓',2,2],['七搶一',8,1],['八仙過海',8,1],['天胡',24,1],
+];
+const taiOf = (l) => PAT.find((p) => p[0] === l)[1];
+const maxOf = (l) => PAT.find((p) => p[0] === l)[2];
+
+/* 🔴 四家的暱稱都是 **12 個全形字**（使用者指定）—— 預覽要用最壞的情況，
+   不然三個字的名字會讓每一個版面看起來都剛好，而上線第一天就有人取了長名字。
+   全形中文是最寬的情況（英數字元比它窄）。 */
+const NAME = {
+  1: '咖勁凱的麻將人生第一桌啦',
+  2: '小美今天一定要胡清一色喔',
+  3: '阿哲永遠都在連莊的大魔王',
+  4: '大雄只想打一將就回家睡覺',
+};
+/* 名字越長字越小，但有下限 —— 平板要隔著牌桌看得到。
+   ⚠ 這是版面驅動的尺寸（跟著名字長度變），不是字階 token。 */
+const nameFs = (name, base, min) => Math.max(min, Math.min(base, Math.round(base * 5 / Math.max(5, name.length))));
+const BASE = 100, PER_TAI = 20, BAO_TAI = 3;
+const SEATS = [1,2,3,4];
+
+/* ── 共用狀態（＝後端那一份）───────────────── */
+let G, L, zoom = 0;          // zoom: 0 ＝ 四分割，否則放大那一台
+function reset() {
+  G = {
+    dealer: 3, ren: 2,
+    total: { 1:2320, 2:1820, 3:2090, 4:1770 },
+    pending: null,           // { by, act, who, bao, sel, tai, delta, need, confirmed }
+    result: null,            // 結算後的提示（四台各自看到不同的話）
+    seen: {},                // 誰已經把結果關掉了
+  };
+  L = { 1:blank(), 2:blank(), 3:blank(), 4:blank() };
+}
+const blank = () => ({ step: 1, act: null, who: null, sel: {}, confirming: false });
+const extra = () => 1 + 2 * G.ren;                          // 連莊 1 ＋ 2N
+const rankOf = (s) => SEATS.slice().sort((a,b) => G.total[b]-G.total[a] || a-b).indexOf(s) + 1;
+
+/* 這一把的台數與每一家的增減（假算式，真的在後端）
+   by ＝ 在自己平板上按的那個人。
+   · 自摸／放槍：by 是**收錢**的人
+   · 🔴 包牌：by 是**付錢**的人 —— 他付給另外三家（2026-09-23 使用者確認） */
+function compute(by, l) {
+  const others = SEATS.filter((s) => s !== by);
+  const d = { 1:0, 2:0, 3:0, 4:0 };
+
+  if (l.act === 'bao') {
+    /* 每家 1 底 3 台；牽涉莊家的那一份（包牌的人是莊、或收錢的那家是莊）再加莊家台。
+       連莊 0 時莊家那份 ＝ 1 底 4 台，正好是使用者說的「莊家 1 底 4」。 */
+    const unit = (recv) => BASE + PER_TAI * (BAO_TAI + (by === G.dealer || recv === G.dealer ? extra() : 0));
+    let sum = 0;
+    others.forEach((x) => { d[x] = unit(x); sum += unit(x); });
+    d[by] = -sum;
+    return { tai: BAO_TAI, patTai: 0, unit, payers: [by], delta: d, sum, need: [] };
+  }
+
+  const patTai = Object.entries(l.sel).reduce((t, [k, n]) => t + taiOf(k) * n, 0)
+    + (l.act === 'tsumo' && !l.sel['門清自摸'] ? 1 : 0);
+  const unit = (payer) => BASE + PER_TAI * (patTai + (by === G.dealer || payer === G.dealer ? extra() : 0));
+  const payers = l.act === 'ron' ? [l.who] : others;
+  let sum = 0;
+  payers.forEach((x) => { d[x] = -unit(x); sum += unit(x); });
+  d[by] = sum;
+  return { tai: patTai, patTai, unit, payers, delta: d, sum, need: payers };
+}
+
+/* 四家各自的增減，一格一家 —— 名字很長的時候比串成一句話好讀 */
+function rowsHTML(delta, me, dealerSeat, noteOf, doneOf) {
+  return `<div class="rows">${SEATS.map((x) => `
+    <div class="row${doneOf && doneOf(x) ? ' done' : ''}">
+      <div class="n2">${x === dealerSeat ? '〔莊〕' : ''}${NAME[x]}${x === me ? '（我）' : ''}</div>
+      <div class="v2${delta[x] < 0 ? ' neg' : ''}">${delta[x] === 0 ? '0' : (delta[x] > 0 ? '＋' : '−') + Math.abs(delta[x]).toLocaleString()}</div>
+      ${noteOf ? `<div class="s2">${noteOf(x)}</div>` : ''}
+    </div>`).join('')}</div>`;
+}
+
+/* ── 畫一台平板 ───────────────────────────── */
+function topHTML(s) {
+  const mine = s === G.dealer;
+  return `<div class="top">
+    <span class="logo">MIGI</span><span class="sub">A3 · 東風圈 第 1 將 第 3 把</span>
+    <span class="sp"></span>
+    <span class="dcard${mine ? ' mine' : ''}">
+      ${mine ? `<span><span class="lb2">這一把</span><br><span class="nm" style="font-size:34px">我是莊家</span></span>`
+             : `<span><span class="lb2">本把莊家</span><br><span class="nm" style="font-size:${nameFs(NAME[G.dealer], 34, 20)}px">${NAME[G.dealer]}</span></span>`}
+      <span class="ren">連莊 ${G.ren}</span>
+      <span class="add"><span class="v2">＋${extra()} 台</span><br><span class="s2">1 ＋ 2×${G.ren}</span></span>
+    </span>
+    <span style="margin-left:10px"><span class="lb">${NAME[s]} 的幕前積分<br>第 ${rankOf(s)} 位</span></span>
+    <span class="v">${G.total[s].toLocaleString()}</span>
+  </div>`;
+}
+
+function tileZh(s) { return s === G.dealer ? '<span class="zh">莊</span>' : ''; }
+
+function render(s) {
+  const l = L[s], p = G.pending, r = G.result;
+  let inner = '';
+
+  /* ③ 結算後的提示 */
+  if (r && !G.seen[s]) {
+    const d = r.delta[s];
+    const kind = d > 0 ? 'get' : d < 0 ? 'pay' : '';
+    inner = `<div class="sheet"><div class="card">
+      <div class="k">${r.headline}</div>
+      <div class="h">${r.desc}</div>
+      ${d === 0
+        ? `<div class="money" style="color:var(--dk-text-3)">±0</div><div class="who">這一把沒有你的事</div>`
+        : `<div class="money ${kind}">${d > 0 ? '＋' : '−'}${Math.abs(d).toLocaleString()}</div>
+           <div class="who">${d > 0
+             /* 🔴 自摸是三家付：把三個名字串成一句的話，12 個字的名字會變成一段
+                七十個字的話（壓力測試抓到的）。說「另外三家」，誰付多少交給下面那一排格子。 */
+             ? `收到${r.payers.length === 3 ? '另外三家' : ' ' + NAME[r.payers[0]] + ' '}給的積分`
+             : r.kind === 'bao' ? '付給另外三家'
+             : `付給 ${NAME[r.by]} ${Math.abs(d).toLocaleString()} 積分`}</div>`}
+      ${rowsHTML(r.delta, s, r.dealerAt)}
+      <div class="who" style="margin-top:8px">你的幕前積分 <b>${G.total[s].toLocaleString()}</b>${r.downDealer ? '　·　這把之後下莊' : ''}</div>
+      <div class="acts"><button class="btn pri" data-s="${s}" data-a="seen">知道了</button></div>
+    </div></div>`;
+  }
+
+  /* ② 送出之後：要付的人跳確認，其餘只看等待 */
+  else if (p) {
+    const mustConfirm = p.need.includes(s) && !p.confirmed.includes(s);
+    const waitNames = p.need.filter((x) => !p.confirmed.includes(x)).map((x) => NAME[x]).join('、');
+    inner = `<div class="sheet"><div class="card">
+      <div class="k">${NAME[p.by]} ${p.act === 'tsumo' ? '自摸' : '胡 ' + NAME[p.who]}</div>
+      <div class="h">${p.descTai}</div>
+      ${rowsHTML(p.delta, s, G.dealer,
+          (x) => p.need.includes(x) ? (p.confirmed.includes(x) ? '✓ 已確認' : '等待確認') : '',
+          (x) => p.confirmed.includes(x))}
+      ${mustConfirm
+        ? `<div class="h" style="font-size:28px;margin-top:10px">你要付 ${Math.abs(p.delta[s]).toLocaleString()} 積分，對嗎？</div>
+           <div class="acts">
+             <button class="btn no" data-s="${s}" data-a="reject">不對，駁回</button>
+             <button class="btn pri" data-s="${s}" data-a="confirm">確認</button>
+           </div>`
+        : `<div class="dots">${p.by === s ? '等 ' + waitNames + ' 在自己的平板上確認'
+            : p.need.includes(s) ? '你已經確認了，等 ' + waitNames
+            : '這一把不用你付 —— 等 ' + waitNames + ' 確認'}</div>
+           ${p.by === s ? `<div class="acts"><button class="btn gho" data-s="${s}" data-a="cancel">收回重填</button></div>` : ''}`}
+    </div></div>`;
+  }
+
+  /* ① 送出前：那一台自己的確認框 */
+  else if (l.confirming) {
+    /* 🔴 **只有包牌**有這一張：「確定要給這三家 ○○○」（使用者指定的流程）。
+       胡牌那一把按了就送，不經過這裡。
+       包牌要這一張，是因為**它沒有第二道確認** —— 按下去就從自己身上扣錢給三家，
+       而收錢的人不需要同意收錢。這是唯一一次核對的機會。 */
+    const c = compute(s, l);
+    inner = `<div class="sheet"><div class="card">
+      <div class="k">我包牌</div>
+      <div class="h">確定要給這三家？</div>
+      <div class="money pay">−${c.sum.toLocaleString()}</div>
+      ${rowsHTML(c.delta, s, G.dealer)}
+      <div class="who">每家 1 底 ${BAO_TAI} 台，${s === G.dealer
+          ? `你是莊家，<b>三家都</b>另加 ${extra()} 台`
+          : `莊家那一份另加 ${extra()} 台`}（1 ＋ 2×${G.ren}）　·　<b>這把之後下莊</b></div>
+      <div class="acts">
+        <button class="btn gho" data-s="${s}" data-a="back">取消</button>
+        <button class="btn no" data-s="${s}" data-a="send">給出去</button>
+      </div>
+    </div></div>`;
+  }
+
+  /* 主流程：選誰付錢 → 選誰包 → 選牌型 */
+  if (l.step === 1) {
+    const others = SEATS.filter((x) => x !== s);
+    inner = `<div class="body">
+      <div class="q"><span class="n">1</span><h3>這一把誰要付錢？</h3></div>
+      <div class="g6">
+        <button class="tile" data-s="${s}" data-a="act" data-v="tsumo"><b>我自摸</b><i>另外三家一起付</i></button>
+        ${others.map((x) => `<button class="tile nm${x === G.dealer ? ' isdealer' : ''}" data-s="${s}" data-a="act" data-v="ron" data-x="${x}">
+          ${tileZh(x)}<b style="font-size:${nameFs(NAME[x], 32, 24)}px">${NAME[x]}</b><i>放槍</i></button>`).join('')}
+        <button class="tile" data-s="${s}" data-a="act" data-v="draw"><b>流局</b><i>不用別人確認</i></button>
+        <!-- 🔴 第一人稱：「我包牌」＝ 我付給另外三家。跟「我自摸」同一種說法，
+             所以不需要再問「誰包」—— 包牌的人就是拿著這台平板的人。 -->
+        <button class="tile bao" data-s="${s}" data-a="act" data-v="bao"><b>我包牌</b><i>我付給另外三家</i></button>
+      </div>
+    </div>` + inner;
+  } else {
+    const c = compute(s, l);
+    inner = `<div class="body">
+      <div class="q"><span class="n">2</span><h3>胡了什麼牌型？</h3><span class="sp"></span>
+        <button class="btn gho" data-s="${s}" data-a="back1">‹ 改上一步</button></div>
+      <div class="grid">${PAT.map(([lb, v, mx]) => {
+        const n = l.sel[lb] || 0;
+        return `<button class="tile${n ? ' on' : ''}" data-s="${s}" data-a="pat" data-x="${lb}">
+          ${mx > 1 ? `<span class="mx">最多 ${mx}</span>` : ''}
+          <b>${lb}${n > 1 ? ' ×' + n : ''}</b><i>${n > 1 ? n * v : v} 台</i></button>`;
+      }).join('')}</div>
+      <div class="foot">
+        <span class="sum"><em>${c.patTai}</em>台</span>
+        <span class="calc">${l.act === 'tsumo' ? '另外三家' : NAME[l.who]} 共付 <b>${c.sum.toLocaleString()}</b><br>
+          送出後由付錢的人在自己的平板上確認</span>
+        <span class="sp"></span>
+        <!-- 🔴 按了就送，**不再跳「再確認一次」**（2026-09-23 使用者指定）。
+             真正核對金額的是付錢那一方的確認；送錯了還能在等待畫面「收回重填」。 -->
+        <button class="btn pri" data-s="${s}" data-a="send">送出</button>
+      </div>
+    </div>` + inner;
+  }
+
+  return topHTML(s) + inner;
+}
+
+/* ── 動作 ─────────────────────────────── */
+function act(s, a, v, x) {
+  const l = L[s];
+  if (a === 'act') {
+    if (v === 'draw') {                                  // 流局：不用確認，直接生效
+      G.result = { headline: '流局', desc: '莊家連莊，沒有人付分', by: s,
+                   delta: { 1:0, 2:0, 3:0, 4:0 }, payers: [], dealerAt: G.dealer, downDealer: false };
+      G.seen = {}; L = { 1:blank(), 2:blank(), 3:blank(), 4:blank() };
+      G.ren += 1; return;
+    }
+    l.act = v; l.who = x ? +x : null; l.sel = {};
+    /* 包牌沒有牌型（沒有人胡），直接跳確認框；其餘進選牌型 */
+    if (v === 'bao') { l.confirming = true; return; }
+    l.step = 2;
+  }
+  else if (a === 'pat') {
+    const n = l.sel[x] || 0;
+    if (n > 0 && n < maxOf(x)) l.sel[x] = n + 1;
+    else if (n > 0) delete l.sel[x];
+    else l.sel[x] = 1;
+  }
+  else if (a === 'back1') { l.step = 1; l.act = null; }
+  else if (a === 'ask') l.confirming = true;
+  else if (a === 'back') { l.confirming = false; if (l.act === 'bao') l.act = null; }
+  else if (a === 'send') {
+    const c = compute(s, l);
+    if (l.act === 'bao') {
+      /* 🔴 包牌：按下去就生效，**不進等待確認** —— 付錢的人就是按的人，
+         他在確認框已經同意了；收錢的三家不需要同意收錢。 */
+      SEATS.forEach((x) => { G.total[x] += c.delta[x]; });
+      G.result = {
+        kind: 'bao', headline: `${NAME[s]} 包牌`,
+        desc: `每家 1 底 ${BAO_TAI} 台`, by: s, delta: c.delta,
+        payers: [s], dealerAt: G.dealer, downDealer: true,
+      };
+      G.ren = 0; G.dealer = (G.dealer % 4) + 1;          // 包牌一律下莊
+      G.seen = {}; L = { 1:blank(), 2:blank(), 3:blank(), 4:blank() };
+      return;
+    }
+    G.pending = {
+      by: s, act: l.act, who: l.who,
+      delta: c.delta, need: c.need, confirmed: [],
+      descTai: `${Object.entries(l.sel).map(([k, n]) => k + (n > 1 ? ' ×' + n : '')).join('、') || '沒有台'}　·　${c.patTai} 台`,
+    };
+    l.confirming = false;
+  }
+  else if (a === 'cancel') { G.pending = null; }
+  else if (a === 'reject') {
+    G.result = { headline: `${NAME[s]} 駁回了`, desc: '這一把要重填', by: G.pending.by,
+                 delta: { 1:0, 2:0, 3:0, 4:0 }, payers: [], dealerAt: G.dealer, downDealer: false };
+    G.pending = null; G.seen = {}; L = { 1:blank(), 2:blank(), 3:blank(), 4:blank() };
+  }
+  else if (a === 'confirm') {
+    const p = G.pending;
+    if (!p.confirmed.includes(s)) p.confirmed.push(s);
+    if (p.confirmed.length >= p.need.length) {           // 全部確認 → 結算
+      SEATS.forEach((x) => { G.total[x] += p.delta[x]; });
+      G.result = {
+        headline: `${NAME[p.by]} ${p.act === 'tsumo' ? '自摸' : '胡 ' + NAME[p.who]}`,
+        desc: p.descTai, by: p.by, delta: p.delta,
+        payers: p.need,
+        dealerAt: G.dealer,              // ⚠ 要在換莊**之前**記下來，下面那幾行會改它
+        downDealer: false,
+      };
+      // 莊家：胡的人是莊就連莊，否則換莊（包牌的下莊在 send 那裡處理）
+      if (p.by !== G.dealer) { G.ren = 0; G.dealer = (G.dealer % 4) + 1; }
+      else G.ren += 1;
+      G.pending = null; G.seen = {}; L = { 1:blank(), 2:blank(), 3:blank(), 4:blank() };
+    }
+  }
+  else if (a === 'seen') G.seen[s] = true;
+}
+
+/* ── 畫面 ─────────────────────────────── */
+const quad = document.getElementById('quad');
+function paint() {
+  const seats = zoom ? [zoom] : SEATS;
+  quad.className = 'quad' + (zoom ? ' solo' : '');
+  /* 跟著視窗寬度縮 —— 固定寬度的話，窄一點的螢幕會把 2×2 擠成一欄還冒出水平捲軸，
+     而「四台同時看」正是這一頁存在的理由。 */
+  const avail = Math.min(document.body.clientWidth - 40, 1040);
+  const w = zoom ? avail : (avail - 12) / 2;
+  const sc = w / 1024;
+  quad.innerHTML = seats.map((s) => {
+    const waiting = G.pending && G.pending.need.includes(s) && !G.pending.confirmed.includes(s);
+    return `<div class="cell">
+      <div class="cap">${NAME[s]} 的平板${s === G.dealer ? '<span class="z">莊</span>' : ''}
+        <span class="sp"></span>
+        ${waiting ? '<span class="wait">● 等你確認</span>' : ''}
+        <button data-zoom="${zoom ? 0 : s}">${zoom ? '回到四分割' : '放大'}</button></div>
+      <div class="shell" style="width:${w}px;height:${768 * sc}px">
+        <div class="frame" data-seat="${s}" style="transform:scale(${sc})">${render(s)}</div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('zoom').innerHTML =
+    `<button class="${zoom ? '' : 'on'}" data-zoom="0">四分割</button>` +
+    SEATS.map((s) => `<button class="${zoom === s ? 'on' : ''}" data-zoom="${s}">${NAME[s]}</button>`).join('');
+}
+
+document.addEventListener('click', (e) => {
+  const z = e.target.closest('[data-zoom]');
+  if (z) { zoom = +z.dataset.zoom; paint(); return; }
+  if (e.target.id === 'reset') { reset(); paint(); return; }
+  const b = e.target.closest('[data-a]');
+  if (!b) return;
+  act(+b.dataset.s, b.dataset.a, b.dataset.v, b.dataset.x);
+  paint();
+});
+
+addEventListener('resize', paint);
+reset();
+paint();
+</script>
+</body>
+</html>
