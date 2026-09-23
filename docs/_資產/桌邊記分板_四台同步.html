@@ -22,7 +22,12 @@
 -->
 <style>
 :root{
-  --brand:#FAD6DC; --gold:#E8B89B; --danger:#B23B3B; --accent-deep:#974B5F;
+  --brand:#FAD6DC; --brand-light:#FFE7EE; --brand-tint:#FFECF1; --gold:#E8B89B; --ink:#2E2B2C;
+  /* 🔴 **不用桃紅（--accent／--accent-deep），也不用紅（--danger／--dk-danger）**
+     —— 強調色一律粉色系（2026-09-23 使用者指定）。
+     · 收到的積分 → --brand 粉；付出的積分 → --dk-text 白（粉色留給好消息）
+     · 駁回鈕 → 粉框粉字（確認鈕是粉底，一實一空）
+     · 淺底上的強調 → 粉色螢光筆底 ＋ 墨字（粉字站在淺底上看不見） */
   /* 🔴 不要用綠色（--ok）：MIGI 的標準色沒有綠。@migi/assets 的 --ok 只給 POS 桌況
      「空桌」那顆圓點用（token 說明：「之後若有第二處要用綠，先確認講的是不是同一件事」）。
      「收到」「已確認」「確認鈕」一律用 --brand 粉。（2026-09-23 使用者指定） */
@@ -31,7 +36,7 @@
      ⚠ 在此之前這裡是自己取的名字（--bg／--dim／寫死的淺紅），而且 --dim 是 rgba(.45)，
        在按鈕底上對比只有 4.4 —— 正式 token 的 --dk-text-3 是算過的 4.86。 */
   --dk-bg:#221F20; --dk-bar:#191718; --dk-raised:#2B2829; --dk-tile:#343132; --dk-line:#524D4E;
-  --dk-text:#FFFFFF; --dk-text-2:#C9C4C1; --dk-text-3:#A39E9B; --dk-danger:#FF9B9B;
+  --dk-text:#FFFFFF; --dk-text-2:#C9C4C1; --dk-text-3:#A39E9B;
   --dk-scrim:rgba(20,18,19,.82);
   --font:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
 }
@@ -39,7 +44,7 @@
 body{font-family:var(--font);background:#DEDBD8;color:#2E2B2C;padding:24px 20px 60px}
 h1{font-size:23px;margin-bottom:6px}
 .lead{font-size:13.5px;color:#5C5754;line-height:1.75;max-width:1040px;margin-bottom:14px}
-.lead b{color:var(--accent-deep)}
+.lead b{color:var(--ink);background:var(--brand);border-radius:4px;padding:0 4px}
 .bar2{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#2E2B2C;color:#fff;
   border-radius:10px;padding:10px 14px;max-width:1040px;margin-bottom:12px}
 .bar2 .t{font-size:13px;font-weight:700;color:rgba(255,255,255,.6)}
@@ -59,7 +64,7 @@ h1{font-size:23px;margin-bottom:6px}
 .cap .sp{flex:1}
 .cap button{border:1px solid #BEB9B5;background:#fff;border-radius:999px;padding:3px 10px;
   font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;color:#5C5754}
-.cap .wait{color:var(--accent-deep)}
+.cap .wait{color:var(--ink);background:var(--brand);border-radius:999px;padding:1px 10px}
 .shell{overflow:hidden;border-radius:10px}
 .frame{width:1024px;height:768px;transform-origin:top left;display:flex;flex-direction:column;
   overflow:hidden;background:var(--dk-bg);color:var(--dk-text)}
@@ -100,14 +105,14 @@ h1{font-size:23px;margin-bottom:6px}
 .tile b{font-weight:800;line-height:1.1;white-space:nowrap}
 .tile i{font-style:normal;font-weight:700;color:var(--dk-text-3)}
 .tile.on{background:var(--brand);border-color:var(--dk-text);color:#2E2B2C}
-.tile.on i{color:var(--accent-deep)}
+.tile.on i{color:var(--ink)}
 .tile.bao{border-color:var(--gold);border-style:dashed}
 .tile.isdealer{border-color:var(--brand)}
 .tile .zh{position:absolute;top:8px;left:8px;background:var(--brand);color:#2E2B2C;
   border-radius:999px;padding:3px 11px;font-size:14px;font-weight:800}
 .tile .mx{position:absolute;top:6px;right:8px;font-size:11px;font-weight:800;color:var(--dk-text-3);
   border:1px solid var(--dk-line);border-radius:999px;padding:1px 7px}
-.tile.on .mx{color:var(--accent-deep);border-color:rgba(151,75,95,.4)}
+.tile.on .mx{color:var(--ink);border-color:rgba(46,43,44,.3)}
 
 /* 🔴 人名磚要能**換行**：12 個全形字 × 32px ＝ 384px，比一格 320px 還寬。
    不換行就是被裁掉（overflow:hidden），而被裁掉的名字等於選不到人。
@@ -132,8 +137,8 @@ h1{font-size:23px;margin-bottom:6px}
   cursor:pointer;line-height:1.2}
 .btn.pri{background:var(--brand);color:#2E2B2C}
 .btn.gho{background:transparent;border-color:var(--dk-line);color:var(--dk-text-2)}
-/* ⚠ 邊框也用 --dk-danger：淺色的 --danger 在深底上只有 2.2，「駁回」鈕的外框會看不見 */
-.btn.no{background:transparent;border-color:var(--dk-danger);color:var(--dk-danger)}
+/* 駁回：粉框粉字（空心）。確認是粉底（實心）—— 同一個顏色，一實一空分得出主次 */
+.btn.no{background:transparent;border-color:var(--brand);color:var(--brand)}
 .btn:disabled{opacity:.3;cursor:default}
 .foot .btn{height:74px;font-size:24px;padding:0 40px}
 .foot .btn.gho{height:56px;font-size:16px;padding:0 22px}
@@ -147,14 +152,16 @@ h1{font-size:23px;margin-bottom:6px}
 .card .k{font-size:17px;font-weight:800;color:var(--dk-text-3);letter-spacing:1px}
 .card .h{font-size:34px;font-weight:800;margin-top:6px;line-height:1.3}
 .card .money{font-size:82px;font-weight:800;line-height:1.05;margin:10px 0;font-variant-numeric:tabular-nums}
-.card .money.pay{color:var(--dk-danger)}
+/* 收到 ＝ 粉，付出 ＝ 白。正負號本身就講清楚方向，顏色只負責「這是好消息」 */
+.card .money.pay{color:var(--dk-text)}
 .card .money.get{color:var(--brand)}
 .card .who{font-size:18px;color:var(--dk-text-2);line-height:1.6}
 .card .rows{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:16px 0 6px}
 .card .row{background:var(--dk-tile);border-radius:11px;padding:10px 6px}
 .card .row .n2{font-size:14px;font-weight:700;word-break:break-all;line-height:1.3}
 .card .row .v2{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:3px}
-.card .row .v2.neg{color:var(--dk-danger)}
+.card .row .v2.pos{color:var(--brand)}
+.card .row .v2.neg{color:var(--dk-text)}
 .card .row .s2{font-size:12px;color:var(--dk-text-3)}
 .card .row.done{outline:2px solid var(--brand)}
 .card .acts{display:flex;gap:12px;justify-content:center;margin-top:18px}
@@ -164,8 +171,8 @@ h1{font-size:23px;margin-bottom:6px}
 .sec{background:#fff;border-radius:14px;padding:16px 20px;margin:18px 0;max-width:1040px;
   font-size:13.5px;line-height:1.8;color:#5C5754}
 .sec h3{font-size:15.5px;color:#2E2B2C;margin-bottom:6px}
-.sec b{color:var(--accent-deep)}
-.sec .bad{color:var(--danger);font-weight:700}
+.sec b{color:var(--ink);background:var(--brand-tint);border-radius:4px;padding:0 3px}
+.sec .bad{color:var(--ink);background:var(--brand);border-radius:4px;padding:0 4px;font-weight:700}
 code{background:#F2F0EE;border-radius:5px;padding:1px 6px;font-size:.92em}
 </style>
 </head>
@@ -182,7 +189,7 @@ code{background:#F2F0EE;border-radius:5px;padding:1px 6px;font-size:.92em}
   <span class="t">放大看</span>
   <span id="zoom"></span>
   <span class="sp"></span>
-  <span class="hint">莊家是阿哲 · 連莊 2 · 積分 100/20 · 底 2000</span>
+  <span class="hint" id="hint"></span>
   <button id="reset">整桌重來</button>
 </div>
 
@@ -286,7 +293,7 @@ function rowsHTML(delta, me, dealerSeat, noteOf, doneOf) {
   return `<div class="rows">${SEATS.map((x) => `
     <div class="row${doneOf && doneOf(x) ? ' done' : ''}">
       <div class="n2">${x === dealerSeat ? '〔莊〕' : ''}${NAME[x]}${x === me ? '（我）' : ''}</div>
-      <div class="v2${delta[x] < 0 ? ' neg' : ''}">${delta[x] === 0 ? '0' : (delta[x] > 0 ? '＋' : '−') + Math.abs(delta[x]).toLocaleString()}</div>
+      <div class="v2${delta[x] > 0 ? ' pos' : delta[x] < 0 ? ' neg' : ''}">${delta[x] === 0 ? '0' : (delta[x] > 0 ? '＋' : '−') + Math.abs(delta[x]).toLocaleString()}</div>
       ${noteOf ? `<div class="s2">${noteOf(x)}</div>` : ''}
     </div>`).join('')}</div>`;
 }
@@ -520,6 +527,9 @@ function paint() {
   document.getElementById('zoom').innerHTML =
     `<button class="${zoom ? '' : 'on'}" data-zoom="0">四分割</button>` +
     SEATS.map((s) => `<button class="${zoom === s ? 'on' : ''}" data-zoom="${s}">${NAME[s]}</button>`).join('');
+  /* 原本寫死「莊家是阿哲 · 連莊 2」—— 包牌下莊之後就變成一句錯的話 */
+  document.getElementById('hint').textContent =
+    `莊家是${NAME[G.dealer]} · ${G.ren ? `連莊 ${G.ren}` : '沒有連莊'} · 積分 ${BASE}/${PER_TAI} · 底 2000`;
 }
 
 document.addEventListener('click', (e) => {
