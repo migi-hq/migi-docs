@@ -96,6 +96,15 @@ button.card:disabled{opacity:.35;cursor:default}
 .split .card{flex:1;min-height:0;gap:2px}
 .split .card b{font-size:30px}
 .split .card .sub{font-size:18px}
+/* 動作格上的「一張麻將牌」（2026-09-24 預覽，可用上面的按鈕開關比較）：
+   粉底墨字、牌的比例，跟莊家那張牌同一套語言 —— 是字不是符號，不用學。 */
+.tg{display:none;width:52px;height:64px;border-radius:8px;background:var(--brand);color:var(--ink);
+  align-items:center;justify-content:center;font-size:30px;font-weight:800;margin-bottom:4px;
+  box-shadow:0 3px 0 rgba(250,214,220,.35)}
+body.glyph .tg{display:flex}
+.split .tg{width:36px;height:44px;font-size:22px;margin-bottom:0}
+body.glyph .split .card{gap:0}
+body.glyph .split .card .sub{font-size:16px}
 /* 我自己（HERO ＋ 積分同一張卡） */
 .me{grid-area:me;flex-direction:row;justify-content:flex-start;gap:18px;padding:0 24px;background:var(--dk-raised);text-align:left}
 .me .who{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
@@ -163,6 +172,7 @@ button.card:disabled{opacity:.35;cursor:default}
   <span id="zoom"></span>
   <span class="sp"></span>
   <span class="hint" id="hint"></span>
+  <button id="glyph" class="on">動作格的牌：開</button>
   <button id="reset">整桌重來</button>
 </div>
 
@@ -337,16 +347,16 @@ function render(s) {
     body = `<div class="body${pick ? ' pick' : ''}">
       <div class="q" style="grid-area:q"><span class="n">${pick ? 2 : 1}</span>${pick ? '咔啦碰 · 誰捨的牌？' : '這一局誰要付錢？'}<span class="sp"></span>
         ${pick ? `<button class="btn gho" data-s="${s}" data-a="back1">‹ 回到上一步</button>` : ''}</div>
-      <button class="card act" style="grid-area:draw" data-s="${s}" data-a="act" data-v="draw"${busy ? ' disabled' : ''}><b>流局</b><span class="sub">${busy ? note : '沒有人付分'}</span></button>
+      <button class="card act" style="grid-area:draw" data-s="${s}" data-a="act" data-v="draw"${busy ? ' disabled' : ''}><span class="tg">流</span><b>流局</b><span class="sub">${busy ? note : '沒有人付分'}</span></button>
       ${oppHTML(s, 'top', pick ? 'kalaTo' : 'act', rel.top)}
       <div class="split act card" style="grid-area:bao;background:none;border:none;padding:0;visibility:${pick ? 'hidden' : 'visible'}">
-        <button class="card" data-s="${s}" data-a="act" data-v="bao"${busy ? ' disabled' : ''}><b>我包牌</b><span class="sub">${busy ? note : '我付給另外三家'}</span></button>
-        <button class="card" data-s="${s}" data-a="act" data-v="kala"${busy ? ' disabled' : ''}><b>咔啦碰</b><span class="sub">${busy ? note : '指定捨牌的人 · 直接給 1 台'}</span></button>
+        <button class="card" data-s="${s}" data-a="act" data-v="bao"${busy ? ' disabled' : ''}><span class="tg">包</span><b>我包牌</b><span class="sub">${busy ? note : '我付給另外三家'}</span></button>
+        <button class="card" data-s="${s}" data-a="act" data-v="kala"${busy ? ' disabled' : ''}><span class="tg">碰</span><b>咔啦碰</b><span class="sub">${busy ? note : '指定捨牌的人 · 直接給 1 台'}</span></button>
       </div>
       ${oppHTML(s, 'left', pick ? 'kalaTo' : 'act', rel.left)}
       ${pick
         ? `<div class="card zimo" style="grid-area:zimo"><b>咔啦碰</b><span class="sub">固定 1 台（${PER_TAI * KALA_TAI} 分）<br>不算底、不加莊家台</span><span class="sub" style="font-size:18px;margin-top:8px">按捨牌的那一家</span></div>`
-        : `<button class="card act zimo" style="grid-area:zimo" data-s="${s}" data-a="act" data-v="tsumo"><b>我自摸</b><span class="sub">另外三家一起付</span></button>`}
+        : `<button class="card act zimo" style="grid-area:zimo" data-s="${s}" data-a="act" data-v="tsumo"><span class="tg">自</span><b>我自摸</b><span class="sub">另外三家一起付</span></button>`}
       ${oppHTML(s, 'right', pick ? 'kalaTo' : 'act', rel.right)}
       ${meHTML(s)}</div>`;
   } else {
@@ -433,12 +443,14 @@ function paint() {
 document.addEventListener('click', (e) => {
   const z = e.target.closest('[data-zoom]'); if (z) { zoom = +z.dataset.zoom; paint(); return; }
   if (e.target.id === 'reset') { reset(); paint(); return; }
+  if (e.target.id === 'glyph') { const on = document.body.classList.toggle('glyph'); e.target.textContent = `動作格的牌：${on ? '開' : '關'}`; e.target.classList.toggle('on', on); return; }
   const b = e.target.closest('[data-a]'); if (!b || b.disabled) return;
   act(+b.dataset.s, b.dataset.a, b.dataset.v, b.dataset.x); paint(); rollScores();
 });
 /* 已使用時間每秒走，只改那一格，不重畫整頁（重畫會打斷正在按的人） */
 setInterval(() => { const t = elapsed(); document.querySelectorAll('.clock').forEach((el) => { el.innerHTML = `<em>已使用</em>${t}`; }); }, 1000);
 addEventListener('resize', paint);
+document.body.classList.add('glyph');   // 預覽先開著，方便比較
 reset(); paint();
 </script>
 </body>
