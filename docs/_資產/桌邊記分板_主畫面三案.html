@@ -95,14 +95,18 @@ h1{font-size:23px;margin-bottom:6px}
 .A .opp .nm{font-size:22px}
 .A .opp b{font-size:34px;line-height:1.1}
 /* 位置（上家／對家／下家）併進大字「對家放槍」，頂端一排只剩莊家標記，靠右 */
-.A .opp .head{position:absolute;top:10px;right:12px;display:flex;flex-direction:column;align-items:center;gap:4px}
+/* 分層標籤（2026-09-24 使用者貼圖指定）：「莊家」粉牌在上、「連莊 2」灰底粉字貼在正下方，
+   兩層同寬、中間不留縫，像一個兩截的標籤，不是兩個零件疊著。 */
+.A .opp .head{position:absolute;top:10px;right:12px;display:flex;flex-direction:column;align-items:stretch;gap:0;
+  border-radius:8px;overflow:hidden}
 /* 左上角寫座位（對家／上家／下家），右上角留給莊家標記（2026-09-23 使用者指定） */
-.A .opp .pos{position:absolute;top:10px;left:14px;font-size:26px;font-weight:800;color:var(--brand);line-height:1.2}
+/* 座位字改灰（2026-09-24 使用者指定）：它是「在哪裡」，不是狀態，不該跟莊家標籤搶粉色 */
+.A .opp .pos{position:absolute;top:10px;left:14px;font-size:26px;font-weight:800;color:var(--dk-text-2);line-height:1.2}
 /* 莊家標記：一張「莊」字麻將牌（粉底墨字、牌的比例），旁邊粉字寫連莊數 */
-.A .opp .zhtile{height:40px;padding:0 10px;border-radius:6px;background:var(--brand);color:var(--ink);
-  display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;
-  box-shadow:0 3px 0 rgba(250,214,220,.35)}
-.A .opp .ren{font-size:20px;font-weight:800;color:var(--brand)}
+.A .opp .zhtile{height:38px;padding:0 12px;background:var(--brand);color:var(--ink);
+  display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800}
+.A .opp .ren{height:32px;padding:0 12px;background:var(--dk-line);color:var(--brand);
+  display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800}
 .A .act{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
 .A .act b{font-size:34px}
 .A .act .sub{font-size:22px}
