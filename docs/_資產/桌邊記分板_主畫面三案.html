@@ -231,7 +231,8 @@ const A = () => {
     <!-- 右上那一格切成上下兩顆（2026-09-24 使用者指定）：上「我包牌」、下「咔啦碰」 -->
     <div class="split" style="grid-area:bao">
       <div class="card act"><b>我包牌</b><span class="sub">我付給另外三家</span></div>
-      <div class="card act"><b>咔啦碰</b></div>
+      <!-- 咔啦碰（2026-09-24 使用者定義）：按的人付給捨牌的那一家，指定對象後直接給 1 台，不進牌型選擇 -->
+      <div class="card act"><b>咔啦碰</b><span class="sub">指定捨牌的人 · 直接給 1 台</span></div>
     </div>
     ${opp('left')}
     <div class="card act zimo" style="grid-area:zimo"><b>我自摸</b><span class="sub">另外三家一起付</span></div>
