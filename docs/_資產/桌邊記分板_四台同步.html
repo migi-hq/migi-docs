@@ -70,27 +70,36 @@ h1{font-size:23px;margin-bottom:6px}
   overflow:hidden;background:var(--dk-bg);color:var(--dk-text)}
 
 /* ── 平板內部 ─────────────────────────── */
-.top{display:flex;align-items:center;gap:12px;padding:10px 20px;background:var(--dk-bar);
-  border-bottom:1px solid var(--dk-line);flex-shrink:0}
-.top .logo{font-size:20px;font-weight:800;letter-spacing:2px}
-.top .sub{font-size:14px;color:var(--dk-text-3)}
+/* 頂條：只放這一桌的事實 —— 玩法／積分級距／桌號與圈將把／時間（2026-09-23 使用者指定）。
+   莊家資訊與「我的幕前積分」都搬走了：莊家看人物卡，積分看右下。 */
+.top{display:flex;align-items:center;gap:22px;padding:12px 24px;background:var(--dk-bar);
+  border-bottom:1px solid var(--dk-line);flex-shrink:0;font-size:24px;font-weight:800;white-space:nowrap}
+.top .dim{color:var(--dk-text-2)}
+.top .sep{width:2px;height:26px;background:var(--dk-line)}
 .top .sp{flex:1}
-.top .lb{font-size:13px;color:var(--brand);font-weight:800;text-align:right;line-height:1.3;
-  display:inline-block;max-width:200px;word-break:break-all}
-.top .v{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
-.dcard{display:flex;align-items:center;gap:14px;background:var(--brand);color:#2E2B2C;
-  border-radius:14px;padding:10px 18px;flex-shrink:0}
-.dcard.mine{background:#2E2B2C;color:var(--brand);box-shadow:0 0 0 3px var(--brand)}
-.dcard .lb2{font-size:13px;font-weight:800;opacity:.7;line-height:1.2}
-/* 莊家名字：字級跟著名字長度縮（nameFs），最多兩行 ——
-   莊家卡是頂條最重要的東西，但它不能把「我的幕前積分」擠出畫面 */
-.dcard .nm{font-weight:800;line-height:1.1;display:block;max-width:250px;word-break:break-all}
-.dcard .ren{background:#2E2B2C;color:var(--brand);border-radius:999px;padding:5px 13px;font-size:15px;font-weight:800}
-.dcard.mine .ren{background:var(--brand);color:#2E2B2C}
-.dcard .add{border-left:2px solid rgba(46,43,44,.25);padding-left:13px;line-height:1.2}
-.dcard.mine .add{border-left-color:rgba(250,214,220,.3)}
-.dcard .add .v2{font-size:24px;font-weight:800}
-.dcard .add .s2{font-size:12px;font-weight:700;opacity:.7}
+.top .clock{font-size:28px;font-variant-numeric:tabular-nums}
+
+/* 粉色膠囊：磚上的說明（放槍／另外三家一起付）、莊家與連莊 */
+.pill{display:inline-block;border-radius:999px;padding:4px 14px;font-weight:800;line-height:1.3;white-space:nowrap}
+.pill.pk{background:var(--brand);color:var(--ink)}
+/* 段位：粉框粉字（空心），跟說明膠囊（實心）分開 —— 一個是「他是誰」，一個是「這格做什麼」 */
+.pill.rk{border:2px solid var(--brand);color:var(--brand);padding:2px 12px}
+.ttl{color:var(--dk-text-2);font-weight:700}
+.av{border-radius:50%;background:var(--dk-bg);object-fit:cover;flex-shrink:0;border:3px solid var(--dk-line)}
+.av.dealer{border-color:var(--brand)}
+
+/* 底列：左 2/3 是我自己（等同 HERO 卡），右 1/3 是我的幕前積分 */
+.me{display:grid;grid-template-columns:2fr 1fr;gap:12px;flex-shrink:0;height:150px}
+.hero,.score{background:var(--dk-raised);border:2px solid var(--dk-line);border-radius:14px;min-width:0}
+.hero{display:flex;align-items:center;gap:18px;padding:0 20px}
+.hero .who2{min-width:0;display:flex;flex-direction:column;gap:6px}
+.hero .ttl{font-size:18px}
+.hero .nm2{font-size:30px;font-weight:800;line-height:1.15;word-break:break-all}
+.hero .pills{display:flex;gap:8px;flex-wrap:wrap}
+.hero .pill{font-size:17px}
+.score{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;padding:0 24px}
+.score small{font-size:16px;font-weight:800;color:var(--dk-text-3)}
+.score b{font-size:72px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
 
 .body{flex:1;min-height:0;display:flex;flex-direction:column;padding:14px 20px;gap:12px}
 .q{display:flex;align-items:center;gap:12px;flex-shrink:0}
@@ -106,11 +115,18 @@ h1{font-size:23px;margin-bottom:6px}
 .tile i{font-style:normal;font-weight:700;color:var(--dk-text-3)}
 .tile.on{background:var(--brand);border-color:var(--dk-text);color:#2E2B2C}
 .tile.on i{color:var(--ink)}
-/* 包牌格：粉色虛線框。跟莊家格同一個粉，靠「虛線」分開 —— 畫面上只有粉色系 */
-.tile.bao{border-color:var(--brand);border-style:dashed}
+/* 包牌格跟其他格同一個樣子（2026-09-23 使用者指定，原本是虛線框） */
 .tile.isdealer{border-color:var(--brand)}
-.tile .zh{position:absolute;top:8px;left:8px;background:var(--brand);color:#2E2B2C;
-  border-radius:999px;padding:3px 11px;font-size:14px;font-weight:800}
+/* 莊家：只標在人物卡（與我自己的 HERO 卡）上 ——「莊家 · 連莊 N」，墨底粉字粉框 */
+.pill.dl{background:var(--ink);color:var(--brand);border:2px solid var(--brand);padding:2px 12px}
+.tile.nm .pill{font-size:17px}
+/* 第一步的磚：說明文字放大、改成粉色膠囊 */
+.g6 .tile .pill.pk{font-size:19px;margin-top:4px}
+/* 人物磚：頭像 → 稱號＋段位 → 名字 → 說明 */
+.tile.nm{gap:5px}
+.tile.nm .ttl{font-size:15px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile.nm .row2{display:flex;gap:8px;align-items:center;justify-content:center;max-width:100%}
+.tile.nm .pill.rk{font-size:14px}
 .tile .mx{position:absolute;top:6px;right:8px;font-size:11px;font-weight:800;color:var(--dk-text-3);
   border:1px solid var(--dk-line);border-radius:999px;padding:1px 7px}
 .tile.on .mx{color:var(--ink);border-color:rgba(46,43,44,.3)}
@@ -206,6 +222,18 @@ code{background:#F2F0EE;border-radius:5px;padding:1px 6px;font-size:.92em}
 </div>
 
 <div class="sec">
+  <h3>0. 版面（2026-09-23 使用者指定）</h3>
+  <b>頂條只放這一桌的事實</b>：玩法／積分級距／桌號與圈將把／時間，字放大到 24px。
+  原本頂條的莊家卡與「我的幕前積分・第 N 位」都拿掉了。<br />
+  <b>莊家只標在人物卡上</b>：「莊家 · 連莊 N」墨底粉字膠囊，放在「放槍」旁邊（浮貼在角落會壓到頭像，量過重疊 28px）。
+  我自己是莊家時，標在左下的 HERO 卡上。<br />
+  <b>人物磚</b>：頭像 → 稱號＋段位 → 名字 → 說明膠囊。第一步六格的說明一律是粉色膠囊。
+  包牌格跟其他格同一個樣子（不再是虛線框）。<br />
+  <b>底列</b>：左 2/3 是我自己（頭像、稱號、名字、段位 ＝ HERO 卡），右 1/3 是幕前積分。<br />
+  <b>流局也有確認框</b>（取消／確認）—— 它不用別人確認、按下去就換下一把，按錯沒人擋得住。
+</div>
+
+<div class="sec">
   <h3>2. 包牌只有兩個時刻，因為付錢的人就是按的人</h3>
   <b>包牌 ＝ 按的那個人付給另外三家</b>（2026-09-23 使用者確認）。沒有胡牌的人，所以<b>不選牌型</b>。<br />
   <b>① 包牌的人在自己的平板按「我包牌」</b> → 跳出「確定要給這三家 ○○○ 嗎」，只列自己要付的總數。<br />
@@ -240,6 +268,18 @@ const NAME = {
   3: '阿哲永遠都在連莊的大魔王',
   4: '大雄只想打一將就回家睡覺',
 };
+/* 頭像用 @migi/assets 的段位熊（公開 repo，直接讀 GitHub 上 v1.14.0 那一份）。
+   ⚠ 正式版讀 members.avatar_*（照片或圖鑑熊），這裡只是讓版面有真的圖可以量。 */
+const BEAR = (k) => `https://raw.githubusercontent.com/migi-hq/migi-assets/v1.14.0/bears/bear-rank-${k}.webp`;
+const PROF = {
+  1: { title: '新手村制霸', rank: '黃金熊 II',  av: BEAR('gold') },
+  2: { title: '清一色收藏家', rank: '白銀熊 I', av: BEAR('silver') },
+  3: { title: '連莊之王',   rank: '鑽石熊 I',  av: BEAR('diamond') },
+  4: { title: '新手上路',   rank: '青銅熊 III', av: BEAR('bronze') },
+};
+/* 桌的事實（頂條）：玩法、積分級距、桌號與圈將把 */
+const TABLE = { game: '台灣麻將', stake: '100/20', where: 'A3 · 東風圈 第 1 將 第 3 把' };
+
 /* 名字越長字越小，但有下限 —— 平板要隔著牌桌看得到。
    ⚠ 這是版面驅動的尺寸（跟著名字長度變），不是字階 token。 */
 const nameFs = (name, base, min) => Math.max(min, Math.min(base, Math.round(base * 5 / Math.max(5, name.length))));
@@ -300,23 +340,38 @@ const moneyHTML = (n, faded) =>
   `<div class="money ${n > 0 ? 'get' : n < 0 ? 'pay' : ''}"${faded || n === 0 ? ' style="color:var(--dk-text-3)"' : ''}>${signed(n)}</div>`;
 
 /* ── 畫一台平板 ───────────────────────────── */
-function topHTML(s) {
-  const mine = s === G.dealer;
+function topHTML() {
+  const now = new Date();
+  const hm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   return `<div class="top">
-    <span class="logo">MIGI</span><span class="sub">A3 · 東風圈 第 1 將 第 3 把</span>
+    <span>${TABLE.game}</span><span class="sep"></span>
+    <span>積分 ${TABLE.stake}</span><span class="sep"></span>
+    <span class="dim">${TABLE.where}</span>
     <span class="sp"></span>
-    <span class="dcard${mine ? ' mine' : ''}">
-      ${mine ? `<span><span class="lb2">這一把</span><br><span class="nm" style="font-size:34px">我是莊家</span></span>`
-             : `<span><span class="lb2">本把莊家</span><br><span class="nm" style="font-size:${nameFs(NAME[G.dealer], 34, 20)}px">${NAME[G.dealer]}</span></span>`}
-      <span class="ren">連莊 ${G.ren}</span>
-      <span class="add"><span class="v2">＋${extra()} 台</span><br><span class="s2">1 ＋ 2×${G.ren}</span></span>
-    </span>
-    <span style="margin-left:10px"><span class="lb">${NAME[s]} 的幕前積分<br>第 ${rankOf(s)} 位</span></span>
-    <span class="v">${G.total[s].toLocaleString()}</span>
+    <span class="clock">${hm}</span>
   </div>`;
 }
 
-function tileZh(s) { return s === G.dealer ? '<span class="zh">莊</span>' : ''; }
+/* 莊家只標在人物卡上：「莊家 · 連莊 N」（2026-09-23 使用者指定，頂條那張莊家卡已拿掉） */
+/* 「放槍」膠囊的旁邊（一角浮貼的話會壓到頭像 —— 量過，重疊 28px）。
+   反白（墨底粉字）跟「放槍」（粉底墨字）分開：一個是身分，一個是這格做什麼。 */
+const dealerPill = () => `<span class="pill dl">莊家 · 連莊 ${G.ren}</span>`;
+
+/* 底列：左邊是我自己（等同 HERO 卡），右邊 1/3 是我的幕前積分 */
+function meHTML(s) {
+  const p = PROF[s], d = s === G.dealer;
+  return `<div class="me">
+    <div class="hero">
+      <img class="av${d ? ' dealer' : ''}" src="${p.av}" alt="" style="width:112px;height:112px">
+      <div class="who2">
+        <span class="ttl">「${p.title}」</span>
+        <span class="nm2" style="font-size:${nameFs(NAME[s], 30, 24)}px">${NAME[s]}</span>
+        <span class="pills"><span class="pill rk">${p.rank}</span>${d ? dealerPill() : ''}</span>
+      </div>
+    </div>
+    <div class="score"><small>幕前積分</small><b>${G.total[s].toLocaleString()}</b></div>
+  </div>`;
+}
 
 function render(s) {
   const l = L[s], p = G.pending, r = G.result;
@@ -360,9 +415,21 @@ function render(s) {
   }
 
   /* ① 送出前：那一台自己的確認框 */
+  else if (l.confirming && l.act === 'draw') {
+    /* 流局也要一張確認（2026-09-23 使用者指定）：它不用別人確認、按下去四台立刻換下一把，
+       所以按錯沒有人擋得住 —— 這是唯一一次反悔的機會。 */
+    inner = `<div class="sheet"><div class="card">
+      <div class="k">流局</div>
+      <div class="h">確定這一把流局？</div>
+      <div class="who" style="margin-top:10px">沒有人付分　·　莊家連莊（連莊 ${G.ren} → ${G.ren + 1}）</div>
+      <div class="acts">
+        <button class="btn gho" data-s="${s}" data-a="back">取消</button>
+        <button class="btn pri" data-s="${s}" data-a="send">確認</button>
+      </div>
+    </div></div>`;
+  }
   else if (l.confirming) {
-    /* 🔴 **只有包牌**有這一張：「確定要給這三家 ○○○」（使用者指定的流程）。
-       胡牌那一把按了就送，不經過這裡。
+    /* 包牌的確認：「確定要給這三家 ○○○」（使用者指定的流程）。胡牌那一把按了就送，不經過這裡。
        包牌要這一張，是因為**它沒有第二道確認** —— 按下去就從自己身上扣錢給三家，
        而收錢的人不需要同意收錢。這是唯一一次核對的機會。 */
     const c = compute(s, l);
@@ -392,14 +459,18 @@ function render(s) {
     inner = `<div class="body">
       <div class="q"><span class="n">1</span><h3>這一把誰要付錢？</h3></div>
       <div class="g6">
-        <button class="tile" data-s="${s}" data-a="act" data-v="tsumo"><b>我自摸</b><i>另外三家一起付</i></button>
+        <button class="tile" data-s="${s}" data-a="act" data-v="tsumo"><b>我自摸</b><span class="pill pk">另外三家一起付</span></button>
         ${others.map((x) => `<button class="tile nm${x === G.dealer ? ' isdealer' : ''}" data-s="${s}" data-a="act" data-v="ron" data-x="${x}">
-          ${tileZh(x)}<b style="font-size:${nameFs(NAME[x], 32, 24)}px">${NAME[x]}</b><i>放槍</i></button>`).join('')}
-        <button class="tile" data-s="${s}" data-a="act" data-v="draw"${busy ? ' disabled' : ''}><b>流局</b><i>${busy ? busyNote : '不用別人確認'}</i></button>
+          <img class="av${x === G.dealer ? ' dealer' : ''}" src="${PROF[x].av}" alt="" style="width:84px;height:84px">
+          <span class="row2"><span class="ttl">「${PROF[x].title}」</span><span class="pill rk">${PROF[x].rank}</span></span>
+          <b style="font-size:${nameFs(NAME[x], 26, 20)}px">${NAME[x]}</b>
+          <span class="row2"><span class="pill pk">放槍</span>${x === G.dealer ? dealerPill() : ''}</span></button>`).join('')}
+        <button class="tile" data-s="${s}" data-a="act" data-v="draw"${busy ? ' disabled' : ''}><b>流局</b><span class="pill pk">${busy ? busyNote : '沒有人付分'}</span></button>
         <!-- 🔴 第一人稱：「我包牌」＝ 我付給另外三家。跟「我自摸」同一種說法，
              所以不需要再問「誰包」—— 包牌的人就是拿著這台平板的人。 -->
-        <button class="tile bao" data-s="${s}" data-a="act" data-v="bao"${busy ? ' disabled' : ''}><b>我包牌</b><i>${busy ? busyNote : '我付給另外三家'}</i></button>
+        <button class="tile" data-s="${s}" data-a="act" data-v="bao"${busy ? ' disabled' : ''}><b>我包牌</b><span class="pill pk">${busy ? busyNote : '我付給另外三家'}</span></button>
       </div>
+      ${meHTML(s)}
     </div>` + inner;
   } else {
     const c = compute(s, l);
@@ -421,10 +492,11 @@ function render(s) {
              真正核對金額的是付錢那一方的確認；送錯了，付錢的人按「取消」就不扣。 -->
         <button class="btn pri" data-s="${s}" data-a="send"${busy ? ' disabled' : ''}>送出</button>
       </div>
+      ${meHTML(s)}
     </div>` + inner;
   }
 
-  return topHTML(s) + inner;
+  return topHTML() + inner;
 }
 
 /* ── 動作 ─────────────────────────────── */
@@ -433,15 +505,9 @@ function act(s, a, v, x) {
   /* 上一把還有人沒回應：擋住會產生下一把的動作（畫面上那幾顆也已經是 disabled） */
   if (openCount(G.pending) && (a === 'send' || (a === 'act' && (v === 'draw' || v === 'bao')))) return;
   if (a === 'act') {
-    if (v === 'draw') {                                  // 流局：不用確認，直接生效
-      G.result = { headline: '流局', desc: '莊家連莊，沒有人付分', by: s,
-                   delta: { 1:0, 2:0, 3:0, 4:0 }, payers: [], dealerAt: G.dealer, downDealer: false };
-      G.seen = {}; L = { 1:blank(), 2:blank(), 3:blank(), 4:blank() };
-      G.ren += 1; return;
-    }
     l.act = v; l.who = x ? +x : null; l.sel = {};
-    /* 包牌沒有牌型（沒有人胡），直接跳確認框；其餘進選牌型 */
-    if (v === 'bao') { l.confirming = true; return; }
+    /* 流局與包牌都沒有牌型，直接跳確認框；其餘進選牌型 */
+    if (v === 'draw' || v === 'bao') { l.confirming = true; return; }
     l.step = 2;
   }
   else if (a === 'pat') {
@@ -454,6 +520,14 @@ function act(s, a, v, x) {
   else if (a === 'ask') l.confirming = true;
   else if (a === 'back') { l.confirming = false; if (l.act === 'bao') l.act = null; }
   else if (a === 'send') {
+    if (l.act === 'draw') {                               // 流局：確認框按下去就生效
+      G.result = { headline: '流局', desc: '莊家連莊，沒有人付分', by: s,
+                   delta: { 1:0, 2:0, 3:0, 4:0 }, payers: [], dealerAt: G.dealer, downDealer: false };
+      G.ren += 1;
+      G.seen = { [s]: true };                            // 按的人剛在確認框看過了，直接回主頁
+      L = { 1:blank(), 2:blank(), 3:blank(), 4:blank() };
+      return;
+    }
     const c = compute(s, l);
     if (l.act === 'bao') {
       /* 🔴 包牌：按下去就生效，**不進等待確認** —— 付錢的人就是按的人，
@@ -465,7 +539,7 @@ function act(s, a, v, x) {
         payers: [s], dealerAt: G.dealer, downDealer: true,
       };
       G.ren = 0; G.dealer = (G.dealer % 4) + 1;          // 包牌一律下莊
-      G.seen = {}; L = { 1:blank(), 2:blank(), 3:blank(), 4:blank() };
+      G.seen = { [s]: true }; L ={ 1:blank(), 2:blank(), 3:blank(), 4:blank() };
       return;
     }
     G.pending = {
