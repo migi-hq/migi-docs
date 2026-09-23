@@ -126,7 +126,7 @@ h1{font-size:23px;margin-bottom:6px}
   其餘說明（放槍、另外三家一起付…）改成淺灰字，不是膠囊。<br />
   <b>③ 粉色只給兩件事</b>：莊家、最常按的「我自摸」。其他一律深灰卡配灰框。<br />
   <b>④ 頂條只留值不留欄位名</b>：「台麻 · 無花 · 3 將　100/20　A3 東風圈 第 1 將 第 3 把　22:53」。
-  我自己的稱號（「新手村制霸」，照 App 加直角引號）與段位膠囊排在名字下面同一行。
+  我自己照 App 個人檔案的順序：稱號「新手村制霸」在名字上面，段位膠囊在名字下面。
 </div>
 
 <div id="cases"></div>
@@ -143,7 +143,9 @@ const ME = 1, DEALER = 3, REN = 2, SCORE = '2,320';
 const SEAT = { right: 2, top: 3, left: 4 };            // 從我這台看出去：下家右、對家上、上家左
 const zh = (x, fs) => x === DEALER ? `<span class="zh" style="font-size:${fs}px">莊 · 連莊 ${REN}</span>` : '';
 const d = (x) => x === DEALER ? ' d' : '';
-const meLine = (fs) => `<span class="meline"><span class="sub">「${P[ME].title}」</span><span class="rkp" style="font-size:${fs}px">段位: ${P[ME].rank}</span></span>`;
+/* 順序照 App 的個人檔案：稱號 → 名字 → 段位（2026-09-23 使用者：稱號放名字上面） */
+const meTitle = (fs) => `<span class="sub" style="font-size:${fs}px">「${P[ME].title}」</span>`;
+const meRank = (fs) => `<span class="rkp" style="font-size:${fs}px">段位: ${P[ME].rank}</span>`;
 
 const topBar = () => `<div class="top">
   <span class="logo">MIGI</span>
@@ -167,7 +169,7 @@ const A = () => {
     <div class="card act zimo pri" style="grid-area:zimo"><b>我自摸</b><span class="sub">另外三家一起付</span></div>
     ${opp('right')}
     <div class="card me${d(ME)}"><img class="av" src="${P[ME].av}" style="width:100px;height:100px">
-      <div class="who"><span class="nm">${P[ME].name}</span>${meLine(17)}${zh(ME, 16)}</div>
+      <div class="who">${meTitle(18)}<span class="nm">${P[ME].name}</span><span class="meline">${meRank(17)}${zh(ME, 16)}</span></div>
       <span class="score">${SCORE}</span></div>
   </div></div>`;
 };
@@ -181,7 +183,7 @@ const B = () => {
   const act = (t, s, cls = '') => `<div class="card t ${cls}"><b>${t}</b><span class="sub">${s}</span></div>`;
   return `<div class="frame B">${topBar()}<div class="body">
     <div class="card hero${d(ME)}"><img class="av" src="${P[ME].av}" style="width:130px;height:130px">
-      <span class="nm">${P[ME].name}</span>${meLine(16).replace('class="meline"', 'class="meline" style="justify-content:center"')}${zh(ME, 16)}
+      ${meTitle(18)}<span class="nm">${P[ME].name}</span><span class="meline" style="justify-content:center">${meRank(16)}${zh(ME, 16)}</span>
       <span class="score">${SCORE}</span></div>
     <div class="right">
       <div class="q">這一把誰要付錢？</div>
@@ -210,7 +212,7 @@ const C = () => {
       <div class="card"><b>我包牌</b><span class="sub">我付給另外三家</span></div>
     </div>
     <div class="card me${d(ME)}"><img class="av" src="${P[ME].av}" style="width:80px;height:80px">
-      <div class="who"><span class="nm">${P[ME].name}</span>${meLine(16)}</div>
+      <div class="who">${meTitle(17)}<span class="nm">${P[ME].name}</span><span class="meline">${meRank(16)}</span></div>
       ${zh(ME, 16)}<span class="score">${SCORE}</span></div>
   </div></div>`;
 };
