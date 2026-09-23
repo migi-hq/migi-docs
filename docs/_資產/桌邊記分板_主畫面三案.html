@@ -186,6 +186,7 @@ const A = () => {
       <div class="head">${x === DEALER ? `<span class="zhtile">莊</span><span class="ren">連莊 ${REN}</span>` : ''}</div>
       <img class="av" src="${P[x].av}" style="width:72px;height:72px">
       <span class="nm">${P[x].name}</span>
+      <span class="rkp" style="font-size:16px">段位: ${P[x].rank}</span>
       <b>${WHERE[pos]}放槍</b></div>`; };
   return `<div class="frame A">${topBar()}<div class="body">
     <div class="card act" style="grid-area:draw"><b>流局</b><span class="sub">沒有人付分</span></div>
