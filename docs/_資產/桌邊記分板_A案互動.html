@@ -10,7 +10,7 @@
   再加上 2026-09-24 拍板的「咔啦碰」（§3.6）與包牌的更正（§3.5：收的三家各自確認、莊家包牌才下莊）。
   版面照「桌邊記分板_主畫面三案.html」的 A 案。
 
-  🔴 計分是假的（真的一律由後端算）。規則：連莊 1＋2N、包牌 1 底 3 台且下莊、咔啦碰固定 1 台不算底。
+  🔴 計分是假的（真的一律由後端算）。規則：連莊 1＋2N、包牌 1 底 3 台（莊家包牌才下莊）、咔啦碰固定 1 台不算底。
   ⚠ 四台的狀態是同一份（＝後端那一份），在任何一台上操作，另外三台立刻跟著變。
 -->
 <style>
@@ -98,9 +98,9 @@ button.card:disabled{opacity:.35;cursor:default}
 .split .card .sub{font-size:18px}
 /* 我自己（HERO ＋ 積分同一張卡） */
 .me{grid-area:me;flex-direction:row;justify-content:flex-start;gap:18px;padding:0 24px;background:var(--dk-raised);text-align:left}
-.me .who{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.me .who{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px}   /* 稱號往上、段位往下（2026-09-24 使用者指定） */
 .me .ttl{font-size:18px;font-weight:700;color:var(--dk-text-2)}
-.me .nm{font-size:28px;margin-top:-4px}
+.me .nm{font-size:28px;margin-top:-6px}
 .me .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .me .rkp{font-size:16px}
 .me .zh{flex-direction:row}
