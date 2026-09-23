@@ -36,22 +36,23 @@ h1{font-size:23px;margin-bottom:6px}
 .top{display:flex;align-items:center;gap:18px;padding:14px 24px;background:var(--dk-bar);
   flex-shrink:0;font-size:24px;font-weight:800;white-space:nowrap}
 .top .logo{font-size:24px;letter-spacing:3px;color:var(--brand)}
-.top .dim{color:var(--dk-text-3)}
+.top .dim{color:var(--dk-text)}
 .top .sp{flex:1}
-.top .clock{font-variant-numeric:tabular-nums;color:var(--dk-text-2)}
+.top .clock{font-variant-numeric:tabular-nums}
 
 .card{background:var(--dk-tile);border-radius:16px;min-width:0;min-height:0;border:3px solid transparent}
 .card.d{border-color:var(--brand)}
 .av{border-radius:50%;object-fit:cover;flex-shrink:0;background:var(--dk-bg)}
 .nm{font-weight:800;line-height:1.2;word-break:break-all}
-.sub{color:var(--dk-text-3);font-weight:700}
+/* 說明小字：用 --dk-text-2（對深磚 7.45）不用 --dk-text-3（4.86）—— 使用者：「顏色都很淺、字很小」 */
+.sub{color:var(--dk-text-2);font-weight:800}
 /* 🔴 全畫面**唯一**的膠囊：莊家。它是這一把最重要的身分，所以只有它有外框 */
 .zh{display:inline-block;background:var(--brand);color:var(--ink);border-radius:999px;
   padding:3px 14px;font-weight:800;white-space:nowrap}
 .q{font-size:24px;font-weight:800;color:var(--dk-text-2);flex-shrink:0}
 .score{font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
 .pri{background:var(--brand);color:var(--ink)}
-.pri .sub{color:rgba(46,43,44,.65)}
+.pri .sub{color:var(--ink)}
 
 /* ── A 座位圖 ───────────────────────── */
 .A .body{flex:1;min-height:0;padding:16px 18px;display:grid;gap:14px;
@@ -59,15 +60,15 @@ h1{font-size:23px;margin-bottom:6px}
   grid-template-areas:"draw top bao" "left zimo right" "me me me"}
 .A .opp{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:10px;text-align:center}
 .A .opp .nm{font-size:22px}
-.A .opp .sub{font-size:17px}
+.A .opp .sub{font-size:22px}
 .A .act{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
 .A .act b{font-size:34px}
-.A .act .sub{font-size:17px}
+.A .act .sub{font-size:22px}
 .A .zimo b{font-size:48px}
 .A .me{grid-area:me;display:flex;align-items:center;gap:18px;padding:0 24px;background:var(--dk-raised)}
 .A .me .who{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
 .A .me .nm{font-size:28px}
-.A .me .sub{font-size:17px}
+.A .me .sub{font-size:20px}
 .A .me .score{font-size:76px}
 
 /* ── B 左我、右六格 ──────────────────── */
@@ -75,28 +76,28 @@ h1{font-size:23px;margin-bottom:6px}
 .B .hero{background:var(--dk-raised);display:flex;flex-direction:column;align-items:center;
   justify-content:center;gap:10px;padding:20px;text-align:center}
 .B .hero .nm{font-size:25px}
-.B .hero .sub{font-size:16px}
+.B .hero .sub{font-size:19px}
 .B .hero .score{font-size:80px;margin-top:18px}
 .B .right{display:flex;flex-direction:column;gap:12px;min-height:0}
 .B .g6{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:1fr 1fr;gap:12px}
 .B .t{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px;text-align:center}
-.B .t .nm{font-size:20px}
-.B .t .sub{font-size:16px}
+.B .t .nm{font-size:22px}
+.B .t .sub{font-size:21px}
 .B .t b{font-size:34px}
 
 /* ── C 名單式 ───────────────────────── */
 .C .body{flex:1;min-height:0;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
 .C .opp{display:flex;align-items:center;gap:20px;padding:0 22px;height:108px;flex-shrink:0}
 .C .opp .nm{font-size:28px;flex:1;min-width:0}
-.C .opp .sub{font-size:18px}
+.C .opp .sub{font-size:22px}
 .C .acts{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:12px;height:108px;flex-shrink:0}
 .C .acts .card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
 .C .acts b{font-size:32px}
-.C .acts .sub{font-size:16px}
+.C .acts .sub{font-size:19px}
 .C .me{display:flex;align-items:center;gap:18px;padding:0 22px;background:var(--dk-raised);flex:1;min-height:0}
 .C .me .who{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
 .C .me .nm{font-size:25px}
-.C .me .sub{font-size:16px}
+.C .me .sub{font-size:19px}
 .C .me .score{font-size:64px}
 
 .note{font-size:13px;color:#5C5754;line-height:1.7;margin-top:10px}
