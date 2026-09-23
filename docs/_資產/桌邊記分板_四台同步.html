@@ -26,7 +26,7 @@
   /* 🔴 **不用桃紅（--accent／--accent-deep），也不用紅（--danger／--dk-danger）**
      —— 強調色一律粉色系（2026-09-23 使用者指定）。
      · 收到的積分 → --brand 粉；付出的積分 → --dk-text 白（粉色留給好消息）
-     · 駁回鈕 → 粉框粉字（確認鈕是粉底，一實一空）
+     · 卡片只有「取消」（深底灰框）與「確認」（粉底、兩倍寬）兩種按鈕
      · 淺底上的強調 → 粉色螢光筆底 ＋ 墨字（粉字站在淺底上看不見） */
   /* 🔴 不要用綠色（--ok）：MIGI 的標準色沒有綠。@migi/assets 的 --ok 只給 POS 桌況
      「空桌」那顆圓點用（token 說明：「之後若有第二處要用綠，先確認講的是不是同一件事」）。
@@ -138,8 +138,6 @@ h1{font-size:23px;margin-bottom:6px}
   cursor:pointer;line-height:1.2}
 .btn.pri{background:var(--brand);color:#2E2B2C}
 .btn.gho{background:transparent;border-color:var(--dk-line);color:var(--dk-text-2)}
-/* 駁回：粉框粉字（空心）。確認是粉底（實心）—— 同一個顏色，一實一空分得出主次 */
-.btn.no{background:transparent;border-color:var(--brand);color:var(--brand)}
 .btn:disabled{opacity:.3;cursor:default}
 .foot .btn{height:74px;font-size:24px;padding:0 40px}
 .foot .btn.gho{height:56px;font-size:16px;padding:0 22px}
@@ -157,8 +155,18 @@ h1{font-size:23px;margin-bottom:6px}
 .card .money.pay{color:var(--dk-text)}
 .card .money.get{color:var(--brand)}
 .card .who{font-size:18px;color:var(--dk-text-2);line-height:1.6}
-.card .acts{display:flex;gap:12px;justify-content:center;margin-top:18px}
-.card .acts .btn{height:72px;font-size:23px;padding:0 38px}
+/* 🔴 卡片上只有兩種按鈕：「取消」與「確認」（2026-09-23 使用者指定）。
+   確認佔兩份寬、取消佔一份 —— 主要動作要大到不用瞄準。只有一顆時它吃滿整排。 */
+.card .acts{display:flex;gap:12px;margin:18px auto 0;max-width:600px}
+.card .acts .btn{height:76px;font-size:24px;padding:0 20px;flex:1}
+.card .acts .btn.pri{flex:2}
+
+/* 送出之後、還在等別人確認：不用動作的那幾台**回到主頁**，上面一條說明，
+   主頁暫時按不了 —— 同一時間只能有一把在等確認。 */
+.waitbar{background:var(--brand);color:var(--ink);border-radius:12px;padding:12px 18px;
+  font-size:18px;font-weight:800;flex-shrink:0;line-height:1.4}
+.waitbar small{display:block;font-size:14px;font-weight:700;opacity:.75}
+.locked .g6,.locked .grid,.locked .foot,.locked .q .btn{opacity:.35;pointer-events:none}
 .dots{font-size:17px;color:var(--dk-text-3);margin-top:10px}
 
 .sec{background:#fff;border-radius:14px;padding:16px 20px;margin:18px 0;max-width:1040px;
@@ -191,11 +199,13 @@ code{background:#F2F0EE;border-radius:5px;padding:1px 6px;font-size:.92em}
 <div class="sec">
   <h3>1. 胡牌（自摸／放槍）有兩個時刻</h3>
   <b>① 按「送出」就送出</b>，不再跳「再確認一次」（2026-09-23 使用者指定）。
-  送出之後，<b>要付錢的那幾台跳出確認</b>；不用付的那幾台不跳確認框，只看到「等 ○○ 確認」。<br />
+  送出之後，<b>要付錢的那幾台跳出確認</b>；不用付的那幾台留在主頁，上方一條「等 ○○ 確認這一把」。<br />
   🎯 拿掉自己那一道是對的：<b>真正核對金額的是付錢的人</b>，送出的人自己再看一次只是多一次點擊。
-  送錯了也還有退路 —— 等待畫面上有「收回重填」。<br />
-  <b>② 全部確認完，四台同時更新。</b>各自顯示「收到 ○○○」「付給 ○○ ○○○」
-  或「這一把沒有你的事」。
+  送錯了也還有退路 —— 等待畫面上有「取消」。<br />
+  <b>② 付錢的人按「確認」就回到主頁</b>（2026-09-23 使用者指定），不留在等待卡上。
+  主頁在這一把確認完之前按不了 —— 同一時間只能有一把在等。<br />
+  <b>③ 全部確認完，四台同時更新。</b>各自顯示「收到 ○○○」「付給 ○○」或「這一把沒有你的事」，按「確認」回主頁。<br />
+  📌 <b>卡片上只有兩種按鈕：取消與確認</b>，確認是兩倍寬的粉底。付錢的人按「取消」＝ 不同意這一把，整把重填。
 </div>
 
 <div class="sec">
@@ -327,28 +337,29 @@ function render(s) {
           : r.kind === 'bao' ? '付給另外三家'
           : `付給 ${NAME[r.by]}`}</div>
       <div class="who" style="margin-top:8px">你的幕前積分 <b>${G.total[s].toLocaleString()}</b>${r.downDealer ? '　·　這把之後下莊' : ''}</div>
-      <div class="acts"><button class="btn pri" data-s="${s}" data-a="seen">知道了</button></div>
+      <div class="acts"><button class="btn pri" data-s="${s}" data-a="seen">確認</button></div>
     </div></div>`;
   }
 
-  /* ② 送出之後：要付的人跳確認，其餘只看等待 */
-  else if (p) {
-    const mustConfirm = p.need.includes(s) && !p.confirmed.includes(s);
+  /* ② 送出之後：只有「有動作要做」的兩種人看到卡片
+     · 要付錢、還沒確認的 → 取消（＝駁回）／確認
+     · 送出的人            → 取消（＝收回重填）
+     其餘（已經確認的、不用付的）**回到主頁**，上面一條等待說明。 */
+  else if (p && ((p.need.includes(s) && !p.confirmed.includes(s)) || p.by === s)) {
+    const mustConfirm = p.by !== s;
     const waitNames = p.need.filter((x) => !p.confirmed.includes(x)).map((x) => NAME[x]).join('、');
     inner = `<div class="sheet"><div class="card">
       <div class="k">${NAME[p.by]} ${p.act === 'tsumo' ? '自摸' : '胡 ' + NAME[p.who]}</div>
       <div class="h">${p.descTai}</div>
-      ${moneyHTML(p.delta[s], !mustConfirm && p.by !== s)}
+      ${moneyHTML(p.delta[s])}
       ${mustConfirm
         ? `<div class="h" style="font-size:28px;margin-top:10px">這是你要付的積分，對嗎？</div>
            <div class="acts">
-             <button class="btn no" data-s="${s}" data-a="reject">不對，駁回</button>
+             <button class="btn gho" data-s="${s}" data-a="reject">取消</button>
              <button class="btn pri" data-s="${s}" data-a="confirm">確認</button>
            </div>`
-        : `<div class="dots">${p.by === s ? '等 ' + waitNames + ' 在自己的平板上確認'
-            : p.need.includes(s) ? '你已經確認了，等 ' + waitNames
-            : '這一把不用你付 —— 等 ' + waitNames + ' 確認'}</div>
-           ${p.by === s ? `<div class="acts"><button class="btn gho" data-s="${s}" data-a="cancel">收回重填</button></div>` : ''}`}
+        : `<div class="dots">等 ${waitNames} 在自己的平板上確認</div>
+           <div class="acts"><button class="btn gho" data-s="${s}" data-a="cancel">取消</button></div>`}
     </div></div>`;
   }
 
@@ -368,15 +379,20 @@ function render(s) {
           : `莊家那一份另加 ${extra()} 台`}（1 ＋ 2×${G.ren}）　·　<b>這把之後下莊</b></div>
       <div class="acts">
         <button class="btn gho" data-s="${s}" data-a="back">取消</button>
-        <button class="btn no" data-s="${s}" data-a="send">給出去</button>
+        <button class="btn pri" data-s="${s}" data-a="send">確認</button>
       </div>
     </div></div>`;
   }
 
+  /* 主頁上方的等待說明（這一台沒有動作要做，但別台還在確認） */
+  const lock = !!p;
+  const bar = !p ? '' : `<div class="waitbar">等 ${p.need.filter((x) => !p.confirmed.includes(x)).map((x) => NAME[x]).join('、')} 確認這一把
+    <small>${p.need.includes(s) ? `你已經確認了（${signed(p.delta[s])}）` : '這一把不用你付'}　·　確認完四台會一起更新</small></div>`;
+
   /* 主流程：選誰付錢 → 選誰包 → 選牌型 */
   if (l.step === 1) {
     const others = SEATS.filter((x) => x !== s);
-    inner = `<div class="body">
+    inner = `<div class="body${lock ? ' locked' : ''}">${bar}
       <div class="q"><span class="n">1</span><h3>這一把誰要付錢？</h3></div>
       <div class="g6">
         <button class="tile" data-s="${s}" data-a="act" data-v="tsumo"><b>我自摸</b><i>另外三家一起付</i></button>
@@ -390,7 +406,7 @@ function render(s) {
     </div>` + inner;
   } else {
     const c = compute(s, l);
-    inner = `<div class="body">
+    inner = `<div class="body${lock ? ' locked' : ''}">${bar}
       <div class="q"><span class="n">2</span><h3>胡了什麼牌型？</h3><span class="sp"></span>
         <button class="btn gho" data-s="${s}" data-a="back1">‹ 改上一步</button></div>
       <div class="grid">${PAT.map(([lb, v, mx]) => {
@@ -405,7 +421,7 @@ function render(s) {
           送出後由付錢的人在自己的平板上確認</span>
         <span class="sp"></span>
         <!-- 🔴 按了就送，**不再跳「再確認一次」**（2026-09-23 使用者指定）。
-             真正核對金額的是付錢那一方的確認；送錯了還能在等待畫面「收回重填」。 -->
+             真正核對金額的是付錢那一方的確認；送錯了還能在等待畫面按「取消」收回。 -->
         <button class="btn pri" data-s="${s}" data-a="send">送出</button>
       </div>
     </div>` + inner;
