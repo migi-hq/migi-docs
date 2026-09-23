@@ -85,7 +85,15 @@ LOOSE = [
 
 SKIP_DIR = {'node_modules', 'dist', 'assets', '.git', 'public'}
 # ⚠ tokens 的定義檔本身當然全是數字與色碼，不要掃它
-SKIP_FILE = {'tokens.css', 'tokens.js'}
+#
+# 🔴 preview.jsx 是 **dev-only 的假後端與版型預覽**（migi-table），
+#   Vite 預設只打包 index.html ⇒ 它**不會進 build、上不了正式站**。
+#   它的工具列刻意長得不像產品（才分得出「這是預覽」），所以那些數字是對的，
+#   不是待遷移的寫死值 —— 掃它只會讓棘輪永遠是紅的，而
+#   「一個永遠紅的檢查會讓人學會忽略紅色」（硬規則 3.5）。
+# ⚠ 判準是「**會不會被部署**」不是「是不是 UI」：
+#   要新增排除項之前先確認那個檔案真的不在任何 build 的 entry 裡。
+SKIP_FILE = {'tokens.css', 'tokens.js', 'preview.jsx'}
 
 
 def files(root):
