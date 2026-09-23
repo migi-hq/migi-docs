@@ -22,7 +22,7 @@
 -->
 <style>
 :root{
-  --brand:#FAD6DC; --brand-light:#FFE7EE; --brand-tint:#FFECF1; --gold:#E8B89B; --ink:#2E2B2C;
+  --brand:#FAD6DC; --brand-light:#FFE7EE; --brand-tint:#FFECF1; --ink:#2E2B2C;
   /* 🔴 **不用桃紅（--accent／--accent-deep），也不用紅（--danger／--dk-danger）**
      —— 強調色一律粉色系（2026-09-23 使用者指定）。
      · 收到的積分 → --brand 粉；付出的積分 → --dk-text 白（粉色留給好消息）
@@ -106,7 +106,8 @@ h1{font-size:23px;margin-bottom:6px}
 .tile i{font-style:normal;font-weight:700;color:var(--dk-text-3)}
 .tile.on{background:var(--brand);border-color:var(--dk-text);color:#2E2B2C}
 .tile.on i{color:var(--ink)}
-.tile.bao{border-color:var(--gold);border-style:dashed}
+/* 包牌格：粉色虛線框。跟莊家格同一個粉，靠「虛線」分開 —— 畫面上只有粉色系 */
+.tile.bao{border-color:var(--brand);border-style:dashed}
 .tile.isdealer{border-color:var(--brand)}
 .tile .zh{position:absolute;top:8px;left:8px;background:var(--brand);color:#2E2B2C;
   border-radius:999px;padding:3px 11px;font-size:14px;font-weight:800}
@@ -156,14 +157,6 @@ h1{font-size:23px;margin-bottom:6px}
 .card .money.pay{color:var(--dk-text)}
 .card .money.get{color:var(--brand)}
 .card .who{font-size:18px;color:var(--dk-text-2);line-height:1.6}
-.card .rows{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:16px 0 6px}
-.card .row{background:var(--dk-tile);border-radius:11px;padding:10px 6px}
-.card .row .n2{font-size:14px;font-weight:700;word-break:break-all;line-height:1.3}
-.card .row .v2{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:3px}
-.card .row .v2.pos{color:var(--brand)}
-.card .row .v2.neg{color:var(--dk-text)}
-.card .row .s2{font-size:12px;color:var(--dk-text-3)}
-.card .row.done{outline:2px solid var(--brand)}
 .card .acts{display:flex;gap:12px;justify-content:center;margin-top:18px}
 .card .acts .btn{height:72px;font-size:23px;padding:0 38px}
 .dots{font-size:17px;color:var(--dk-text-3);margin-top:10px}
@@ -208,7 +201,9 @@ code{background:#F2F0EE;border-radius:5px;padding:1px 6px;font-size:.92em}
 <div class="sec">
   <h3>2. 包牌只有兩個時刻，因為付錢的人就是按的人</h3>
   <b>包牌 ＝ 按的那個人付給另外三家</b>（2026-09-23 使用者確認）。沒有胡牌的人，所以<b>不選牌型</b>。<br />
-  <b>① 包牌的人在自己的平板按「我包牌」</b> → 跳出「確定要給這三家 ○○○ 嗎」，列出每家各多少。<br />
+  <b>① 包牌的人在自己的平板按「我包牌」</b> → 跳出「確定要給這三家 ○○○ 嗎」，只列自己要付的總數。<br />
+  🎯 <b>每一張卡都只講這一台自己的數字</b>，不列另外三家各多少（2026-09-23 使用者指定）——
+  平板是一個人的，別人付多少不是他要核對的事。<br />
   <b>② 確定之後立刻生效</b>，另外三台跳出「<b>收到 ○○ 給的積分 ○○○</b>」。<br />
   🎯 <b>為什麼不用別人確認</b>：確認這件事存在的理由，是「要從你身上拿錢，要你同意」。
   包牌是付錢的人自己按的，他在 ① 已經同意了；收錢的三家不需要同意收錢。<br />
@@ -288,15 +283,11 @@ function compute(by, l) {
   return { tai: patTai, patTai, unit, payers, delta: d, sum, need: payers };
 }
 
-/* 四家各自的增減，一格一家 —— 名字很長的時候比串成一句話好讀 */
-function rowsHTML(delta, me, dealerSeat, noteOf, doneOf) {
-  return `<div class="rows">${SEATS.map((x) => `
-    <div class="row${doneOf && doneOf(x) ? ' done' : ''}">
-      <div class="n2">${x === dealerSeat ? '〔莊〕' : ''}${NAME[x]}${x === me ? '（我）' : ''}</div>
-      <div class="v2${delta[x] > 0 ? ' pos' : delta[x] < 0 ? ' neg' : ''}">${delta[x] === 0 ? '0' : (delta[x] > 0 ? '＋' : '−') + Math.abs(delta[x]).toLocaleString()}</div>
-      ${noteOf ? `<div class="s2">${noteOf(x)}</div>` : ''}
-    </div>`).join('')}</div>`;
-}
+/* 🔴 每一張卡都只講「這一台自己」的數字，不列另外三家各多少（2026-09-23 使用者指定）。
+   同「每台只顯示自己的幕前積分」：平板是一個人的，別人付多少不是他要核對的事。 */
+const signed = (n) => (n > 0 ? '＋' : n < 0 ? '−' : '±') + Math.abs(n).toLocaleString();
+const moneyHTML = (n, faded) =>
+  `<div class="money ${n > 0 ? 'get' : n < 0 ? 'pay' : ''}"${faded || n === 0 ? ' style="color:var(--dk-text-3)"' : ''}>${signed(n)}</div>`;
 
 /* ── 畫一台平板 ───────────────────────────── */
 function topHTML(s) {
@@ -324,20 +315,17 @@ function render(s) {
   /* ③ 結算後的提示 */
   if (r && !G.seen[s]) {
     const d = r.delta[s];
-    const kind = d > 0 ? 'get' : d < 0 ? 'pay' : '';
     inner = `<div class="sheet"><div class="card">
       <div class="k">${r.headline}</div>
       <div class="h">${r.desc}</div>
-      ${d === 0
-        ? `<div class="money" style="color:var(--dk-text-3)">±0</div><div class="who">這一把沒有你的事</div>`
-        : `<div class="money ${kind}">${d > 0 ? '＋' : '−'}${Math.abs(d).toLocaleString()}</div>
-           <div class="who">${d > 0
-             /* 🔴 自摸是三家付：把三個名字串成一句的話，12 個字的名字會變成一段
-                七十個字的話（壓力測試抓到的）。說「另外三家」，誰付多少交給下面那一排格子。 */
-             ? `收到${r.payers.length === 3 ? '另外三家' : ' ' + NAME[r.payers[0]] + ' '}給的積分`
-             : r.kind === 'bao' ? '付給另外三家'
-             : `付給 ${NAME[r.by]} ${Math.abs(d).toLocaleString()} 積分`}</div>`}
-      ${rowsHTML(r.delta, s, r.dealerAt)}
+      ${moneyHTML(d)}
+      <div class="who">${d === 0 ? '這一把沒有你的事'
+        : d > 0
+          /* 🔴 自摸是三家付：把三個名字串成一句的話，12 個字的名字會變成一段
+             七十個字的話（壓力測試抓到的）。說「另外三家」就好。 */
+          ? `收到${r.payers.length === 3 ? '另外三家' : ' ' + NAME[r.payers[0]] + ' '}給的積分`
+          : r.kind === 'bao' ? '付給另外三家'
+          : `付給 ${NAME[r.by]}`}</div>
       <div class="who" style="margin-top:8px">你的幕前積分 <b>${G.total[s].toLocaleString()}</b>${r.downDealer ? '　·　這把之後下莊' : ''}</div>
       <div class="acts"><button class="btn pri" data-s="${s}" data-a="seen">知道了</button></div>
     </div></div>`;
@@ -350,11 +338,9 @@ function render(s) {
     inner = `<div class="sheet"><div class="card">
       <div class="k">${NAME[p.by]} ${p.act === 'tsumo' ? '自摸' : '胡 ' + NAME[p.who]}</div>
       <div class="h">${p.descTai}</div>
-      ${rowsHTML(p.delta, s, G.dealer,
-          (x) => p.need.includes(x) ? (p.confirmed.includes(x) ? '✓ 已確認' : '等待確認') : '',
-          (x) => p.confirmed.includes(x))}
+      ${moneyHTML(p.delta[s], !mustConfirm && p.by !== s)}
       ${mustConfirm
-        ? `<div class="h" style="font-size:28px;margin-top:10px">你要付 ${Math.abs(p.delta[s]).toLocaleString()} 積分，對嗎？</div>
+        ? `<div class="h" style="font-size:28px;margin-top:10px">這是你要付的積分，對嗎？</div>
            <div class="acts">
              <button class="btn no" data-s="${s}" data-a="reject">不對，駁回</button>
              <button class="btn pri" data-s="${s}" data-a="confirm">確認</button>
@@ -377,7 +363,6 @@ function render(s) {
       <div class="k">我包牌</div>
       <div class="h">確定要給這三家？</div>
       <div class="money pay">−${c.sum.toLocaleString()}</div>
-      ${rowsHTML(c.delta, s, G.dealer)}
       <div class="who">每家 1 底 ${BAO_TAI} 台，${s === G.dealer
           ? `你是莊家，<b>三家都</b>另加 ${extra()} 台`
           : `莊家那一份另加 ${extra()} 台`}（1 ＋ 2×${G.ren}）　·　<b>這把之後下莊</b></div>
