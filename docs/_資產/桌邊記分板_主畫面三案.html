@@ -44,7 +44,13 @@ h1{font-size:23px;margin-bottom:6px}
    沒有框的深灰卡在深底上邊界不清楚，
    看起來像一塊色塊不像一顆按鈕。莊家換成粉框、「我自摸」粉底配粉框。 */
 .card{background:var(--dk-tile);border-radius:12px;min-width:0;min-height:0;border:2px solid var(--dk-line)}
+.card{position:relative}
 .card.d{border-color:var(--brand)}
+.card > .zh{position:absolute;top:10px;right:10px;padding:5px 16px}
+/* 貼角的膠囊佔掉上面約 46px：座位圖與六格把內容往下推，不讓它壓到頭像 */
+.A .opp.d,.B .t.d{padding-top:50px}
+/* 名單式：「放槍」改貼右下，右上留給莊家膠囊（每一列一樣，不只莊家那列） */
+.C .opp .sub{align-self:flex-end;margin-bottom:16px}
 .av{border-radius:50%;object-fit:cover;flex-shrink:0;background:var(--dk-bg)}
 .nm{font-weight:800;line-height:1.2;word-break:break-all}
 /* 說明小字：用 --dk-text-2（對深磚 7.45）不用 --dk-text-3（4.86）—— 使用者：「顏色都很淺、字很小」 */
@@ -64,7 +70,7 @@ h1{font-size:23px;margin-bottom:6px}
 
 /* ── A 座位圖 ───────────────────────── */
 .A .body{flex:1;min-height:0;padding:16px 18px;display:grid;gap:14px;
-  grid-template-columns:1fr 1.25fr 1fr;grid-template-rows:200px 1fr 136px;
+  grid-template-columns:1fr 1.25fr 1fr;grid-template-rows:212px 1fr 136px;
   grid-template-areas:"draw top bao" "left zimo right" "me me me"}
 .A .opp{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:10px;text-align:center}
 .A .opp .nm{font-size:22px}
@@ -141,7 +147,9 @@ const P = {
 };
 const ME = 1, DEALER = 3, REN = 2, SCORE = '2,320';
 const SEAT = { right: 2, top: 3, left: 4 };            // 從我這台看出去：下家右、對家上、上家左
-const zh = (x, fs) => x === DEALER ? `<span class="zh" style="font-size:${fs}px">莊 · 連莊 ${REN}</span>` : '';
+/* 莊家膠囊：寫全「莊家」、放大到 20px，貼在卡片右上角（2026-09-23 使用者指定）。
+   直接放在 .card 底下 ＝ 貼角；放在名字那一行裡 ＝ 跟著文字走（我自己的卡用這個）。 */
+const zh = (x, fs = 20) => x === DEALER ? `<span class="zh" style="font-size:${fs}px">莊家 · 連莊 ${REN}</span>` : '';
 const d = (x) => x === DEALER ? ' d' : '';
 /* 順序照 App 的個人檔案：稱號 → 名字 → 段位（2026-09-23 使用者：稱號放名字上面） */
 const meTitle = (fs) => `<span class="sub" style="font-size:${fs}px">「${P[ME].title}」</span>`;
@@ -158,9 +166,9 @@ const topBar = () => `<div class="top">
 const A = () => {
   const opp = (pos) => { const x = SEAT[pos];
     return `<div class="card opp${d(x)}" style="grid-area:${pos}">
-      <img class="av" src="${P[x].av}" style="width:84px;height:84px">
+      <img class="av" src="${P[x].av}" style="width:76px;height:76px">
       <span class="nm">${P[x].name}</span>
-      ${x === DEALER ? zh(x, 17) : '<span class="sub">放槍</span>'}</div>`; };
+      <span class="sub">放槍</span>${zh(x)}</div>`; };
   return `<div class="frame A">${topBar()}<div class="body">
     <div class="card act" style="grid-area:draw"><b>流局</b><span class="sub">沒有人付分</span></div>
     ${opp('top')}
@@ -179,7 +187,7 @@ const B = () => {
   const opp = (x) => `<div class="card t${d(x)}">
       <img class="av" src="${P[x].av}" style="width:80px;height:80px">
       <span class="nm">${P[x].name}</span>
-      ${x === DEALER ? zh(x, 16) : '<span class="sub">放槍</span>'}</div>`;
+      <span class="sub">放槍</span>${zh(x)}</div>`;
   const act = (t, s, cls = '') => `<div class="card t ${cls}"><b>${t}</b><span class="sub">${s}</span></div>`;
   return `<div class="frame B">${topBar()}<div class="body">
     <div class="card hero${d(ME)}"><img class="av" src="${P[ME].av}" style="width:130px;height:130px">
@@ -202,7 +210,7 @@ const C = () => {
   const opp = (x) => `<div class="card opp${d(x)}">
       <img class="av" src="${P[x].av}" style="width:76px;height:76px">
       <span class="nm">${P[x].name}</span>
-      ${x === DEALER ? zh(x, 18) : ''}<span class="sub">放槍</span></div>`;
+      <span class="sub">放槍</span>${zh(x)}</div>`;
   return `<div class="frame C">${topBar()}<div class="body">
     <div class="q">這一把誰要付錢？</div>
     ${opp(2)}${opp(3)}${opp(4)}
@@ -212,8 +220,8 @@ const C = () => {
       <div class="card"><b>我包牌</b><span class="sub">我付給另外三家</span></div>
     </div>
     <div class="card me${d(ME)}"><img class="av" src="${P[ME].av}" style="width:80px;height:80px">
-      <div class="who">${meTitle(17)}<span class="nm">${P[ME].name}</span><span class="meline">${meRank(16)}</span></div>
-      ${zh(ME, 16)}<span class="score">${SCORE}</span></div>
+      <div class="who">${meTitle(17)}<span class="nm">${P[ME].name}</span><span class="meline">${meRank(16)}${zh(ME, 16)}</span></div>
+      <span class="score">${SCORE}</span></div>
   </div></div>`;
 };
 
