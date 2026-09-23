@@ -98,9 +98,9 @@ button.card:disabled{opacity:.35;cursor:default}
 .split .card .sub{font-size:18px}
 /* 我自己（HERO ＋ 積分同一張卡） */
 .me{grid-area:me;flex-direction:row;justify-content:flex-start;gap:18px;padding:0 24px;background:var(--dk-raised);text-align:left}
-.me .who{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px}   /* 稱號往上、段位往下（2026-09-24 使用者指定） */
+.me .who{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
 .me .ttl{font-size:18px;font-weight:700;color:var(--dk-text-2)}
-.me .nm{font-size:34px;margin-top:-6px}
+.me .nm{font-size:28px;margin-top:-4px}
 .me .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .me .rkp{font-size:16px}
 .me .zh{flex-direction:row}
@@ -282,7 +282,7 @@ const zhHTML = () => `<span class="zh"><span class="a">莊家</span><span class=
 const meHTML = (s) => `<div class="card me">
   <img class="av" src="${PROF[s].av}" style="width:100px;height:100px">
   <div class="who"><span class="ttl">「${PROF[s].title}」</span>
-    <span class="nm">${NAME[s]}</span>
+    <span class="nm" style="font-size:${nameFs(NAME[s], 28, 22)}px">${NAME[s]}</span>
     <span class="row"><span class="rkp">段位: ${PROF[s].rank}</span>${s === G.dealer ? zhHTML() : ''}</span></div>
   <span class="score" data-seat="${s}">${(SHOWN[s] ?? G.total[s]).toLocaleString()}</span></div>`;
 const oppHTML = (s, pos, act, x, disabled) => `<button class="card opp${x === G.dealer ? ' d' : ''}" style="grid-area:${pos}"
