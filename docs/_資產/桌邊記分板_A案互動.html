@@ -6,8 +6,9 @@
 <title>MIGI 桌邊記分板 · A 案互動</title>
 <!--
   2026-09-24　A 案（座位圖）定案後做成可互動的四台預覽。
-  狀態機沿用「桌邊記分板_四台同步.html」（付錢的人各自結算、流局要確認、包牌立刻生效），
-  再加上 2026-09-24 拍板的「咔啦碰」（§3.6）。版面照「桌邊記分板_主畫面三案.html」的 A 案。
+  狀態機沿用「桌邊記分板_四台同步.html」（付錢的人各自結算、流局要確認），
+  再加上 2026-09-24 拍板的「咔啦碰」（§3.6）與包牌的更正（§3.5：收的三家各自確認、莊家包牌才下莊）。
+  版面照「桌邊記分板_主畫面三案.html」的 A 案。
 
   🔴 計分是假的（真的一律由後端算）。規則：連莊 1＋2N、包牌 1 底 3 台且下莊、咔啦碰固定 1 台不算底。
   ⚠ 四台的狀態是同一份（＝後端那一份），在任何一台上操作，另外三台立刻跟著變。
@@ -172,7 +173,9 @@ button.card:disabled{opacity:.35;cursor:default}
   <b>放槍／自摸</b>：按了就送，付錢的那幾台各自跳確認；確認 ＝ 那一家當場扣給胡的人，取消 ＝ 那一家不扣，互不影響。
   最後一家回應完才換莊／連莊；全部取消 ＝ 這一局沒發生。<br />
   <b>流局</b>：按的人自己確認，沒有人付分，莊家連莊。<br />
-  <b>我包牌</b>：按的人付給另外三家，每家 1 底 3 台（牽涉莊家的那一份加莊家台），確認後立刻生效，另外三台跳「收到」；之後下莊。<br />
+  <b>我包牌</b>：按的人付給另外三家，每家 1 底 3 台（牽涉莊家的那一份加莊家台）。按的人先確認，然後<b>收的三家各自按確認，確認了數字才加</b>。
+  <b>莊家包牌才下莊；閒家包牌，莊家繼續連莊</b>（2026-09-24 更正）。<br />
+  <b>右下積分</b>：數字改變時像碼表一樣滾到新值，不直接跳。<br />
   <b>咔啦碰</b>：按的人指定捨牌的那一家，固定 1 台（不算底、不加莊家台），不進牌型；<b>給的人不用確認，收的人要確認</b>；莊家與連莊不動。<br />
   上一局還有人沒回應時，只擋「送出／流局／包牌／咔啦碰」，不點名是誰。
 </div>
@@ -206,9 +209,28 @@ const T0 = Date.now() - (1 * 3600 + 42 * 60 + 7) * 1000;   // 已使用 1:42:07 
 
 /* ── 共用狀態（＝後端那一份）── */
 let G, L, zoom = 0;
+/* 右下積分的碼表效果（2026-09-24 使用者指定）：畫面上「正在顯示」的數字跟真值分開記，
+   真值一變就從顯示值滾到真值（約 0.8 秒、先快後慢），不是直接跳。 */
+const SHOWN = {};
+let anim = null;
+function rollScores() {
+  const start = performance.now(), from = { ...SHOWN }, to = { ...G.total }, dur = 800;
+  if (SEATS.every((s) => from[s] === to[s])) return;
+  cancelAnimationFrame(anim);
+  const tick = (now) => {
+    const t = Math.min(1, (now - start) / dur), e = 1 - Math.pow(1 - t, 3);
+    SEATS.forEach((s) => {
+      SHOWN[s] = t < 1 ? Math.round(from[s] + (to[s] - from[s]) * e) : to[s];
+      document.querySelectorAll(`.score[data-seat="${s}"]`).forEach((el) => { el.textContent = SHOWN[s].toLocaleString(); });
+    });
+    if (t < 1) anim = requestAnimationFrame(tick);
+  };
+  anim = requestAnimationFrame(tick);
+}
 function reset() {
   G = { dealer:3, ren:2, set:1, wind:0, ju:3, total:{ 1:2320, 2:1820, 3:2090, 4:1770 }, pending:null, result:null, seen:{} };
   L = { 1:blank(), 2:blank(), 3:blank(), 4:blank() };
+  SEATS.forEach((s) => { SHOWN[s] = G.total[s]; });     // 重來時直接顯示，不滾
 }
 const blank = () => ({ step:1, act:null, who:null, sel:{}, confirming:false });
 const extra = () => 1 + 2 * G.ren;
@@ -230,7 +252,7 @@ function compute(by, l) {
   if (l.act === 'bao') {
     const unit = (recv) => BASE + PER_TAI * (BAO_TAI + (by === G.dealer || recv === G.dealer ? extra() : 0));
     let sum = 0; others.forEach((x) => { d[x] = unit(x); sum += unit(x); }); d[by] = -sum;
-    return { patTai:0, payers:[by], delta:d, sum, need:[] };
+    return { patTai:0, payers:[by], delta:d, sum, need:others };   // 收的三家各自要按確認（2026-09-24）
   }
   if (l.act === 'kala') {                               // 固定 1 台，不算底、不加莊家台
     const amt = PER_TAI * KALA_TAI; d[l.who] = amt; d[by] = -amt;
@@ -262,7 +284,7 @@ const meHTML = (s) => `<div class="card me">
   <div class="who"><span class="ttl">「${PROF[s].title}」</span>
     <span class="nm" style="font-size:${nameFs(NAME[s], 28, 22)}px">${NAME[s]}</span>
     <span class="row"><span class="rkp">段位: ${PROF[s].rank}</span>${s === G.dealer ? zhHTML() : ''}</span></div>
-  <span class="score">${G.total[s].toLocaleString()}</span></div>`;
+  <span class="score" data-seat="${s}">${(SHOWN[s] ?? G.total[s]).toLocaleString()}</span></div>`;
 const oppHTML = (s, pos, act, x, disabled) => `<button class="card opp${x === G.dealer ? ' d' : ''}" style="grid-area:${pos}"
     data-s="${s}" data-a="${act}" data-v="ron" data-x="${x}"${disabled ? ' disabled' : ''}>
   <span class="pos">${WHERE[pos]}</span>${x === G.dealer ? zhHTML() : ''}
@@ -286,6 +308,11 @@ function render(s) {
       ? `<div class="sheet"><div class="box"><div class="k">咔啦碰</div><div class="h">${NAME[p.by]} 給你 1 台</div>${moneyHTML(p.delta[s])}
           <div class="h" style="font-size:28px;margin-top:10px">收下這 1 台，對嗎？</div>
           <div class="acts"><button class="btn gho" data-s="${s}" data-a="reject">取消</button><button class="btn pri" data-s="${s}" data-a="confirm">確認</button></div></div></div>`
+      : p.act === 'bao'
+      /* 包牌：收的三家各自確認，確認了數字才加（2026-09-24 使用者指定） */
+      ? `<div class="sheet"><div class="box"><div class="k">${NAME[p.by]} 包牌</div><div class="h">每家 1 底 ${BAO_TAI} 台${s === G.dealer || p.by === G.dealer ? '＋莊家台' : ''}</div>${moneyHTML(p.delta[s])}
+          <div class="h" style="font-size:28px;margin-top:10px">收下這些積分，對嗎？</div>
+          <div class="acts"><button class="btn gho" data-s="${s}" data-a="reject">取消</button><button class="btn pri" data-s="${s}" data-a="confirm">確認</button></div></div></div>`
       : `<div class="sheet"><div class="box"><div class="k">${NAME[p.by]} ${p.act === 'tsumo' ? '自摸' : '胡 ' + NAME[p.who]}</div><div class="h">${p.descTai}</div>${moneyHTML(p.delta[s])}
           <div class="h" style="font-size:28px;margin-top:10px">這是你要付的積分，對嗎？</div>
           <div class="acts"><button class="btn gho" data-s="${s}" data-a="reject">取消</button><button class="btn pri" data-s="${s}" data-a="confirm">確認</button></div></div></div>`;
@@ -298,7 +325,7 @@ function render(s) {
   else if (l.confirming && l.act === 'bao') {
     const c = compute(s, l);
     sheet = `<div class="sheet"><div class="box"><div class="k">我包牌</div><div class="h">確定要給這三家？</div><div class="money pay">−${c.sum.toLocaleString()}</div>
-      <div class="who">每家 1 底 ${BAO_TAI} 台，${s === G.dealer ? `你是莊家，<b>三家都</b>另加 ${extra()} 台` : `莊家那一份另加 ${extra()} 台`}（1 ＋ 2×${G.ren}）　·　<b>這局之後下莊</b></div>
+      <div class="who">每家 1 底 ${BAO_TAI} 台，${s === G.dealer ? `你是莊家，<b>三家都</b>另加 ${extra()} 台` : `莊家那一份另加 ${extra()} 台`}（1 ＋ 2×${G.ren}）　·　<b>${s === G.dealer ? '你是莊家，這局之後下莊' : '莊家繼續連莊'}</b></div>
       <div class="acts"><button class="btn gho" data-s="${s}" data-a="back">取消</button><button class="btn pri" data-s="${s}" data-a="send">確認</button></div></div></div>`;
   }
 
@@ -361,11 +388,7 @@ function act(s, a, v, x) {
       endHand(G.dealer); G.seen = { [s]:true }; L = { 1:blank(), 2:blank(), 3:blank(), 4:blank() }; return;
     }
     const c = compute(s, l);
-    if (l.act === 'bao') {
-      SEATS.forEach((y) => { G.total[y] += c.delta[y]; });
-      G.result = { headline:`${NAME[s]} 包牌`, desc:`每家 1 底 ${BAO_TAI} 台`, by:s, delta:c.delta, downDealer:true };
-      endHand((G.dealer % 4) + 1); G.seen = { [s]:true }; L = { 1:blank(), 2:blank(), 3:blank(), 4:blank() }; return;
-    }
+    /* 包牌跟胡牌一樣進待確認：收的三家各自按了才加分（2026-09-24 使用者指定，推翻「立刻生效」） */
     G.pending = { by:s, act:l.act, who:l.who, delta:c.delta, need:c.need, confirmed:[], cancelled:[],
       descTai:`${Object.entries(l.sel).map(([k, n]) => k + (n > 1 ? ' ×' + n : '')).join('、') || '沒有台'}　·　${c.patTai} 台` };
     L[s] = blank();
@@ -377,7 +400,13 @@ function act(s, a, v, x) {
     L[s] = blank();
     if (openCount(p) === 0) {
       /* 咔啦碰不是一局的結束：莊家、連莊、局數都不動 */
-      if (p.act !== 'kala' && p.confirmed.length) endHand(p.by === G.dealer ? G.dealer : (G.dealer % 4) + 1);
+      if (p.act !== 'kala' && p.confirmed.length) {
+        const next = (G.dealer % 4) + 1;
+        /* 胡牌：胡的人是莊就連莊，否則換莊。
+           包牌（2026-09-24 拍板）：**莊家包牌才下莊**，閒家包牌莊家繼續連莊。 */
+        const stay = p.act === 'bao' ? p.by !== G.dealer : p.by === G.dealer;
+        endHand(stay ? G.dealer : next);
+      }
       G.pending = null;
     }
   }
@@ -405,7 +434,7 @@ document.addEventListener('click', (e) => {
   const z = e.target.closest('[data-zoom]'); if (z) { zoom = +z.dataset.zoom; paint(); return; }
   if (e.target.id === 'reset') { reset(); paint(); return; }
   const b = e.target.closest('[data-a]'); if (!b || b.disabled) return;
-  act(+b.dataset.s, b.dataset.a, b.dataset.v, b.dataset.x); paint();
+  act(+b.dataset.s, b.dataset.a, b.dataset.v, b.dataset.x); paint(); rollScores();
 });
 /* 已使用時間每秒走，只改那一格，不重畫整頁（重畫會打斷正在按的人） */
 setInterval(() => { const t = elapsed(); document.querySelectorAll('.clock').forEach((el) => { el.innerHTML = `<em>已使用</em>${t}`; }); }, 1000);
