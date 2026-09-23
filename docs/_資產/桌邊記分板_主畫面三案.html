@@ -186,8 +186,7 @@ const A = () => {
       <div class="head">${x === DEALER ? `<span class="zhtile">莊</span><span class="ren">連莊 ${REN}</span>` : ''}</div>
       <img class="av" src="${P[x].av}" style="width:72px;height:72px">
       <span class="nm">${P[x].name}</span>
-      <span class="rkp" style="font-size:16px">段位: ${P[x].rank}</span>
-      <b>${WHERE[pos]}放槍</b></div>`; };
+      <span class="rkp" style="font-size:16px">段位: ${P[x].rank}</span></div>`; };
   return `<div class="frame A">${topBar()}<div class="body">
     <div class="card act" style="grid-area:draw"><b>流局</b><span class="sub">沒有人付分</span></div>
     ${opp('top')}
@@ -247,7 +246,8 @@ const C = () => {
 const CASES = [
   ['A', '座位圖：畫面就是這張牌桌', A,
    `對手擺在<b>他們真的坐的位置</b>（對家在上、上家在左、下家在右），誰放槍就按他那個方向。
-    六格一樣大、一樣深色；對手卡的大字直接寫「上家放槍／對家放槍／下家放槍」，
+    六格一樣大、一樣深色；對手卡只放頭像、名字、段位 —— 按那個人就是他放槍，
+    位置本身就說明了他是上家、對家還是下家。
     正中間是「我自摸」，流局與包牌在上排兩角，最下面是我與積分。`,
    `<b>代價</b>：平板配對時要綁座位（東南西北），綁錯的話位置跟人對不上。`],
   ['B', '左邊是我、右邊六格', B,
