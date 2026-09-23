@@ -40,7 +40,10 @@ h1{font-size:23px;margin-bottom:6px}
 .top .sp{flex:1}
 .top .clock{font-variant-numeric:tabular-nums}
 
-.card{background:var(--dk-tile);border-radius:16px;min-width:0;min-height:0;border:3px solid transparent}
+/* 未點選的卡也要有灰框，規格同第一版的磚：2px --dk-line、圓角 12（2026-09-23 使用者指定）——
+   沒有框的深灰卡在深底上邊界不清楚，
+   看起來像一塊色塊不像一顆按鈕。莊家換成粉框、「我自摸」粉底配粉框。 */
+.card{background:var(--dk-tile);border-radius:12px;min-width:0;min-height:0;border:2px solid var(--dk-line)}
 .card.d{border-color:var(--brand)}
 .av{border-radius:50%;object-fit:cover;flex-shrink:0;background:var(--dk-bg)}
 .nm{font-weight:800;line-height:1.2;word-break:break-all}
@@ -51,7 +54,7 @@ h1{font-size:23px;margin-bottom:6px}
   padding:3px 14px;font-weight:800;white-space:nowrap}
 .q{font-size:24px;font-weight:800;color:var(--dk-text-2);flex-shrink:0}
 .score{font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
-.pri{background:var(--brand);color:var(--ink)}
+.pri{background:var(--brand);color:var(--ink);border-color:var(--brand)}
 .pri .sub{color:var(--ink)}
 
 /* ── A 座位圖 ───────────────────────── */
@@ -115,7 +118,7 @@ h1{font-size:23px;margin-bottom:6px}
   <b>① 一張卡只回答一個問題。</b>選「誰放槍」只需要認得人 → 對手卡只留<b>頭像＋名字</b>。
   稱號、段位是「他是誰」的資料，不是「這一把誰付錢」要用的，從對手卡上拿掉。<br />
   <b>② 全畫面只有一顆膠囊：莊家。</b>其餘說明（放槍、另外三家一起付…）改成灰色小字，不再是膠囊。<br />
-  <b>③ 粉色只給兩件事</b>：莊家、最常按的「我自摸」。其他一律深灰卡，不加外框。<br />
+  <b>③ 粉色只給兩件事</b>：莊家、最常按的「我自摸」。其他一律深灰卡配灰框。<br />
   <b>④ 頂條只留值不留欄位名</b>：「台麻 · 無花 · 3 將　100/20　A3 東風圈 第 1 將 第 3 把　22:53」。
   我自己的稱號與段位縮成名字下面一行灰字。
 </div>
