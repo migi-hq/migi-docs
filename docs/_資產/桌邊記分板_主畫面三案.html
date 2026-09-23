@@ -89,7 +89,10 @@ h1{font-size:23px;margin-bottom:6px}
    內容因此整體偏下；現在只有莊家那張讓（.A .opp.d），其餘兩張上下對稱。 */
 .A .opp{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
   padding:10px;text-align:center}
-.A .opp.d{padding-top:10px}
+.A .opp.d{padding-top:52px}
+/* 莊家卡的頂部色帶：粉底墨字，左座位、右莊家與連莊數 */
+.A .opp .band{position:absolute;top:0;left:0;right:0;height:40px;background:var(--brand);color:var(--ink);
+  display:flex;align-items:center;justify-content:space-between;padding:0 14px;font-size:22px;font-weight:800}
 /* 莊家標記改成直排疊在右上角（牌在上、連莊數在下）—— 橫排的話寬 134px，
    會壓到置中的頭像（頭像佔 110–210px，橫排從 172px 開始）；直排只寬約 64px。 */
 .A .opp .nm{font-size:22px}
@@ -209,8 +212,10 @@ const A = () => {
      「放槍」跟流局、我包牌同一個大字（2026-09-23 使用者指定）。 */
   const opp = (pos) => { const x = SEAT[pos];
     return `<div class="card opp${d(x)}" style="grid-area:${pos}">
-      <span class="pos">${WHERE[pos]}</span>
-      <div class="head">${x === DEALER ? `<span class="zhtile">莊家</span><span class="ren">連莊 ${REN}</span>` : ''}</div>
+      ${x === DEALER
+        /* 莊家：頂部色帶（莊家標記八案的 ②）—— 座位與莊家在同一條帶子上，右上角不再貼牌 */
+        ? `<div class="band"><span>${WHERE[pos]}</span><span>莊家 · 連莊 ${REN}</span></div>`
+        : `<span class="pos">${WHERE[pos]}</span>`}
       <img class="av" src="${P[x].av}" style="width:100px;height:100px">
       <span class="nm">${P[x].name}</span>
       <span class="rkp" style="font-size:16px">段位: ${P[x].rank}</span></div>`; };
