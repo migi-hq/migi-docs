@@ -161,12 +161,7 @@ h1{font-size:23px;margin-bottom:6px}
 .card .acts .btn{height:76px;font-size:24px;padding:0 20px;flex:1}
 .card .acts .btn.pri{flex:2}
 
-/* 送出之後、還在等別人確認：不用動作的那幾台**回到主頁**，上面一條說明，
-   主頁暫時按不了 —— 同一時間只能有一把在等確認。 */
-.waitbar{background:var(--brand);color:var(--ink);border-radius:12px;padding:12px 18px;
-  font-size:18px;font-weight:800;flex-shrink:0;line-height:1.4}
-.waitbar small{display:block;font-size:14px;font-weight:700;opacity:.75}
-.locked .g6,.locked .grid,.locked .foot,.locked .q .btn{opacity:.35;pointer-events:none}
+.tile:disabled{opacity:.35;cursor:default}
 .dots{font-size:17px;color:var(--dk-text-3);margin-top:10px}
 
 .sec{background:#fff;border-radius:14px;padding:16px 20px;margin:18px 0;max-width:1040px;
@@ -197,15 +192,17 @@ code{background:#F2F0EE;border-radius:5px;padding:1px 6px;font-size:.92em}
 <div class="quad" id="quad"></div>
 
 <div class="sec">
-  <h3>1. 胡牌（自摸／放槍）有兩個時刻</h3>
-  <b>① 按「送出」就送出</b>，不再跳「再確認一次」（2026-09-23 使用者指定）。
-  送出之後，<b>要付錢的那幾台跳出確認</b>；不用付的那幾台留在主頁，上方一條「等 ○○ 確認這一把」。<br />
-  🎯 拿掉自己那一道是對的：<b>真正核對金額的是付錢的人</b>，送出的人自己再看一次只是多一次點擊。
-  送錯了也還有退路 —— 等待畫面上有「取消」。<br />
-  <b>② 付錢的人按「確認」就回到主頁</b>（2026-09-23 使用者指定），不留在等待卡上。
-  主頁在這一把確認完之前按不了 —— 同一時間只能有一把在等。<br />
-  <b>③ 全部確認完，四台同時更新。</b>各自顯示「收到 ○○○」「付給 ○○」或「這一把沒有你的事」，按「確認」回主頁。<br />
-  📌 <b>卡片上只有兩種按鈕：取消與確認</b>，確認是兩倍寬的粉底。付錢的人按「取消」＝ 不同意這一把，整把重填。
+  <h3>1. 胡牌（自摸／放槍）：付錢的人各自結算</h3>
+  <b>① 按「送出」就送出</b>，不再跳「再確認一次」，送出的人直接回主頁（2026-09-23 使用者指定）。<br />
+  <b>② 只有要付錢的那幾台跳卡片</b>，卡上只有自己要付的數字，按鈕只有「取消」與「確認」（確認兩倍寬）。<br />
+  <b>③ 每一家各自決定，不影響別人</b>（2026-09-23 使用者指定）：
+  「確認」＝ 這一家那一份<b>當場</b>扣給胡的人，回主頁；「取消」＝ 這一家不扣，卡片消失，回主頁。
+  <b>沒有「等某某確認」這種字</b> —— 誰都不用等誰。<br />
+  🎯 <b>送錯了怎麼辦</b>：付錢的人按取消就不扣。自摸三家中有一家取消，另外兩家照樣結算。<br />
+  ⚠ <b>一把什麼時候算結束</b>：最後一家回應完。這時才決定換莊／連莊 ——
+  至少一家確認了就照常（胡的人是莊就連莊，否則換莊）；<b>全部取消等於這一把沒發生</b>，莊家不動。<br />
+  ⚠ <b>上一把還有人沒回應時</b>，只有「送出／流局／包牌」按不了，旁邊寫「上一把還有人沒確認」，
+  不點名是誰。擋它的理由：換莊要等上一把結束才知道，兩把同時在路上會算錯莊家台。
 </div>
 
 <div class="sec">
@@ -263,6 +260,9 @@ function reset() {
 }
 const blank = () => ({ step: 1, act: null, who: null, sel: {}, confirming: false });
 const extra = () => 1 + 2 * G.ren;                          // 連莊 1 ＋ 2N
+/* 這一家還欠一個回應嗎（要付錢、既沒確認也沒取消） */
+const isOpenFor = (p, s) => p.need.includes(s) && !p.confirmed.includes(s) && !p.cancelled.includes(s);
+const openCount = (p) => p ? p.need.filter((x) => isOpenFor(p, x)).length : 0;
 const rankOf = (s) => SEATS.slice().sort((a,b) => G.total[b]-G.total[a] || a-b).indexOf(s) + 1;
 
 /* 這一把的台數與每一家的增減（假算式，真的在後端）
@@ -341,25 +341,21 @@ function render(s) {
     </div></div>`;
   }
 
-  /* ② 送出之後：只有「有動作要做」的兩種人看到卡片
-     · 要付錢、還沒確認的 → 取消（＝駁回）／確認
-     · 送出的人            → 取消（＝收回重填）
-     其餘（已經確認的、不用付的）**回到主頁**，上面一條等待說明。 */
-  else if (p && ((p.need.includes(s) && !p.confirmed.includes(s)) || p.by === s)) {
-    const mustConfirm = p.by !== s;
-    const waitNames = p.need.filter((x) => !p.confirmed.includes(x)).map((x) => NAME[x]).join('、');
+  /* ② 送出之後：**只有還沒回應的付錢那一家**看到卡片（2026-09-23 使用者指定）
+     · 確認 → 這一家的分**當場**扣給胡的人，回主頁
+     · 取消 → 這一家不扣，卡片消失，回主頁
+     🔴 每一家各自結算，**不影響其他人**、不用等別人 —— 所以也沒有任何「等某某確認」的字。
+     送出的人、不用付的人、已經回應的人，一律留在主頁。 */
+  else if (p && isOpenFor(p, s)) {
     inner = `<div class="sheet"><div class="card">
       <div class="k">${NAME[p.by]} ${p.act === 'tsumo' ? '自摸' : '胡 ' + NAME[p.who]}</div>
       <div class="h">${p.descTai}</div>
       ${moneyHTML(p.delta[s])}
-      ${mustConfirm
-        ? `<div class="h" style="font-size:28px;margin-top:10px">這是你要付的積分，對嗎？</div>
-           <div class="acts">
-             <button class="btn gho" data-s="${s}" data-a="reject">取消</button>
-             <button class="btn pri" data-s="${s}" data-a="confirm">確認</button>
-           </div>`
-        : `<div class="dots">等 ${waitNames} 在自己的平板上確認</div>
-           <div class="acts"><button class="btn gho" data-s="${s}" data-a="cancel">取消</button></div>`}
+      <div class="h" style="font-size:28px;margin-top:10px">這是你要付的積分，對嗎？</div>
+      <div class="acts">
+        <button class="btn gho" data-s="${s}" data-a="reject">取消</button>
+        <button class="btn pri" data-s="${s}" data-a="confirm">確認</button>
+      </div>
     </div></div>`;
   }
 
@@ -384,29 +380,30 @@ function render(s) {
     </div></div>`;
   }
 
-  /* 主頁上方的等待說明（這一台沒有動作要做，但別台還在確認） */
-  const lock = !!p;
-  const bar = !p ? '' : `<div class="waitbar">等 ${p.need.filter((x) => !p.confirmed.includes(x)).map((x) => NAME[x]).join('、')} 確認這一把
-    <small>${p.need.includes(s) ? `你已經確認了（${signed(p.delta[s])}）` : '這一把不用你付'}　·　確認完四台會一起更新</small></div>`;
+  /* 上一把還有人沒回應時，**只擋「會產生下一把」的那一下**（送出／流局／包牌），
+     主頁其他地方照常 —— 不掛等待條、不點名是誰（2026-09-23 使用者指定）。
+     ⚠ 擋的理由：換莊與連莊要等上一把結束才知道，兩把同時在路上會算錯莊家台。 */
+  const busy = openCount(p) > 0;
+  const busyNote = '上一把還有人沒確認';
 
   /* 主流程：選誰付錢 → 選誰包 → 選牌型 */
   if (l.step === 1) {
     const others = SEATS.filter((x) => x !== s);
-    inner = `<div class="body${lock ? ' locked' : ''}">${bar}
+    inner = `<div class="body">
       <div class="q"><span class="n">1</span><h3>這一把誰要付錢？</h3></div>
       <div class="g6">
         <button class="tile" data-s="${s}" data-a="act" data-v="tsumo"><b>我自摸</b><i>另外三家一起付</i></button>
         ${others.map((x) => `<button class="tile nm${x === G.dealer ? ' isdealer' : ''}" data-s="${s}" data-a="act" data-v="ron" data-x="${x}">
           ${tileZh(x)}<b style="font-size:${nameFs(NAME[x], 32, 24)}px">${NAME[x]}</b><i>放槍</i></button>`).join('')}
-        <button class="tile" data-s="${s}" data-a="act" data-v="draw"><b>流局</b><i>不用別人確認</i></button>
+        <button class="tile" data-s="${s}" data-a="act" data-v="draw"${busy ? ' disabled' : ''}><b>流局</b><i>${busy ? busyNote : '不用別人確認'}</i></button>
         <!-- 🔴 第一人稱：「我包牌」＝ 我付給另外三家。跟「我自摸」同一種說法，
              所以不需要再問「誰包」—— 包牌的人就是拿著這台平板的人。 -->
-        <button class="tile bao" data-s="${s}" data-a="act" data-v="bao"><b>我包牌</b><i>我付給另外三家</i></button>
+        <button class="tile bao" data-s="${s}" data-a="act" data-v="bao"${busy ? ' disabled' : ''}><b>我包牌</b><i>${busy ? busyNote : '我付給另外三家'}</i></button>
       </div>
     </div>` + inner;
   } else {
     const c = compute(s, l);
-    inner = `<div class="body${lock ? ' locked' : ''}">${bar}
+    inner = `<div class="body">
       <div class="q"><span class="n">2</span><h3>胡了什麼牌型？</h3><span class="sp"></span>
         <button class="btn gho" data-s="${s}" data-a="back1">‹ 改上一步</button></div>
       <div class="grid">${PAT.map(([lb, v, mx]) => {
@@ -418,11 +415,11 @@ function render(s) {
       <div class="foot">
         <span class="sum"><em>${c.patTai}</em>台</span>
         <span class="calc">${l.act === 'tsumo' ? '另外三家' : NAME[l.who]} 共付 <b>${c.sum.toLocaleString()}</b><br>
-          送出後由付錢的人在自己的平板上確認</span>
+          ${busy ? busyNote + '，確認完才能送出' : '送出後付錢的人各自在平板上確認'}</span>
         <span class="sp"></span>
         <!-- 🔴 按了就送，**不再跳「再確認一次」**（2026-09-23 使用者指定）。
-             真正核對金額的是付錢那一方的確認；送錯了還能在等待畫面按「取消」收回。 -->
-        <button class="btn pri" data-s="${s}" data-a="send">送出</button>
+             真正核對金額的是付錢那一方的確認；送錯了，付錢的人按「取消」就不扣。 -->
+        <button class="btn pri" data-s="${s}" data-a="send"${busy ? ' disabled' : ''}>送出</button>
       </div>
     </div>` + inner;
   }
@@ -433,6 +430,8 @@ function render(s) {
 /* ── 動作 ─────────────────────────────── */
 function act(s, a, v, x) {
   const l = L[s];
+  /* 上一把還有人沒回應：擋住會產生下一把的動作（畫面上那幾顆也已經是 disabled） */
+  if (openCount(G.pending) && (a === 'send' || (a === 'act' && (v === 'draw' || v === 'bao')))) return;
   if (a === 'act') {
     if (v === 'draw') {                                  // 流局：不用確認，直接生效
       G.result = { headline: '流局', desc: '莊家連莊，沒有人付分', by: s,
@@ -471,33 +470,31 @@ function act(s, a, v, x) {
     }
     G.pending = {
       by: s, act: l.act, who: l.who,
-      delta: c.delta, need: c.need, confirmed: [],
+      delta: c.delta, need: c.need, confirmed: [], cancelled: [],
       descTai: `${Object.entries(l.sel).map(([k, n]) => k + (n > 1 ? ' ×' + n : '')).join('、') || '沒有台'}　·　${c.patTai} 台`,
     };
-    l.confirming = false;
+    L[s] = blank();                                     // 送出的人直接回主頁
   }
-  else if (a === 'cancel') { G.pending = null; }
-  else if (a === 'reject') {
-    G.result = { headline: `${NAME[s]} 駁回了`, desc: '這一把要重填', by: G.pending.by,
-                 delta: { 1:0, 2:0, 3:0, 4:0 }, payers: [], dealerAt: G.dealer, downDealer: false };
-    G.pending = null; G.seen = {}; L = { 1:blank(), 2:blank(), 3:blank(), 4:blank() };
-  }
-  else if (a === 'confirm') {
+  /* 🔴 付錢的人各自回應，**各自當場結算**，不等別人（2026-09-23 使用者指定）
+     · 確認 → 只把「這一家那一份」從他身上扣給胡的人
+     · 取消 → 這一家不扣，其他人照常 */
+  else if (a === 'confirm' || a === 'reject') {
     const p = G.pending;
-    if (!p.confirmed.includes(s)) p.confirmed.push(s);
-    if (p.confirmed.length >= p.need.length) {           // 全部確認 → 結算
-      SEATS.forEach((x) => { G.total[x] += p.delta[x]; });
-      G.result = {
-        headline: `${NAME[p.by]} ${p.act === 'tsumo' ? '自摸' : '胡 ' + NAME[p.who]}`,
-        desc: p.descTai, by: p.by, delta: p.delta,
-        payers: p.need,
-        dealerAt: G.dealer,              // ⚠ 要在換莊**之前**記下來，下面那幾行會改它
-        downDealer: false,
-      };
-      // 莊家：胡的人是莊就連莊，否則換莊（包牌的下莊在 send 那裡處理）
-      if (p.by !== G.dealer) { G.ren = 0; G.dealer = (G.dealer % 4) + 1; }
-      else G.ren += 1;
-      G.pending = null; G.seen = {}; L = { 1:blank(), 2:blank(), 3:blank(), 4:blank() };
+    if (!p || !isOpenFor(p, s)) return;
+    if (a === 'confirm') {
+      G.total[s] += p.delta[s];                          // delta[s] 是負的
+      G.total[p.by] -= p.delta[s];
+      p.confirmed.push(s);
+    } else p.cancelled.push(s);
+    L[s] = blank();
+    /* 最後一家回應完，這一把才結束 —— 換莊／連莊在這時候決定：
+       至少一家確認了才算這一把有成立；全部取消等於沒有發生，莊家不動。 */
+    if (openCount(p) === 0) {
+      if (p.confirmed.length) {
+        if (p.by !== G.dealer) { G.ren = 0; G.dealer = (G.dealer % 4) + 1; }
+        else G.ren += 1;
+      }
+      G.pending = null;
     }
   }
   else if (a === 'seen') G.seen[s] = true;
@@ -514,7 +511,7 @@ function paint() {
   const w = zoom ? avail : (avail - 12) / 2;
   const sc = w / 1024;
   quad.innerHTML = seats.map((s) => {
-    const waiting = G.pending && G.pending.need.includes(s) && !G.pending.confirmed.includes(s);
+    const waiting = G.pending && isOpenFor(G.pending, s);
     return `<div class="cell">
       <div class="cap">${NAME[s]} 的平板${s === G.dealer ? '<span class="z">莊</span>' : ''}
         <span class="sp"></span>
