@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>卡片資訊呈現方式</title>
+<style>
+/* 一張卡上「一項資訊」可以怎麼呈現 —— 型錄。
+   每一張示範卡內容都一樣（頭像、名字、段位、莊家 · 連莊 2），只換「莊家」那一項的畫法，
+   所以比得出來的只有「方式」本身。token 照 @migi/assets v1.14.0 深色群組，強調一律粉色系。 */
+:root{
+  --brand:#FAD6DC; --brand-tint:#FFECF1; --ink:#2E2B2C;
+  --dk-bg:#221F20; --dk-bar:#191718; --dk-raised:#2B2829; --dk-tile:#343132; --dk-line:#524D4E;
+  --dk-text:#FFFFFF; --dk-text-2:#C9C4C1; --dk-text-3:#A39E9B;
+  --font:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:#DEDBD8;color:#2E2B2C;padding:24px 20px 60px}
+.wrap{max-width:1180px;margin:0 auto}
+h1{font-size:24px;margin-bottom:6px}
+.lead{font-size:14px;color:#5C5754;line-height:1.8;margin-bottom:16px}
+.lead b{background:var(--brand);border-radius:4px;padding:0 4px;color:#2E2B2C}
+.guide{background:#fff;border-radius:12px;padding:14px 18px;margin-bottom:26px;font-size:13.5px;line-height:1.9;color:#5C5754}
+.guide b{color:#2E2B2C}
+.guide table{border-collapse:collapse;margin-top:6px;width:100%}
+.guide td,.guide th{border-top:1px solid #EAE6E3;padding:5px 8px;text-align:left;vertical-align:top}
+.guide th{font-size:12.5px;color:#8A8480}
+h2{font-size:18px;margin:26px 0 4px;display:flex;align-items:center;gap:10px}
+h2 span{background:#2E2B2C;color:var(--brand);border-radius:999px;padding:1px 11px;font-size:13px}
+.sec-note{font-size:13px;color:#5C5754;margin-bottom:10px;line-height:1.7}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(262px,1fr));gap:14px}
+
+/* 每一格 = 一塊深色「平板背景」＋ 卡片 ＋ 下面的說明 */
+.item{background:var(--dk-bg);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.cap{color:var(--dk-text);font-size:15px;font-weight:800;display:flex;align-items:center;gap:8px}
+.cap .no{background:var(--brand);color:var(--ink);border-radius:999px;font-size:12px;padding:0 8px}
+.meta{font-size:12.5px;line-height:1.65;color:var(--dk-text-2)}
+.meta b{color:var(--dk-text)}
+.meter{display:flex;gap:3px;align-items:center;font-size:11.5px;color:var(--dk-text-3)}
+.meter i{width:14px;height:6px;border-radius:3px;background:var(--dk-line)}
+.meter i.on{background:var(--brand)}
+
+/* ── 示範卡（所有樣式共用的骨架） ── */
+.card{position:relative;background:var(--dk-tile);border:2px solid var(--dk-line);border-radius:12px;
+  height:196px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  padding:10px;text-align:center;color:var(--dk-text);overflow:hidden}
+.av{width:64px;height:64px;border-radius:50%;object-fit:cover;background:var(--dk-bg)}
+.nm{font-size:15px;font-weight:800;line-height:1.25}
+.rk{background:var(--brand);color:var(--ink);border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700}
+.row{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap}
+.tl{position:absolute;top:8px;left:10px}
+.tr{position:absolute;top:8px;right:10px}
+.bl{position:absolute;bottom:8px;left:10px}
+.avwrap{position:relative;display:inline-block}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>卡片資訊呈現方式 · 型錄</h1>
+<p class="lead">
+  一張卡要放很多資訊時，每一項都有好幾種畫法。這一頁把<b>所有常見的方式</b>排在一起：
+  每張示範卡內容都一樣（頭像、名字、段位），<b>只換「莊家 · 連莊 2」這一項的畫法</b>。
+  卡片下面標了它有多醒目（粉色格數越多越搶眼）、適合放什麼、代價是什麼。
+</p>
+
+<div class="guide">
+  <b>怎麼挑：先決定「這項資訊有多重要」，再挑醒目度對得上的方式。</b>
+  一張卡上<b>最多一項</b>用最醒目的方式，其餘往下降 —— 每一項都用膠囊，就等於沒有一項是重點（上一輪「很多 PILL、很亂」就是這個）。
+  <table>
+    <tr><th>重要度</th><th>適合的方式</th><th>桌邊平板上的例子</th></tr>
+    <tr><td>① 這張卡在講什麼</td><td>大字、卡片底色、卡片外框</td><td>名字、「我自摸」</td></tr>
+    <tr><td>② 會改變怎麼算分的狀態</td><td>實心膠囊、牌型標記、角落緞帶、頭像角標、外框換色</td><td>莊家、連莊</td></tr>
+    <tr><td>③ 身分、等級</td><td>空心膠囊、方角標籤、前綴文字</td><td>段位、稱號</td></tr>
+    <tr><td>④ 補充說明</td><td>灰色小字、分隔點串接</td><td>「放槍」「沒有人付分」</td></tr>
+  </table>
+</div>
+
+<div id="out"></div>
+
+</div>
+<script>
+const AV = 'https://raw.githubusercontent.com/migi-hq/migi-assets/v1.14.0/bears/bear-rank-diamond.webp';
+const NAME = '阿哲永遠都在連莊的大魔王';
+const RANK = '<span class="rk">段位: 鑽石熊 I</span>';
+const meter = (n) => `<span class="meter">醒目度 ${[1,2,3,4,5].map((i) => `<i${i <= n ? ' class="on"' : ''}></i>`).join('')}</span>`;
+
+/* 每一種：[名稱, 醒目度, 卡片 HTML, 適合, 代價] */
+const av = (extra = '', style = '') => `<img class="av" src="${AV}" style="${style}">${extra}`;
+const base = (dealerHTML, opts = {}) => `<div class="card" style="${opts.card || ''}">
+  ${opts.corner || ''}
+  ${opts.avatar || av()}
+  <span class="nm" style="${opts.nm || ''}">${NAME}</span>
+  ${opts.noRank ? '' : RANK}
+  ${dealerHTML}
+</div>`;
+
+const GROUPS = [
+  ['文字', '不加任何容器，只靠字的大小、粗細、顏色、位置分出層次。最乾淨，也最容易被忽略。', [
+    ['純文字（灰色小字）', 1,
+      base('<span style="font-size:13px;color:var(--dk-text-2);font-weight:700">莊家 · 連莊 2</span>'),
+      '補充說明、次要資訊', '不醒目；重要的狀態放這裡會被看漏'],
+    ['強調色文字（粉字）', 3,
+      base('<span style="font-size:17px;color:var(--brand);font-weight:800">莊家 · 連莊 2</span>'),
+      '需要被看到、但不想加容器的狀態', '粉字一多就沒有重點；淺底上看不見'],
+    ['大字標題', 4,
+      base('<span style="font-size:22px;font-weight:800">莊家</span>', { noRank: true }),
+      '這張卡最重要的那一句', '只能有一個；會跟名字搶主角'],
+    ['欄位名 ＋ 值', 2,
+      base('<span style="font-size:14px"><span style="color:var(--dk-text-3);font-size:12px;margin-right:6px">身分</span><b>莊家</b>　<span style="color:var(--dk-text-3);font-size:12px;margin-right:6px">連莊</span><b>2</b></span>'),
+      '多個同類數值並排（頂條那種）', '要多佔一個標籤的寬度'],
+    ['前綴／引號', 2,
+      base('<span style="font-size:14px;font-weight:800;color:var(--dk-text-2)">【莊家】連莊 2</span>'),
+      '稱號（「」）、段位（段位: ）這種固定格式', '符號太多會像公文'],
+    ['分隔點串接', 1,
+      base('<span style="font-size:13px;color:var(--dk-text-2);font-weight:700">鑽石熊 I · 莊家 · 連莊 2</span>', { noRank: true }),
+      '把 2–3 項次要資訊併成一行', '每一項都一樣重，分不出主次'],
+  ]],
+  ['容器', '把資訊包起來。醒目度來自「有底色」與「形狀」—— 實心比空心搶眼，圓比方柔和。', [
+    ['實心膠囊（Pill）', 4,
+      base('<span style="background:var(--brand);color:var(--ink);border-radius:999px;padding:3px 12px;font-size:14px;font-weight:800">莊家 · 連莊 2</span>'),
+      '一張卡上最重要的一個狀態', '最容易被濫用 —— 一張卡超過 2 顆就亂'],
+    ['空心膠囊（外框）', 3,
+      base('<span style="border:2px solid var(--brand);color:var(--brand);border-radius:999px;padding:1px 11px;font-size:14px;font-weight:800">莊家 · 連莊 2</span>'),
+      '跟實心膠囊並存時的次要那一顆', '細框在小尺寸會糊'],
+    ['方角標籤（Tag）', 3,
+      base('<span style="background:var(--brand);color:var(--ink);border-radius:4px;padding:3px 9px;font-size:14px;font-weight:800">莊家 · 連莊 2</span>'),
+      '分類、屬性（像商品標籤）', '看起來比膠囊硬、比較「系統」'],
+    ['半透明膠囊', 2,
+      base('<span style="background:rgba(255,255,255,.14);color:var(--dk-text);border-radius:999px;padding:3px 12px;font-size:14px;font-weight:800">莊家 · 連莊 2</span>'),
+      '站在彩色或照片背景上', '深色底上會變灰、存在感低'],
+    ['方框（框住一塊）', 3,
+      base('<span style="border:2px solid var(--brand);border-radius:8px;padding:6px 14px;font-size:14px;font-weight:800;color:var(--dk-text)">莊家<br><span style="color:var(--brand);font-size:18px">連莊 2</span></span>', { noRank: true }),
+      '需要兩行以上的一組資訊', '佔高度；跟卡片外框容易打架'],
+    ['麻將牌標記', 4,
+      base('<span class="row"><span style="background:var(--brand);color:var(--ink);border-radius:5px;padding:3px 7px;font-size:15px;font-weight:800;box-shadow:0 3px 0 rgba(250,214,220,.35)">莊家</span><span style="color:var(--brand);font-weight:800;font-size:15px">連莊 2</span></span>'),
+      '跟麻將有關的狀態（莊、風位）', '只有這個情境說得通'],
+  ]],
+  ['附著在頭像或角落', '不佔用內容的位置，貼在頭像或卡片的邊角。醒目度來自「打破形狀」。', [
+    ['頭像角標', 4,
+      base('', { avatar: `<span class="avwrap">${av()}<span style="position:absolute;right:-6px;bottom:-2px;background:var(--brand);color:var(--ink);border:3px solid var(--dk-tile);border-radius:999px;font-size:12px;font-weight:800;padding:1px 7px">莊</span></span>` }) + '',
+      '跟「這個人」綁在一起的狀態', '只放得下 1–2 個字；連莊數要另外放'],
+    ['頭像外圈', 3,
+      base('<span style="font-size:13px;color:var(--brand);font-weight:800">連莊 2</span>', { avatar: av('', 'box-shadow:0 0 0 4px var(--dk-tile),0 0 0 7px var(--brand)') }),
+      '「他是特別的那一個」', '沒有文字，要搭別的東西才知道是什麼'],
+    ['角落文字', 3,
+      base('', { corner: '<span class="tr" style="color:var(--brand);font-weight:800;font-size:14px">莊家 · 連莊 2</span>' }),
+      '座位、編號這種「在哪裡」的資訊', '角落容易被手指擋住'],
+    ['角落膠囊', 4,
+      base('', { corner: '<span class="tr" style="background:var(--brand);color:var(--ink);border-radius:999px;padding:2px 10px;font-weight:800;font-size:13px">莊家 · 連莊 2</span>' }),
+      '重要狀態、但不想佔中間', '會壓到置中的頭像，要量過'],
+    ['斜角緞帶', 5,
+      base('', { corner: '<span style="position:absolute;top:14px;right:-34px;transform:rotate(45deg);background:var(--brand);color:var(--ink);font-size:12px;font-weight:800;padding:3px 40px">莊家</span>' }),
+      '「這張跟別張不一樣」（促銷、推薦）', '很像廣告；連莊數放不進去'],
+    ['角落三角旗', 3,
+      base('<span style="font-size:13px;color:var(--brand);font-weight:800">莊家 · 連莊 2</span>', { corner: '<span style="position:absolute;top:0;left:0;width:0;height:0;border-top:34px solid var(--brand);border-right:34px solid transparent"></span>' }),
+      '一眼掃過去就要知道哪張有狀態', '三角本身沒有意思，要搭文字'],
+  ]],
+  ['卡片本身', '不加任何東西，改卡片的外觀。整張卡都在說話，最醒目也最佔「顏色預算」。', [
+    ['外框換色', 3,
+      base('<span style="font-size:13px;color:var(--brand);font-weight:800">莊家 · 連莊 2</span>', { card: 'border-color:var(--brand)' }),
+      '選中、特殊的那一張', '跟「選中」撞 —— 使用者會以為點過了'],
+    ['粗外框', 4,
+      base('<span style="font-size:13px;color:var(--brand);font-weight:800">莊家 · 連莊 2</span>', { card: 'border:4px solid var(--brand)' }),
+      '需要非常醒目，但不想換底色', '看起來像警告'],
+    ['左側色條', 3,
+      base('<span style="font-size:13px;color:var(--brand);font-weight:800">莊家 · 連莊 2</span>', { card: 'border-left:8px solid var(--brand)' }),
+      '清單裡標出「這一列有狀態」', '在方形卡上比較不自然（清單比較適合）'],
+    ['頂部色帶', 4,
+      base('', { corner: '<span style="position:absolute;top:0;left:0;right:0;background:var(--brand);color:var(--ink);font-size:13px;font-weight:800;padding:4px 0">莊家 · 連莊 2</span>', card: 'padding-top:30px' }),
+      '整張卡的「標題」或身分', '吃掉一條高度；太像表頭'],
+    ['卡片底色', 5,
+      base('<span style="font-size:14px;font-weight:800">莊家 · 連莊 2</span>', { card: 'background:var(--brand);color:var(--ink);border-color:var(--brand)' }),
+      '整個畫面最重要的那一張（主要按鈕）', '一個畫面只能有一張；頭像與膠囊要重新配色'],
+    ['底色微染（淡粉）', 2,
+      base('<span style="font-size:13px;color:var(--brand);font-weight:800">莊家 · 連莊 2</span>', { card: 'background:linear-gradient(0deg,rgba(250,214,220,.10),rgba(250,214,220,.10)),var(--dk-tile)' }),
+      '輕輕區分，不想搶戲', '深色底上幾乎看不出來'],
+  ]],
+  ['符號', '用圖形代替文字。最省空間，但要大家先學會「這個符號代表什麼」。', [
+    ['圓點指示', 2,
+      base('<span class="row" style="font-size:13px;font-weight:800;color:var(--dk-text-2)"><span style="width:10px;height:10px;border-radius:50%;background:var(--brand)"></span>莊家 · 連莊 2</span>'),
+      '狀態開／關（在線、有新訊息）', '圓點本身沒有意思'],
+    ['圖示 ＋ 文字', 3,
+      base('<span class="row" style="font-size:14px;font-weight:800;color:var(--brand)"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3 18h18l-2-10-5 4-2-7-2 7-5-4z"/></svg>莊家 · 連莊 2</span>'),
+      '有公認圖示的東西（時間、位置）', '「莊家」沒有公認圖示，皇冠要人猜'],
+    ['數字泡泡', 4,
+      base('', { avatar: `<span class="avwrap">${av()}<span style="position:absolute;right:-8px;top:-4px;background:var(--brand);color:var(--ink);border:3px solid var(--dk-tile);border-radius:999px;min-width:28px;height:28px;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center">2</span></span>` }) ,
+      '「有幾個」（未讀數、連莊數）', '單獨一個數字看不出是什麼的數'],
+    ['計數格（點點）', 2,
+      base('<span class="row" style="font-size:13px;font-weight:800;color:var(--brand)">莊家 <span style="display:flex;gap:4px"><i style="width:12px;height:12px;border-radius:3px;background:var(--brand)"></i><i style="width:12px;height:12px;border-radius:3px;background:var(--brand)"></i><i style="width:12px;height:12px;border-radius:3px;border:2px solid var(--dk-line)"></i></span></span>'),
+      '小數量、有上限（連莊幾次、剩幾將）', '數量大就數不清'],
+  ]],
+  ['結構', '用位置與分隔把卡片切成幾塊，讓每一塊各講一件事。', [
+    ['分隔線切兩段', 2,
+      base('<span style="width:80%;border-top:1px solid var(--dk-line);padding-top:6px;font-size:13px;color:var(--brand);font-weight:800">莊家 · 連莊 2</span>'),
+      '「主要資訊」與「附帶資訊」分開', '多一條線就多一層東西要看'],
+    ['上下固定位置', 3,
+      base('', { corner: '<span class="tl" style="color:var(--brand);font-weight:800;font-size:15px">對家</span><span class="tr" style="color:var(--brand);font-weight:800;font-size:15px">莊家 · 連 2</span>' }),
+      '每張卡都有的資訊（座位）放同一個角', '四個角都用就變雜'],
+    ['左右兩欄', 2,
+      `<div class="card" style="flex-direction:row;gap:12px;justify-content:flex-start;text-align:left">${av()}<div style="display:flex;flex-direction:column;gap:5px;min-width:0"><span class="nm">${NAME}</span>${RANK}<span style="font-size:13px;color:var(--brand);font-weight:800">莊家 · 連莊 2</span></div></div>`,
+      '寬扁的卡（清單、HERO 卡）', '方形卡上左右都擠'],
+    ['進度條', 3,
+      base('<span style="width:80%;display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--dk-text-2);font-weight:700"><span>莊家 · 連莊 2</span><span style="height:6px;border-radius:3px;background:var(--dk-line);overflow:hidden"><span style="display:block;width:40%;height:100%;background:var(--brand)"></span></span></span>'),
+      '「走到哪裡了」（升等、打到第幾將）', '連莊沒有終點，進度條沒有意義'],
+  ]],
+];
+
+let n = 0;
+document.getElementById('out').innerHTML = GROUPS.map(([g, note, items]) => `
+  <h2><span>${g}</span></h2><p class="sec-note">${note}</p>
+  <div class="grid">${items.map(([name, lv, html, fit, cost]) => `
+    <div class="item">
+      <div class="cap"><span class="no">${++n}</span>${name}</div>
+      ${html}
+      ${meter(lv)}
+      <div class="meta"><b>適合</b>　${fit}<br><b>代價</b>　${cost}</div>
+    </div>`).join('')}</div>`).join('');
+</script>
+</body>
+</html>
