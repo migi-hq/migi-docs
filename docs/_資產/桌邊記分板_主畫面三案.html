@@ -157,8 +157,8 @@ h1{font-size:23px;margin-bottom:6px}
   其餘說明（放槍、另外三家一起付…）改成淺灰字，不是膠囊。<br />
   <b>③ 粉色只給少數幾件事</b>：莊家、我的段位膠囊（B、C 的「我自摸」也還是粉色；A 已改成跟其他格一樣的深色）。其他一律深灰卡配灰框。<br />
   <b>④ 頂條照「四台同步」那一版</b>：小字欄位名＋白色值，分隔線隔開 ——
-  「MIGI｜玩法 台麻 · 無花 · 3 將｜積分 100/20｜總積分 2000｜桌號 A3 · 第 1 將 · 東風圈 · 第 3 局　已使用 1:42」。
-  寬度剛好塞滿 1024，右邊只剩約 13px。
+  「MIGI｜桌號 A3｜玩法 台麻 · 無花 · 3 將｜積分 100/20｜總積分 2000｜第 1 將 · 東風圈 · 第 3 局　已使用 1:42」。
+  寬度剛好塞滿 1024，右邊只剩約 2px。
   我自己照 App 個人檔案的順序：稱號「新手村制霸」在名字上面，段位膠囊在名字下面。
 </div>
 
@@ -185,10 +185,11 @@ const meRank = (fs) => `<span class="rkp" style="font-size:${fs}px">段位: ${P[
 
 const topBar = () => `<div class="top">
   <span class="logo">MIGI</span><span class="sep"></span>
+  <span><em>桌號</em>A3</span><span class="sep"></span>
   <span><em>玩法</em>台麻 · 無花 · 3 將</span><span class="sep"></span>
   <span><em>積分</em>100/20</span><span class="sep"></span>
   <span><em>總積分</em>2000</span><span class="sep"></span>
-  <span><em>桌號</em>A3 · 第 1 將 · 東風圈 · 第 3 局</span>
+  <span>第 1 將 · 東風圈 · 第 3 局</span>
   <span class="sp"></span>
   <span class="clock"><em>已使用</em>1:42</span></div>`;
 /* 右上角是「這一桌已經用了多久」不是現在幾點（2026-09-23 使用者指定）。
