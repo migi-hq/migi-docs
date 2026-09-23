@@ -74,9 +74,17 @@ h1{font-size:23px;margin-bottom:6px}
      中間那欄 1.25 倍寬，六格三種尺寸。「我自摸」靠粉色分出來就夠，不靠比較大。 */
   grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:1fr 1fr 136px;
   grid-template-areas:"draw top bao" "left zimo right" "me me me"}
-.A .opp{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:10px;text-align:center}
+.A .opp{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  padding:52px 10px 10px;text-align:center}
 .A .opp .nm{font-size:22px}
-.A .opp .sub{font-size:22px}
+.A .opp b{font-size:34px;line-height:1.1}
+.A .opp .head{position:absolute;top:10px;left:14px;right:14px;display:flex;align-items:center;gap:8px}
+.A .opp .pos{font-size:20px;font-weight:800;color:var(--dk-text-2);margin-right:auto}
+/* 莊家標記：一張「莊」字麻將牌（粉底墨字、牌的比例），旁邊粉字寫連莊數 */
+.A .opp .zhtile{width:32px;height:40px;border-radius:6px;background:var(--brand);color:var(--ink);
+  display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;
+  box-shadow:0 3px 0 rgba(250,214,220,.35)}
+.A .opp .ren{font-size:20px;font-weight:800;color:var(--brand)}
 .A .act{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
 .A .act b{font-size:34px}
 .A .act .sub{font-size:22px}
@@ -148,6 +156,7 @@ const P = {
 };
 const ME = 1, DEALER = 3, REN = 2, SCORE = '2,320';
 const SEAT = { right: 2, top: 3, left: 4 };            // 從我這台看出去：下家右、對家上、上家左
+const WHERE = { right: '下家', top: '對家', left: '上家' };
 /* 莊家膠囊：寫全「莊家」、放大到 20px，貼在卡片右上角（2026-09-23 使用者指定）。
    直接放在 .card 底下 ＝ 貼角；放在名字那一行裡 ＝ 跟著文字走（我自己的卡用這個）。 */
 const zh = (x, fs = 20) => x === DEALER ? `<span class="zh" style="font-size:${fs}px">莊家 · 連莊 ${REN}</span>` : '';
@@ -165,11 +174,16 @@ const topBar = () => `<div class="top">
 
 /* ── A 座位圖 ── */
 const A = () => {
+  /* 對手卡：頂端一排「位置」（對家／上家／下家）；莊家不用膠囊，
+     改成桌上真的會擺的那種「莊」字牌 ＋ 連莊數（2026-09-23 使用者：「用別的方式呈現」）。
+     「放槍」跟流局、我包牌同一個大字（2026-09-23 使用者指定）。 */
   const opp = (pos) => { const x = SEAT[pos];
     return `<div class="card opp${d(x)}" style="grid-area:${pos}">
-      <img class="av" src="${P[x].av}" style="width:76px;height:76px">
+      <div class="head"><span class="pos">${WHERE[pos]}</span>
+        ${x === DEALER ? `<span class="zhtile">莊</span><span class="ren">連莊 ${REN}</span>` : ''}</div>
+      <img class="av" src="${P[x].av}" style="width:72px;height:72px">
       <span class="nm">${P[x].name}</span>
-      <span class="sub">放槍</span>${zh(x)}</div>`; };
+      <b>放槍</b></div>`; };
   return `<div class="frame A">${topBar()}<div class="body">
     <div class="card act" style="grid-area:draw"><b>流局</b><span class="sub">沒有人付分</span></div>
     ${opp('top')}
