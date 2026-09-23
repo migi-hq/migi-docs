@@ -70,7 +70,9 @@ h1{font-size:23px;margin-bottom:6px}
 
 /* ── A 座位圖 ───────────────────────── */
 .A .body{flex:1;min-height:0;padding:16px 18px;display:grid;gap:14px;
-  grid-template-columns:1fr 1.25fr 1fr;grid-template-rows:212px 1fr 136px;
+  /* 六格一樣大（2026-09-23 使用者：「A 大小都不一樣」）—— 原本上排 212px、中排撐滿、
+     中間那欄 1.25 倍寬，六格三種尺寸。「我自摸」靠粉色分出來就夠，不靠比較大。 */
+  grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:1fr 1fr 136px;
   grid-template-areas:"draw top bao" "left zimo right" "me me me"}
 .A .opp{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:10px;text-align:center}
 .A .opp .nm{font-size:22px}
@@ -78,7 +80,6 @@ h1{font-size:23px;margin-bottom:6px}
 .A .act{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
 .A .act b{font-size:34px}
 .A .act .sub{font-size:22px}
-.A .zimo b{font-size:48px}
 .A .me{grid-area:me;display:flex;align-items:center;gap:18px;padding:0 24px;background:var(--dk-raised)}
 .A .me .who{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
 .A .me .nm{font-size:28px}
@@ -228,7 +229,7 @@ const C = () => {
 const CASES = [
   ['A', '座位圖：畫面就是這張牌桌', A,
    `對手擺在<b>他們真的坐的位置</b>（對家在上、上家在左、下家在右），誰放槍就按他那個方向。
-    正中間粉色的「我自摸」最大，流局與包牌在上排兩角，最下面是我與積分。`,
+    六格一樣大，正中間粉色的是「我自摸」，流局與包牌在上排兩角，最下面是我與積分。`,
    `<b>代價</b>：平板配對時要綁座位（東南西北），綁錯的話位置跟人對不上。`],
   ['B', '左邊是我、右邊六格', B,
    `左邊一整條是我（頭像、名字、一行灰字、積分），右邊六格。
