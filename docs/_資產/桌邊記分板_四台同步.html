@@ -12,7 +12,7 @@
   🔴 這一頁的重點不是版面，是**時序**：同一把牌，四台在同一時間看到的東西不一樣。
      ① 送出的人   選完 → 自己先跳一次確認（要付／要收多少）
      ② 送出之後   要付錢的那幾台跳出確認；不用付的那幾台只看到「等待中」
-     ③ 全部確認   四台同時更新分數，各自顯示「你付了 / 你收到 / 這把沒你的事」
+     ③ 全部確認   四台同時更新分數，各自顯示「你付了 / 你收到 / 這局沒你的事」
 
   ⚠ 四台的狀態是**同一份**（就像後端那一份）。在任何一台上操作，另外三台立刻跟著變
      —— 正式環境靠 realtime 廣播 ＋ 5 秒輪詢（lib/sync.js），這裡直接重畫。
@@ -70,7 +70,7 @@ h1{font-size:23px;margin-bottom:6px}
   overflow:hidden;background:var(--dk-bg);color:var(--dk-text)}
 
 /* ── 平板內部 ─────────────────────────── */
-/* 頂條：只放這一桌的事實 —— 玩法／積分級距／桌號與圈將把／時間（2026-09-23 使用者指定）。
+/* 頂條：只放這一桌的事實 —— 玩法／積分級距／桌號與將圈局／時間（2026-09-23 使用者指定）。
    莊家資訊與「我的幕前積分」都搬走了：莊家看人物卡，積分看右下。 */
 .top{display:flex;align-items:center;gap:16px;padding:12px 22px;background:var(--dk-bar);
   border-bottom:1px solid var(--dk-line);flex-shrink:0;font-size:24px;font-weight:800;white-space:nowrap}
@@ -217,15 +217,15 @@ code{background:#F2F0EE;border-radius:5px;padding:1px 6px;font-size:.92em}
   「確認」＝ 這一家那一份<b>當場</b>扣給胡的人，回主頁；「取消」＝ 這一家不扣，卡片消失，回主頁。
   <b>沒有「等某某確認」這種字</b> —— 誰都不用等誰。<br />
   🎯 <b>送錯了怎麼辦</b>：付錢的人按取消就不扣。自摸三家中有一家取消，另外兩家照樣結算。<br />
-  ⚠ <b>一把什麼時候算結束</b>：最後一家回應完。這時才決定換莊／連莊 ——
-  至少一家確認了就照常（胡的人是莊就連莊，否則換莊）；<b>全部取消等於這一把沒發生</b>，莊家不動。<br />
-  ⚠ <b>上一把還有人沒回應時</b>，只有「送出／流局／包牌」按不了，旁邊寫「上一把還有人沒確認」，
-  不點名是誰。擋它的理由：換莊要等上一把結束才知道，兩把同時在路上會算錯莊家台。
+  ⚠ <b>一局什麼時候算結束</b>：最後一家回應完。這時才決定換莊／連莊 ——
+  至少一家確認了就照常（胡的人是莊就連莊，否則換莊）；<b>全部取消等於這一局沒發生</b>，莊家不動。<br />
+  ⚠ <b>上一局還有人沒回應時</b>，只有「送出／流局／包牌」按不了，旁邊寫「上一局還有人沒確認」，
+  不點名是誰。擋它的理由：換莊要等上一局結束才知道，兩局同時在路上會算錯莊家台。
 </div>
 
 <div class="sec">
   <h3>0. 版面（2026-09-23 使用者指定）</h3>
-  <b>頂條只放這一桌的事實</b>：MIGI → 玩法 → 積分 → 桌號 → 打到哪一把 → 時間，字放大到 24px。
+  <b>頂條只放這一桌的事實</b>：MIGI → 玩法 → 積分 → 桌號 → 打到哪一局 → 時間，字放大到 24px。
   「玩法」「積分」這兩格<b>比照會員 App 的牌局資訊</b>：玩法 ＝ 台麻 · 無花 · 3 將，積分 ＝ 100/20。<br />
   ⚠ 頂條右邊只剩約 22px 空間。「1000/500」這種比較長的積分級距還放得下，再長就要縮字。
   原本頂條的莊家卡與「我的幕前積分・第 N 位」都拿掉了。<br />
@@ -234,7 +234,7 @@ code{background:#F2F0EE;border-radius:5px;padding:1px 6px;font-size:.92em}
   <b>人物磚</b>：頭像 → 稱號＋段位 → 名字 → 說明膠囊。第一步六格的說明一律是粉色膠囊。
   包牌格跟其他格同一個樣子（不再是虛線框）。<br />
   <b>底列</b>：左 2/3 是我自己（頭像、稱號、名字、段位 ＝ HERO 卡），右 1/3 是幕前積分。<br />
-  <b>流局也有確認框</b>（取消／確認）—— 它不用別人確認、按下去就換下一把，按錯沒人擋得住。
+  <b>流局也有確認框</b>（取消／確認）—— 它不用別人確認、按下去就換下一局，按錯沒人擋得住。
 </div>
 
 <div class="sec">
@@ -285,8 +285,8 @@ const PROF = {
      玩法 ＝ [fmtType(game_type, flower), rounds].join(' · ')   → 台麻 · 無花 · 3 將
      積分 ＝ stake_levels 的標籤                                  → 100/20
    （來源：migi-web match.jsx 的 `play` 與 GameDetailSheet 的「玩法／積分」兩列）
-   另外兩格是平板才有的：桌號、現在打到哪一把。 */
-const TABLE = { type: '台麻', flower: '無花', rounds: '3 將', stake: '100/20', table: 'A3', now: '東風圈 第 1 將 第 3 把' };
+   另外兩格是平板才有的：桌號、現在打到哪一局。 */
+const TABLE = { type: '台麻', flower: '無花', rounds: '3 將', stake: '100/20', table: 'A3', now: '第 1 將 · 東風圈 · 第 3 局' };
 const PLAY = [TABLE.type, TABLE.flower, TABLE.rounds].filter(Boolean).join(' · ');
 
 /* 名字越長字越小，但有下限 —— 平板要隔著牌桌看得到。
@@ -314,7 +314,7 @@ const isOpenFor = (p, s) => p.need.includes(s) && !p.confirmed.includes(s) && !p
 const openCount = (p) => p ? p.need.filter((x) => isOpenFor(p, x)).length : 0;
 const rankOf = (s) => SEATS.slice().sort((a,b) => G.total[b]-G.total[a] || a-b).indexOf(s) + 1;
 
-/* 這一把的台數與每一家的增減（假算式，真的在後端）
+/* 這一局的台數與每一家的增減（假算式，真的在後端）
    by ＝ 在自己平板上按的那個人。
    · 自摸／放槍：by 是**收錢**的人
    · 🔴 包牌：by 是**付錢**的人 —— 他付給另外三家（2026-09-23 使用者確認） */
@@ -395,14 +395,14 @@ function render(s) {
       <div class="k">${r.headline}</div>
       <div class="h">${r.desc}</div>
       ${moneyHTML(d)}
-      <div class="who">${d === 0 ? '這一把沒有你的事'
+      <div class="who">${d === 0 ? '這一局沒有你的事'
         : d > 0
           /* 🔴 自摸是三家付：把三個名字串成一句的話，12 個字的名字會變成一段
              七十個字的話（壓力測試抓到的）。說「另外三家」就好。 */
           ? `收到${r.payers.length === 3 ? '另外三家' : ' ' + NAME[r.payers[0]] + ' '}給的積分`
           : r.kind === 'bao' ? '付給另外三家'
           : `付給 ${NAME[r.by]}`}</div>
-      <div class="who" style="margin-top:8px">你的幕前積分 <b>${G.total[s].toLocaleString()}</b>${r.downDealer ? '　·　這把之後下莊' : ''}</div>
+      <div class="who" style="margin-top:8px">你的幕前積分 <b>${G.total[s].toLocaleString()}</b>${r.downDealer ? '　·　這局之後下莊' : ''}</div>
       <div class="acts"><button class="btn pri" data-s="${s}" data-a="seen">確認</button></div>
     </div></div>`;
   }
@@ -427,11 +427,11 @@ function render(s) {
 
   /* ① 送出前：那一台自己的確認框 */
   else if (l.confirming && l.act === 'draw') {
-    /* 流局也要一張確認（2026-09-23 使用者指定）：它不用別人確認、按下去四台立刻換下一把，
+    /* 流局也要一張確認（2026-09-23 使用者指定）：它不用別人確認、按下去四台立刻換下一局，
        所以按錯沒有人擋得住 —— 這是唯一一次反悔的機會。 */
     inner = `<div class="sheet"><div class="card">
       <div class="k">流局</div>
-      <div class="h">確定這一把流局？</div>
+      <div class="h">確定這一局流局？</div>
       <div class="who" style="margin-top:10px">沒有人付分　·　莊家連莊（連莊 ${G.ren} → ${G.ren + 1}）</div>
       <div class="acts">
         <button class="btn gho" data-s="${s}" data-a="back">取消</button>
@@ -440,7 +440,7 @@ function render(s) {
     </div></div>`;
   }
   else if (l.confirming) {
-    /* 包牌的確認：「確定要給這三家 ○○○」（使用者指定的流程）。胡牌那一把按了就送，不經過這裡。
+    /* 包牌的確認：「確定要給這三家 ○○○」（使用者指定的流程）。胡牌那一局按了就送，不經過這裡。
        包牌要這一張，是因為**它沒有第二道確認** —— 按下去就從自己身上扣錢給三家，
        而收錢的人不需要同意收錢。這是唯一一次核對的機會。 */
     const c = compute(s, l);
@@ -450,7 +450,7 @@ function render(s) {
       <div class="money pay">−${c.sum.toLocaleString()}</div>
       <div class="who">每家 1 底 ${BAO_TAI} 台，${s === G.dealer
           ? `你是莊家，<b>三家都</b>另加 ${extra()} 台`
-          : `莊家那一份另加 ${extra()} 台`}（1 ＋ 2×${G.ren}）　·　<b>這把之後下莊</b></div>
+          : `莊家那一份另加 ${extra()} 台`}（1 ＋ 2×${G.ren}）　·　<b>這局之後下莊</b></div>
       <div class="acts">
         <button class="btn gho" data-s="${s}" data-a="back">取消</button>
         <button class="btn pri" data-s="${s}" data-a="send">確認</button>
@@ -458,17 +458,17 @@ function render(s) {
     </div></div>`;
   }
 
-  /* 上一把還有人沒回應時，**只擋「會產生下一把」的那一下**（送出／流局／包牌），
+  /* 上一局還有人沒回應時，**只擋「會產生下一局」的那一下**（送出／流局／包牌），
      主頁其他地方照常 —— 不掛等待條、不點名是誰（2026-09-23 使用者指定）。
-     ⚠ 擋的理由：換莊與連莊要等上一把結束才知道，兩把同時在路上會算錯莊家台。 */
+     ⚠ 擋的理由：換莊與連莊要等上一局結束才知道，兩局同時在路上會算錯莊家台。 */
   const busy = openCount(p) > 0;
-  const busyNote = '上一把還有人沒確認';
+  const busyNote = '上一局還有人沒確認';
 
   /* 主流程：選誰付錢 → 選誰包 → 選牌型 */
   if (l.step === 1) {
     const others = SEATS.filter((x) => x !== s);
     inner = `<div class="body">
-      <div class="q"><span class="n">1</span><h3>這一把誰要付錢？</h3></div>
+      <div class="q"><span class="n">1</span><h3>這一局誰要付錢？</h3></div>
       <div class="g6">
         <button class="tile" data-s="${s}" data-a="act" data-v="tsumo"><b>我自摸</b><span class="pill pk">另外三家一起付</span></button>
         ${others.map((x) => `<button class="tile nm${x === G.dealer ? ' isdealer' : ''}" data-s="${s}" data-a="act" data-v="ron" data-x="${x}">
@@ -513,7 +513,7 @@ function render(s) {
 /* ── 動作 ─────────────────────────────── */
 function act(s, a, v, x) {
   const l = L[s];
-  /* 上一把還有人沒回應：擋住會產生下一把的動作（畫面上那幾顆也已經是 disabled） */
+  /* 上一局還有人沒回應：擋住會產生下一局的動作（畫面上那幾顆也已經是 disabled） */
   if (openCount(G.pending) && (a === 'send' || (a === 'act' && (v === 'draw' || v === 'bao')))) return;
   if (a === 'act') {
     l.act = v; l.who = x ? +x : null; l.sel = {};
@@ -572,8 +572,8 @@ function act(s, a, v, x) {
       p.confirmed.push(s);
     } else p.cancelled.push(s);
     L[s] = blank();
-    /* 最後一家回應完，這一把才結束 —— 換莊／連莊在這時候決定：
-       至少一家確認了才算這一把有成立；全部取消等於沒有發生，莊家不動。 */
+    /* 最後一家回應完，這一局才結束 —— 換莊／連莊在這時候決定：
+       至少一家確認了才算這一局有成立；全部取消等於沒有發生，莊家不動。 */
     if (openCount(p) === 0) {
       if (p.confirmed.length) {
         if (p.by !== G.dealer) { G.ren = 0; G.dealer = (G.dealer % 4) + 1; }
