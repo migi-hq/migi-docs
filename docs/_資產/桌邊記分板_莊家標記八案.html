@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>莊家標記八案</title>
+<style>
+/* 只比「莊家 · 連莊 2」怎麼標：同一張對家卡（A 案的實際尺寸 320×256），八種畫法。
+   token 照 @migi/assets v1.14.0 深色群組；強調一律粉色系。 */
+:root{
+  --brand:#FAD6DC; --brand-tint:#FFECF1; --ink:#2E2B2C;
+  --dk-bg:#221F20; --dk-bar:#191718; --dk-raised:#2B2829; --dk-tile:#343132; --dk-line:#524D4E;
+  --dk-text:#FFFFFF; --dk-text-2:#C9C4C1; --dk-text-3:#A39E9B;
+  --font:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:#DEDBD8;color:#2E2B2C;padding:24px 20px 60px}
+.wrap{max-width:1180px;margin:0 auto}
+h1{font-size:24px;margin-bottom:6px}
+.lead{font-size:14px;color:#5C5754;line-height:1.8;margin-bottom:18px}
+.lead b{background:var(--brand);border-radius:4px;padding:0 4px;color:#2E2B2C}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(356px,1fr));gap:16px}
+.item{background:var(--dk-bg);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px;align-items:center}
+.cap{color:var(--dk-text);font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;align-self:flex-start}
+.cap .no{background:var(--brand);color:var(--ink);border-radius:999px;font-size:12px;padding:0 8px}
+.meta{font-size:13px;line-height:1.7;color:var(--dk-text-2);align-self:flex-start}
+.meta b{color:var(--dk-text)}
+
+/* ── A 案對家卡的骨架（原尺寸） ── */
+.card{position:relative;width:320px;height:256px;background:var(--dk-tile);border:2px solid var(--brand);
+  border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  padding:10px;text-align:center;color:var(--dk-text);overflow:hidden;flex-shrink:0}
+.av{width:100px;height:100px;border-radius:50%;object-fit:cover;background:var(--dk-bg);flex-shrink:0}
+.nm{font-size:22px;font-weight:800;line-height:1.2}
+.rk{background:var(--brand);color:var(--ink);border-radius:999px;padding:3px 13px;font-size:16px;font-weight:700}
+.pos{position:absolute;top:10px;left:14px;font-size:26px;font-weight:800;color:var(--brand);line-height:1.2}
+.tile{height:40px;padding:0 10px;border-radius:6px;background:var(--brand);color:var(--ink);
+  display:inline-flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;
+  box-shadow:0 3px 0 rgba(250,214,220,.35)}
+.pk{color:var(--brand);font-weight:800}
+.avwrap{position:relative;display:inline-block}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>莊家標記八案</h1>
+<p class="lead">
+  同一張對家卡，只換<b>「莊家 · 連莊 2」怎麼標</b>。① 是現在的版本。
+  每一案都量過：頭像、名字、段位、左上角座位都沒有被壓到，也沒有超出卡片。
+</p>
+<div class="grid" id="out"></div>
+</div>
+<script>
+const AV = 'https://raw.githubusercontent.com/migi-hq/migi-assets/v1.14.0/bears/bear-rank-diamond.webp';
+const NAME = '阿哲永遠都在連莊的大魔王';
+const core = (o = {}) => `
+  ${o.hidePos ? '' : `<span class="pos">${o.posText || '對家'}</span>`}
+  ${o.before || ''}
+  ${o.avatar || `<img class="av" src="${AV}">`}
+  <span class="nm">${NAME}</span>
+  <span class="rk">段位: 鑽石熊 I</span>
+  ${o.after || ''}`;
+
+const CASES = [
+  ['現在：牌＋連莊直排在右上', `<div class="card">
+      <span style="position:absolute;top:10px;right:12px;display:flex;flex-direction:column;align-items:center;gap:4px">
+        <span class="tile">莊家</span><span class="pk" style="font-size:20px">連莊 2</span></span>${core()}</div>`,
+    '<b>問題</b>　牌與連莊數是兩個零件疊著，看起來像貼紙；「連莊 2」孤零零掛在牌下面。'],
+
+  ['頂部色帶', `<div class="card" style="padding-top:36px">
+      <span style="position:absolute;top:0;left:0;right:0;height:38px;background:var(--brand);color:var(--ink);
+        display:flex;align-items:center;justify-content:space-between;padding:0 14px;font-weight:800;font-size:20px">
+        <span>對家</span><span>莊家 · 連莊 2</span></span>${core({ hidePos: true })}</div>`,
+    '<b>好處</b>　座位與莊家在同一條帶子上，卡片本身不用再放任何角標；莊家卡一眼就不一樣。<br><b>代價</b>　吃掉 38px 高度；三張對手卡只有一張有色帶，高度感會不同。'],
+
+  ['底部色帶', `<div class="card" style="padding-bottom:36px">
+      <span style="position:absolute;bottom:0;left:0;right:0;height:38px;background:var(--brand);color:var(--ink);
+        display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px">莊家 · 連莊 2</span>${core()}</div>`,
+    '<b>好處</b>　左上角座位不受影響；莊家資訊像卡片的「底標」，跟段位膠囊不搶。<br><b>代價</b>　同樣吃 38px；視線要往下找。'],
+
+  ['一顆橫向膠囊在右上，內容往下讓', `<div class="card" style="padding-top:44px">
+      <span style="position:absolute;top:10px;right:12px;background:var(--brand);color:var(--ink);border-radius:999px;
+        padding:4px 14px;font-size:18px;font-weight:800">莊家 · 連莊 2</span>${core()}</div>`,
+    '<b>好處</b>　一個零件講完，跟段位膠囊同一種語言。<br><b>代價</b>　卡上變成兩顆粉膠囊；內容得往下讓 40px，跟另外兩張卡的頭像不對齊。'],
+
+  ['併進左上角的座位字', `<div class="card">${core({ posText: '對家 · 莊家 · 連莊 2' })}</div>`,
+    '<b>好處</b>　不多任何零件，右上角空出來；「對家是莊」一句話講完。<br><b>代價</b>　那一行字變長（26px 粉字，寬約 230px），沒有形狀上的差別，掃視時不夠跳。'],
+
+  ['頭像外圈 ＋ 角標「莊」，連莊數跟在名字後', `<div class="card">${core({
+      avatar: `<span class="avwrap"><img class="av" src="${AV}" style="box-shadow:0 0 0 4px var(--dk-tile),0 0 0 8px var(--brand)">
+        <span style="position:absolute;right:-8px;bottom:-2px;background:var(--brand);color:var(--ink);border:3px solid var(--dk-tile);
+          border-radius:999px;font-size:16px;font-weight:800;padding:2px 10px">莊</span></span>`,
+      after: `<span class="pk" style="font-size:16px;position:absolute;top:12px;right:14px">連莊 2</span>` })}</div>`,
+    '<b>好處</b>　「莊」跟人綁在一起，最符合「他是莊家」這件事；外圈讓整張卡看起來被點亮。<br><b>代價</b>　「連莊 2」還是要另外找地方放（這裡放右上角粉字）。'],
+
+  ['麻將牌橫排在名字上方（在內容流裡，不貼角）', `<div class="card">${core({
+      before: `<span style="display:flex;align-items:center;gap:8px"><span class="tile" style="height:34px;font-size:19px">莊家</span><span class="pk" style="font-size:19px">連莊 2</span></span>`,
+      avatar: `<img class="av" src="${AV}" style="width:84px;height:84px">` })}</div>`,
+    '<b>好處</b>　牌與連莊數在同一行，不再是疊起來的貼紙；跟頭像、名字一起置中，整張卡是一個整體。<br><b>代價</b>　頭像要縮到 84px 才放得下；卡片內容從三行變四行。'],
+
+  ['連莊數做進牌裡：「莊 ×2」', `<div class="card">
+      <span class="tile" style="position:absolute;top:10px;right:12px;height:44px;font-size:22px;gap:6px">莊家<span style="font-size:16px;opacity:.75">×2</span></span>${core()}</div>`,
+    '<b>好處</b>　一張牌講完兩件事，右上角只有一個零件，不用直排。<br><b>代價</b>　「×2」要學一次才知道是連莊兩次；連莊 0 的時候牌上只剩「莊家」，形狀會變。'],
+];
+
+document.getElementById('out').innerHTML = CASES.map(([t, html, meta], i) => `
+  <div class="item"><div class="cap"><span class="no">${i + 1}</span>${t}</div>${html}<div class="meta">${meta}</div></div>`).join('');
+</script>
+</body>
+</html>
