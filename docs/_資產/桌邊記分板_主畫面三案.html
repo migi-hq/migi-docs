@@ -52,6 +52,11 @@ h1{font-size:23px;margin-bottom:6px}
 /* 🔴 全畫面**唯一**的膠囊：莊家。它是這一把最重要的身分，所以只有它有外框 */
 .zh{display:inline-block;background:var(--brand);color:var(--ink);border-radius:999px;
   padding:3px 14px;font-weight:800;white-space:nowrap}
+/* 段位膠囊：照會員 App 的 `Pill tone="glass"`（半透明白底 ＋ --ink 字），
+   內容照 `fmtRank()`：「段位: 黃金熊 II」。稱號照 App 用直角引號「」。 */
+.rkp{display:inline-block;background:rgba(255,255,255,.7);color:var(--ink);border-radius:999px;
+  padding:3px 13px;font-weight:700;white-space:nowrap}
+.meline{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .q{font-size:24px;font-weight:800;color:var(--dk-text-2);flex-shrink:0}
 .score{font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
 .pri{background:var(--brand);color:var(--ink);border-color:var(--brand)}
@@ -117,10 +122,11 @@ h1{font-size:23px;margin-bottom:6px}
 <div class="rules">
   <b>① 一張卡只回答一個問題。</b>選「誰放槍」只需要認得人 → 對手卡只留<b>頭像＋名字</b>。
   稱號、段位是「他是誰」的資料，不是「這一把誰付錢」要用的，從對手卡上拿掉。<br />
-  <b>② 全畫面只有一顆膠囊：莊家。</b>其餘說明（放槍、另外三家一起付…）改成灰色小字，不再是膠囊。<br />
+  <b>② 膠囊只留兩種：莊家（粉底）、我的段位（照會員 App：半透明白底＋黑字「段位: 黃金熊 II」）。</b>
+  其餘說明（放槍、另外三家一起付…）改成淺灰字，不是膠囊。<br />
   <b>③ 粉色只給兩件事</b>：莊家、最常按的「我自摸」。其他一律深灰卡配灰框。<br />
   <b>④ 頂條只留值不留欄位名</b>：「台麻 · 無花 · 3 將　100/20　A3 東風圈 第 1 將 第 3 把　22:53」。
-  我自己的稱號與段位縮成名字下面一行灰字。
+  我自己的稱號（「新手村制霸」，照 App 加直角引號）與段位膠囊排在名字下面同一行。
 </div>
 
 <div id="cases"></div>
@@ -137,7 +143,7 @@ const ME = 1, DEALER = 3, REN = 2, SCORE = '2,320';
 const SEAT = { right: 2, top: 3, left: 4 };            // 從我這台看出去：下家右、對家上、上家左
 const zh = (x, fs) => x === DEALER ? `<span class="zh" style="font-size:${fs}px">莊 · 連莊 ${REN}</span>` : '';
 const d = (x) => x === DEALER ? ' d' : '';
-const meLine = () => `${P[ME].title} · ${P[ME].rank}`;
+const meLine = (fs) => `<span class="meline"><span class="sub">「${P[ME].title}」</span><span class="rkp" style="font-size:${fs}px">段位: ${P[ME].rank}</span></span>`;
 
 const topBar = () => `<div class="top">
   <span class="logo">MIGI</span>
@@ -161,7 +167,7 @@ const A = () => {
     <div class="card act zimo pri" style="grid-area:zimo"><b>我自摸</b><span class="sub">另外三家一起付</span></div>
     ${opp('right')}
     <div class="card me${d(ME)}"><img class="av" src="${P[ME].av}" style="width:100px;height:100px">
-      <div class="who"><span class="nm">${P[ME].name}</span><span class="sub">${meLine()}</span>${zh(ME, 16)}</div>
+      <div class="who"><span class="nm">${P[ME].name}</span>${meLine(17)}${zh(ME, 16)}</div>
       <span class="score">${SCORE}</span></div>
   </div></div>`;
 };
@@ -175,7 +181,7 @@ const B = () => {
   const act = (t, s, cls = '') => `<div class="card t ${cls}"><b>${t}</b><span class="sub">${s}</span></div>`;
   return `<div class="frame B">${topBar()}<div class="body">
     <div class="card hero${d(ME)}"><img class="av" src="${P[ME].av}" style="width:130px;height:130px">
-      <span class="nm">${P[ME].name}</span><span class="sub">${meLine()}</span>${zh(ME, 16)}
+      <span class="nm">${P[ME].name}</span>${meLine(16).replace('class="meline"', 'class="meline" style="justify-content:center"')}${zh(ME, 16)}
       <span class="score">${SCORE}</span></div>
     <div class="right">
       <div class="q">這一把誰要付錢？</div>
@@ -204,7 +210,7 @@ const C = () => {
       <div class="card"><b>我包牌</b><span class="sub">我付給另外三家</span></div>
     </div>
     <div class="card me${d(ME)}"><img class="av" src="${P[ME].av}" style="width:80px;height:80px">
-      <div class="who"><span class="nm">${P[ME].name}</span><span class="sub">${meLine()}</span></div>
+      <div class="who"><span class="nm">${P[ME].name}</span>${meLine(16)}</div>
       ${zh(ME, 16)}<span class="score">${SCORE}</span></div>
   </div></div>`;
 };
