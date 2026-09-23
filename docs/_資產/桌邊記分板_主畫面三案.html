@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>桌邊記分板 · 主畫面三案</title>
+<style>
+/* 同一份資料畫三種版型，只比「版面」—— 顏色、字、資料全部相同，差別只剩結構。
+   token 名字照 @migi/assets v1.14.0（深色 --dk-*，強調一律粉色系）。 */
+:root{
+  --brand:#FAD6DC; --brand-tint:#FFECF1; --ink:#2E2B2C;
+  --dk-bg:#221F20; --dk-bar:#191718; --dk-raised:#2B2829; --dk-tile:#343132; --dk-line:#524D4E;
+  --dk-text:#FFFFFF; --dk-text-2:#C9C4C1; --dk-text-3:#A39E9B;
+  --font:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:#DEDBD8;color:#2E2B2C;padding:24px 20px 60px}
+h1{font-size:23px;margin-bottom:6px}
+.lead{font-size:13.5px;color:#5C5754;line-height:1.75;max-width:1040px;margin-bottom:18px}
+.lead b{background:var(--brand);border-radius:4px;padding:0 4px}
+.case{max-width:1040px;margin-bottom:34px}
+.case h2{font-size:19px;margin-bottom:4px}
+.case h2 span{display:inline-block;background:#2E2B2C;color:var(--brand);border-radius:999px;
+  padding:1px 11px;font-size:14px;margin-right:8px;vertical-align:2px}
+.why{font-size:13.5px;line-height:1.75;color:#5C5754;margin-bottom:10px}
+.why b{color:#2E2B2C}
+.shell{overflow:hidden;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.12)}
+.frame{width:1024px;height:768px;transform-origin:top left;background:var(--dk-bg);color:var(--dk-text);
+  display:flex;flex-direction:column;overflow:hidden}
+
+/* ── 共用 ───────────────────────────── */
+.top{display:flex;align-items:center;gap:16px;padding:12px 22px;background:var(--dk-bar);
+  border-bottom:1px solid var(--dk-line);flex-shrink:0;font-size:24px;font-weight:800;white-space:nowrap}
+.top .logo{font-size:26px;letter-spacing:3px;color:var(--brand)}
+.top em{font-style:normal;font-size:16px;color:var(--dk-text-3);margin-right:8px}
+.top .sep{width:2px;height:26px;background:var(--dk-line)}
+.top .dim{color:var(--dk-text-2)}
+.top .sp{flex:1}
+.top .clock{font-size:28px;font-variant-numeric:tabular-nums}
+.pill{display:inline-block;border-radius:999px;padding:4px 14px;font-weight:800;line-height:1.3;white-space:nowrap}
+.pk{background:var(--brand);color:var(--ink)}
+.rk{border:2px solid var(--brand);color:var(--brand);padding:2px 12px}
+.dl{background:var(--ink);color:var(--brand);border:2px solid var(--brand);padding:2px 12px}
+.ttl{color:var(--dk-text-2);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.av{border-radius:50%;object-fit:cover;flex-shrink:0;border:3px solid var(--dk-line);background:var(--dk-bg)}
+.av.d{border-color:var(--brand)}
+.nm{font-weight:800;line-height:1.2;word-break:break-all}
+.card{background:var(--dk-tile);border:2px solid var(--dk-line);border-radius:14px;min-width:0;min-height:0}
+.card.d{border-color:var(--brand)}
+.q{display:flex;align-items:center;gap:12px;font-size:26px;font-weight:800;flex-shrink:0}
+.q .n{width:34px;height:34px;border-radius:50%;background:var(--brand);color:var(--ink);
+  display:flex;align-items:center;justify-content:center;font-size:16px}
+/* 動作用「一張牌」當圖示：跟人物的頭像佔同一個位置，六格的骨架因此一樣 */
+.glyph{border-radius:10px;background:var(--brand-tint);color:var(--ink);border:2px solid var(--brand);
+  display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0}
+.score{font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+
+/* ── A 座位圖 ───────────────────────── */
+.A .body{flex:1;min-height:0;padding:14px 18px;display:grid;gap:12px;
+  grid-template-columns:1fr 1.25fr 1fr;grid-template-rows:205px 1fr 150px;
+  grid-template-areas:"draw top bao" "left zimo right" "me me me"}
+.A .opp{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:8px;text-align:center;position:relative}
+.A .opp .where{position:absolute;top:8px;left:10px;font-size:14px;font-weight:800;color:var(--dk-text-3)}
+.A .opp .ttl{font-size:15px}
+.A .opp .nm{font-size:21px}
+.A .opp .row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.A .opp .rk{font-size:13px}
+.A .opp .pk,.A .opp .dl{font-size:16px}
+.A .act{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+.A .act b{font-size:32px}
+.A .act .pk{font-size:18px}
+.A .zimo{grid-area:zimo;background:var(--brand);border-color:var(--brand);color:var(--ink)}
+.A .zimo b{font-size:44px}
+.A .zimo .pk{background:var(--ink);color:var(--brand)}
+.A .me{grid-area:me;display:flex;align-items:center;gap:18px;padding:0 22px;background:var(--dk-raised)}
+.A .me .who{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.A .me .ttl{font-size:17px}
+.A .me .nm{font-size:28px}
+.A .me .score{font-size:76px}
+
+/* ── B 左我、右六格 ──────────────────── */
+.B .body{flex:1;min-height:0;padding:14px 18px;display:grid;grid-template-columns:300px 1fr;gap:14px}
+.B .hero{background:var(--dk-raised);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:9px;padding:18px;text-align:center}
+.B .hero .ttl{font-size:17px}
+.B .hero .nm{font-size:26px}
+.B .hero .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.B .hero .rk,.B .hero .dl{font-size:16px}
+.B .hero hr{border:none;border-top:2px solid var(--dk-line);width:100%;margin:8px 0}
+.B .hero .score{font-size:80px}
+.B .right{display:flex;flex-direction:column;gap:12px;min-height:0}
+.B .g6{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:1fr 1fr;gap:12px}
+/* 六格同一副骨架：圖（頭像或牌）→ 主字 → 膠囊 */
+.B .t{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:10px;text-align:center}
+.B .t .nm{font-size:19px}
+.B .t .ttl{font-size:13px}
+.B .t .row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.B .t .pk,.B .t .dl{font-size:16px}
+.B .t .rk{font-size:12px}
+.B .t b{font-size:30px}
+
+/* ── C 名單式 ───────────────────────── */
+.C .body{flex:1;min-height:0;padding:14px 18px;display:flex;flex-direction:column;gap:10px}
+.C .opp{display:flex;align-items:center;gap:18px;padding:0 18px;height:112px;flex-shrink:0}
+.C .opp .who{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.C .opp .top2{display:flex;gap:8px;align-items:center;min-width:0}
+.C .opp .ttl{font-size:16px}
+.C .opp .rk{font-size:14px}
+.C .opp .nm{font-size:27px}
+.C .opp .go{width:210px;height:84px;border-radius:12px;background:var(--brand);color:var(--ink);
+  display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;flex-shrink:0}
+.C .acts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;height:104px;flex-shrink:0}
+.C .acts .card{display:flex;align-items:center;justify-content:center;gap:14px}
+.C .acts b{font-size:30px}
+.C .acts .pk{font-size:15px}
+.C .me{display:flex;align-items:center;gap:16px;padding:0 20px;background:var(--dk-raised);flex:1;min-height:0}
+.C .me .who{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.C .me .ttl{font-size:16px}
+.C .me .nm{font-size:25px}
+.C .me .score{font-size:64px}
+
+.note{font-size:13px;color:#5C5754;line-height:1.7;margin-top:10px}
+.note b{color:#2E2B2C}
+</style>
+</head>
+<body>
+
+<h1>桌邊記分板 · 主畫面三案</h1>
+<p class="lead">
+  三案用<b>完全相同的資料</b>（12 個字的名字、同一套深色 token、只有粉色系），只比<b>版面結構</b>。
+  畫的都是「這一把誰要付錢？」那一頁，拿著這台平板的是<b>咖勁凱</b>，莊家是阿哲（連莊 2）。<br />
+  先前那一版怪的地方我看是三個：① 六格裡<b>三格是人、三格是字</b>，骨架不一樣，看起來像兩種東西硬排在一起；
+  ② 右下的積分跟左邊的我分成兩張卡，<b>「我」被拆開了</b>；③ 選「誰放槍」要讀名字，但牌桌上大家其實是<b>用位置認人</b>的。
+</p>
+
+<div id="cases"></div>
+
+<script>
+const BEAR = (k) => `https://raw.githubusercontent.com/migi-hq/migi-assets/v1.14.0/bears/bear-rank-${k}.webp`;
+const P = {
+  1: { name: '咖勁凱的麻將人生第一桌啦', title: '新手村制霸',   rank: '黃金熊 II',  av: BEAR('gold') },
+  2: { name: '小美今天一定要胡清一色喔', title: '清一色收藏家', rank: '白銀熊 I',   av: BEAR('silver') },
+  3: { name: '阿哲永遠都在連莊的大魔王', title: '連莊之王',     rank: '鑽石熊 I',   av: BEAR('diamond') },
+  4: { name: '大雄只想打一將就回家睡覺', title: '新手上路',     rank: '青銅熊 III', av: BEAR('bronze') },
+};
+const ME = 1, DEALER = 3, REN = 2, SCORE = '2,320';
+// 相對位置（從我這台看出去）：下家在右、對家在對面、上家在左
+const SEAT = { right: 2, top: 3, left: 4 };
+const WHERE = { right: '下家', top: '對家', left: '上家' };
+const dl = (x) => x === DEALER ? `<span class="pill dl">莊家 · 連莊 ${REN}</span>` : '';
+
+const topBar = () => `<div class="top">
+  <span class="logo">MIGI</span><span class="sep"></span>
+  <span><em>玩法</em>台麻 · 無花 · 3 將</span><span class="sep"></span>
+  <span><em>積分</em>100/20</span><span class="sep"></span>
+  <span><em>桌號</em>A3</span><span class="sep"></span>
+  <span class="dim">東風圈 第 1 將 第 3 把</span><span class="sp"></span>
+  <span class="clock">22:53</span></div>`;
+
+/* ── A 座位圖 ── */
+const A = () => {
+  const opp = (pos) => { const x = SEAT[pos], p = P[x];
+    return `<div class="card opp${x === DEALER ? ' d' : ''}" style="grid-area:${pos}">
+      <span class="where">${WHERE[pos]}</span>
+      <img class="av${x === DEALER ? ' d' : ''}" src="${p.av}" style="width:78px;height:78px">
+      <span class="row"><span class="ttl">「${p.title}」</span><span class="pill rk">${p.rank}</span></span>
+      <span class="nm">${p.name}</span>
+      <span class="row"><span class="pill pk">他放槍</span>${dl(x)}</span></div>`; };
+  const p = P[ME];
+  return `<div class="frame A">${topBar()}<div class="body">
+    <div class="card act" style="grid-area:draw"><b>流局</b><span class="pill pk">沒有人付分</span></div>
+    ${opp('top')}
+    <div class="card act" style="grid-area:bao"><b>我包牌</b><span class="pill pk">我付給另外三家</span></div>
+    ${opp('left')}
+    <div class="card act zimo"><b>我自摸</b><span class="pill pk">另外三家一起付</span></div>
+    ${opp('right')}
+    <div class="card me"><img class="av${ME === DEALER ? ' d' : ''}" src="${p.av}" style="width:108px;height:108px">
+      <div class="who"><span class="ttl">「${p.title}」</span><span class="nm">${p.name}</span>
+        <span><span class="pill rk">${p.rank}</span> ${dl(ME)}</span></div>
+      <span class="score">${SCORE}</span></div>
+  </div></div>`;
+};
+
+/* ── B 左我、右六格 ── */
+const B = () => {
+  const p = P[ME];
+  const opp = (x) => `<div class="card t${x === DEALER ? ' d' : ''}">
+      <img class="av${x === DEALER ? ' d' : ''}" src="${P[x].av}" style="width:72px;height:72px">
+      <span class="ttl">「${P[x].title}」 ${P[x].rank}</span>
+      <span class="nm">${P[x].name}</span>
+      <span class="row"><span class="pill pk">放槍</span>${dl(x)}</span></div>`;
+  const act = (g, t, s) => `<div class="card t"><span class="glyph" style="width:60px;height:72px;font-size:32px">${g}</span>
+      <b>${t}</b><span class="pill pk">${s}</span></div>`;
+  return `<div class="frame B">${topBar()}<div class="body">
+    <div class="card hero"><img class="av${ME === DEALER ? ' d' : ''}" src="${p.av}" style="width:136px;height:136px">
+      <span class="ttl">「${p.title}」</span><span class="nm">${p.name}</span>
+      <span class="row"><span class="pill rk">${p.rank}</span>${dl(ME)}</span>
+      <hr><span class="score">${SCORE}</span></div>
+    <div class="right">
+      <div class="q"><span class="n">1</span>這一把誰要付錢？</div>
+      <div class="g6">
+        ${act('自', '我自摸', '另外三家一起付')}
+        ${opp(2)}${opp(3)}${opp(4)}
+        ${act('流', '流局', '沒有人付分')}
+        ${act('包', '我包牌', '我付給另外三家')}
+      </div>
+    </div>
+  </div></div>`;
+};
+
+/* ── C 名單式 ── */
+const C = () => {
+  const p = P[ME];
+  const opp = (x) => `<div class="card opp${x === DEALER ? ' d' : ''}">
+      <img class="av${x === DEALER ? ' d' : ''}" src="${P[x].av}" style="width:80px;height:80px">
+      <div class="who"><span class="top2"><span class="ttl">「${P[x].title}」</span><span class="pill rk">${P[x].rank}</span>${dl(x)}</span>
+        <span class="nm">${P[x].name}</span></div>
+      <span class="go">他放槍</span></div>`;
+  const act = (g, t, s) => `<div class="card"><span class="glyph" style="width:52px;height:64px;font-size:28px">${g}</span>
+      <span><b>${t}</b><br><span class="pill pk">${s}</span></span></div>`;
+  return `<div class="frame C">${topBar()}<div class="body">
+    <div class="q"><span class="n">1</span>這一把誰要付錢？</div>
+    ${opp(2)}${opp(3)}${opp(4)}
+    <div class="acts">${act('自', '我自摸', '三家一起付')}${act('流', '流局', '沒有人付分')}${act('包', '我包牌', '我付給三家')}</div>
+    <div class="card me"><img class="av${ME === DEALER ? ' d' : ''}" src="${p.av}" style="width:84px;height:84px">
+      <div class="who"><span class="ttl">「${p.title}」</span><span class="nm">${p.name}</span>
+        <span><span class="pill rk">${p.rank}</span> ${dl(ME)}</span></div>
+      <span class="score">${SCORE}</span></div>
+  </div></div>`;
+};
+
+const CASES = [
+  ['A', '座位圖：畫面就是這張牌桌', A,
+   `<b>三位對手擺在他們真的坐的位置</b>：對家在上、上家在左、下家在右，我在最下面。
+    放槍的人是誰，<b>抬頭看他坐哪裡就知道要按哪一格</b>，不用讀十二個字的名字。
+    正中間最大的是「我自摸」（最常按的那一下），流局與包牌放在上排兩個角落。`,
+   `<b>代價</b>：要知道每台平板坐在哪個位置（東南西北）—— 平板配對時就要綁座位。
+    綁錯的話，位置跟人對不上，比讀名字更容易按錯。`],
+  ['B', '左邊是我、右邊是六格', B,
+   `<b>「我」收成左邊一整條</b>：頭像、稱號、名字、段位、積分在同一張卡上，不再拆成左下與右下兩塊。
+    右邊六格改成<b>同一副骨架</b>：上面一個圖（人是頭像、動作是一張牌「自／流／包」）、中間主字、下面一顆膠囊，
+    所以不會再像兩種東西排在一起。`,
+   `<b>代價</b>：右邊六格變窄（每格約 215px），十二個字的名字要折成兩行。
+    積分字最大（80px），但它在左邊，跟「這一把」的操作分開。`],
+  ['C', '名單式：一人一整列', C,
+   `<b>三位對手各佔一整列</b>，右邊一顆大的「他放槍」鈕 —— 名字有整列的寬度，十二個字一行放得下，
+    稱號、段位、莊家都排在名字上面同一行。下面一排三顆動作鈕，最下面是我與積分。
+    讀起來像 POS 的清單，<b>由上往下掃一次就完成</b>。`,
+   `<b>代價</b>：最常按的「我自摸」被放到下排，跟流局、包牌一樣大；
+    人跟動作的份量變得不對等（三列人、三顆小鈕）。`],
+];
+
+const box = document.getElementById('cases');
+box.innerHTML = CASES.map(([k, t, fn, why, cost]) => `<div class="case">
+  <h2><span>${k}</span>${t}</h2><p class="why">${why}</p>
+  <div class="shell"><div class="frameWrap">${fn()}</div></div>
+  <p class="note">${cost}</p></div>`).join('');
+
+function fit() {
+  const w = Math.min(document.body.clientWidth - 40, 1040), sc = w / 1024;
+  document.querySelectorAll('.shell').forEach((s) => {
+    s.style.width = w + 'px'; s.style.height = 768 * sc + 'px';
+    s.querySelector('.frame').style.transform = `scale(${sc})`;
+  });
+}
+fit(); addEventListener('resize', fit);
+</script>
+</body>
+</html>

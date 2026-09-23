@@ -487,7 +487,7 @@ function render(s) {
     const c = compute(s, l);
     inner = `<div class="body">
       <div class="q"><span class="n">2</span><h3>胡了什麼牌型？</h3><span class="sp"></span>
-        <button class="btn gho" data-s="${s}" data-a="back1">‹ 改上一步</button></div>
+        <button class="btn gho" data-s="${s}" data-a="back1">‹ 回到上一步</button></div>
       <div class="grid">${PAT.map(([lb, v, mx]) => {
         const n = l.sel[lb] || 0;
         return `<button class="tile${n ? ' on' : ''}" data-s="${s}" data-a="pat" data-x="${lb}">
