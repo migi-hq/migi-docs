@@ -42,6 +42,8 @@ h1{font-size:23px;margin-bottom:6px}
 /* 分隔線「｜」拿掉（2026-09-23 使用者：這個不用），各項改靠間距分開 */
 .top .sp{flex:1}
 .top .clock{font-variant-numeric:tabular-nums}
+.top .live{color:var(--brand)}
+.top .live em{color:var(--brand);opacity:.8}
 
 /* 未點選的卡也要有灰框，規格同第一版的磚：2px --dk-line、圓角 12（2026-09-23 使用者指定）——
    沒有框的深灰卡在深底上邊界不清楚，
@@ -189,9 +191,13 @@ const topBar = () => `<div class="top">
   <span><em>玩法</em>台麻 · 無花 · 3 將</span>
   <span><em>積分</em>100/20</span>
   <span><em>總積分</em>2000</span>
-  <span>第 1 將 · 東風圈 · 第 3 局</span>
   <span class="sp"></span>
-  <span class="clock"><em>已使用</em>1:42</span></div>`;
+  <span class="live">第 1 將 · 東風圈 · 第 3 局</span>
+  <span class="live clock"><em>已使用</em>1:42</span></div>`;
+/* 🔴 頂條分兩類（2026-09-23 使用者提出）：
+     左 ＝ 開桌就定好、整場不變（桌號／玩法／積分／總積分）→ 灰色欄位名 ＋ 白字
+     右 ＝ 即時、每局在變（打到哪一局／已使用時間）→ 粉字、整組靠右
+   「第 1 將 · 東風圈 · 第 3 局」自帶單位，不寫欄位名；「已使用」要寫，不然 1:42 會被讀成時鐘。 */
 /* 右上角是「這一桌已經用了多久」不是現在幾點（2026-09-23 使用者指定）。
    格式照會員 App 的 fmtDuration()：「2 小時 12 分」／「45 分鐘」，不補零、不寫 0 小時。
    ⚠ 起算點要用開打（activated_at）不是開桌 —— 帶桌之後還沒開打的那段不算使用。 */
