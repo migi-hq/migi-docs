@@ -88,7 +88,7 @@ h1{font-size:23px;margin-bottom:6px}
 .A .opp .head{position:absolute;top:10px;left:14px;right:14px;display:flex;align-items:center;justify-content:flex-end;gap:8px}
 .A .opp .pos{font-size:20px;font-weight:800;color:var(--dk-text-2);margin-right:auto}
 /* 莊家標記：一張「莊」字麻將牌（粉底墨字、牌的比例），旁邊粉字寫連莊數 */
-.A .opp .zhtile{width:32px;height:40px;border-radius:6px;background:var(--brand);color:var(--ink);
+.A .opp .zhtile{height:40px;padding:0 10px;border-radius:6px;background:var(--brand);color:var(--ink);
   display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;
   box-shadow:0 3px 0 rgba(250,214,220,.35)}
 .A .opp .ren{font-size:20px;font-weight:800;color:var(--brand)}
@@ -189,8 +189,8 @@ const A = () => {
      「放槍」跟流局、我包牌同一個大字（2026-09-23 使用者指定）。 */
   const opp = (pos) => { const x = SEAT[pos];
     return `<div class="card opp${d(x)}" style="grid-area:${pos}">
-      <div class="head">${x === DEALER ? `<span class="zhtile">莊</span><span class="ren">連莊 ${REN}</span>` : ''}</div>
-      <img class="av" src="${P[x].av}" style="width:72px;height:72px">
+      <div class="head">${x === DEALER ? `<span class="zhtile">莊家</span><span class="ren">連莊 ${REN}</span>` : ''}</div>
+      <img class="av" src="${P[x].av}" style="width:100px;height:100px">
       <span class="nm">${P[x].name}</span>
       <span class="rkp" style="font-size:16px">段位: ${P[x].rank}</span></div>`; };
   return `<div class="frame A">${topBar()}<div class="body">
