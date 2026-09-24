@@ -355,7 +355,7 @@ function render(s) {
   else if (l.confirming && l.act === 'bao') {
     const c = compute(s, l);
     sheet = boxHTML({ k: NAME[s], h: `我包牌 ${diTai(BAO_TAI, '', '每家 ')}`, money: moneyHTML(-c.sum), ask: `確認支付 ${c.sum.toLocaleString()} 積分？`,
-      sub: s === G.dealer ? '你是莊家：三家都另加莊家台，這局之後下莊' : '莊家那一份另加莊家台，莊家繼續連莊', acts: twoBtn(s, 'back', 'send') });
+      acts: twoBtn(s, 'back', 'send') });   // 莊家台與連莊的說明不寫（2026-09-24 使用者指定）
   }
 
   const busy = openCount(p) > 0, note = '上一局還有人沒確認';
