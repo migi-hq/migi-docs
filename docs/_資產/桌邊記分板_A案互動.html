@@ -151,6 +151,27 @@ button.card:disabled{opacity:.35;cursor:default}
 .pick .card.zimo{visibility:visible;background:var(--dk-raised);cursor:default}
 
 /* ── 疊在畫面上的那一層 ── */
+/* ── 牌局紀錄（查看紀錄 ›）── */
+.body3{flex:1;min-height:0;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.logs{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:4px}
+.lg{background:var(--dk-tile);border:2px solid var(--dk-line);border-radius:12px;padding:14px 20px;flex-shrink:0}
+.lg .hd{display:flex;align-items:center;gap:12px}
+.lg .no{font-size:22px;font-weight:800}
+.lg .wh{font-size:15px;font-weight:700;color:var(--dk-text-3)}
+.lg .tm{margin-left:auto;font-size:16px;font-weight:700;color:var(--dk-text-3);font-variant-numeric:tabular-nums}
+.lg-tag{font-size:14px;font-weight:800;color:var(--dk-text-2);border:1px solid var(--dk-line);border-radius:999px;padding:2px 10px}
+.lg .tt{font-size:20px;font-weight:700;color:var(--dk-text-2);margin-top:6px}
+.lg .tt b{color:var(--dk-text);font-weight:800}
+.lg .ds{font-size:16px;font-weight:700;color:var(--dk-text-3);margin-top:2px}
+.lg-rows{margin-top:10px;border-top:1px solid var(--dk-line);padding-top:8px;display:flex;flex-direction:column;gap:4px}
+.lg-row{display:grid;grid-template-columns:1fr 56px 90px;align-items:baseline;font-size:18px;font-weight:700}
+.lg-row .st{color:var(--dk-text-2);text-align:right}
+.lg-row .am{text-align:right;font-variant-numeric:tabular-nums}
+.lg-row.in .st,.lg-row.in .am{color:var(--brand)}   /* 收＝粉；付＝白（平板只用粉色標好消息，硬規則 13.9） */
+.lg-row.x{color:var(--dk-text-3)}
+.lg-row.x .st{color:var(--dk-text-3)}
+.lg-row.x .am{text-decoration:line-through}
+.lg-empty{text-align:center;color:var(--dk-text-3);font-size:20px;font-weight:700;padding:40px 0}
 /* toast：照會員 App 的 Toast（lib/ui.jsx）—— 圓角卡片、左邊一顆圓（這裡放取消那個人的頭像）、右邊一句話，
    一次只一則、3 秒消失；位置改在畫面正中央（2026-09-24 使用者指定），尺寸放大成平板用 */
 /* 2026-09-24 同日再改：不要陰影；不會自己消失，要按右上角 ✕ 才關；
@@ -270,7 +291,16 @@ function rollScores() {
   anim = requestAnimationFrame(tick);
 }
 function reset() {
-  G = { dealer:3, ren:2, set:1, wind:0, ju:3, total:{ 1:2320, 2:1820, 3:2090, 4:1770 }, pending:null, result:null, seen:{} };
+  G = { dealer:3, ren:2, set:1, wind:0, ju:3, total:{ 1:2320, 2:1820, 3:2090, 4:1770 }, pending:null, result:null, seen:{},
+    /* 牌局紀錄（2026-09-24 使用者指定：逐局列出，誰付、誰取消都看得到，結束算牌時可以查證）。
+       這兩筆是示範，接得上開場的「阿哲是莊、連莊 2」 */
+    log: [
+      { no:1, where:'第 1 將 · 東風圈', t:'20:18', act:'tsumo', by:3, desc:'碰碰胡 · 1 底 4 台＋莊家台',
+        rows:[{ s:1, amt:-200, st:'ok' }, { s:2, amt:-200, st:'ok' }, { s:4, amt:-200, st:'cancel' }], win:400 },
+      { no:2, where:'第 1 將 · 東風圈', t:'20:41', act:'kala', by:1, who:2, desc:'1 台',
+        rows:[{ s:2, amt:20, st:'ok' }], win:-20 },
+      { no:2, where:'第 1 將 · 東風圈', t:'20:55', act:'draw', by:2, desc:'莊家連莊（連莊 1 → 2）', rows:[] },
+    ] };
   L = { 1:blank(), 2:blank(), 3:blank(), 4:blank() };
   SEATS.forEach((s) => { SHOWN[s] = G.total[s]; TOAST[s] = []; });     // 重來時直接顯示，不滾
 }
@@ -291,6 +321,14 @@ function endHand(nextDealer) {
   } else G.ren += 1;
 }
 const nowText = () => `第 ${G.set} 將 · ${WINDS[G.wind]}風圈 · 第 ${G.ju} 局`;
+const stamp = () => ({ no:G.ju, where:`第 ${G.set} 將 · ${WINDS[G.wind]}風圈`, t:clockNow() });
+const clockNow = () => { const d = new Date(); return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
+/* 一筆紀錄在「那一局結束時」寫下；局數與圈用送出當下的（p.no／p.where），不是結束後的 */
+function logPending(p) {
+  const rows = p.need.map((x) => ({ s:x, amt:p.delta[x], st:p.confirmed.includes(x) ? 'ok' : 'cancel' }));
+  const win = -rows.filter((r) => r.st === 'ok').reduce((t, r) => t + r.amt, 0);   // 送出的人實際的變動
+  G.log.push({ no:p.no, where:p.where, t:p.t, act:p.act, by:p.by, who:p.who, desc:p.logDesc, rows, win });
+}
 
 function compute(by, l) {
   const others = SEATS.filter((s) => s !== by);
@@ -348,6 +386,29 @@ const oppHTML = (s, pos, act, x, disabled) => `<button class="card opp${x === G.
   <span class="nm">${NAME[x]}</span>
   <span class="rkp">段位: ${PROF[x].rank}</span></button>`;
 
+/* 牌局紀錄的一筆：標題講「發生什麼事」，下面逐人列出付了多少／取消了。
+   🔴 取消的那一家金額劃掉、不算進合計 —— 結束算牌時要能一眼對出來 */
+const LOG_TITLE = {
+  ron:   (e) => `<b>${NAME[e.by]}</b> 胡牌 · <b>${NAME[e.who]}</b> 放槍`,
+  tsumo: (e) => `<b>${NAME[e.by]}</b> 自摸`,
+  bao:   (e) => `<b>${NAME[e.by]}</b> 包牌`,
+  kala:  (e) => `<b>${NAME[e.by]}</b> 咔啦碰 → <b>${NAME[e.who]}</b>`,
+  draw:  () => '流局',
+};
+function logHTML(e) {
+  const allCancel = e.rows.length && e.rows.every((r) => r.st === 'cancel');
+  const tag = e.act === 'kala' ? '<span class="lg-tag">不算一局</span>' : allCancel ? '<span class="lg-tag">全部取消 · 這局不算</span>' : '';
+  const verb = (r) => r.amt < 0 ? '付' : '收';
+  const rows = e.rows.map((r) => `<div class="lg-row${r.st === 'cancel' ? ' x' : r.amt > 0 ? ' in' : ''}"><span class="nm">${NAME[r.s]}</span>
+      <span class="st">${r.st === 'cancel' ? '取消' : verb(r)}</span><span class="am">${Math.abs(r.amt).toLocaleString()}</span></div>`).join('');
+  /* 送出的那一家排第一行：他的數字＝其他人「確認了的」加總 */
+  const winRow = e.rows.length && !allCancel
+    ? `<div class="lg-row${e.win > 0 ? ' in' : ''}"><span class="nm">${NAME[e.by]}</span><span class="st">${e.win >= 0 ? '收' : '付'}</span><span class="am">${Math.abs(e.win).toLocaleString()}</span></div>` : '';
+  return `<div class="lg"><div class="hd"><span class="no">第 ${e.no} 局</span><span class="wh">${e.where}</span>${tag}<span class="tm">${e.t}</span></div>
+    <div class="tt">${LOG_TITLE[e.act](e)}</div><div class="ds">${e.desc}</div>
+    ${rows || winRow ? `<div class="lg-rows">${winRow}${rows}</div>` : ''}</div>`;
+}
+
 function render(s) {
   const l = L[s], p = G.pending, r = G.result;
   let sheet = '';
@@ -382,11 +443,15 @@ function render(s) {
   const busy = openCount(p) > 0, note = '上一局還有人沒確認';
   const rel = REL(s);
   let body;
-  if (l.step === 1 || l.step === 'kala') {
+  if (l.view === 'log') {
+    body = `<div class="body3">
+      <div class="q">牌局紀錄<span class="sp"></span><button class="btn wht" data-s="${s}" data-a="logBack">‹ 返回</button></div>
+      <div class="logs">${G.log.length ? G.log.slice().reverse().map(logHTML).join('') : '<div class="lg-empty">還沒有紀錄</div>'}</div></div>`;
+  } else if (l.step === 1 || l.step === 'kala') {
     const pick = l.step === 'kala';                       // 咔啦碰：同一張座位圖，改成「誰捨的牌？」
     body = `<div class="body${pick ? ' pick' : ''}">
       <div class="q" style="grid-area:q">${pick ? `咔啦碰 · 要付給誰 ${KALA_TAI} 台？` : '這一局誰放槍？'}<span class="sp"></span>
-        ${pick ? `<button class="btn wht" data-s="${s}" data-a="back1">‹ 回到上一步</button>` : ''}</div>
+        ${pick ? `<button class="btn wht" data-s="${s}" data-a="back1">‹ 回到上一步</button>` : `<button class="btn wht" data-s="${s}" data-a="log">查看紀錄 ›</button>`}</div>
       <button class="card act" style="grid-area:draw" data-s="${s}" data-a="act" data-v="draw"${busy ? ' disabled' : ''}><b>流局</b><span class="sub">${busy ? note : '沒有人胡牌'}</span></button>
       ${oppHTML(s, 'top', pick ? 'kalaTo' : 'act', rel.top)}
       <div class="split act card" style="grid-area:bao;background:none;border:none;padding:0;visibility:${pick ? 'hidden' : 'visible'}">
@@ -426,6 +491,8 @@ function render(s) {
 function act(s, a, v, x) {
   const l = L[s];
   if (a === 'toastX') { TOAST[s] = (TOAST[s] || []).filter((t) => t.id !== x); return; }
+  if (a === 'log') { l.view = 'log'; return; }        // 查看紀錄：只是這一台自己切頁，不動共用狀態
+  if (a === 'logBack') { l.view = null; return; }
   if (openCount(G.pending) && (a === 'send' || a === 'kalaTo' || (a === 'act' && ['draw','bao','kala'].includes(v)))) return;
   if (a === 'act') {
     if (v === 'ron') { l.act = 'ron'; l.who = +x; l.sel = {}; l.step = 2; return; }
@@ -436,7 +503,7 @@ function act(s, a, v, x) {
   }
   else if (a === 'kalaTo') {                               // 咔啦碰：指定捨牌的人 → 對方要確認，我直接回主頁
     l.who = +x; const c = compute(s, l);
-    G.pending = { by:s, act:'kala', who:l.who, delta:c.delta, need:c.need, confirmed:[], cancelled:[] };
+    G.pending = { by:s, act:'kala', who:l.who, delta:c.delta, need:c.need, confirmed:[], cancelled:[], ...stamp(), logDesc:`${KALA_TAI} 台` };
     L[s] = blank();
   }
   /* 沒台與牌型互斥：選了沒台就清掉牌型，選了牌型就取消沒台。
@@ -450,12 +517,15 @@ function act(s, a, v, x) {
     if (l.act === 'draw') {
       /* 流局：只有按的人確認一次，另外三家不用確認、也不跳結果卡（2026-09-24 使用者指定） */
       G.result = null;
+      G.log.push({ ...stamp(), act:'draw', by:s, desc:`莊家連莊（連莊 ${G.ren} → ${G.ren + 1}）`, rows:[] });
       endHand(G.dealer); L = { 1:blank(), 2:blank(), 3:blank(), 4:blank() }; return;
     }
     const c = compute(s, l);
     /* 包牌跟胡牌一樣進待確認：收的三家各自按了才加分（2026-09-24 使用者指定，推翻「立刻生效」） */
-    G.pending = { by:s, act:l.act, who:l.who, delta:c.delta, need:c.need, confirmed:[], cancelled:[],
-      descTai:`${Object.entries(l.sel).map(([k, n]) => k + (n > 1 ? ' ×' + n : '')).join('、') || '沒台'} ${diTai(c.patTai)}` };
+    const pats = Object.entries(l.sel).map(([k, n]) => k + (n > 1 ? ' ×' + n : '')).join('、') || '沒台';
+    G.pending = { by:s, act:l.act, who:l.who, delta:c.delta, need:c.need, confirmed:[], cancelled:[], ...stamp(),
+      descTai:`${pats} ${diTai(c.patTai)}`,
+      logDesc: l.act === 'bao' ? `每家 1 底 ${BAO_TAI} 台${s === G.dealer ? '＋莊家台' : ''}` : `${pats} · 1 底 ${c.patTai} 台` };
     L[s] = blank();
   }
   else if (a === 'confirm' || a === 'reject') {
@@ -468,6 +538,7 @@ function act(s, a, v, x) {
     }
     L[s] = blank();
     if (openCount(p) === 0) {
+      logPending(p);   // 最後一家回應完才寫紀錄 —— 誰付、誰取消在這一刻才確定
       /* 咔啦碰不是一局的結束：莊家、連莊、局數都不動 */
       if (p.act !== 'kala' && p.confirmed.length) {
         const next = (G.dealer % 4) + 1;
