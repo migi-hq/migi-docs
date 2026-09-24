@@ -16,8 +16,7 @@
 <style>
 :root{
   --brand:#FAD6DC; --brand-tint:#FFECF1; --ink:#2E2B2C;
-  --gold:#E8B89B;   /* 只給 MIGI 牌型格的邊框（＝成就傳說金邊） */
-  --dk-bg:#221F20; --dk-bar:#191718; --dk-raised:#2B2829; --dk-tile:#343132; --dk-line:#524D4E;
+  --gold:#E8B89B;   /* 只給 MIGI 牌型格的邊框（＝成就傳說金邊） */  --dk-bg:#221F20; --dk-bar:#191718; --dk-raised:#2B2829; --dk-tile:#343132; --dk-line:#524D4E;
   --dk-text:#FFFFFF; --dk-text-2:#C9C4C1; --dk-text-3:#A39E9B;
   --dk-scrim:rgba(20,18,19,.82);
   --font:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
@@ -138,7 +137,7 @@ button.card:disabled{opacity:.35;cursor:default}
 .foot{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;align-items:center;flex-shrink:0}
 .foot .btn.pri{grid-column:5 / 7}
 .foot .lf{grid-column:1 / 5;padding-left:20px;display:flex;align-items:center;gap:14px;min-width:0}
-.foot .sum{display:flex;align-items:baseline;gap:40px;font-size:26px;font-weight:800;color:var(--dk-text-2);white-space:nowrap}
+.foot .sum{display:flex;align-items:baseline;gap:30px;font-size:26px;font-weight:800;color:var(--dk-text-2);white-space:nowrap}
 .foot .sum em{font-style:normal;font-size:60px;line-height:1;color:var(--dk-text);font-variant-numeric:tabular-nums}
 .foot .calc{font-size:14px;color:var(--dk-text-2);line-height:1.5}
 .foot .calc b{font-size:inherit;color:var(--brand)}
@@ -158,22 +157,47 @@ button.card:disabled{opacity:.35;cursor:default}
   font:inherit;font-size:16px;font-weight:800;cursor:pointer}
 .chip.on{background:var(--brand);border-color:var(--brand);color:var(--ink)}
 .logs{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:4px}
-.lg{background:var(--dk-tile);border:2px solid var(--dk-line);border-radius:12px;padding:14px 20px;flex-shrink:0}
-.lg .hd{display:flex;align-items:center;gap:12px}
-.lg .no{font-size:22px;font-weight:800}
-.lg .wh{font-size:15px;font-weight:700;color:var(--dk-text-3)}
-.lg .tm{margin-left:auto;font-size:16px;font-weight:700;color:var(--dk-text-3);font-variant-numeric:tabular-nums}
-.lg-tag{font-size:14px;font-weight:800;color:var(--dk-text-2);border:1px solid var(--dk-line);border-radius:999px;padding:2px 10px}
-.lg .tt{font-size:20px;font-weight:700;color:var(--dk-text-2);margin-top:6px}
-.lg .tt b{color:var(--dk-text);font-weight:800}
-.lg .ds{font-size:16px;font-weight:700;color:var(--dk-text-3);margin-top:2px}
-.lg-rows{margin-top:10px;border-top:1px solid var(--dk-line);padding-top:8px;display:flex;flex-direction:column;gap:4px}
-.lg-row{display:grid;grid-template-columns:1fr 56px 90px;align-items:baseline;font-size:18px;font-weight:700}
-.lg-row .st{color:var(--dk-text-2);text-align:right}
+/* 一局一列（2026-09-24 使用者貼「結算紀錄儀表板」參考圖）：
+   局 ｜ 類型 ｜ 送出的人 ｜ 牌型與台數 ｜ 他的積分 ｜ 另外幾家逐一列出。
+   參考圖的綠勾、紅叉、黃時鐘、綠色「已結算」全部換成粉／灰（硬規則 13.9：平板只用粉色系） */
+/* 左欄只講「哪一局、什麼時候」，結算狀態獨立放最右邊（2026-09-24 使用者要求重新規劃，同參考圖） */
+.lg{display:grid;grid-template-columns:100px 72px minmax(0,1fr) 120px 92px 260px 76px;gap:10px;align-items:center;
+  background:var(--dk-tile);border:2px solid var(--dk-line);border-radius:12px;padding:12px 16px;flex-shrink:0;min-height:96px}
+.lg.hl{border-color:var(--brand)}                       /* 有人取消／還在確認：粉框（同參考圖的高亮列） */
+.lg .c1{display:flex;flex-direction:column;gap:3px;min-width:0}
+.lg .no{font-size:22px;font-weight:800;line-height:1.1}
+.lg .wh,.lg .tm{font-size:13px;font-weight:700;color:var(--dk-text-3);white-space:nowrap;font-variant-numeric:tabular-nums}
+.lg .tm{display:flex;align-items:center;gap:4px;margin-top:2px}
+.lg .tm svg{width:13px;height:13px;flex-shrink:0}
+.lg .stp{justify-self:center;font-size:13px;font-weight:800;border-radius:999px;padding:4px 10px;white-space:nowrap;
+  border:1.5px solid var(--dk-line);color:var(--dk-text-2)}
+.lg .stp.ok{border-color:var(--brand);color:var(--brand)}
+.lg .stp.go{background:var(--brand);border-color:var(--brand);color:var(--ink)}.lg .act{justify-self:start;display:flex;flex-direction:column;align-items:center;gap:4px}
+.lg .act b{font-size:16px;font-weight:800;border-radius:10px;padding:6px 10px;white-space:nowrap;border:2px solid var(--dk-line);color:var(--dk-text-2)}
+.lg .act b.win{background:var(--brand);border-color:var(--brand);color:var(--ink)}   /* 五種類型一律粉底墨字（2026-09-24） */
+.lg .act i{font-style:normal;font-size:11px;font-weight:700;color:var(--dk-text-3);white-space:nowrap}
+.lg .man{display:flex;align-items:center;gap:10px;min-width:0;padding-right:14px}   /* 名字跟右邊的牌型拉開（2026-09-24） */
+.lg .man .nm{font-size:14px;font-weight:800;line-height:1.25;overflow-wrap:anywhere}
+.lg .man .rk{font-size:12px;font-weight:700;color:var(--dk-text-3);margin-top:2px;white-space:nowrap}
+.lg .pat{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:0}
+.lg .pat .t{font-size:16px;font-weight:800;line-height:1.25;overflow-wrap:anywhere}
+.lg .pat .tp{font-size:13px;font-weight:800;border:1px solid var(--brand);color:var(--brand);border-radius:999px;padding:2px 9px;white-space:nowrap}
+.lg .big{font-size:30px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.lg .big.in{color:var(--brand)}                          /* 收＝粉；付＝白 */
+.lg .big.z{color:var(--dk-text-3)}
+.lg .oth{display:flex;flex-direction:column;gap:6px;border-left:1px solid var(--dk-line);border-right:1px solid var(--dk-line);padding:0 10px;min-width:0;align-self:stretch;justify-content:center}
+.lg .oth .none{font-size:14px;font-weight:700;color:var(--dk-text-3)}
+.lg-row{display:grid;grid-template-columns:20px minmax(0,1fr) 48px 74px;gap:6px;align-items:center;font-size:14px;font-weight:700}
+.lg-row img{width:20px;height:20px}
+.lg-row .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--dk-text-2)}
 .lg-row .am{text-align:right;font-variant-numeric:tabular-nums}
-.lg-row.in .st,.lg-row.in .am{color:var(--brand)}   /* 收＝粉；付＝白（平板只用粉色標好消息，硬規則 13.9） */
-.lg-row.x{color:var(--dk-text-3)}
-.lg-row.x .st{color:var(--dk-text-3)}
+.lg-row.in .am{color:var(--brand)}
+.lg-row .st{display:flex;align-items:center;gap:4px;white-space:nowrap;color:var(--dk-text-2)}
+.lg-row .ic{width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0}
+.lg-row .ic.ok{background:var(--brand);color:var(--ink)}
+.lg-row .ic.x{background:var(--dk-line);color:var(--dk-text-2)}
+.lg-row .ic.w{border:1.5px solid var(--brand);color:var(--brand)}
+.lg-row.x .nm,.lg-row.x .am,.lg-row.x .st{color:var(--dk-text-3)}
 .lg-row.x .am{text-decoration:line-through}
 .lg-empty{text-align:center;color:var(--dk-text-3);font-size:20px;font-weight:700;padding:40px 0}
 /* toast：照會員 App 的 Toast（lib/ui.jsx）—— 圓角卡片、左邊一顆圓（這裡放取消那個人的頭像）、右邊一句話，
@@ -299,11 +323,11 @@ function reset() {
     /* 牌局紀錄（2026-09-24 使用者指定：逐局列出，誰付、誰取消都看得到，結束算牌時可以查證）。
        這兩筆是示範，接得上開場的「阿哲是莊、連莊 2」 */
     log: [
-      { no:1, set:1, wind:0, where:'第 1 將 · 東風圈', t:'20:18', act:'tsumo', by:3, desc:'碰碰胡 · 1 底 4 台＋莊家台',
+      { no:1, set:1, wind:0, where:'第 1 將 · 東風圈', t:'20:18', act:'tsumo', by:3, lg:{ pat:'碰碰胡', pill:'1 底 4 台', dx:1 },   /* 阿哲是莊、連莊 0 ⇒ 莊 1 台 */
         rows:[{ s:1, amt:-200, st:'ok' }, { s:2, amt:-200, st:'ok' }, { s:4, amt:-200, st:'cancel' }], win:400 },
-      { no:2, set:1, wind:0, where:'第 1 將 · 東風圈', t:'20:41', act:'kala', by:1, who:2, desc:'1 台',
+      { no:2, set:1, wind:0, where:'第 1 將 · 東風圈', t:'20:41', act:'kala', by:1, who:2, lg:{ pat:'咔啦碰', pill:'1 台' },
         rows:[{ s:2, amt:20, st:'ok' }], win:-20 },
-      { no:2, set:1, wind:0, where:'第 1 將 · 東風圈', t:'20:55', act:'draw', by:2, desc:'莊家連莊（連莊 1 → 2）', rows:[] },
+      { no:2, set:1, wind:0, where:'第 1 將 · 東風圈', t:'20:55', act:'draw', by:2, lg:{ pat:'莊家連莊', pill:'連莊 1 → 2' }, rows:[] },
     ] };
   L = { 1:blank(), 2:blank(), 3:blank(), 4:blank() };
   SEATS.forEach((s) => { SHOWN[s] = G.total[s]; TOAST[s] = []; });     // 重來時直接顯示，不滾
@@ -314,6 +338,13 @@ const blank = () => ({ step:1, act:null, who:null, sel:{}, none:false, confirmin
 const PAT_HIDE = ['正花', '花槓', '七搶一', '八仙過海'];
 const PAT_NOTE = { '獨聽':'單吊 · 中洞 · 邊張', '三元牌':'中發白', '風牌':'東南西北' };
 const extra = () => 1 + 2 * G.ren;
+/* 某一家付的那一份有沒有莊家台：胡的人或付的人是莊就有（咔啦碰不算，另外處理） */
+const dTai = (by, x) => (by === G.dealer || x === G.dealer ? extra() : 0);
+/* 🔴 莊家台一律分開寫（2026-09-24 使用者指出「有的包含、有的分開」）：
+   「1 底 N 台」只算牌型，莊家台另外寫「莊 X 台」—— 選牌型頁、確認彈窗、牌局紀錄都同一種寫法。
+   這一局有沒有牽涉莊家：放槍看胡與放槍的兩家；自摸與包牌一定牽涉（三家裡一定有莊） */
+const dxOf = (by, act, who) => act === 'ron' ? dTai(by, who) : (act === 'tsumo' || act === 'bao') ? extra() : 0;
+const dxText = (x) => x ? `莊 ${x} 台` : '';
 const isOpenFor = (p, s) => p.need.includes(s) && !p.confirmed.includes(s) && !p.cancelled.includes(s);
 const openCount = (p) => p ? p.need.filter((x) => isOpenFor(p, x)).length : 0;
 /* 一局結束：局數 +1；換莊時若莊回到 1 號位就換圈，四圈打完換將 */
@@ -332,7 +363,7 @@ const clockNow = () => { const d = new Date(); return `${d.getHours()}:${String(
 function logPending(p) {
   const rows = p.need.map((x) => ({ s:x, amt:p.delta[x], st:p.confirmed.includes(x) ? 'ok' : 'cancel' }));
   const win = -rows.filter((r) => r.st === 'ok').reduce((t, r) => t + r.amt, 0);   // 送出的人實際的變動
-  G.log.push({ no:p.no, set:p.set, wind:p.wind, where:p.where, t:p.t, act:p.act, by:p.by, who:p.who, desc:p.logDesc, rows, win });
+  G.log.push({ no:p.no, set:p.set, wind:p.wind, where:p.where, t:p.t, act:p.act, by:p.by, who:p.who, lg:p.lg, rows, win });
 }
 
 function compute(by, l) {
@@ -391,27 +422,38 @@ const oppHTML = (s, pos, act, x, disabled) => `<button class="card opp${x === G.
   <span class="nm">${NAME[x]}</span>
   <span class="rkp">段位: ${PROF[x].rank}</span></button>`;
 
-/* 牌局紀錄的一筆：標題講「發生什麼事」，下面逐人列出付了多少／取消了。
-   🔴 取消的那一家金額劃掉、不算進合計 —— 結束算牌時要能一眼對出來 */
-const LOG_TITLE = {
-  ron:   (e) => `<b>${NAME[e.by]}</b> 胡牌 · <b>${NAME[e.who]}</b> 放槍`,
-  tsumo: (e) => `<b>${NAME[e.by]}</b> 自摸`,
-  bao:   (e) => `<b>${NAME[e.by]}</b> 包牌`,
-  kala:  (e) => `<b>${NAME[e.by]}</b> 咔啦碰 → <b>${NAME[e.who]}</b>`,
-  draw:  () => '流局',
+/* 牌局紀錄的一列：送出的人 ＋ 他的積分，右邊逐一列出另外幾家付了／取消了／還沒按。
+   🔴 取消的那一家金額劃掉、不算進送出的人的數字 —— 結束算牌時要能一眼對出來 */
+const LOG_ACT = { ron:'胡牌', tsumo:'自摸', bao:'包牌', kala:'咔啦碰', draw:'流局' };
+/* 還在確認中的那一局也列在最上面（e.live）：沒按的那幾家是「待確認」 */
+const livePending = (p) => {
+  const rows = p.need.map((x) => ({ s:x, amt:p.delta[x], st: p.confirmed.includes(x) ? 'ok' : p.cancelled.includes(x) ? 'cancel' : 'wait' }));
+  return { ...p, rows, win: -rows.filter((r) => r.st === 'ok').reduce((t, r) => t + r.amt, 0), live:true };
 };
 function logHTML(e) {
   const allCancel = e.rows.length && e.rows.every((r) => r.st === 'cancel');
-  const tag = e.act === 'kala' ? '<span class="lg-tag">不算一局</span>' : allCancel ? '<span class="lg-tag">全部取消 · 這局不算</span>' : '';
-  const verb = (r) => r.amt < 0 ? '付' : '收';
-  const rows = e.rows.map((r) => `<div class="lg-row${r.st === 'cancel' ? ' x' : r.amt > 0 ? ' in' : ''}"><span class="nm">${NAME[r.s]}</span>
-      <span class="st">${r.st === 'cancel' ? '取消' : verb(r)}</span><span class="am">${Math.abs(r.amt).toLocaleString()}</span></div>`).join('');
-  /* 送出的那一家排第一行：他的數字＝其他人「確認了的」加總 */
-  const winRow = e.rows.length && !allCancel
-    ? `<div class="lg-row${e.win > 0 ? ' in' : ''}"><span class="nm">${NAME[e.by]}</span><span class="st">${e.win >= 0 ? '收' : '付'}</span><span class="am">${Math.abs(e.win).toLocaleString()}</span></div>` : '';
-  return `<div class="lg"><div class="hd"><span class="no">第 ${e.no} 局</span><span class="wh">${e.where}</span>${tag}<span class="tm">${e.t}</span></div>
-    <div class="tt">${LOG_TITLE[e.act](e)}</div><div class="ds">${e.desc}</div>
-    ${rows || winRow ? `<div class="lg-rows">${winRow}${rows}</div>` : ''}</div>`;
+  const someCancel = e.rows.some((r) => r.st === 'cancel');
+  const stp = e.live ? '<span class="stp go">確認中</span>'
+    : allCancel ? '<span class="stp">全部取消</span>'
+    : someCancel ? '<span class="stp">部分取消</span>' : '<span class="stp ok">已結算</span>';
+  const ST = {
+    ok:     (r) => `<span class="ic ok">✓</span>${r.amt < 0 ? '已支付' : '已收下'}`,
+    cancel: () => '<span class="ic x">✕</span>已取消',
+    wait:   () => '<span class="ic w">…</span>待確認',
+  };
+  const rows = e.rows.map((r) => `<div class="lg-row${r.st === 'cancel' ? ' x' : r.amt > 0 ? ' in' : ''}">
+      <img class="av" src="${PROF[r.s].av}"><span class="nm">${NAME[r.s]}</span>
+      <span class="am">${signed(r.amt)}</span><span class="st">${ST[r.st](r)}</span></div>`).join('');
+  const big = e.act === 'draw' || allCancel ? 0 : e.win;
+  const lg = e.lg || {};
+  return `<div class="lg${someCancel || e.live ? ' hl' : ''}">
+    <div class="c1"><span class="no">第 ${e.no} 局</span><span class="wh">${WINDS[e.wind]}風圈 · 第 ${e.set} 將</span><span class="tm">${TIMER_ICON}${e.t}</span></div>
+    <div class="act"><b class="win">${LOG_ACT[e.act]}</b></div>
+    <div class="man"><img class="av" src="${PROF[e.by].av}" style="width:44px;height:44px">
+      <div style="min-width:0"><div class="nm">${NAME[e.by]}</div><div class="rk">段位: ${PROF[e.by].rank}</div></div></div>
+    <div class="pat"><span class="t">${lg.pat || ''}</span>${lg.pill ? `<span class="tp">${lg.pill}</span>` : ''}${lg.dx ? `<span class="tp">${dxText(lg.dx)}</span>` : ''}</div>
+    <div class="big${big > 0 ? ' in' : big === 0 ? ' z' : ''}">${signed(big)}</div>
+    <div class="oth">${rows || '<span class="none">沒有人付積分</span>'}</div>${stp}</div>`;
 }
 
 function render(s) {
@@ -431,8 +473,8 @@ function render(s) {
       ? boxHTML({ hero: heroHTML('收自', whereOf(s, p.by)), h: `咔啦碰 · ${KALA_TAI} 台`, money: moneyHTML(d), ask: `確認收下 ${amt} 積分？`, acts: twoBtn(s, 'reject', 'confirm') })
       : p.act === 'bao'
       /* 包牌：收的三家各自確認，確認了數字才加（2026-09-24 使用者指定） */
-      ? boxHTML({ hero: heroHTML('收自', whereOf(s, p.by)), h: `包牌 ${diTai(BAO_TAI + (s === G.dealer || p.by === G.dealer ? extra() : 0))}`, money: moneyHTML(d), ask: `確認收下 ${amt} 積分？`, acts: twoBtn(s, 'reject', 'confirm') })
-      : boxHTML({ hero: heroHTML('支付給', whereOf(s, p.by)), h: p.descTai, money: moneyHTML(d), ask: `確認支付 ${amt} 積分？`, acts: twoBtn(s, 'reject', 'confirm') });
+      ? boxHTML({ hero: heroHTML('收自', whereOf(s, p.by)), h: `包牌 ${diTai(BAO_TAI, dTai(p.by, s) ? `　${dxText(dTai(p.by, s))}` : '')}`, money: moneyHTML(d), ask: `確認收下 ${amt} 積分？`, acts: twoBtn(s, 'reject', 'confirm') })
+      : boxHTML({ hero: heroHTML('支付給', whereOf(s, p.by)), h: `${p.pats} ${diTai(p.patTai, dTai(p.by, s) ? `　${dxText(dTai(p.by, s))}` : '')}`, money: moneyHTML(d), ask: `確認支付 ${amt} 積分？`, acts: twoBtn(s, 'reject', 'confirm') });
   }
   else if (l.confirming && l.act === 'draw') {
     sheet = boxHTML({ h: '流局', ask: '確定這一局流局？', sub: `莊家連莊（連莊 ${G.ren} → ${G.ren + 1}）`, acts: twoBtn(s, 'back', 'send') });
@@ -444,9 +486,9 @@ function render(s) {
   }
   else if (l.confirming && l.act === 'bao') {
     const c = compute(s, l);
-    /* 不寫名字；台數寫實際的：莊家包牌三家都含莊家台（例：連莊 1 ⇒ 1 底 6 台），
-       閒家包牌只有莊家那一份多，標題寫閒家的 3 台（2026-09-24 使用者指定） */
-    sheet = boxHTML({ h: `我包牌 ${diTai(BAO_TAI + (s === G.dealer ? extra() : 0), '', '每家 ')}`, money: moneyHTML(-c.sum), ask: `確認支付 ${c.sum.toLocaleString()} 積分？`,
+    /* 不寫名字；「每家 1 底 3 台　莊 X 台」—— 莊家台分開寫（2026-09-24 使用者指定統一分開）。
+       莊家包牌：三份都加 X；閒家包牌：只有莊家那一份加 X */
+    sheet = boxHTML({ h: `我包牌 ${diTai(BAO_TAI, `　${dxText(extra())}`, '每家 ')}`, money: moneyHTML(-c.sum), ask: `確認支付 ${c.sum.toLocaleString()} 積分？`,
       acts: twoBtn(s, 'back', 'send') });   // 莊家台與連莊的說明不寫（2026-09-24 使用者指定）
   }
 
@@ -457,7 +499,8 @@ function render(s) {
     /* 快捷篩選：將 × 圈（2026-09-24 使用者指定）。0／-1 ＝全部 */
     const fs = l.fSet || 0, fw = l.fWind ?? -1;
     const chip = (a, v, on, label) => `<button class="chip${on ? ' on' : ''}" data-s="${s}" data-a="${a}" data-x="${v}">${label}</button>`;
-    const list = G.log.filter((e) => (!fs || e.set === fs) && (fw < 0 || e.wind === fw)).reverse();
+    const all = p ? [...G.log, livePending(p)] : G.log;   // 還在確認的那一局排最上面
+    const list = all.filter((e) => (!fs || e.set === fs) && (fw < 0 || e.wind === fw)).reverse();
     body = `<div class="body3">
       <div class="q">牌局紀錄<span class="sp"></span><button class="btn wht" data-s="${s}" data-a="logBack">‹ 返回</button></div>
       <div class="chips">${chip('fSet', 0, !fs, '全部')}${Array.from({ length:SETS }, (_, i) => chip('fSet', i + 1, fs === i + 1, `第 ${i + 1} 將`)).join('')}</div>
@@ -482,6 +525,9 @@ function render(s) {
       ${meHTML(s)}</div>`;
   } else {
     const c = compute(s, l);
+    /* 底部把牌型台與莊家台分開寫（2026-09-24 使用者指定）：有牽涉莊家才出現「莊家 X 台」
+       （放槍：胡或放槍的是莊；自摸：一定牽涉 —— 莊家自摸三份都加，閒家自摸只有莊家那一份加） */
+    const dx = dxOf(s, l.act, l.who);
     body = `<div class="body2">
       <div class="q">胡了什麼牌型？<span class="sp"></span><button class="btn wht" data-s="${s}" data-a="back1">‹ 回到上一步</button></div>
       <div class="grid"><button class="card${l.none ? ' on' : ''}" data-s="${s}" data-a="none"><b>沒台</b><i>0 台</i></button>${PAT.filter(([lb]) => !PAT_HIDE.includes(lb)).map(([lb, v, mx]) => { const n = l.sel[lb] || 0;
@@ -490,7 +536,7 @@ function render(s) {
         if (mx > 1) return `<button class="card${n ? ' on' : ''}" data-s="${s}" data-a="cyc" data-x="${lb}">${n ? `<span class="cnt">${n}</span>` : ''}<b>${lb}</b>${note}<i>${(n || 1) * v} 台</i></button>`;
         return `<button class="card${n ? ' on' : ''}${lb === 'MIGI' ? ' migi' : ''}" data-s="${s}" data-a="pat" data-x="${lb}"><b>${lb}</b>${note}<i>${v} 台</i></button>`; }).join('')}</div>
       <!-- 只顯示台數與總數，像結帳那樣（2026-09-24 使用者指定：說明太多）；上一局卡住時才多一句為什麼不能送出 -->
-      <div class="foot"><div class="lf"><span class="sum"><span><em>1</em> 底</span><span><em>${c.patTai}</em> 台</span><span><em>${c.sum.toLocaleString()}</em></span></span>
+      <div class="foot"><div class="lf"><span class="sum"><span><em>1</em> 底</span><span><em>${c.patTai}</em> 台</span>${dx ? `<span>莊 <em>${dx}</em> 台</span>` : ''}<span><em>${c.sum.toLocaleString()}</em> 積分</span></span>
         ${busy ? `<span class="calc">${note}，確認完才能送出</span>` : ''}</div>
         <button class="btn pri" data-s="${s}" data-a="send"${busy || !(l.none || Object.keys(l.sel).length) ? ' disabled' : ''}>送出</button></div>
       ${meHTML(s)}</div>`;
@@ -532,20 +578,22 @@ function act(s, a, v, x) {
     if (l.act === 'draw') {
       /* 流局：只有按的人確認一次，另外三家不用確認、也不跳結果卡（2026-09-24 使用者指定） */
       G.result = null;
-      G.log.push({ ...stamp(), act:'draw', by:s, desc:`莊家連莊（連莊 ${G.ren} → ${G.ren + 1}）`, rows:[] });
+      G.log.push({ ...stamp(), act:'draw', by:s, lg:{ pat:'莊家連莊', pill:`連莊 ${G.ren} → ${G.ren + 1}` }, rows:[] });
       endHand(G.dealer); L = { 1:blank(), 2:blank(), 3:blank(), 4:blank() }; return;
     }
     if (l.act === 'kala') {
       const c = compute(s, l);
-      G.pending = { by:s, act:'kala', who:l.who, delta:c.delta, need:c.need, confirmed:[], cancelled:[], ...stamp(), logDesc:`${KALA_TAI} 台` };
+      G.pending = { by:s, act:'kala', who:l.who, delta:c.delta, need:c.need, confirmed:[], cancelled:[], ...stamp(), lg:{ pat:'咔啦碰', pill:`${KALA_TAI} 台` } };
       L[s] = blank(); return;
     }
     const c = compute(s, l);
     /* 包牌跟胡牌一樣進待確認：收的三家各自按了才加分（2026-09-24 使用者指定，推翻「立刻生效」） */
     const pats = Object.entries(l.sel).map(([k, n]) => k + (n > 1 ? ' ×' + n : '')).join('、') || '沒台';
     G.pending = { by:s, act:l.act, who:l.who, delta:c.delta, need:c.need, confirmed:[], cancelled:[], ...stamp(),
-      descTai:`${pats} ${diTai(c.patTai)}`,
-      logDesc: l.act === 'bao' ? `每家 1 底 ${BAO_TAI} 台${s === G.dealer ? '＋莊家台' : ''}` : `${pats} · 1 底 ${c.patTai} 台` };
+      pats, patTai:c.patTai,   // 付的那一家看到的台數各自算（含不含莊家台因人而異）
+      /* 紀錄用：牌型一行、台數一顆膠囊；台數含莊家台，只有莊家那一份多時另外標 */
+      lg: l.act === 'bao' ? { pat:'包牌', pill:`每家 1 底 ${BAO_TAI} 台`, dx:dxOf(s, 'bao') }
+        : { pat:pats, pill:`1 底 ${c.patTai} 台`, dx:dxOf(s, l.act, l.who) } };
     L[s] = blank();
   }
   else if (a === 'confirm' || a === 'reject') {
