@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>桌邊記分板 · Cosy 風格預覽</title>
+<!--
+  2026-09-24　使用者：「分析這個 UI（Behance · Cosy POS by Ronas IT），預覽目前記分板套用這個 UI，不用改標準色」
+  ⇒ 只借「結構與排版」，顏色一律用 MIGI 的 token（深色 --dk-* ＋ 粉 --brand），不借 Cosy 的馬卡龍色。
+  資料與 A 案互動一致：12 字名字、對家是莊（連莊 2）、我是咖勁凱。靜態預覽，不能按。
+-->
+<style>
+:root{
+  --brand:#FAD6DC; --brand-tint:#FFECF1; --ink:#2E2B2C;
+  --dk-bg:#221F20; --dk-bar:#191718; --dk-raised:#2B2829; --dk-tile:#343132; --dk-line:#524D4E;
+  --dk-text:#FFFFFF; --dk-text-2:#C9C4C1; --dk-text-3:#A39E9B;
+  --font:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:#DEDBD8;color:#2E2B2C;padding:24px 20px 60px}
+.wrap{max-width:1040px}
+h1{font-size:23px;margin-bottom:6px}
+.lead{font-size:13.5px;color:#5C5754;line-height:1.8;margin-bottom:14px}
+.lead b{background:var(--brand);border-radius:4px;padding:0 4px;color:#2E2B2C}
+.ana{background:#fff;border-radius:12px;padding:14px 18px;margin-bottom:18px;font-size:13.5px;line-height:1.85;color:#5C5754}
+.ana b{color:#2E2B2C}
+.ana table{border-collapse:collapse;width:100%;margin-top:6px}
+.ana td,.ana th{border-top:1px solid #EAE6E3;padding:6px 8px;text-align:left;vertical-align:top}
+.ana th{font-size:12.5px;color:#8A8480}
+h2{font-size:17px;margin:22px 0 8px;display:flex;align-items:center;gap:10px}
+h2 .tog{margin-left:auto;border:none;border-radius:999px;padding:6px 14px;font:inherit;font-size:13px;font-weight:800;cursor:pointer;background:#2E2B2C;color:var(--brand)}
+.shell{overflow:hidden;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.12)}
+.frame{width:1024px;height:768px;transform-origin:top left;background:var(--dk-bg);color:var(--dk-text);display:flex;overflow:hidden}
+
+/* ── Cosy 的骨架：左側欄 ＋ 主區（＋ 右側面板） ── */
+.side{width:200px;flex-shrink:0;background:var(--dk-bar);display:flex;flex-direction:column;padding:22px 18px;gap:18px}
+.logo{font-size:24px;font-weight:800;letter-spacing:3px;color:var(--brand)}
+.facts{display:flex;flex-direction:column;gap:14px}
+.fact small{display:block;font-size:13px;font-weight:700;color:var(--dk-text-3)}
+.fact span{font-size:19px;font-weight:800;line-height:1.3}
+.side .sp{flex:1}
+.live{display:flex;flex-direction:column;gap:8px;padding-top:14px;border-top:1px solid var(--dk-line)}
+.live .now{font-size:16px;font-weight:800;color:var(--brand);line-height:1.4}
+.live .clock{display:flex;align-items:center;gap:8px;font-size:22px;font-weight:800;color:var(--brand);font-variant-numeric:tabular-nums}
+
+.main{flex:1;min-width:0;display:flex;flex-direction:column;padding:20px;gap:16px}
+.head{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.head h3{font-size:26px;font-weight:800}
+.head .sp{flex:1}
+.pillbtn{border:1px solid var(--dk-line);border-radius:999px;padding:7px 14px;font-size:14px;font-weight:800;color:var(--dk-text-2);background:var(--dk-raised)}
+
+/* 卡片：Cosy 的「儀表板數字卡」—— 無外框、靠填色分層；內容靠左：圖示在左上，小灰字在上、大字在下 */
+.card{position:relative;background:var(--dk-raised);border-radius:14px;padding:16px;min-width:0;min-height:0;
+  display:flex;flex-direction:column;justify-content:space-between;text-align:left}
+.card.d{box-shadow:inset 0 0 0 2px var(--brand)}
+.ic{width:44px;height:44px;border-radius:50%;background:var(--dk-text);color:var(--ink);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.noicon .ic.act{display:none}
+.card .lab{font-size:15px;font-weight:700;color:var(--dk-text-3)}
+.card .big{font-size:30px;font-weight:800;line-height:1.15}
+.card .nm{font-size:17px;font-weight:800;line-height:1.3;white-space:nowrap}
+.rkp{display:inline-block;background:var(--brand);color:var(--ink);border-radius:999px;padding:2px 11px;font-size:13px;font-weight:700;white-space:nowrap}
+.av{border-radius:50%;object-fit:cover;background:var(--dk-bg);flex-shrink:0}
+.zh{position:absolute;top:14px;right:14px;display:flex;flex-direction:column;border-radius:8px;overflow:hidden}
+.zh .a{height:32px;padding:0 10px;background:var(--brand);color:var(--ink);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800}
+.zh .b{height:32px;padding:0 10px;background:var(--dk-line);color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800}
+.grid6{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:1fr 1fr;gap:14px;
+  grid-template-areas:"draw top bao" "left zimo right"}
+.split{display:flex;flex-direction:column;gap:14px;min-height:0}
+.split .card{flex:1;flex-direction:row;align-items:center;justify-content:flex-start;gap:14px}
+.split .card .big{font-size:24px}
+.split .card .lab{font-size:13px}
+/* 我自己：Cosy 的「今日追加銷售」那種寬面板 */
+.me{flex-shrink:0;height:128px;flex-direction:row;align-items:center;justify-content:flex-start;gap:18px;padding:0 22px}
+.me .who{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.me .ttl{font-size:16px;font-weight:700;color:var(--dk-text-2)}
+.me .nm{font-size:24px}
+.me .score{text-align:right}
+.me .score small{display:block;font-size:13px;font-weight:700;color:var(--dk-text-3)}
+.me .score b{font-size:64px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+
+/* ── 第二步：Cosy 的「點餐」頁 —— 左側欄 ＋ 品項格 ＋ 右側訂單面板 ── */
+.pgrid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:1fr;gap:10px}
+.pt{background:var(--dk-raised);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;justify-content:space-between;position:relative;min-height:0}
+.pt b{font-size:19px;font-weight:800;line-height:1.2}
+.pt i{font-style:normal;font-size:13px;font-weight:700;color:var(--dk-text-3)}
+.pt .ft{display:flex;justify-content:space-between;align-items:baseline}
+.pt .mx{font-size:12px;font-weight:700;color:var(--dk-text-3)}
+.pt.on{background:var(--brand);color:var(--ink)}
+.pt.on i,.pt.on .mx{color:var(--ink)}
+.order{width:250px;flex-shrink:0;background:var(--dk-bar);display:flex;flex-direction:column;padding:22px 18px;gap:14px}
+.order h4{font-size:20px;font-weight:800}
+.order .who{display:flex;align-items:center;gap:10px}
+.order .who span{font-size:15px;font-weight:800;line-height:1.3}
+.order .line{display:flex;justify-content:space-between;font-size:15px;color:var(--dk-text-2);font-weight:700}
+.order .line b{color:var(--dk-text)}
+.order hr{border:none;border-top:1px solid var(--dk-line)}
+.order .tot{display:flex;justify-content:space-between;align-items:baseline}
+.order .tot span{font-size:15px;font-weight:700;color:var(--dk-text-3)}
+.order .tot b{font-size:34px;font-weight:800}
+.order .sp{flex:1}
+.order .send{height:64px;border-radius:14px;background:var(--brand);color:var(--ink);font-size:22px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.order .back{height:48px;border-radius:14px;border:1px solid var(--dk-line);color:var(--dk-text-2);font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>桌邊記分板 · Cosy 風格預覽</h1>
+<p class="lead">
+  參考：Behance「Cosy POS: point of sale system」（Ronas IT）。<b>只借結構與排版，顏色全部用 MIGI 的標準色</b>。
+  內容跟 A 案互動一樣（座位圖、12 字名字、對家是莊），下面兩張是靜態畫面。
+</p>
+
+<div class="ana">
+  <b>Cosy POS 的 UI 是怎麼做的（看了登入、點餐、訂單、結帳、儀表板、桌況 9 張）</b>
+  <table>
+    <tr><th>特徵</th><th>它怎麼做</th><th>套到記分板</th></tr>
+    <tr><td>① 左側欄</td><td>品牌名在上、功能選單在中、當班店員在下，主區永遠在右邊</td><td>側欄放<b>開桌就定好的事</b>（桌號／玩法／積分／總積分），底下放<b>即時的</b>（打到哪一局、時間）。頂條因此整條拿掉</td></tr>
+    <tr><td>② 卡片內容靠左</td><td>圖示在左上，<b>小灰字在上、大字在下</b>（Revenue → $1200.56），不置中</td><td>六格改成靠左；動作格是「沒有人付分 → 流局」，對手卡是「對家 → 名字」</td></tr>
+    <tr><td>③ 圓形圖示</td><td>每張卡左上一顆白底圓形圖示</td><td>動作格加白底圓圖示，對手卡用頭像代替。<b>你剛拿掉牌字，所以做了開關</b>（標題右邊）</td></tr>
+    <tr><td>④ 沒有外框</td><td>卡片只靠填色跟背景分層，沒有灰框</td><td>拿掉灰框；莊家那張用內側粉框</td></tr>
+    <tr><td>⑤ 右側面板</td><td>點餐頁右邊固定一欄「目前訂單」：品項、小計、大按鈕</td><td>第二步（選牌型）的右邊放「這一局」：誰付、幾台、多少分、送出</td></tr>
+    <tr><td>⑥ 大數字、少字</td><td>一個畫面只有一兩個大數字，其餘都是 13–15px 灰字</td><td>主頁的大數字只剩我的積分；第二步只剩總分</td></tr>
+    <tr><td>✗ 不借的</td><td>馬卡龍色塊（薰衣草、薄荷、蜜桃）當分類色</td><td>你說不改標準色，所以選中一律粉底黑字</td></tr>
+  </table>
+</div>
+
+<h2>① 主畫面（這一局誰要付錢？）<button class="tog" id="tog">動作格圖示：開</button></h2>
+<div class="shell"><div class="frame" id="f1"></div></div>
+
+<h2>② 第二步（選牌型）—— Cosy 的點餐頁：品項格 ＋ 右側訂單面板</h2>
+<div class="shell"><div class="frame" id="f2"></div></div>
+</div>
+
+<script>
+const BEAR = (k) => `https://raw.githubusercontent.com/migi-hq/migi-assets/v1.14.0/bears/bear-rank-${k}.webp`;
+const P = {
+  me:    { name:'咖勁凱的麻將人生第一桌啦', title:'新手村制霸', rank:'黃金熊 II',  av:BEAR('gold') },
+  top:   { name:'阿哲永遠都在連莊的大魔王', rank:'鑽石熊 I',  av:BEAR('diamond'), dealer:true },
+  left:  { name:'大雄只想打一將就回家睡覺', rank:'青銅熊 III', av:BEAR('bronze') },
+  right: { name:'小美今天一定要胡清一色喔', rank:'白銀熊 I',  av:BEAR('silver') },
+};
+const WHERE = { top:'對家', left:'上家', right:'下家' };
+const svg = (d) => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const I = {
+  draw: svg('<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/>'),
+  zimo: svg('<rect x="6" y="3" width="12" height="18" rx="2.5"/><path d="M12 8v8M8 12h8"/>'),
+  bao:  svg('<path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>'),
+  kala: svg('<rect x="2.5" y="6" width="7" height="12" rx="1.5"/><rect x="8.5" y="6" width="7" height="12" rx="1.5"/><rect x="14.5" y="6" width="7" height="12" rx="1.5"/>'),
+  clock: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>'),
+};
+const side = () => `<div class="side">
+  <div class="logo">MIGI</div>
+  <div class="facts">
+    <div class="fact"><small>桌號</small><span>A3</span></div>
+    <div class="fact"><small>玩法</small><span>台麻 · 無花 · 3 將</span></div>
+    <div class="fact"><small>積分</small><span>100/20</span></div>
+    <div class="fact"><small>總積分</small><span>2000</span></div>
+  </div>
+  <div class="sp"></div>
+  <div class="live"><span class="now">第 1 將 · 東風圈<br>第 3 局</span><span class="clock">${I.clock}1:42:07</span></div>
+</div>`;
+const opp = (pos) => { const p = P[pos]; return `<div class="card${p.dealer ? ' d' : ''}" style="grid-area:${pos}">
+  ${p.dealer ? '<span class="zh"><span class="a">莊家</span><span class="b">連莊 2</span></span>' : ''}
+  <img class="av" src="${p.av}" style="width:72px;height:72px">
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <span class="lab">${WHERE[pos]}</span>
+    <span class="nm">${p.name}</span>
+    <span><span class="rkp">段位: ${p.rank}</span></span>
+  </div></div>`; };
+const act = (area, icon, lab, big) => `<div class="card" style="grid-area:${area}">
+  <span class="ic act">${I[icon]}</span>
+  <div style="display:flex;flex-direction:column;gap:4px"><span class="lab">${lab}</span><span class="big">${big}</span></div></div>`;
+const me = () => `<div class="card me">
+  <img class="av" src="${P.me.av}" style="width:92px;height:92px">
+  <div class="who"><span class="ttl">「${P.me.title}」</span><span class="nm">${P.me.name}</span><span><span class="rkp">段位: ${P.me.rank}</span></span></div>
+  <div class="score"><small>我的積分</small><b>2,320</b></div></div>`;
+
+document.getElementById('f1').innerHTML = side() + `<div class="main">
+  <div class="head"><h3>這一局誰要付錢？</h3><span class="sp"></span><span class="pillbtn">上一局：對家 放槍 −220</span></div>
+  <div class="grid6">
+    ${act('draw','draw','沒有人付分','流局')}
+    ${opp('top')}
+    <div class="split" style="grid-area:bao">
+      <div class="card"><span class="ic act">${I.bao}</span><div style="display:flex;flex-direction:column;gap:2px"><span class="lab">我付給另外三家</span><span class="big">我包牌</span></div></div>
+      <div class="card"><span class="ic act">${I.kala}</span><div style="display:flex;flex-direction:column;gap:2px"><span class="lab">指定捨牌的人 · 1 台</span><span class="big">咔啦碰</span></div></div>
+    </div>
+    ${opp('left')}
+    ${act('zimo','zimo','另外三家一起付','我自摸')}
+    ${opp('right')}
+  </div>
+  ${me()}
+</div>`;
+
+const PAT = [['門清',1,1],['門清自摸',3,1],['平胡',2,1],['獨聽',1,1],['全求',2,1],['海底撈月',1,1],['槓上開花',1,1],['搶槓',1,1],
+  ['三元牌',1,3],['風牌',1,4],['小三元',4,1],['大三元',8,1],['小四喜',8,1],['大四喜',16,1],['字一色',16,1],
+  ['混一色',4,1],['清一色',8,1],['碰碰胡',4,1],['三暗刻',2,1],['四暗刻',5,1],['五暗刻',8,1],
+  ['正花',1,2],['花槓',2,2],['七搶一',8,1],['八仙過海',8,1],['天胡',24,1]];
+const SEL = { '清一色':1, '三元牌':2 };
+document.getElementById('f2').innerHTML = side() + `<div class="main">
+  <div class="head"><h3>胡了什麼牌型？</h3><span class="sp"></span><span class="pillbtn">‹ 回到上一步</span></div>
+  <div class="pgrid">${PAT.map(([n,t,m]) => { const k = SEL[n] || 0;
+    return `<div class="pt${k ? ' on' : ''}"><b>${n}${k > 1 ? ' ×' + k : ''}</b><span class="ft"><i>${k > 1 ? k * t : t} 台</i>${m > 1 ? `<span class="mx">最多 ${m}</span>` : ''}</span></div>`; }).join('')}</div>
+</div>
+<div class="order">
+  <h4>這一局</h4>
+  <div class="who"><img class="av" src="${P.top.av}" style="width:44px;height:44px"><span>對家放槍<br><small style="color:var(--dk-text-3);font-size:13px">${P.top.name}</small></span></div>
+  <hr>
+  <div class="line"><span>清一色</span><b>8 台</b></div>
+  <div class="line"><span>三元牌 ×2</span><b>2 台</b></div>
+  <div class="line"><span>莊家台（連莊 2）</span><b>5 台</b></div>
+  <div class="line"><span>底</span><b>100</b></div>
+  <hr>
+  <div class="tot"><span>15 台 · 對家付</span><b>400</b></div>
+  <div class="sp"></div>
+  <div class="send">送出</div>
+  <div class="back">取消</div>
+</div>`;
+
+document.getElementById('tog').onclick = (e) => {
+  const off = document.getElementById('f1').classList.toggle('noicon');
+  e.target.textContent = `動作格圖示：${off ? '關' : '開'}`;
+};
+function fit() {
+  const w = Math.min(document.body.clientWidth - 40, 1040), sc = w / 1024;
+  document.querySelectorAll('.shell').forEach((s) => { s.style.width = w + 'px'; s.style.height = 768 * sc + 'px'; s.querySelector('.frame').style.transform = `scale(${sc})`; });
+}
+fit(); addEventListener('resize', fit);
+</script>
+</body>
+</html>
