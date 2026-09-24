@@ -151,6 +151,12 @@ button.card:disabled{opacity:.35;cursor:default}
 .pick .card.zimo{visibility:visible;background:var(--dk-raised);cursor:default}
 
 /* ── 疊在畫面上的那一層 ── */
+/* toast：頂條下方置中，深底白字、名字粉色（平板只用粉色系，硬規則 13.9） */
+.toasts{position:absolute;top:72px;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;z-index:5}
+.toast{background:var(--dk-raised);border:2px solid var(--brand);border-radius:999px;padding:12px 28px;font-size:22px;font-weight:800;
+  color:var(--dk-text);box-shadow:0 8px 24px rgba(0,0,0,.45);animation:toastIn .25s ease-out}
+.toast b{font-size:inherit;color:var(--brand)}
+@keyframes toastIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
 .sheet{position:absolute;inset:0;background:var(--dk-scrim);display:flex;align-items:center;justify-content:center;padding:36px}
 .sheet .box{background:var(--dk-raised);border:2px solid var(--dk-line);border-radius:18px;padding:48px 36px 40px;width:100%;max-width:760px;text-align:center}   /* 加高（2026-09-24） */
 /* 彈窗＝使用者 2026-09-24 選的「第 2 版 標準版」：
@@ -233,6 +239,7 @@ const T0 = Date.now() - (1 * 3600 + 42 * 60 + 7) * 1000;   // 已使用 1:42:07 
 
 /* ── 共用狀態（＝後端那一份）── */
 let G, L, zoom = 0;
+const TOAST = {};   // 每一台自己的 toast 佇列（只在本機，不進共用狀態）
 /* 右下積分的碼表效果（2026-09-24 使用者指定）：畫面上「正在顯示」的數字跟真值分開記，
    真值一變就從顯示值滾到真值（約 0.8 秒、先快後慢），不是直接跳。 */
 const SHOWN = {};
@@ -254,7 +261,7 @@ function rollScores() {
 function reset() {
   G = { dealer:3, ren:2, set:1, wind:0, ju:3, total:{ 1:2320, 2:1820, 3:2090, 4:1770 }, pending:null, result:null, seen:{} };
   L = { 1:blank(), 2:blank(), 3:blank(), 4:blank() };
-  SEATS.forEach((s) => { SHOWN[s] = G.total[s]; });     // 重來時直接顯示，不滾
+  SEATS.forEach((s) => { SHOWN[s] = G.total[s]; TOAST[s] = []; });     // 重來時直接顯示，不滾
 }
 const blank = () => ({ step:1, act:null, who:null, sel:{}, none:false, confirming:false });
 /* 牌型底下的小字註明 */
@@ -396,7 +403,8 @@ function render(s) {
         <button class="btn pri" data-s="${s}" data-a="send"${busy || !(l.none || Object.keys(l.sel).length) ? ' disabled' : ''}>送出</button></div>
       ${meHTML(s)}</div>`;
   }
-  return topHTML() + body + sheet;
+  const toasts = (TOAST[s] || []).map((t) => `<div class="toast"><b>${NAME[t.who]}</b> 取消了</div>`).join('');
+  return topHTML() + body + sheet + (toasts ? `<div class="toasts">${toasts}</div>` : '');
 }
 
 /* ── 動作 ── */
@@ -437,7 +445,13 @@ function act(s, a, v, x) {
   else if (a === 'confirm' || a === 'reject') {
     const p = G.pending; if (!p || !isOpenFor(p, s)) return;
     if (a === 'confirm') { G.total[s] += p.delta[s]; G.total[p.by] -= p.delta[s]; p.confirmed.push(s); }
-    else p.cancelled.push(s);
+    else {
+      p.cancelled.push(s);
+      /* 有人取消 → 送出的那一台跳 toast「某某某 取消了」，3 秒後自己消失（2026-09-24 使用者指定） */
+      const t = { id: Date.now() + Math.random(), who: s };
+      (TOAST[p.by] = TOAST[p.by] || []).push(t);
+      setTimeout(() => { TOAST[p.by] = (TOAST[p.by] || []).filter((x) => x !== t); paint(); }, 3000);
+    }
     L[s] = blank();
     if (openCount(p) === 0) {
       /* 咔啦碰不是一局的結束：莊家、連莊、局數都不動 */
