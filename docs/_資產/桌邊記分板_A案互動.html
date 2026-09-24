@@ -151,12 +151,15 @@ button.card:disabled{opacity:.35;cursor:default}
 .pick .card.zimo{visibility:visible;background:var(--dk-raised);cursor:default}
 
 /* ── 疊在畫面上的那一層 ── */
-/* toast：頂條下方置中，深底白字、名字粉色（平板只用粉色系，硬規則 13.9） */
-.toasts{position:absolute;top:72px;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;z-index:5}
-.toast{background:var(--dk-raised);border:2px solid var(--brand);border-radius:999px;padding:12px 28px;font-size:22px;font-weight:800;
-  color:var(--dk-text);box-shadow:0 8px 24px rgba(0,0,0,.45);animation:toastIn .25s ease-out}
+/* toast：照會員 App 的 Toast（lib/ui.jsx）—— 圓角卡片、左邊一顆圓（這裡放取消那個人的頭像）、右邊一句話，
+   一次只一則、3 秒消失；位置改在畫面正中央（2026-09-24 使用者指定），尺寸放大成平板用 */
+.toast{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:5;pointer-events:none;
+  background:var(--dk-tile);border:2px solid var(--dk-line);border-radius:16px;padding:18px 28px;
+  display:flex;align-items:center;gap:16px;box-shadow:0 16px 48px rgba(0,0,0,.6);max-width:80%;animation:toastIn .3s cubic-bezier(.2,.8,.2,1)}
+.toast .av{width:48px;height:48px}
+.toast span{font-size:24px;font-weight:800;color:var(--dk-text);white-space:nowrap}
 .toast b{font-size:inherit;color:var(--brand)}
-@keyframes toastIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,-50%) scale(.92)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
 .sheet{position:absolute;inset:0;background:var(--dk-scrim);display:flex;align-items:center;justify-content:center;padding:36px}
 .sheet .box{background:var(--dk-raised);border:2px solid var(--dk-line);border-radius:18px;padding:48px 36px 40px;width:100%;max-width:760px;text-align:center}   /* 加高（2026-09-24） */
 /* 彈窗＝使用者 2026-09-24 選的「第 2 版 標準版」：
@@ -261,7 +264,7 @@ function rollScores() {
 function reset() {
   G = { dealer:3, ren:2, set:1, wind:0, ju:3, total:{ 1:2320, 2:1820, 3:2090, 4:1770 }, pending:null, result:null, seen:{} };
   L = { 1:blank(), 2:blank(), 3:blank(), 4:blank() };
-  SEATS.forEach((s) => { SHOWN[s] = G.total[s]; TOAST[s] = []; });     // 重來時直接顯示，不滾
+  SEATS.forEach((s) => { SHOWN[s] = G.total[s]; TOAST[s] = null; });     // 重來時直接顯示，不滾
 }
 const blank = () => ({ step:1, act:null, who:null, sel:{}, none:false, confirming:false });
 /* 牌型底下的小字註明 */
@@ -403,8 +406,9 @@ function render(s) {
         <button class="btn pri" data-s="${s}" data-a="send"${busy || !(l.none || Object.keys(l.sel).length) ? ' disabled' : ''}>送出</button></div>
       ${meHTML(s)}</div>`;
   }
-  const toasts = (TOAST[s] || []).map((t) => `<div class="toast"><b>${NAME[t.who]}</b> 取消了</div>`).join('');
-  return topHTML() + body + sheet + (toasts ? `<div class="toasts">${toasts}</div>` : '');
+  const t = TOAST[s];   // 一次只一則（同 App）：新的蓋掉舊的
+  const toast = t ? `<div class="toast"><img class="av" src="${PROF[t.who].av}"><span><b>${NAME[t.who]}</b> 取消了</span></div>` : '';
+  return topHTML() + body + sheet + toast;
 }
 
 /* ── 動作 ── */
@@ -448,9 +452,9 @@ function act(s, a, v, x) {
     else {
       p.cancelled.push(s);
       /* 有人取消 → 送出的那一台跳 toast「某某某 取消了」，3 秒後自己消失（2026-09-24 使用者指定） */
-      const t = { id: Date.now() + Math.random(), who: s };
-      (TOAST[p.by] = TOAST[p.by] || []).push(t);
-      setTimeout(() => { TOAST[p.by] = (TOAST[p.by] || []).filter((x) => x !== t); paint(); }, 3000);
+      const t = { who: s }, to = p.by;
+      TOAST[to] = t;   // 新的蓋掉舊的，計時重算（同 App 的 Toast）
+      setTimeout(() => { if (TOAST[to] === t) { TOAST[to] = null; paint(); } }, 3000);
     }
     L[s] = blank();
     if (openCount(p) === 0) {
