@@ -86,7 +86,7 @@ button.card:disabled{opacity:.35;cursor:default}
 /* ── 主頁：座位圖 ── */
 .body{flex:1;min-height:0;padding:16px 18px;display:grid;gap:14px;
   grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:auto 1fr 1fr 136px;
-  grid-template-areas:"q q q" "draw top bao" "left zimo right" "me me me"}
+  grid-template-areas:"q q q" "left top right" "draw zimo bao" "me me me"}   /* 上家↔流局、下家↔包牌咔啦碰 上下對調（2026-09-24）：三家都在上排 */
 .opp{gap:11px}
 .opp .nm{font-size:22px}
 .opp .pos{position:absolute;top:10px;left:14px;font-size:20px;font-weight:800;color:var(--dk-text-2);line-height:1.2}
@@ -161,7 +161,7 @@ button.card:disabled{opacity:.35;cursor:default}
    局 ｜ 類型 ｜ 送出的人 ｜ 牌型與台數 ｜ 他的積分 ｜ 另外幾家逐一列出。
    參考圖的綠勾、紅叉、黃時鐘、綠色「已結算」全部換成粉／灰（硬規則 13.9：平板只用粉色系） */
 /* 左欄只講「哪一局、什麼時候」，結算狀態獨立放最右邊（2026-09-24 使用者要求重新規劃，同參考圖） */
-.lg{display:grid;grid-template-columns:100px 72px minmax(0,1fr) 120px 92px 260px 76px;gap:10px;align-items:center;
+.lg{display:grid;grid-template-columns:100px 72px minmax(0,1fr) 120px 108px 244px 76px;gap:10px;align-items:center;
   background:var(--dk-tile);border:2px solid var(--dk-line);border-radius:12px;padding:12px 16px;flex-shrink:0;min-height:96px}
 .lg.hl{border-color:var(--brand)}                       /* 有人取消／還在確認：粉框（同參考圖的高亮列） */
 .lg .c1{display:flex;flex-direction:column;gap:3px;min-width:0}
@@ -172,22 +172,26 @@ button.card:disabled{opacity:.35;cursor:default}
 .lg .stp{justify-self:center;font-size:13px;font-weight:800;border-radius:999px;padding:4px 10px;white-space:nowrap;
   border:1.5px solid var(--dk-line);color:var(--dk-text-2)}
 .lg .stp.ok{border-color:var(--brand);color:var(--brand)}
-.lg .stp.go{background:var(--brand);border-color:var(--brand);color:var(--ink)}.lg .act{justify-self:start;display:flex;flex-direction:column;align-items:center;gap:4px}
+.lg .stw{justify-self:center;display:flex;flex-direction:column;align-items:center;gap:6px}
+.lg .stw .stp{justify-self:auto}
+.lg .warn{width:24px;height:24px;border-radius:50%;background:var(--dk-line);color:var(--dk-text);   /* 灰底白字（2026-09-24：桃紅改灰） */
+  display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;line-height:1}
+.lg .stp.go{background:var(--brand);border-color:var(--brand);color:var(--ink)}.lg .act{justify-self:center;display:flex;flex-direction:column;align-items:center;gap:4px}
 .lg .act b{font-size:16px;font-weight:800;border-radius:10px;padding:6px 10px;white-space:nowrap;border:2px solid var(--dk-line);color:var(--dk-text-2)}
 .lg .act b.win{background:var(--brand);border-color:var(--brand);color:var(--ink)}   /* 五種類型一律粉底墨字（2026-09-24） */
 .lg .act i{font-style:normal;font-size:11px;font-weight:700;color:var(--dk-text-3);white-space:nowrap}
-.lg .man{display:flex;align-items:center;gap:10px;min-width:0;padding-right:14px}   /* 名字跟右邊的牌型拉開（2026-09-24） */
+.lg .man{display:flex;align-items:center;gap:10px;min-width:0;padding:0 14px 0 14px}   /* 往右移（2026-09-24） */   /* 名字跟右邊的牌型拉開（2026-09-24） */
 .lg .man .nm{font-size:14px;font-weight:800;line-height:1.25;overflow-wrap:anywhere}
 .lg .man .rk{font-size:12px;font-weight:700;color:var(--dk-text-3);margin-top:2px;white-space:nowrap}
-.lg .pat{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:0}
+.lg .pat{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:0;padding-left:14px}   /* 跟著名字一起往右（2026-09-24） */
 .lg .pat .t{font-size:16px;font-weight:800;line-height:1.25;overflow-wrap:anywhere}
 .lg .pat .tp{font-size:13px;font-weight:800;border:1px solid var(--brand);color:var(--brand);border-radius:999px;padding:2px 9px;white-space:nowrap}
-.lg .big{font-size:30px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.lg .big{font-size:28px;min-width:0;   /* 最大到「＋4,300」這種四位數（全場總分 8000）要能放進欄內、切齊右邊 */font-weight:800;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .lg .big.in{color:var(--brand)}                          /* 收＝粉；付＝白 */
 .lg .big.z{color:var(--dk-text-3)}
-.lg .oth{display:flex;flex-direction:column;gap:6px;border-left:1px solid var(--dk-line);border-right:1px solid var(--dk-line);padding:0 10px;min-width:0;align-self:stretch;justify-content:center}
+.lg .oth{display:flex;flex-direction:column;gap:6px;border-left:1px solid var(--dk-line);border-right:1px solid var(--dk-line);padding:0 8px;min-width:0;align-self:stretch;justify-content:center}
 .lg .oth .none{font-size:14px;font-weight:700;color:var(--dk-text-3)}
-.lg-row{display:grid;grid-template-columns:20px minmax(0,1fr) 48px 74px;gap:6px;align-items:center;font-size:14px;font-weight:700}
+.lg-row{display:grid;grid-template-columns:20px minmax(0,1fr) 48px 62px;gap:6px;align-items:center;font-size:14px;font-weight:700}
 .lg-row img{width:20px;height:20px}
 .lg-row .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--dk-text-2)}
 .lg-row .am{text-align:right;font-variant-numeric:tabular-nums}
@@ -270,13 +274,17 @@ button.card:disabled{opacity:.35;cursor:default}
 </div>
 
 <script>
+/* 三元牌最多 2、風牌最多 3（2026-09-24 使用者指定：再多就是小三元／小四喜） */
 const PAT = [
   ['門清',1,1],['門清自摸',3,1],['平胡',2,1],['獨聽',1,1],['全求',2,1],['海底撈月',1,1],['槓上開花',1,1],['搶槓',1,1],
-  ['三元牌',1,3],['風牌',1,4],['小三元',4,1],['大三元',8,1],['小四喜',8,1],['大四喜',16,1],['字一色',16,1],
+  ['三元牌',1,2],['風牌',1,3],['小三元',4,1],['大三元',8,1],['小四喜',8,1],['大四喜',16,1],['字一色',16,1],
   ['混一色',4,1],['清一色',8,1],['碰碰胡',4,1],['三暗刻',2,1],['四暗刻',5,1],['五暗刻',8,1],
   ['正花',1,2],['花槓',2,2],['七搶一',8,1],['八仙過海',8,1],['天胡',24,1],['MIGI',8,1],   // MIGI：品牌招牌牌型，放最後一格、卡片特別畫（2026-09-24 使用者指定）
 ];
 const taiOf = (l) => PAT.find((p) => p[0] === l)[1];
+/* 互斥的牌型：同一組只能選一個，選了新的就把同組的舊的拿掉（2026-09-24 使用者指定） */
+const PAT_EXCL = [['三元牌', '小三元', '大三元'], ['風牌', '小四喜', '大四喜'], ['三暗刻', '四暗刻', '五暗刻']];
+const exclOthers = (sel, x) => PAT_EXCL.filter((g) => g.includes(x)).flat().forEach((y) => { if (y !== x) delete sel[y]; });
 const maxOf = (l) => PAT.find((p) => p[0] === l)[2];
 const NAME = { 1:'咖勁凱的麻將人生第一桌啦', 2:'小美今天一定要胡清一色喔', 3:'阿哲永遠都在連莊的大魔王', 4:'大雄只想打一將就回家睡覺' };
 const BEAR = (k) => `https://raw.githubusercontent.com/migi-hq/migi-assets/v1.14.0/bears/bear-rank-${k}.webp`;
@@ -417,13 +425,14 @@ const meHTML = (s) => `<div class="card me">
   <span class="score" data-seat="${s}">${(SHOWN[s] ?? G.total[s]).toLocaleString()}</span></div>`;
 const oppHTML = (s, pos, act, x, disabled) => `<button class="card opp${x === G.dealer ? ' d' : ''}" style="grid-area:${pos}"
     data-s="${s}" data-a="${act}" data-v="ron" data-x="${x}"${disabled ? ' disabled' : ''}>
-  <span class="pos">${WHERE[pos]}</span>${x === G.dealer ? zhHTML() : ''}
-  <img class="av" src="${PROF[x].av}" style="width:100px;height:100px">
-  <span class="nm">${NAME[x]}</span>
-  <span class="rkp">段位: ${PROF[x].rank}</span></button>`;
+  ${x === G.dealer ? zhHTML() : ''}
+  <b>${WHERE[pos]}${act === 'kalaTo' ? '' : '放槍'}</b></button>`;   /* 頭像與名字拿掉，只留「上家放槍」（2026-09-24 預覽）；咔啦碰選人時只寫「上家」 */
 
 /* 牌局紀錄的一列：送出的人 ＋ 他的積分，右邊逐一列出另外幾家付了／取消了／還沒按。
    🔴 取消的那一家金額劃掉、不算進送出的人的數字 —— 結束算牌時要能一眼對出來 */
+/* 驚嘆號用 SVG 畫：文字的「!」在中文字型裡上下不對稱，圓裡永遠看起來偏上或偏下（2026-09-24）。
+   直線 4.6–13.6、圓點 15.8–19.4 ⇒ 整體中心正好在 12 */
+const WARN = `<span class="warn"><svg viewBox="0 0 24 24" width="24" height="24"><rect x="10.5" y="4.6" width="3" height="9" rx="1.5" fill="currentColor"/><circle cx="12" cy="17.6" r="1.8" fill="currentColor"/></svg></span>`;
 const LOG_ACT = { ron:'胡牌', tsumo:'自摸', bao:'包牌', kala:'咔啦碰', draw:'流局' };
 /* 還在確認中的那一局也列在最上面（e.live）：沒按的那幾家是「待確認」 */
 const livePending = (p) => {
@@ -434,8 +443,8 @@ function logHTML(e) {
   const allCancel = e.rows.length && e.rows.every((r) => r.st === 'cancel');
   const someCancel = e.rows.some((r) => r.st === 'cancel');
   const stp = e.live ? '<span class="stp go">確認中</span>'
-    : allCancel ? '<span class="stp">全部取消</span>'
-    : someCancel ? '<span class="stp">部分取消</span>' : '<span class="stp ok">已結算</span>';
+    : allCancel ? `<span class="stw">${WARN}<span class="stp">全部取消</span></span>`
+    : someCancel ? `<span class="stw">${WARN}<span class="stp">部分取消</span></span>` : '<span class="stp ok">已結算</span>';
   const ST = {
     ok:     (r) => `<span class="ic ok">✓</span>${r.amt < 0 ? '已支付' : '已收下'}`,
     cancel: () => '<span class="ic x">✕</span>已取消',
@@ -570,8 +579,8 @@ function act(s, a, v, x) {
   /* 沒台與牌型互斥：選了沒台就清掉牌型，選了牌型就取消沒台。
      送出要「選過東西」才亮 —— 沒選跟沒台在畫面上要分得出來 */
   else if (a === 'none') { l.none = !l.none; if (l.none) l.sel = {}; }
-  else if (a === 'pat') { l.none = false; if (l.sel[x]) delete l.sel[x]; else l.sel[x] = 1; }
-  else if (a === 'cyc') { l.none = false; const n = (l.sel[x] || 0) + 1; if (n > maxOf(x)) delete l.sel[x]; else l.sel[x] = n; }
+  else if (a === 'pat') { l.none = false; if (l.sel[x]) delete l.sel[x]; else { exclOthers(l.sel, x); l.sel[x] = 1; } }
+  else if (a === 'cyc') { l.none = false; const n = (l.sel[x] || 0) + 1; if (n > maxOf(x)) delete l.sel[x]; else { exclOthers(l.sel, x); l.sel[x] = n; } }
   else if (a === 'back1') { L[s] = blank(); }
   else if (a === 'back') { l.confirming = false; if (l.act === 'kala') l.who = null; else l.act = null; }   // 咔啦碰取消：留在選人頁
   else if (a === 'send') {

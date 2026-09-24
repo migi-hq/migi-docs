@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>莊家標示比較</title>
+<!--
+  桌邊記分板：「莊家／連莊」標示的六種畫法（2026-09-24 使用者要求「設計不同的莊家 UI 給我預覽」）。
+  三家卡已改成只寫「上家放槍」，沒有頭像名字 —— 莊家標示是那張卡上唯一的身分資訊。
+  每一版同一組：莊家的對家卡 ｜ 一般的上家卡（對照）｜ 自己是莊時的我方卡。
+  顏色只用粉色系（硬規則 13.9）。
+-->
+<style>
+:root{
+  --brand:#FAD6DC; --brand-tint:#FFECF1; --ink:#2E2B2C;
+  --dk-bg:#221F20; --dk-bar:#191718; --dk-raised:#2B2829; --dk-tile:#343132; --dk-line:#524D4E;
+  --dk-text:#FFFFFF; --dk-text-2:#C9C4C1; --dk-text-3:#A39E9B;
+  --font:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+}
+:root:not([data-theme="light"]){color-scheme:dark}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#E4DFDC;font-family:var(--font);color:var(--ink);padding:24px 16px 60px}
+h1{font-size:24px;font-weight:800;max-width:1040px;margin:0 auto 6px}
+.lead{max-width:1040px;margin:0 auto 20px;font-size:14px;line-height:1.7;color:#5A5557}
+.v{max-width:1040px;margin:0 auto 22px;background:var(--dk-bg);border-radius:16px;padding:18px 18px 20px;color:var(--dk-text)}
+.v h2{font-size:18px;font-weight:800;display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+.v h2 .no{background:var(--brand);color:var(--ink);border-radius:999px;padding:1px 10px;font-size:15px}
+.v p{font-size:13px;color:var(--dk-text-2);line-height:1.6;margin-bottom:14px}
+/* 照平板真實尺寸：三家卡 320 寬、我方卡整排；視窗太窄就在區塊內左右捲，不縮卡片（縮了就不是平板上看到的樣子） */
+.v{overflow-x:auto}
+.row{display:grid;grid-template-columns:repeat(3,320px);gap:12px;width:984px}
+.row + .row{margin-top:12px}
+.cap{font-size:12px;color:var(--dk-text-3);margin-bottom:6px}
+
+/* 卡片（尺寸照平板：三家卡約 320×150，我方卡整排 136 高） */
+.card{position:relative;background:var(--dk-tile);border:2px solid var(--dk-line);border-radius:12px;height:150px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;overflow:hidden}
+.card b{font-size:34px;font-weight:800;line-height:1.1}
+.me{height:136px;flex-direction:row;justify-content:flex-start;gap:18px;padding:0 24px;background:var(--dk-raised);grid-column:1 / -1}
+.me .av{width:88px;height:88px;border-radius:50%;background:var(--brand);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:40px}
+.me .who{display:flex;flex-direction:column;gap:4px;min-width:0}
+.me .ttl{font-size:16px;font-weight:700;color:var(--dk-text-2)}
+.me .nm{font-size:24px;font-weight:800}
+.me .rw{display:flex;align-items:center;gap:8px}
+.rkp{background:var(--brand);color:var(--ink);border-radius:999px;padding:3px 13px;font-weight:700;font-size:15px;white-space:nowrap}
+.me .score{margin-left:auto;font-size:72px;font-weight:800;font-variant-numeric:tabular-nums}
+
+/* ── A 現行：右上兩格疊起來 ── */
+.a .zh{position:absolute;top:10px;right:12px;display:flex;flex-direction:column;width:52px;border-radius:6px;overflow:hidden}
+.a .zh i{font-style:normal;height:30px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800}
+.a .zh i:first-child{background:var(--brand);color:var(--ink)}
+.a .zh i:last-child{background:var(--dk-line);color:var(--brand);font-size:14px}
+.a .me .zh{position:static}
+
+/* ── B 一顆膠囊 ── */
+.b .zh{position:absolute;top:12px;right:12px;background:var(--brand);color:var(--ink);border-radius:999px;padding:5px 14px;font-size:16px;font-weight:800;white-space:nowrap}
+.b .zh em{font-style:normal;font-weight:700;opacity:.75;margin-left:6px}
+.b .me .zh{position:static}
+
+/* ── C 整張卡粉框 ＋ 底部粉條 ── */
+.c .card.d{border-color:var(--brand)}
+.c .strip{position:absolute;left:0;right:0;bottom:0;height:34px;background:var(--brand);color:var(--ink);
+  display:flex;align-items:center;justify-content:center;gap:10px;font-size:16px;font-weight:800}
+.c .strip em{font-style:normal;font-weight:700;opacity:.75}
+.c .card.d b{margin-bottom:22px}
+.c .me.d{padding-bottom:34px}
+
+/* ── D 圓章「莊」＋ 右上角數字 ── */
+.d .stamp{position:absolute;top:10px;left:12px;width:46px;height:46px;border-radius:50%;background:var(--brand);color:var(--ink);
+  display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900}
+.d .stamp sup{position:absolute;top:-6px;right:-8px;min-width:24px;height:24px;border-radius:999px;background:var(--ink);color:var(--brand);
+  border:2px solid var(--brand);font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 5px;line-height:1}
+.d .me .stamp{position:relative;top:auto;left:auto;flex-shrink:0}
+
+/* ── E 標題底下一行（跟著字走）── */
+.e .sub{display:flex;align-items:center;gap:8px}
+.e .sub .p{background:var(--brand);color:var(--ink);border-radius:999px;padding:3px 12px;font-size:15px;font-weight:800}
+.e .sub .q{font-size:15px;font-weight:700;color:var(--brand)}
+
+/* ── F 左上角斜角緞帶 ── */
+.f .rib{position:absolute;top:14px;left:-34px;width:130px;transform:rotate(-45deg);background:var(--brand);color:var(--ink);
+  text-align:center;font-size:15px;font-weight:900;padding:3px 0;letter-spacing:2px}
+.f .ren{position:absolute;top:12px;right:12px;font-size:15px;font-weight:800;color:var(--brand);border:1.5px solid var(--brand);border-radius:999px;padding:2px 10px}
+.f .me .ren{position:static}
+.f .me .rib{top:14px}
+
+/* ── G 左上角：「莊家」粉色膠囊 ＋ 白字「連莊 2」（2026-09-24 使用者提議）── */
+.g .zh{position:absolute;top:12px;left:14px;display:flex;align-items:center;gap:8px}
+.g .zh .p{background:var(--brand);color:var(--ink);border-radius:999px;padding:3px 12px;font-size:16px;font-weight:800}
+.g .zh .q{font-size:16px;font-weight:800;color:var(--brand);border:1.5px solid var(--brand);border-radius:999px;padding:2px 10px}   /* 粉字粉框（2026-09-24） */
+.g .me .zh{position:static}
+</style>
+</head>
+<body>
+<h1>莊家標示 · 比較</h1>
+<p class="lead">三家卡拿掉頭像與名字之後，「誰是莊家」就是卡片上唯一的身分資訊。每一版都放同一組：<b>莊家的對家卡</b>、<b>一般的上家卡</b>（對照用）、<b>自己是莊時的我方卡</b>。例子是連莊 2。顏色只用粉色系。</p>
+
+<!-- G 左上膠囊＋白字 -->
+<section class="v g">
+  <h2><span class="no">G</span>左上角「莊家」粉底膠囊 ＋「連 2」粉框膠囊</h2>
+  <p>左上角一顆粉底「莊家」，旁邊接一顆粉字粉框的「連 2」。從左往右讀：先看到誰是莊，再看到連幾莊。連莊 0 只留「莊家」。</p>
+  <div class="row">
+    <div><div class="cap">莊家（對家）</div><div class="card d"><span class="zh"><span class="p">莊家</span><span class="q">連 2</span></span><b>對家放槍</b></div></div>
+    <div><div class="cap">一般（上家）</div><div class="card"><b>上家放槍</b></div></div>
+    <div><div class="cap">連莊 0 的樣子</div><div class="card d"><span class="zh"><span class="p">莊家</span></span><b>對家放槍</b></div></div>
+  </div>
+  <div class="row"><div class="card me"><span class="av">🐻</span><div class="who"><span class="ttl">「連莊之王」</span><span class="nm">阿哲永遠都在連莊的大魔王</span>
+    <span class="rw"><span class="rkp">段位: 鑽石熊 I</span><span class="zh"><span class="p">莊家</span><span class="q">連 2</span></span></span></div><span class="score">2,090</span></div></div>
+</section>
+
+<!-- A 現行 -->
+<section class="v a">
+  <h2><span class="no">A</span>現行 · 右上兩格疊起來</h2>
+  <p>「莊家」粉底一格、「連莊 2」深底粉字一格，疊在右上角。優點是已經在用；缺點是小、在卡片角落，要找一下。</p>
+  <div class="row">
+    <div><div class="cap">莊家（對家）</div><div class="card d"><span class="zh"><i>莊家</i><i>連莊 2</i></span><b>對家放槍</b></div></div>
+    <div><div class="cap">一般（上家）</div><div class="card"><b>上家放槍</b></div></div>
+    <div><div class="cap">&nbsp;</div><div class="card" style="visibility:hidden"></div></div>
+  </div>
+  <div class="row"><div class="card me"><span class="av">🐻</span><div class="who"><span class="ttl">「連莊之王」</span><span class="nm">阿哲永遠都在連莊的大魔王</span>
+    <span class="rw"><span class="rkp">段位: 鑽石熊 I</span><span class="zh" style="display:flex;flex-direction:row;width:auto"><i style="padding:0 10px">莊家</i><i style="padding:0 10px">連莊 2</i></span></span></div><span class="score">2,090</span></div></div>
+</section>
+
+<!-- B 一顆膠囊 -->
+<section class="v b">
+  <h2><span class="no">B</span>一顆膠囊</h2>
+  <p>「莊家 · 連莊 2」併成一顆粉色膠囊，跟段位膠囊同一種長相。最省空間、最整齊；但跟段位膠囊太像，在我方卡上容易混在一起。</p>
+  <div class="row">
+    <div><div class="cap">莊家（對家）</div><div class="card d"><span class="zh">莊家<em>連莊 2</em></span><b>對家放槍</b></div></div>
+    <div><div class="cap">一般（上家）</div><div class="card"><b>上家放槍</b></div></div>
+    <div><div class="cap">&nbsp;</div><div class="card" style="visibility:hidden"></div></div>
+  </div>
+  <div class="row"><div class="card me"><span class="av">🐻</span><div class="who"><span class="ttl">「連莊之王」</span><span class="nm">阿哲永遠都在連莊的大魔王</span>
+    <span class="rw"><span class="rkp">段位: 鑽石熊 I</span><span class="zh">莊家<em>連莊 2</em></span></span></div><span class="score">2,090</span></div></div>
+</section>
+
+<!-- C 粉框＋底部粉條 -->
+<section class="v c">
+  <h2><span class="no">C</span>整張卡粉框 ＋ 底部粉條</h2>
+  <p>莊家那張卡換粉框，底部一條粉色橫條寫「莊家　連莊 2」。遠遠看就知道哪張是莊，最醒目；代價是卡片的字要往上讓一點。</p>
+  <div class="row">
+    <div><div class="cap">莊家（對家）</div><div class="card d"><b>對家放槍</b><span class="strip">莊家<em>連莊 2</em></span></div></div>
+    <div><div class="cap">一般（上家）</div><div class="card"><b>上家放槍</b></div></div>
+    <div><div class="cap">&nbsp;</div><div class="card" style="visibility:hidden"></div></div>
+  </div>
+  <div class="row"><div class="card me d" style="border-color:var(--brand)"><span class="av">🐻</span><div class="who"><span class="ttl">「連莊之王」</span><span class="nm">阿哲永遠都在連莊的大魔王</span>
+    <span class="rw"><span class="rkp">段位: 鑽石熊 I</span></span></div><span class="score">2,090</span><span class="strip">莊家<em>連莊 2</em></span></div></div>
+</section>
+
+<!-- D 圓章 -->
+<section class="v d">
+  <h2><span class="no">D</span>圓章「莊」＋ 連莊數字</h2>
+  <p>左上角一顆粉色圓章寫「莊」，連莊數像通知紅點一樣掛在右上。一個字、一個數字，最像麻將桌上的莊家標；連莊 0 就不掛數字。</p>
+  <div class="row">
+    <div><div class="cap">莊家（對家）</div><div class="card d"><span class="stamp">莊<sup>2</sup></span><b>對家放槍</b></div></div>
+    <div><div class="cap">一般（上家）</div><div class="card"><b>上家放槍</b></div></div>
+    <div><div class="cap">連莊 0 的樣子</div><div class="card d"><span class="stamp">莊</span><b>對家放槍</b></div></div>
+  </div>
+  <div class="row"><div class="card me"><span class="av">🐻</span><span class="stamp">莊<sup>2</sup></span><div class="who"><span class="ttl">「連莊之王」</span><span class="nm">阿哲永遠都在連莊的大魔王</span>
+    <span class="rw"><span class="rkp">段位: 鑽石熊 I</span></span></div><span class="score">2,090</span></div></div>
+</section>
+
+<!-- E 標題底下一行 -->
+<section class="v e">
+  <h2><span class="no">E</span>放在「對家放槍」底下</h2>
+  <p>不放角落，直接放在大字下面：「莊家」膠囊 ＋「連莊 2」粉字。眼睛看到「對家放槍」的同時就看到它，跟流局卡的「沒有人胡牌」位置一樣。</p>
+  <div class="row">
+    <div><div class="cap">莊家（對家）</div><div class="card d"><b>對家放槍</b><span class="sub"><span class="p">莊家</span><span class="q">連莊 2</span></span></div></div>
+    <div><div class="cap">一般（上家）</div><div class="card"><b>上家放槍</b></div></div>
+    <div><div class="cap">&nbsp;</div><div class="card" style="visibility:hidden"></div></div>
+  </div>
+  <div class="row"><div class="card me"><span class="av">🐻</span><div class="who"><span class="ttl">「連莊之王」</span><span class="nm">阿哲永遠都在連莊的大魔王</span>
+    <span class="rw"><span class="rkp">段位: 鑽石熊 I</span><span class="sub"><span class="p">莊家</span><span class="q">連莊 2</span></span></span></div><span class="score">2,090</span></div></div>
+</section>
+
+<!-- F 斜角緞帶 -->
+<section class="v f">
+  <h2><span class="no">F</span>左上斜角緞帶</h2>
+  <p>左上角斜斜一條粉色緞帶寫「莊家」，連莊數放右上角。像「NEW」標籤那樣一眼辨識；但緞帶比較花俏，跟其他平板元件的方正風格不太一樣。</p>
+  <div class="row">
+    <div><div class="cap">莊家（對家）</div><div class="card d"><span class="rib">莊家</span><span class="ren">連莊 2</span><b>對家放槍</b></div></div>
+    <div><div class="cap">一般（上家）</div><div class="card"><b>上家放槍</b></div></div>
+    <div><div class="cap">&nbsp;</div><div class="card" style="visibility:hidden"></div></div>
+  </div>
+  <div class="row"><div class="card me"><span class="rib">莊家</span><span class="av">🐻</span><div class="who"><span class="ttl">「連莊之王」</span><span class="nm">阿哲永遠都在連莊的大魔王</span>
+    <span class="rw"><span class="rkp">段位: 鑽石熊 I</span><span class="ren">連莊 2</span></span></div><span class="score">2,090</span></div></div>
+</section>
+</body>
+</html>
