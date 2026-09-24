@@ -375,7 +375,7 @@ function render(s) {
       </div>
       ${oppHTML(s, 'left', pick ? 'kalaTo' : 'act', rel.left)}
       ${pick
-        ? `<div class="card zimo" style="grid-area:zimo"><b>咔啦碰</b><span class="sub">固定 1 台（${PER_TAI * KALA_TAI} 分）<br>不算底、不加莊家台</span><span class="sub" style="font-size:18px;margin-top:8px">按捨牌的那一家</span></div>`
+        ? `<div class="card zimo" style="grid-area:zimo"><b>咔啦碰</b><span class="sub">直接給 ${KALA_TAI} 台</span></div>`
         : `<button class="card act zimo" style="grid-area:zimo" data-s="${s}" data-a="act" data-v="tsumo"><b>我自摸</b><span class="sub">另外三家一起付</span></button>`}
       ${oppHTML(s, 'right', pick ? 'kalaTo' : 'act', rel.right)}
       ${meHTML(s)}</div>`;
