@@ -98,11 +98,6 @@ button.card:disabled{opacity:.35;cursor:default}
 .split .card{flex:1;min-height:0;gap:2px}
 .split .card b{font-size:30px}
 .split .card .sub{font-size:18px}
-/* 「我自摸」上的那張麻將牌（2026-09-24：流局／包牌／咔啦碰的拿掉了，只留這一張）：
-   粉底墨字、牌的比例，跟莊家那張牌同一套語言 —— 是字不是符號，不用學。 */
-.tg{display:flex;width:52px;height:64px;border-radius:8px;background:var(--brand);color:var(--ink);
-  align-items:center;justify-content:center;font-size:30px;font-weight:800;margin-bottom:4px;
-  box-shadow:0 3px 0 rgba(250,214,220,.35)}
 /* 我自己（HERO ＋ 積分同一張卡） */
 .me{grid-area:me;flex-direction:row;justify-content:flex-start;gap:18px;padding:0 24px;background:var(--dk-raised);text-align:left}
 .me .who{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
@@ -355,7 +350,7 @@ function render(s) {
       ${oppHTML(s, 'left', pick ? 'kalaTo' : 'act', rel.left)}
       ${pick
         ? `<div class="card zimo" style="grid-area:zimo"><b>咔啦碰</b><span class="sub">固定 1 台（${PER_TAI * KALA_TAI} 分）<br>不算底、不加莊家台</span><span class="sub" style="font-size:18px;margin-top:8px">按捨牌的那一家</span></div>`
-        : `<button class="card act zimo" style="grid-area:zimo" data-s="${s}" data-a="act" data-v="tsumo"><span class="tg">自</span><b>我自摸</b><span class="sub">另外三家一起付</span></button>`}
+        : `<button class="card act zimo" style="grid-area:zimo" data-s="${s}" data-a="act" data-v="tsumo"><b>我自摸</b><span class="sub">另外三家一起付</span></button>`}
       ${oppHTML(s, 'right', pick ? 'kalaTo' : 'act', rel.right)}
       ${meHTML(s)}</div>`;
   } else {
