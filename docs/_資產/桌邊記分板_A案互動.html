@@ -56,7 +56,8 @@ h1{font-size:23px;margin-bottom:6px}
 .top .live{color:var(--brand)}
 .top .live em{color:var(--dk-text-2)}
 .top .clock{font-variant-numeric:tabular-nums;display:inline-flex;align-items:center;gap:6px}
-.top .clock .ti{color:var(--dk-text-2);flex-shrink:0}
+/* 圖示對齊數字的視覺中心（數字沒有上下伸出的筆畫，中心比行框低 1–2px） */
+.top .clock .ti{color:var(--dk-text-2);flex-shrink:0;position:relative;top:1.5px}
 
 /* ── 卡片（六格＋HERO 共用）── */
 .card{background:var(--dk-tile);border:2px solid var(--dk-line);border-radius:12px;color:var(--dk-text);
