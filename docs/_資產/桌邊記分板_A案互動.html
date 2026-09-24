@@ -107,7 +107,7 @@ button.card:disabled{opacity:.35;cursor:default}
 .zh{display:flex;flex-direction:column;align-items:stretch;border-radius:8px;overflow:hidden;flex-shrink:0;margin-left:auto}
 .zh .a,.zh .b{height:42px;padding:0 15px;display:flex;align-items:center;justify-content:center;font-weight:800;white-space:nowrap}
 .zh .a{background:var(--brand);color:var(--ink);font-size:23px}
-.zh .b{background:var(--dk-line);color:var(--brand);font-size:23px}   /* 上下字一樣大、格子一樣高（2026-09-25） */
+.zh .b{background:var(--dk-bar);color:var(--brand);font-size:23px}   /* 底色加深（dk-line → dk-bar，2026-09-25）：粉字對比 6.2 → 約 13 */   /* 上下字一樣大、格子一樣高（2026-09-25） */
 .ho .zh{border-radius:7px}
 .ho .zh .a,.ho .zh .b{height:30px;padding:0 9px;font-size:16px}
 .split{display:flex;flex-direction:row;gap:12px;min-height:0;align-items:stretch}   /* 我包牌｜咔啦碰 左右並排（2026-09-24） */
@@ -117,7 +117,7 @@ button.card:disabled{opacity:.35;cursor:default}
 /* 我自己（HERO ＋ 積分同一張卡） */
 /* 比例參考使用者貼的「粉彩熊系麻將計分介面」（2026-09-24）：
    頭像大、名字大一截、右邊用一條分隔線隔出「我的積分」＋大數字 */
-.me{grid-area:me;flex-direction:row;justify-content:flex-start;gap:24px;padding:0 28px;background:var(--dk-raised);text-align:left;border-color:var(--brand)}   /* 自己的 HERO：粉框（2026-09-24） */
+.me{grid-area:me;flex-direction:row;justify-content:flex-start;gap:24px;padding:0 28px;background:var(--dk-raised);text-align:left}   /* 自己的 HERO：粉框 2026-09-24 加、09-25 拿掉，回到一般灰框 */
 .me .who{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
 .me .ttl{font-size:18px;font-weight:700;color:var(--dk-text-2)}
 .me .nm{font-size:30px;margin-top:-2px}
