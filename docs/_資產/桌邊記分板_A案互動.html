@@ -49,9 +49,9 @@ h1{font-size:23px;margin-bottom:6px}
 
 /* ── 頂條（三案定案的樣子）── */
 .top{display:flex;align-items:center;gap:18px;padding:12px 20px;background:var(--dk-bar);
-  border-bottom:1px solid var(--dk-line);flex-shrink:0;font-size:20px;font-weight:800;white-space:nowrap;color:var(--dk-text)}
+  border-bottom:1px solid var(--dk-line);flex-shrink:0;font-size:18px;font-weight:800;white-space:nowrap;color:var(--dk-text)}
 .top .logo{font-size:24px;letter-spacing:3px;color:var(--brand)}
-.top em{font-style:normal;font-size:15px;color:var(--dk-text-2);margin-right:7px}
+.top em{font-style:normal;font-size:14px;color:var(--dk-text-2);margin-right:7px}
 .top .sp{flex:1}
 .top .live{color:var(--brand)}
 .top .live em{color:var(--dk-text-2)}
@@ -281,7 +281,7 @@ const topHTML = () => `<div class="top">
   <span class="live">${nowText()}</span>
   <span class="live clock">${TIMER_ICON}${elapsed()}</span></div>`;
 /* 「已使用」改成時鐘圖示（2026-09-24 使用者貼圖指定：圓面＋指針，不是碼表），灰色描邊 */
-const TIMER_ICON = `<svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>`;
+const TIMER_ICON = `<svg class="ti" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>`;
 const zhHTML = () => `<span class="zh"><span class="a">莊家</span><span class="b">連莊 ${G.ren}</span></span>`;
 const meHTML = (s) => `<div class="card me">
   <img class="av" src="${PROF[s].av}" style="width:100px;height:100px">
