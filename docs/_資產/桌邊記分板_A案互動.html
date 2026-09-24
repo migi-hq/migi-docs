@@ -154,7 +154,7 @@ button.card:disabled{opacity:.35;cursor:default}
 /* toast：照會員 App 的 Toast（lib/ui.jsx）—— 圓角卡片、左邊一顆圓（這裡放取消那個人的頭像）、右邊一句話，
    一次只一則、3 秒消失；位置改在畫面正中央（2026-09-24 使用者指定），尺寸放大成平板用 */
 .toast{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:5;pointer-events:none;
-  background:var(--dk-tile);border:2px solid var(--dk-line);border-radius:16px;padding:18px 28px;
+  background:var(--dk-tile);border:2px solid var(--brand);border-radius:16px;padding:18px 28px;   /* 粉框（2026-09-24） */
   display:flex;align-items:center;gap:16px;box-shadow:0 16px 48px rgba(0,0,0,.6);max-width:80%;animation:toastIn .3s cubic-bezier(.2,.8,.2,1)}
 .toast .av{width:48px;height:48px}
 .toast span{font-size:24px;font-weight:800;color:var(--dk-text);white-space:nowrap}
