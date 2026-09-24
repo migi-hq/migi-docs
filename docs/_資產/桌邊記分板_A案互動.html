@@ -116,7 +116,7 @@ button.card:disabled{opacity:.35;cursor:default}
 .grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(6,1fr);grid-auto-rows:1fr;gap:9px}
 .grid .card{gap:3px;padding:6px;border-radius:10px}
 .grid .card b{font-size:24px;white-space:nowrap}
-.grid .card i{font-style:normal;font-size:14px;font-weight:700;color:var(--dk-text-3)}
+.grid .card i{font-style:normal;font-size:17px;font-weight:700;color:var(--dk-text-3)}
 .grid .card.on{background:var(--brand);border-color:var(--dk-text);color:var(--ink)}
 .grid .card.on i{color:var(--ink)}
 /* 牌型底下的註明（獨聽／三元牌／風牌，2026-09-24） */
@@ -130,9 +130,10 @@ button.card:disabled{opacity:.35;cursor:default}
 /* 可以疊加的牌型：右上角顯示點了幾次（取代原本蓋到字的「最多 N」） */
 .grid .card .cnt{position:absolute;top:5px;right:6px;min-width:24px;height:24px;padding:0 6px;border-radius:999px;
   background:var(--ink);color:var(--brand);font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center}
-/* 底部跟牌型格同一套 6 欄：送出對齊最後一欄、回到上一步對齊前一欄（2026-09-24） */
+/* 底部跟牌型格同一套 6 欄：送出佔最後兩欄、回到上一步佔前一欄（2026-09-24） */
 .foot{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;align-items:center;flex-shrink:0}
-.foot .lf{grid-column:1 / 5;display:flex;align-items:center;gap:14px;min-width:0}
+.foot .btn.pri{grid-column:5 / 7}
+.foot .lf{grid-column:1 / 4;display:flex;align-items:center;gap:14px;min-width:0}
 .foot .sum{display:flex;align-items:baseline;gap:40px;font-size:26px;font-weight:800;color:var(--dk-text-2);white-space:nowrap}
 .foot .sum em{font-style:normal;font-size:60px;line-height:1;color:var(--dk-text);font-variant-numeric:tabular-nums}
 .foot .calc{font-size:14px;color:var(--dk-text-2);line-height:1.5}
