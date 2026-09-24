@@ -92,10 +92,12 @@ button.card:disabled{opacity:.35;cursor:default}
 .opp .pos{position:absolute;top:10px;left:14px;font-size:20px;font-weight:800;color:var(--dk-text-2);line-height:1.2}
 .opp .rkp{font-size:16px}
 /* 莊家：分層標籤（粉「莊家」＋灰底粉字「連莊 N」，兩層同高、貼合） */
-.zh{display:flex;flex-direction:column;align-items:stretch;border-radius:8px;overflow:hidden}
-.zh .a{height:38px;padding:0 12px;background:var(--brand);color:var(--ink);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800}
-.zh .b{height:38px;padding:0 12px;background:var(--dk-line);color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800}
-.opp .zh{position:absolute;top:10px;right:12px}
+/* 莊家標示 G 版（2026-09-24 使用者從 莊家標示_六版.html 挑的）：
+   「莊家」粉底墨字膠囊 ＋「連 N」粉字粉框膠囊；連莊 0 只留「莊家」 */
+.zh{display:flex;align-items:center;gap:8px}
+.zh .a{background:var(--brand);color:var(--ink);border:1.5px solid var(--brand);border-radius:999px;padding:3px 13px;font-size:18px;font-weight:800;white-space:nowrap}
+.zh .b{color:var(--brand);border:1.5px solid var(--brand);border-radius:999px;padding:3px 11px;font-size:18px;font-weight:800;white-space:nowrap}
+.opp .zh{position:absolute;top:12px;left:14px}
 .split{display:flex;flex-direction:column;gap:12px;min-height:0;align-items:stretch}
 .split .card{flex:1;min-height:0;gap:2px}
 .split .card b{font-size:30px}
@@ -107,8 +109,7 @@ button.card:disabled{opacity:.35;cursor:default}
 .me .nm{font-size:28px;margin-top:-4px}
 .me .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .me .rkp{font-size:16px}
-.me .zh{flex-direction:row}
-.me .zh .a,.me .zh .b{height:30px;font-size:16px}
+.me .zh .a,.me .zh .b{font-size:16px}
 .me .score{font-size:76px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
 
 /* ── 第二步：牌型 ── */
@@ -416,7 +417,7 @@ const topHTML = () => `<div class="top">
   <span class="g live clock" style="padding-right:0">${TIMER_ICON}${elapsed()}</span></div>`;
 /* 「已使用」改成時鐘圖示（2026-09-24 使用者貼圖指定：圓面＋指針，不是碼表），灰色描邊 */
 const TIMER_ICON = `<svg class="ti" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>`;
-const zhHTML = () => `<span class="zh"><span class="a">莊家</span><span class="b">連莊 ${G.ren}</span></span>`;
+const zhHTML = () => `<span class="zh"><span class="a">莊家</span>${G.ren ? `<span class="b">連 ${G.ren}</span>` : ''}</span>`;
 const meHTML = (s) => `<div class="card me">
   <img class="av" src="${PROF[s].av}" style="width:100px;height:100px">
   <div class="who"><span class="ttl">「${PROF[s].title}」</span>
