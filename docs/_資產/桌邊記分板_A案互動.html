@@ -120,14 +120,9 @@ button.card:disabled{opacity:.35;cursor:default}
 /* 牌型底下的註明（獨聽／三元牌／風牌，2026-09-24） */
 .grid .card small{font-size:13px;font-weight:700;color:var(--dk-text-2);white-space:nowrap}
 .grid .card.on small{color:var(--ink)}
-/* 可以疊加的牌型：點一下選上，出現 − 數字 ＋（取代原本蓋到字的「最多 N」） */
+/* 可以疊加的牌型：右上角顯示點了幾次（取代原本蓋到字的「最多 N」） */
 .grid .card .cnt{position:absolute;top:5px;right:6px;min-width:24px;height:24px;padding:0 6px;border-radius:999px;
   background:var(--ink);color:var(--brand);font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center}
-.grid .step{display:flex;align-items:center;gap:6px;margin-top:2px}
-.grid .step button{width:30px;height:30px;border-radius:50%;border:2px solid var(--ink);background:transparent;color:var(--ink);
-  font:inherit;font-size:20px;font-weight:800;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
-.grid .step button:disabled{opacity:.3;cursor:default}
-.grid .step span{min-width:52px;text-align:center;font-size:14px;font-weight:800;white-space:nowrap}
 .foot{display:flex;align-items:center;gap:14px;flex-shrink:0}
 .foot .sum{display:flex;align-items:baseline;gap:12px;font-size:20px;font-weight:800;color:var(--dk-text-2);white-space:nowrap}
 .foot .sum em{font-style:normal;font-size:42px;line-height:1;color:var(--dk-text);font-variant-numeric:tabular-nums}
@@ -244,7 +239,6 @@ function reset() {
 }
 const blank = () => ({ step:1, act:null, who:null, sel:{}, none:false, confirming:false });
 /* 牌型底下的小字註明 */
-const TAP_CYCLE = ['三元牌', '風牌'];
 const PAT_NOTE = { '獨聽':'單吊 · 中洞 · 邊張', '三元牌':'中發白', '風牌':'東南西北' };
 const extra = () => 1 + 2 * G.ren;
 const isOpenFor = (p, s) => p.need.includes(s) && !p.confirmed.includes(s) && !p.cancelled.includes(s);
@@ -370,12 +364,8 @@ function render(s) {
       <div class="q">胡了什麼牌型？<span class="sp"></span><button class="btn gho" data-s="${s}" data-a="back1">‹ 回到上一步</button></div>
       <div class="grid"><button class="card${l.none ? ' on' : ''}" data-s="${s}" data-a="none"><b>沒台</b><i>0 台</i></button>${PAT.map(([lb, v, mx]) => { const n = l.sel[lb] || 0;
         const note = PAT_NOTE[lb] ? `<small>${PAT_NOTE[lb]}</small>` : '';
-        /* 風牌、三元牌：重複點＋1，超過上限歸 0，右上角顯示次數（2026-09-24 使用者指定） */
-        if (TAP_CYCLE.includes(lb)) return `<button class="card${n ? ' on' : ''}" data-s="${s}" data-a="cyc" data-x="${lb}">${n ? `<span class="cnt">${n}</span>` : ''}<b>${lb}</b>${note}<i>${(n || 1) * v} 台</i></button>`;
-        /* 其餘可疊加的牌型選上之後：− 數字 ＋，減到 0 就取消 */
-        if (mx > 1 && n) return `<div class="card on"><b>${lb}</b>${note}<span class="step">
-          <button data-s="${s}" data-a="dec" data-x="${lb}">−</button><span>${n} · ${n * v} 台</span>
-          <button data-s="${s}" data-a="inc" data-x="${lb}"${n >= mx ? ' disabled' : ''}>＋</button></span></div>`;
+        /* 可疊加的牌型（三元牌／風牌／正花／花槓）：重複點＋1，超過上限歸 0，右上角顯示次數（2026-09-24 使用者指定） */
+        if (mx > 1) return `<button class="card${n ? ' on' : ''}" data-s="${s}" data-a="cyc" data-x="${lb}">${n ? `<span class="cnt">${n}</span>` : ''}<b>${lb}</b>${note}<i>${(n || 1) * v} 台</i></button>`;
         return `<button class="card${n ? ' on' : ''}" data-s="${s}" data-a="pat" data-x="${lb}"><b>${lb}</b>${note}<i>${v} 台</i></button>`; }).join('')}</div>
       <!-- 只顯示合計，像結帳那樣（2026-09-24 使用者指定：說明太多）；上一局卡住時才多一句為什麼不能送出 -->
       <div class="foot"><span class="sum">合計<em>${c.sum.toLocaleString()}</em></span>
@@ -407,8 +397,6 @@ function act(s, a, v, x) {
   else if (a === 'none') { l.none = !l.none; if (l.none) l.sel = {}; }
   else if (a === 'pat') { l.none = false; if (l.sel[x]) delete l.sel[x]; else l.sel[x] = 1; }
   else if (a === 'cyc') { l.none = false; const n = (l.sel[x] || 0) + 1; if (n > maxOf(x)) delete l.sel[x]; else l.sel[x] = n; }
-  else if (a === 'inc') { if ((l.sel[x] || 0) < maxOf(x)) l.sel[x] = (l.sel[x] || 0) + 1; }
-  else if (a === 'dec') { if (l.sel[x] > 1) l.sel[x] -= 1; else delete l.sel[x]; }
   else if (a === 'back1') { L[s] = blank(); }
   else if (a === 'back') { l.confirming = false; l.act = null; }
   else if (a === 'send') {
