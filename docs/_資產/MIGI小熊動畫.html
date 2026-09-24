@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MIGI 小熊動畫</title>
+<!--
+  MIGI 小熊動起來（2026-09-24 使用者貼了一張靜態小熊圖問「可以讓它動起來嗎」）。
+  做法：照原圖用 SVG 重畫，拆成頭／耳朵／眼睛／手／腳／身體，各自用 CSS 動。
+  ⚠ 這是原圖的「重畫」不是原檔 —— 比例與顏色是對著圖抓的，正式要用請美術給分層原檔。
+  ⚠ 刻意沒有加 prefers-reduced-motion 的關閉（這台機器開著減少動態，加了會看不到動畫）；
+    正式放進產品時要補上。
+-->
+<style>
+:root{
+  --brand:#FAD6DC; --ink:#2E2B2C; --gray-2:#8A8486; --line:#E6E0DD;
+  --bg:#FFFFFF; --panel:#F8F5F3;
+  --font:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --bg:#221F20; --panel:#2B2829; --ink:#FFFFFF; --gray-2:#C9C4C1; --line:#524D4E }
+}
+:root[data-theme="dark"]{ --bg:#221F20; --panel:#2B2829; --ink:#FFFFFF; --gray-2:#C9C4C1; --line:#524D4E }
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);padding:24px 16px 48px}
+.wrap{max-width:720px;margin:0 auto}
+h1{font-size:22px;font-weight:800;margin-bottom:4px}
+.lead{font-size:14px;color:var(--gray-2);line-height:1.7;margin-bottom:18px}
+.stage{background:#FFFFFF;border-radius:20px;border:1px solid var(--line);display:flex;justify-content:center;padding:12px 0}
+.fig{position:relative;width:min(420px,100%)}
+.stage svg{width:100%;height:auto;display:block;position:relative}
+.fig img{position:absolute;inset:0;width:100%;height:100%;opacity:0;pointer-events:none}
+.fig.cmp img{opacity:.5}
+.fig.cmp svg{opacity:.55}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.acts button{font:inherit;font-size:15px;font-weight:800;height:42px;padding:0 18px;border-radius:999px;cursor:pointer;
+  border:1.5px solid var(--line);background:transparent;color:var(--gray-2)}
+.acts button.on{background:var(--brand);border-color:var(--brand);color:#2E2B2C}
+.note{margin-top:14px;font-size:13px;color:var(--gray-2);line-height:1.7}
+
+/* ── 零件的旋轉中心 ── */
+#bear *{transform-box:fill-box}#bear .all{transform-origin:50% 100%}
+#bear .head{transform-origin:50% 90%}
+#bear .earL{transform-origin:70% 80%}
+#bear .earR{transform-origin:30% 80%}
+#bear .eye{transform-origin:50% 50%}
+#bear .armR{transform-origin:30% 15%}
+#bear .armL{transform-origin:70% 15%}
+#bear .shadow{transform-origin:50% 50%}
+
+/* ── 待機：呼吸、頭輕輕歪、眨眼、耳朵偶爾抖 ── */
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes shadow{0%,100%{transform:scale(1);opacity:.18}50%{transform:scale(.92);opacity:.12}}
+@keyframes tilt{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
+@keyframes blink{0%,44%,48%,100%{transform:scaleY(1)}46%{transform:scaleY(.1)}}
+@keyframes earL{0%,70%,80%,100%{transform:rotate(0)}74%{transform:rotate(-12deg)}77%{transform:rotate(4deg)}}
+@keyframes earR{0%,20%,30%,100%{transform:rotate(0)}24%{transform:rotate(12deg)}27%{transform:rotate(-4deg)}}
+.idle .all{animation:bob 2.6s ease-in-out infinite}
+.idle .shadow{animation:shadow 2.6s ease-in-out infinite}
+.idle .head{animation:tilt 5.2s ease-in-out infinite}
+.idle .eye{animation:blink 4s infinite}
+.idle .earL{animation:earL 6s infinite}
+.idle .earR{animation:earR 6s infinite}
+
+/* ── 揮手：待機 ＋ 右手揮 ── */
+@keyframes wave{0%,100%{transform:rotate(0)}15%{transform:rotate(-120deg)}30%{transform:rotate(-95deg)}45%{transform:rotate(-120deg)}60%{transform:rotate(-95deg)}75%{transform:rotate(-120deg)}90%{transform:rotate(0)}}
+.wave .all{animation:bob 2.6s ease-in-out infinite}
+.wave .shadow{animation:shadow 2.6s ease-in-out infinite}
+.wave .head{animation:tilt 2.6s ease-in-out infinite}
+.wave .eye{animation:blink 4s infinite}
+.wave .armR{animation:wave 1.8s ease-in-out infinite}
+
+/* ── 開心跳：整隻跳起來、落地壓扁、兩手舉高 ── */
+@keyframes hop{0%,100%{transform:translateY(0) scale(1,1)}10%{transform:translateY(0) scale(1.06,.92)}40%{transform:translateY(-46px) scale(.96,1.05)}70%{transform:translateY(0) scale(1.05,.94)}85%{transform:translateY(0) scale(1,1)}}
+@keyframes hopShadow{0%,100%,70%,85%{transform:scale(1);opacity:.18}40%{transform:scale(.6);opacity:.07}}
+@keyframes armUpR{0%,100%,85%{transform:rotate(0)}40%{transform:rotate(-95deg)}}
+@keyframes armUpL{0%,100%,85%{transform:rotate(0)}40%{transform:rotate(95deg)}}
+@keyframes happyEye{0%,100%{transform:scaleY(1)}40%{transform:scaleY(.35)}}
+.hop .all{animation:hop 1.1s cubic-bezier(.3,.7,.4,1) infinite}
+.hop .shadow{animation:hopShadow 1.1s cubic-bezier(.3,.7,.4,1) infinite}
+.hop .armR{animation:armUpR 1.1s ease-in-out infinite}
+.hop .armL{animation:armUpL 1.1s ease-in-out infinite}
+.hop .eye{animation:happyEye 1.1s ease-in-out infinite}
+
+/* ── 打瞌睡：慢慢點頭、閉眼、飄 z ── */
+@keyframes nod{0%,100%{transform:rotate(0) translateY(0)}50%{transform:rotate(8deg) translateY(6px)}}
+@keyframes zzz{0%{transform:translate(0,0);opacity:0}20%{opacity:1}100%{transform:translate(30px,-60px);opacity:0}}
+.sleep .head{animation:nod 3.6s ease-in-out infinite}
+.sleep .eye{transform:scaleY(.12)}
+.sleep .all{animation:bob 3.6s ease-in-out infinite}
+.sleep .shadow{animation:shadow 3.6s ease-in-out infinite}
+#bear .z{opacity:0}
+.sleep .z{animation:zzz 3s ease-out infinite}
+.sleep .z2{animation-delay:1s}
+.sleep .z3{animation-delay:2s}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>MIGI 小熊 · 動起來</h1>
+  <p class="lead">照原圖重畫成 SVG，拆成頭、耳朵、眼睛、手、身體分開動。下面可以切換四種動作。</p>
+
+  <div class="stage">
+    <div class="fig" id="fig"><img src="MIGI小熊_原圖.webp" alt="">
+    <svg id="bear" class="idle" viewBox="0 0 512 512" role="img" aria-label="MIGI 小熊">
+      <!--
+        座標全部是讀原圖（MIGI小熊_原圖.webp，512×512）的像素量出來的，不是目測（2026-09-24 第三版）。
+        顏色也是取樣：米色 #FFF0E5、粉 #EAA6A4、耳內 #F7D5C3、眼鼻 #3D2617。
+        ⚠ 零件不可以寫 transform 屬性 —— fill-box 會把旋轉中心換算錯，手會飛走。
+          手的斜度直接畫進路徑裡（一整條從肩膀到手掌）。
+      -->
+      <!-- 地上的影子 -->
+      <ellipse class="shadow" cx="252" cy="424" rx="112" ry="10" fill="#2E2B2C" opacity=".14"/>
+      <g class="all">
+        <!-- 肩膀（米色，墊在衣服與手後面，讓手接到頭下面） -->
+        <rect x="196" y="258" width="120" height="48" rx="22" fill="#FFF0E5"/>
+        <!-- 吊帶褲：左緣約 x 190、右上約 x 310，右下往外鼓成屁股到 x 346；吊帶 205–216／286–300，胸口缺口下緣 y 298 -->
+        <!-- 粉色左緣由上往下斜出去（206→190），右緣 303→310，y 366 起右下鼓成屁股到 x 345 -->
+        <path d="M206 268 L217 268 L217 288 Q217 298 227 298 L277 298 Q287 298 287 288 L287 268 L302 268
+                 L302 300 L312 340 L318 356 Q346 358 345 384 Q343 406 318 408 L214 409 Q202 408 200 396 L190 342 Q193 300 206 282 Z" fill="#EAA6A4"/>
+        <!-- MIGI：量到 x 219–277、y 321–338 -->
+        <text x="248" y="338" text-anchor="middle" font-family="-apple-system,'Segoe UI',Arial,sans-serif" font-size="23" font-weight="700" letter-spacing="2" fill="#FFFFFF">MIGI</text>
+        <!-- 左手：一整條從肩膀（藏在頭下面）畫到手掌，不再是「肩膀一塊＋手一塊」——兩塊拼的會有接縫，看起來像斷掉。
+             外緣照原圖量到的 193@282 → 176@306 → 164@336；內緣疊在衣服上 208@285 → 192@340 -->
+        <path class="armL" d="M210 266 C200 272 186 290 176 306 C166 324 159 340 165 351 C171 360 187 356 192 342 C197 326 205 304 214 288 Z" fill="#FFF0E5"/>
+        <!-- 腳：左 (178,381) r30、右 (282,388) r28 -->
+        <circle cx="178" cy="381" r="30" fill="#FFF0E5"/>
+        <circle cx="282" cy="386" r="30" fill="#FFF0E5"/>
+        <!-- 頭：寬 150–356、頂 124、底 279，最寬在 y 216（下半比較短、比較方，不是正橢圓） -->
+        <g class="head">
+          <g class="earL"><circle cx="177" cy="144" r="29" fill="#FFF0E5"/><circle cx="177" cy="145" r="14" fill="#F7D5C3"/></g>
+          <g class="earR"><circle cx="330" cy="144" r="29" fill="#FFF0E5"/><circle cx="330" cy="145" r="14" fill="#F7D5C3"/></g>
+          <path d="M253 124 C318 124 356 160 356 216 C356 258 322 280 253 280 C184 280 150 258 150 216 C150 160 188 124 253 124 Z" fill="#FFF0E5"/>
+          <ellipse class="eye" cx="216" cy="209" rx="6.5" ry="6.5" fill="#3D2617"/>
+          <ellipse class="eye" cx="290" cy="209" rx="6.5" ry="6.5" fill="#3D2617"/>
+          <ellipse cx="253" cy="221" rx="8" ry="6" fill="#3D2617"/>
+        </g>
+        <!-- 右手：疊在衣服右緣上、往右下斜到 x 350，畫在頭後面（＝最上層）揮手時才不會被頭擋住 -->
+        <!-- 外緣 323@282 → 339@306 → 350@342；內緣疊在衣服上 300@302 → 310@342 → 318@362，手掌底約 y 370 -->
+        <path class="armR" d="M298 266 C316 272 334 290 342 310 C350 330 353 352 347 365 C341 376 324 374 318 363 C310 348 303 320 297 292 Z" fill="#FFF0E5"/>
+      </g>
+      <!-- 打瞌睡的 z -->
+      <g font-family="-apple-system,'Segoe UI',Arial,sans-serif" font-weight="800" fill="#E9A1A7">
+        <text class="z z1" x="350" y="130" font-size="26">z</text>
+        <text class="z z2" x="350" y="130" font-size="32">z</text>
+        <text class="z z3" x="350" y="130" font-size="40">Z</text>
+      </g>
+    </svg></div>
+  </div>
+
+  <div class="acts">
+    <button class="on" data-m="idle">待機</button>
+    <button data-m="wave">揮手</button>
+    <button data-m="hop">開心跳</button>
+    <button data-m="sleep">打瞌睡</button>
+    <button id="cmp" style="margin-left:auto">對照原圖</button>
+  </div>
+  <p class="note">這是對著圖重畫的，比例、顏色跟原圖會有些微差異。正式要用的話，最好請美術給分層的原檔（頭、耳、眼、手、身體各一層），動起來會跟原圖一模一樣。</p>
+</div>
+<script>
+/* 對照原圖：原圖半透明墊在底下，靜止時可以逐塊比 */
+document.getElementById('cmp').addEventListener('click', (e) => {
+  const on = document.getElementById('fig').classList.toggle('cmp');
+  e.currentTarget.classList.toggle('on', on);
+});
+document.querySelectorAll('.acts button[data-m]').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('.acts button[data-m]').forEach((x) => x.classList.toggle('on', x === b));
+  document.getElementById('bear').setAttribute('class', b.dataset.m);
+}));
+</script>
+</body>
+</html>

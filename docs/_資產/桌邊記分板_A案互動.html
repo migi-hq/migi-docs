@@ -67,7 +67,6 @@ h1{font-size:23px;margin-bottom:6px}
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:10px}
 button.card{cursor:pointer}
 button.card:disabled{opacity:.35;cursor:default}
-.card.d{border-color:var(--brand)}
 .card b{font-size:34px;font-weight:800;line-height:1.1}
 .card .sub{font-size:22px;font-weight:800;color:var(--dk-text-2)}
 .av{border-radius:50%;object-fit:cover;flex-shrink:0;background:var(--dk-bg)}
@@ -85,15 +84,15 @@ button.card:disabled{opacity:.35;cursor:default}
 
 /* ── 主頁：座位圖 ── */
 .body{flex:1;min-height:0;padding:16px 18px;display:grid;gap:14px;
-  grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:auto 1fr 1fr 136px 104px;
+  grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:auto 1fr 1fr 172px 104px;
   grid-template-areas:"q q q" "left top right" "draw zimo bao" "me me me" "hl ht hr"}   /* 上家↔流局、下家↔包牌咔啦碰 上下對調（2026-09-24）：三家都在上排；最下面一排是三家的 HERO 卡 */
 /* 三家 HERO 卡（2026-09-24）：三家按鈕拿掉頭像名字之後，身分改放這一排。
    🔴 不放積分 —— 每台只顯示自己的幕前積分（硬規則 13.9） */
-.ho{background:var(--dk-raised);border:2px solid var(--dk-line);border-radius:12px;display:flex;align-items:center;gap:12px;padding:0 16px;min-width:0}
+.ho{background:var(--dk-raised);border:2px solid var(--dk-line);border-radius:12px;display:flex;align-items:center;gap:14px;padding:0 18px;min-width:0}
 .ho .who{display:flex;flex-direction:column;gap:4px;min-width:0}
 .ho .pos{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800;color:var(--dk-text-2)}
 .ho .nm{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ho .rkp{font-size:13px;align-self:flex-start;padding:2px 10px}
+.ho .rkp{font-size:14px;align-self:flex-start;padding:2px 11px}
 .opp{gap:11px}
 .opp .nm{font-size:22px}
 .opp .pos{position:absolute;top:10px;left:14px;font-size:20px;font-weight:800;color:var(--dk-text-2);line-height:1.2}
@@ -110,14 +109,18 @@ button.card:disabled{opacity:.35;cursor:default}
 .split .card b{font-size:30px}
 .split .card .sub{font-size:18px}
 /* 我自己（HERO ＋ 積分同一張卡） */
-.me{grid-area:me;flex-direction:row;justify-content:flex-start;gap:18px;padding:0 24px;background:var(--dk-raised);text-align:left}
-.me .who{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+/* 比例參考使用者貼的「粉彩熊系麻將計分介面」（2026-09-24）：
+   頭像大、名字大一截、右邊用一條分隔線隔出「我的積分」＋大數字 */
+.me{grid-area:me;flex-direction:row;justify-content:flex-start;gap:24px;padding:0 28px;background:var(--dk-raised);text-align:left}
+.me .who{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
 .me .ttl{font-size:18px;font-weight:700;color:var(--dk-text-2)}
-.me .nm{font-size:28px;margin-top:-4px}
+.me .nm{font-size:30px;margin-top:-2px}
 .me .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.me .rkp{font-size:16px}
-.me .zh .a,.me .zh .b{font-size:16px}
-.me .score{font-size:76px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+.me .rkp{font-size:19px;padding:4px 16px}
+.me .zh .a,.me .zh .b{font-size:17px}
+.me .sc{display:flex;flex-direction:column;align-items:flex-start;gap:4px;border-left:1px solid var(--dk-line);padding-left:32px;align-self:center}
+.me .sc .lb{font-size:18px;font-weight:700;color:var(--dk-text-2)}
+.me .score{font-size:84px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1;min-width:4.2ch;text-align:right}
 
 /* ── 第二步：牌型 ── */
 .body2{flex:1;min-height:0;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
@@ -152,7 +155,7 @@ button.card:disabled{opacity:.35;cursor:default}
 .foot .sp{flex:1}
 .foot .btn{height:74px;font-size:24px;padding:0;width:100%}
 .foot .btn.wht{font-size:20px}
-.body2 .me{height:136px;flex-shrink:0}
+.body2 .me{height:172px;flex-shrink:0}
 /* 咔啦碰：選捨牌的人（同一張座位圖，只有三張對手卡能按） */
 .pick .card.act{visibility:hidden}
 .pick .card.zimo{visibility:visible;background:var(--dk-raised);cursor:default}
@@ -426,17 +429,17 @@ const topHTML = () => `<div class="top">
 const TIMER_ICON = `<svg class="ti" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>`;
 const zhHTML = () => `<span class="zh"><span class="a">莊家</span>${G.ren ? `<span class="b">連 ${G.ren}</span>` : ''}</span>`;
 const meHTML = (s) => `<div class="card me">
-  <img class="av" src="${PROF[s].av}" style="width:100px;height:100px">
+  <img class="av" src="${PROF[s].av}" style="width:132px;height:132px">
   <div class="who"><span class="ttl">「${PROF[s].title}」</span>
-    <span class="nm" style="font-size:${nameFs(NAME[s], 28, 22)}px">${NAME[s]}</span>
+    <span class="nm">${NAME[s]}</span>
     <span class="row"><span class="rkp">段位: ${PROF[s].rank}</span>${s === G.dealer ? zhHTML() : ''}</span></div>
-  <span class="score" data-seat="${s}">${(SHOWN[s] ?? G.total[s]).toLocaleString()}</span></div>`;
+  <div class="sc"><span class="lb">我的積分</span><span class="score" data-seat="${s}">${(SHOWN[s] ?? G.total[s]).toLocaleString()}</span></div></div>`;
 const heroOppHTML = (ga, pos, x) => `<div class="ho" style="grid-area:${ga}">
-  <img class="av" src="${PROF[x].av}" style="width:64px;height:64px">
+  <img class="av" src="${PROF[x].av}" style="width:74px;height:74px">
   <div class="who"><span class="pos">${WHERE[pos]}</span>   <!-- 莊家標示只放上面的按鈕卡（2026-09-24） -->
-    <span class="nm" style="font-size:16px">${NAME[x]}</span>
+    <span class="nm" style="font-size:20px">${NAME[x]}</span>   <!-- 名字比段位大一號（2026-09-24） -->
     <span class="rkp">段位: ${PROF[x].rank}</span></div></div>`;
-const oppHTML =(s, pos, act, x, disabled) => `<button class="card opp${x === G.dealer ? ' d' : ''}" style="grid-area:${pos}"
+const oppHTML =(s, pos, act, x, disabled) => `<button class="card opp" style="grid-area:${pos}"
     data-s="${s}" data-a="${act}" data-v="ron" data-x="${x}"${disabled ? ' disabled' : ''}>
   ${x === G.dealer ? zhHTML() : ''}
   <b>${WHERE[pos]}${act === 'kalaTo' ? '' : '放槍'}</b></button>`;   /* 頭像與名字拿掉，只留「上家放槍」（2026-09-24 預覽）；咔啦碰選人時只寫「上家」 */
