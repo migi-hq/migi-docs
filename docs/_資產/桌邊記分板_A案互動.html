@@ -130,14 +130,16 @@ button.card:disabled{opacity:.35;cursor:default}
 /* 可以疊加的牌型：右上角顯示點了幾次（取代原本蓋到字的「最多 N」） */
 .grid .card .cnt{position:absolute;top:5px;right:6px;min-width:24px;height:24px;padding:0 6px;border-radius:999px;
   background:var(--ink);color:var(--brand);font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center}
-.foot{display:flex;align-items:center;gap:14px;flex-shrink:0}
+/* 底部跟牌型格同一套 6 欄：送出對齊最後一欄、回到上一步對齊前一欄（2026-09-24） */
+.foot{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;align-items:center;flex-shrink:0}
+.foot .lf{grid-column:1 / 5;display:flex;align-items:center;gap:14px;min-width:0}
 .foot .sum{display:flex;align-items:baseline;gap:32px;font-size:20px;font-weight:800;color:var(--dk-text-2);white-space:nowrap}
 .foot .sum em{font-style:normal;font-size:42px;line-height:1;color:var(--dk-text);font-variant-numeric:tabular-nums}
 .foot .calc{font-size:14px;color:var(--dk-text-2);line-height:1.5}
 .foot .calc b{font-size:inherit;color:var(--brand)}
 .foot .sp{flex:1}
-.foot .btn{height:74px;font-size:24px;padding:0 40px}
-.foot .btn.wht{padding:0 24px}
+.foot .btn{height:74px;font-size:24px;padding:0;width:100%}
+.foot .btn.wht{font-size:20px}
 .body2 .me{height:136px;flex-shrink:0}
 /* 咔啦碰：選捨牌的人（同一張座位圖，只有三張對手卡能按） */
 .pick .card.act{visibility:hidden}
@@ -378,9 +380,9 @@ function render(s) {
         if (mx > 1) return `<button class="card${n ? ' on' : ''}" data-s="${s}" data-a="cyc" data-x="${lb}">${n ? `<span class="cnt">${n}</span>` : ''}<b>${lb}</b>${note}<i>${(n || 1) * v} 台</i></button>`;
         return `<button class="card${n ? ' on' : ''}${lb === 'MIGI' ? ' migi' : ''}" data-s="${s}" data-a="pat" data-x="${lb}"><b>${lb}</b>${note}<i>${v} 台</i></button>`; }).join('')}</div>
       <!-- 只顯示台數與總數，像結帳那樣（2026-09-24 使用者指定：說明太多）；上一局卡住時才多一句為什麼不能送出 -->
-      <div class="foot"><span class="sum"><span><em>${c.patTai}</em> 台</span><span><em>${c.sum.toLocaleString()}</em></span></span>
-        ${busy ? `<span class="calc">${note}，確認完才能送出</span>` : ''}
-        <span class="sp"></span><button class="btn wht" data-s="${s}" data-a="back1">‹ 回到上一步</button><button class="btn pri" data-s="${s}" data-a="send"${busy || !(l.none || Object.keys(l.sel).length) ? ' disabled' : ''}>送出</button></div>
+      <div class="foot"><div class="lf"><span class="sum"><span><em>${c.patTai}</em> 台</span><span><em>${c.sum.toLocaleString()}</em></span></span>
+        ${busy ? `<span class="calc">${note}，確認完才能送出</span>` : ''}</div>
+        <button class="btn wht" data-s="${s}" data-a="back1">‹ 回到上一步</button><button class="btn pri" data-s="${s}" data-a="send"${busy || !(l.none || Object.keys(l.sel).length) ? ' disabled' : ''}>送出</button></div>
       ${meHTML(s)}</div>`;
   }
   return topHTML() + body + sheet;
