@@ -78,6 +78,7 @@ button.card:disabled{opacity:.35;cursor:default}
 .btn{border:2px solid transparent;border-radius:12px;font-family:inherit;font-weight:800;cursor:pointer;line-height:1.2}
 .btn.pri{background:var(--brand);color:var(--ink)}
 .btn.gho{background:transparent;border-color:var(--dk-line);color:var(--dk-text-2)}
+.btn.wht{background:transparent;border-color:var(--dk-text);color:var(--dk-text)}   /* 白框（回到上一步，2026-09-24） */
 .btn:disabled{opacity:.3;cursor:default}
 .q .btn{height:46px;padding:0 18px;font-size:16px}
 
@@ -130,6 +131,7 @@ button.card:disabled{opacity:.35;cursor:default}
 .foot .calc b{font-size:inherit;color:var(--brand)}
 .foot .sp{flex:1}
 .foot .btn{height:74px;font-size:24px;padding:0 40px}
+.foot .btn.wht{padding:0 24px}
 .body2 .me{height:136px;flex-shrink:0}
 /* 咔啦碰：選捨牌的人（同一張座位圖，只有三張對手卡能按） */
 .pick .card.act{visibility:hidden}
@@ -345,8 +347,8 @@ function render(s) {
     const pick = l.step === 'kala';                       // 咔啦碰：同一張座位圖，改成「誰捨的牌？」
     body = `<div class="body${pick ? ' pick' : ''}">
       <div class="q" style="grid-area:q">${pick ? '咔啦碰 · 誰捨的牌？' : '這一局誰放槍？'}<span class="sp"></span>
-        ${pick ? `<button class="btn gho" data-s="${s}" data-a="back1">‹ 回到上一步</button>` : ''}</div>
-      <button class="card act" style="grid-area:draw" data-s="${s}" data-a="act" data-v="draw"${busy ? ' disabled' : ''}><b>流局</b><span class="sub">${busy ? note : '沒有人付分'}</span></button>
+        ${pick ? `<button class="btn wht" data-s="${s}" data-a="back1">‹ 回到上一步</button>` : ''}</div>
+      <button class="card act" style="grid-area:draw" data-s="${s}" data-a="act" data-v="draw"${busy ? ' disabled' : ''}><b>流局</b><span class="sub">${busy ? note : '沒有人流局'}</span></button>
       ${oppHTML(s, 'top', pick ? 'kalaTo' : 'act', rel.top)}
       <div class="split act card" style="grid-area:bao;background:none;border:none;padding:0;visibility:${pick ? 'hidden' : 'visible'}">
         <button class="card" data-s="${s}" data-a="act" data-v="bao"${busy ? ' disabled' : ''}><b>我包牌</b><span class="sub">${busy ? note : '我付給另外三家'}</span></button>
@@ -361,7 +363,7 @@ function render(s) {
   } else {
     const c = compute(s, l);
     body = `<div class="body2">
-      <div class="q">胡了什麼牌型？<span class="sp"></span><button class="btn gho" data-s="${s}" data-a="back1">‹ 回到上一步</button></div>
+      <div class="q">胡了什麼牌型？</div>
       <div class="grid"><button class="card${l.none ? ' on' : ''}" data-s="${s}" data-a="none"><b>沒台</b><i>0 台</i></button>${PAT.map(([lb, v, mx]) => { const n = l.sel[lb] || 0;
         const note = PAT_NOTE[lb] ? `<small>${PAT_NOTE[lb]}</small>` : '';
         /* 可疊加的牌型（三元牌／風牌／正花／花槓）：重複點＋1，超過上限歸 0，右上角顯示次數（2026-09-24 使用者指定） */
@@ -370,7 +372,7 @@ function render(s) {
       <!-- 只顯示台數與總數，像結帳那樣（2026-09-24 使用者指定：說明太多）；上一局卡住時才多一句為什麼不能送出 -->
       <div class="foot"><span class="sum"><span><em>${c.patTai}</em> 台</span><span><em>${c.sum.toLocaleString()}</em></span></span>
         ${busy ? `<span class="calc">${note}，確認完才能送出</span>` : ''}
-        <span class="sp"></span><button class="btn pri" data-s="${s}" data-a="send"${busy || !(l.none || Object.keys(l.sel).length) ? ' disabled' : ''}>送出</button></div>
+        <span class="sp"></span><button class="btn wht" data-s="${s}" data-a="back1">‹ 回到上一步</button><button class="btn pri" data-s="${s}" data-a="send"${busy || !(l.none || Object.keys(l.sel).length) ? ' disabled' : ''}>送出</button></div>
       ${meHTML(s)}</div>`;
   }
   return topHTML() + body + sheet;
