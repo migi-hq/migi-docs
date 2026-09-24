@@ -153,6 +153,10 @@ button.card:disabled{opacity:.35;cursor:default}
 /* ── 疊在畫面上的那一層 ── */
 /* ── 牌局紀錄（查看紀錄 ›）── */
 .body3{flex:1;min-height:0;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.chips{display:flex;gap:8px;flex-shrink:0}
+.chip{height:40px;padding:0 18px;border-radius:999px;border:2px solid var(--dk-line);background:transparent;color:var(--dk-text-2);
+  font:inherit;font-size:16px;font-weight:800;cursor:pointer}
+.chip.on{background:var(--brand);border-color:var(--brand);color:var(--ink)}
 .logs{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:4px}
 .lg{background:var(--dk-tile);border:2px solid var(--dk-line);border-radius:12px;padding:14px 20px;flex-shrink:0}
 .lg .hd{display:flex;align-items:center;gap:12px}
@@ -295,11 +299,11 @@ function reset() {
     /* 牌局紀錄（2026-09-24 使用者指定：逐局列出，誰付、誰取消都看得到，結束算牌時可以查證）。
        這兩筆是示範，接得上開場的「阿哲是莊、連莊 2」 */
     log: [
-      { no:1, where:'第 1 將 · 東風圈', t:'20:18', act:'tsumo', by:3, desc:'碰碰胡 · 1 底 4 台＋莊家台',
+      { no:1, set:1, wind:0, where:'第 1 將 · 東風圈', t:'20:18', act:'tsumo', by:3, desc:'碰碰胡 · 1 底 4 台＋莊家台',
         rows:[{ s:1, amt:-200, st:'ok' }, { s:2, amt:-200, st:'ok' }, { s:4, amt:-200, st:'cancel' }], win:400 },
-      { no:2, where:'第 1 將 · 東風圈', t:'20:41', act:'kala', by:1, who:2, desc:'1 台',
+      { no:2, set:1, wind:0, where:'第 1 將 · 東風圈', t:'20:41', act:'kala', by:1, who:2, desc:'1 台',
         rows:[{ s:2, amt:20, st:'ok' }], win:-20 },
-      { no:2, where:'第 1 將 · 東風圈', t:'20:55', act:'draw', by:2, desc:'莊家連莊（連莊 1 → 2）', rows:[] },
+      { no:2, set:1, wind:0, where:'第 1 將 · 東風圈', t:'20:55', act:'draw', by:2, desc:'莊家連莊（連莊 1 → 2）', rows:[] },
     ] };
   L = { 1:blank(), 2:blank(), 3:blank(), 4:blank() };
   SEATS.forEach((s) => { SHOWN[s] = G.total[s]; TOAST[s] = []; });     // 重來時直接顯示，不滾
@@ -321,13 +325,14 @@ function endHand(nextDealer) {
   } else G.ren += 1;
 }
 const nowText = () => `第 ${G.set} 將 · ${WINDS[G.wind]}風圈 · 第 ${G.ju} 局`;
-const stamp = () => ({ no:G.ju, where:`第 ${G.set} 將 · ${WINDS[G.wind]}風圈`, t:clockNow() });
+const stamp = () => ({ no:G.ju, set:G.set, wind:G.wind, where:`第 ${G.set} 將 · ${WINDS[G.wind]}風圈`, t:clockNow() });
+const SETS = 3;   // 玩法寫 3 將（TABLE.play）
 const clockNow = () => { const d = new Date(); return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
 /* 一筆紀錄在「那一局結束時」寫下；局數與圈用送出當下的（p.no／p.where），不是結束後的 */
 function logPending(p) {
   const rows = p.need.map((x) => ({ s:x, amt:p.delta[x], st:p.confirmed.includes(x) ? 'ok' : 'cancel' }));
   const win = -rows.filter((r) => r.st === 'ok').reduce((t, r) => t + r.amt, 0);   // 送出的人實際的變動
-  G.log.push({ no:p.no, where:p.where, t:p.t, act:p.act, by:p.by, who:p.who, desc:p.logDesc, rows, win });
+  G.log.push({ no:p.no, set:p.set, wind:p.wind, where:p.where, t:p.t, act:p.act, by:p.by, who:p.who, desc:p.logDesc, rows, win });
 }
 
 function compute(by, l) {
@@ -449,9 +454,15 @@ function render(s) {
   const rel = REL(s);
   let body;
   if (l.view === 'log') {
+    /* 快捷篩選：將 × 圈（2026-09-24 使用者指定）。0／-1 ＝全部 */
+    const fs = l.fSet || 0, fw = l.fWind ?? -1;
+    const chip = (a, v, on, label) => `<button class="chip${on ? ' on' : ''}" data-s="${s}" data-a="${a}" data-x="${v}">${label}</button>`;
+    const list = G.log.filter((e) => (!fs || e.set === fs) && (fw < 0 || e.wind === fw)).reverse();
     body = `<div class="body3">
       <div class="q">牌局紀錄<span class="sp"></span><button class="btn wht" data-s="${s}" data-a="logBack">‹ 返回</button></div>
-      <div class="logs">${G.log.length ? G.log.slice().reverse().map(logHTML).join('') : '<div class="lg-empty">還沒有紀錄</div>'}</div></div>`;
+      <div class="chips">${chip('fSet', 0, !fs, '全部')}${Array.from({ length:SETS }, (_, i) => chip('fSet', i + 1, fs === i + 1, `第 ${i + 1} 將`)).join('')}</div>
+      <div class="chips">${chip('fWind', -1, fw < 0, '全部')}${WINDS.map((wd, i) => chip('fWind', i, fw === i, `${wd}風圈`)).join('')}</div>
+      <div class="logs">${list.length ? list.map(logHTML).join('') : `<div class="lg-empty">${G.log.length ? '這一段還沒有紀錄' : '還沒有紀錄'}</div>`}</div></div>`;
   } else if (l.step === 1 || l.step === 'kala') {
     const pick = l.step === 'kala';                       // 咔啦碰：同一張座位圖，改成「誰捨的牌？」
     body = `<div class="body${pick ? ' pick' : ''}">
@@ -498,6 +509,8 @@ function act(s, a, v, x) {
   if (a === 'toastX') { TOAST[s] = (TOAST[s] || []).filter((t) => t.id !== x); return; }
   if (a === 'log') { l.view = 'log'; return; }        // 查看紀錄：只是這一台自己切頁，不動共用狀態
   if (a === 'logBack') { l.view = null; return; }
+  if (a === 'fSet') { l.fSet = +x; return; }
+  if (a === 'fWind') { l.fWind = +x; return; }
   if (openCount(G.pending) && (a === 'send' || a === 'kalaTo' || (a === 'act' && ['draw','bao','kala'].includes(v)))) return;
   if (a === 'act') {
     if (v === 'ron') { l.act = 'ron'; l.who = +x; l.sel = {}; l.step = 2; return; }
