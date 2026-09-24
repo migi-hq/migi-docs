@@ -74,7 +74,8 @@ button.card:disabled{opacity:.35;cursor:default}
 .av{border-radius:50%;object-fit:cover;flex-shrink:0;background:var(--dk-bg)}
 .nm{font-weight:800;line-height:1.2;word-break:break-all}
 .rkp{display:inline-block;background:var(--brand);color:var(--ink);border-radius:999px;padding:3px 13px;font-weight:700;white-space:nowrap}
-.q{display:flex;align-items:center;gap:12px;font-size:26px;font-weight:800;flex-shrink:0}
+/* 標題列一律 46 高（＝回到上一步按鈕的高度）：有沒有那顆按鈕，標題與下面的卡片都不跳（2026-09-24） */
+.q{display:flex;align-items:center;gap:12px;font-size:26px;font-weight:800;flex-shrink:0;min-height:46px}
 .q .sp{flex:1}
 .btn{border:2px solid transparent;border-radius:12px;font-family:inherit;font-weight:800;cursor:pointer;line-height:1.2}
 .btn.pri{background:var(--brand);color:var(--ink)}
