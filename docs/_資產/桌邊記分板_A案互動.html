@@ -48,13 +48,11 @@ h1{font-size:23px;margin-bottom:6px}
   overflow:hidden;background:var(--dk-bg);color:var(--dk-text);position:relative}
 
 /* ── 頂條（三案定案的樣子）── */
-/* 2026-09-24 使用者貼圖指定排版大小：logo 放大、各組之間細直線分隔、數值 16／標籤 13 */
+/* 2026-09-24 使用者貼圖指定排版大小：logo 放大、數值 16／標籤 13（分隔直線同日拿掉） */
 .top{display:flex;align-items:center;height:56px;padding:0 24px;background:var(--dk-bar);
   border-bottom:1px solid var(--dk-line);flex-shrink:0;font-size:16px;font-weight:800;white-space:nowrap;color:var(--dk-text)}
 .top .logo{font-size:28px;letter-spacing:3px;color:var(--brand);padding-right:18px}
 .top .g{position:relative;padding:0 16px}
-.top .g::before{content:'';position:absolute;left:0;top:50%;height:20px;margin-top:-10px;border-left:1px solid var(--dk-line)}
-.top .g.nd::before{display:none}   /* 局數與時間是同一組，中間不畫線 */
 .top em{font-style:normal;font-size:13px;color:var(--dk-text-2);margin-right:6px}
 .top .sp{flex:1}
 .top .live{color:var(--brand)}
@@ -283,7 +281,7 @@ const topHTML = () => `<div class="top">
   <span class="g"><em>總積分</em>${START}</span>
   <span class="sp"></span>
   <span class="g live">${nowText()}</span>
-  <span class="g nd live clock" style="padding-right:0">${TIMER_ICON}${elapsed()}</span></div>`;
+  <span class="g live clock" style="padding-right:0">${TIMER_ICON}${elapsed()}</span></div>`;
 /* 「已使用」改成時鐘圖示（2026-09-24 使用者貼圖指定：圓面＋指針，不是碼表），灰色描邊 */
 const TIMER_ICON = `<svg class="ti" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>`;
 const zhHTML = () => `<span class="zh"><span class="a">莊家</span><span class="b">連莊 ${G.ren}</span></span>`;
