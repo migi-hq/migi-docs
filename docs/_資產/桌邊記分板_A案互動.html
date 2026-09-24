@@ -432,6 +432,11 @@ function render(s) {
   else if (l.confirming && l.act === 'draw') {
     sheet = boxHTML({ h: '流局', ask: '確定這一局流局？', sub: `莊家連莊（連莊 ${G.ren} → ${G.ren + 1}）`, acts: twoBtn(s, 'back', 'send') });
   }
+  else if (l.confirming && l.act === 'kala') {
+    const amt = PER_TAI * KALA_TAI;
+    sheet = boxHTML({ hero: heroHTML('支付給', whereOf(s, l.who)), h: `咔啦碰 · ${KALA_TAI} 台`, money: moneyHTML(-amt),
+      ask: `確認支付 ${amt.toLocaleString()} 積分？`, acts: twoBtn(s, 'back', 'send') });
+  }
   else if (l.confirming && l.act === 'bao') {
     const c = compute(s, l);
     /* 不寫名字；台數寫實際的：莊家包牌三家都含莊家台（例：連莊 1 ⇒ 1 底 6 台），
@@ -501,24 +506,26 @@ function act(s, a, v, x) {
     if (v === 'kala') { l.step = 'kala'; return; }
     l.step = 2;                                            // tsumo
   }
-  else if (a === 'kalaTo') {                               // 咔啦碰：指定捨牌的人 → 對方要確認，我直接回主頁
-    l.who = +x; const c = compute(s, l);
-    G.pending = { by:s, act:'kala', who:l.who, delta:c.delta, need:c.need, confirmed:[], cancelled:[], ...stamp(), logDesc:`${KALA_TAI} 台` };
-    L[s] = blank();
-  }
+  /* 咔啦碰：點人 → 自己先跳一張確認（2026-09-24 使用者指定，比照我包牌）→ 確認才送出、對方再確認 */
+  else if (a === 'kalaTo') { l.who = +x; l.confirming = true; }
   /* 沒台與牌型互斥：選了沒台就清掉牌型，選了牌型就取消沒台。
      送出要「選過東西」才亮 —— 沒選跟沒台在畫面上要分得出來 */
   else if (a === 'none') { l.none = !l.none; if (l.none) l.sel = {}; }
   else if (a === 'pat') { l.none = false; if (l.sel[x]) delete l.sel[x]; else l.sel[x] = 1; }
   else if (a === 'cyc') { l.none = false; const n = (l.sel[x] || 0) + 1; if (n > maxOf(x)) delete l.sel[x]; else l.sel[x] = n; }
   else if (a === 'back1') { L[s] = blank(); }
-  else if (a === 'back') { l.confirming = false; l.act = null; }
+  else if (a === 'back') { l.confirming = false; if (l.act === 'kala') l.who = null; else l.act = null; }   // 咔啦碰取消：留在選人頁
   else if (a === 'send') {
     if (l.act === 'draw') {
       /* 流局：只有按的人確認一次，另外三家不用確認、也不跳結果卡（2026-09-24 使用者指定） */
       G.result = null;
       G.log.push({ ...stamp(), act:'draw', by:s, desc:`莊家連莊（連莊 ${G.ren} → ${G.ren + 1}）`, rows:[] });
       endHand(G.dealer); L = { 1:blank(), 2:blank(), 3:blank(), 4:blank() }; return;
+    }
+    if (l.act === 'kala') {
+      const c = compute(s, l);
+      G.pending = { by:s, act:'kala', who:l.who, delta:c.delta, need:c.need, confirmed:[], cancelled:[], ...stamp(), logDesc:`${KALA_TAI} 台` };
+      L[s] = blank(); return;
     }
     const c = compute(s, l);
     /* 包牌跟胡牌一樣進待確認：收的三家各自按了才加分（2026-09-24 使用者指定，推翻「立刻生效」） */
