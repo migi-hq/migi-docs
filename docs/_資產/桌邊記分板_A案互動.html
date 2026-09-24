@@ -133,10 +133,10 @@ button.card:disabled{opacity:.35;cursor:default}
 /* 可以疊加的牌型：右上角顯示點了幾次（取代原本蓋到字的「最多 N」） */
 .grid .card .cnt{position:absolute;top:5px;right:6px;min-width:24px;height:24px;padding:0 6px;border-radius:999px;
   background:var(--ink);color:var(--brand);font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center}
-/* 底部跟牌型格同一套 6 欄：送出佔最後兩欄、回到上一步佔前一欄（2026-09-24） */
+/* 底部跟牌型格同一套 6 欄：送出佔最後兩欄（2026-09-24；回到上一步同日搬回右上角） */
 .foot{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;align-items:center;flex-shrink:0}
 .foot .btn.pri{grid-column:5 / 7}
-.foot .lf{grid-column:1 / 4;padding-left:20px;display:flex;align-items:center;gap:14px;min-width:0}
+.foot .lf{grid-column:1 / 5;padding-left:20px;display:flex;align-items:center;gap:14px;min-width:0}
 .foot .sum{display:flex;align-items:baseline;gap:40px;font-size:26px;font-weight:800;color:var(--dk-text-2);white-space:nowrap}
 .foot .sum em{font-style:normal;font-size:60px;line-height:1;color:var(--dk-text);font-variant-numeric:tabular-nums}
 .foot .calc{font-size:14px;color:var(--dk-text-2);line-height:1.5}
@@ -381,7 +381,7 @@ function render(s) {
   } else {
     const c = compute(s, l);
     body = `<div class="body2">
-      <div class="q">胡了什麼牌型？</div>
+      <div class="q">胡了什麼牌型？<span class="sp"></span><button class="btn wht" data-s="${s}" data-a="back1">‹ 回到上一步</button></div>
       <div class="grid"><button class="card${l.none ? ' on' : ''}" data-s="${s}" data-a="none"><b>沒台</b><i>0 台</i></button>${PAT.filter(([lb]) => !PAT_HIDE.includes(lb)).map(([lb, v, mx]) => { const n = l.sel[lb] || 0;
         const note = PAT_NOTE[lb] ? `<small>${PAT_NOTE[lb]}</small>` : '';
         /* 可疊加的牌型（三元牌／風牌／正花／花槓）：重複點＋1，超過上限歸 0，右上角顯示次數（2026-09-24 使用者指定） */
@@ -390,7 +390,7 @@ function render(s) {
       <!-- 只顯示台數與總數，像結帳那樣（2026-09-24 使用者指定：說明太多）；上一局卡住時才多一句為什麼不能送出 -->
       <div class="foot"><div class="lf"><span class="sum"><span><em>1</em> 底</span><span><em>${c.patTai}</em> 台</span><span><em>${c.sum.toLocaleString()}</em></span></span>
         ${busy ? `<span class="calc">${note}，確認完才能送出</span>` : ''}</div>
-        <button class="btn wht" data-s="${s}" data-a="back1">‹ 回到上一步</button><button class="btn pri" data-s="${s}" data-a="send"${busy || !(l.none || Object.keys(l.sel).length) ? ' disabled' : ''}>送出</button></div>
+        <button class="btn pri" data-s="${s}" data-a="send"${busy || !(l.none || Object.keys(l.sel).length) ? ' disabled' : ''}>送出</button></div>
       ${meHTML(s)}</div>`;
   }
   return topHTML() + body + sheet;
