@@ -92,7 +92,6 @@ button.card:disabled{opacity:.35;cursor:default}
 .ho{background:var(--dk-raised);border:2px solid var(--dk-line);border-radius:12px;display:flex;align-items:center;gap:12px;padding:0 16px;min-width:0}
 .ho .who{display:flex;flex-direction:column;gap:4px;min-width:0}
 .ho .pos{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800;color:var(--dk-text-2)}
-.ho .pos .zh .a,.ho .pos .zh .b{font-size:13px;padding:1px 9px}
 .ho .nm{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ho .rkp{font-size:13px;align-self:flex-start;padding:2px 10px}
 .opp{gap:11px}
@@ -105,7 +104,7 @@ button.card:disabled{opacity:.35;cursor:default}
 .zh{display:flex;align-items:center;gap:8px}
 .zh .a{background:var(--brand);color:var(--ink);border:1.5px solid var(--brand);border-radius:999px;padding:3px 13px;font-size:18px;font-weight:800;white-space:nowrap}
 .zh .b{color:var(--brand);border:1.5px solid var(--brand);border-radius:999px;padding:3px 11px;font-size:18px;font-weight:800;white-space:nowrap}
-.opp .zh{position:absolute;top:12px;left:14px}
+.opp .zh{position:absolute;top:12px;left:50%;transform:translateX(-50%)}   /* 置中（2026-09-24）；「對家放槍」大字維持在正中，不被推動 */
 .split{display:flex;flex-direction:column;gap:12px;min-height:0;align-items:stretch}
 .split .card{flex:1;min-height:0;gap:2px}
 .split .card b{font-size:30px}
@@ -434,7 +433,7 @@ const meHTML = (s) => `<div class="card me">
   <span class="score" data-seat="${s}">${(SHOWN[s] ?? G.total[s]).toLocaleString()}</span></div>`;
 const heroOppHTML = (ga, pos, x) => `<div class="ho" style="grid-area:${ga}">
   <img class="av" src="${PROF[x].av}" style="width:64px;height:64px">
-  <div class="who"><span class="pos">${WHERE[pos]}${x === G.dealer ? zhHTML() : ''}</span>
+  <div class="who"><span class="pos">${WHERE[pos]}</span>   <!-- 莊家標示只放上面的按鈕卡（2026-09-24） -->
     <span class="nm" style="font-size:16px">${NAME[x]}</span>
     <span class="rkp">段位: ${PROF[x].rank}</span></div></div>`;
 const oppHTML =(s, pos, act, x, disabled) => `<button class="card opp${x === G.dealer ? ' d' : ''}" style="grid-area:${pos}"
