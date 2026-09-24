@@ -91,6 +91,7 @@ button.card:disabled{opacity:.35;cursor:default}
 .ho{background:var(--dk-raised);border:2px solid var(--dk-line);border-radius:12px;display:flex;align-items:center;gap:14px;padding:0 18px;min-width:0}
 .ho .who{display:flex;flex-direction:column;gap:4px;min-width:0}
 .ho .pos{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800;color:var(--dk-text-2)}
+.ho .pos .zh .a,.ho .pos .zh .b{font-size:13px;padding:1px 9px}
 .ho .nm{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ho .rkp{font-size:14px;align-self:flex-start;padding:2px 11px}
 .opp{gap:11px}
@@ -104,14 +105,14 @@ button.card:disabled{opacity:.35;cursor:default}
 .zh .a{background:var(--brand);color:var(--ink);border:1.5px solid var(--brand);border-radius:999px;padding:3px 13px;font-size:18px;font-weight:800;white-space:nowrap}
 .zh .b{color:var(--brand);border:1.5px solid var(--brand);border-radius:999px;padding:3px 11px;font-size:18px;font-weight:800;white-space:nowrap}
 .opp .zh{position:absolute;top:12px;left:50%;transform:translateX(-50%)}   /* 置中（2026-09-24）；「對家放槍」大字維持在正中，不被推動 */
-.split{display:flex;flex-direction:column;gap:12px;min-height:0;align-items:stretch}
+.split{display:flex;flex-direction:row;gap:12px;min-height:0;align-items:stretch}   /* 我包牌｜咔啦碰 左右並排（2026-09-24） */
 .split .card{flex:1;min-height:0;gap:2px}
 .split .card b{font-size:30px}
 .split .card .sub{font-size:18px}
 /* 我自己（HERO ＋ 積分同一張卡） */
 /* 比例參考使用者貼的「粉彩熊系麻將計分介面」（2026-09-24）：
    頭像大、名字大一截、右邊用一條分隔線隔出「我的積分」＋大數字 */
-.me{grid-area:me;flex-direction:row;justify-content:flex-start;gap:24px;padding:0 28px;background:var(--dk-raised);text-align:left}
+.me{grid-area:me;flex-direction:row;justify-content:flex-start;gap:24px;padding:0 28px;background:var(--dk-raised);text-align:left;border-color:var(--brand)}   /* 自己的 HERO：粉框（2026-09-24） */
 .me .who{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
 .me .ttl{font-size:18px;font-weight:700;color:var(--dk-text-2)}
 .me .nm{font-size:30px;margin-top:-2px}
@@ -436,12 +437,11 @@ const meHTML = (s) => `<div class="card me">
   <div class="sc"><span class="lb">我的積分</span><span class="score" data-seat="${s}">${(SHOWN[s] ?? G.total[s]).toLocaleString()}</span></div></div>`;
 const heroOppHTML = (ga, pos, x) => `<div class="ho" style="grid-area:${ga}">
   <img class="av" src="${PROF[x].av}" style="width:74px;height:74px">
-  <div class="who"><span class="pos">${WHERE[pos]}</span>   <!-- 莊家標示只放上面的按鈕卡（2026-09-24） -->
+  <div class="who"><span class="pos">${WHERE[pos]}${x === G.dealer ? zhHTML() : ''}</span>   <!-- 莊家標示改放 HERO 卡（2026-09-24；上面的按鈕卡不再顯示） -->
     <span class="nm" style="font-size:20px">${NAME[x]}</span>   <!-- 名字比段位大一號（2026-09-24） -->
     <span class="rkp">段位: ${PROF[x].rank}</span></div></div>`;
 const oppHTML =(s, pos, act, x, disabled) => `<button class="card opp" style="grid-area:${pos}"
     data-s="${s}" data-a="${act}" data-v="ron" data-x="${x}"${disabled ? ' disabled' : ''}>
-  ${x === G.dealer ? zhHTML() : ''}
   <b>${WHERE[pos]}${act === 'kalaTo' ? '' : '放槍'}</b></button>`;   /* 頭像與名字拿掉，只留「上家放槍」（2026-09-24 預覽）；咔啦碰選人時只寫「上家」 */
 
 /* 牌局紀錄的一列：送出的人 ＋ 他的積分，右邊逐一列出另外幾家付了／取消了／還沒按。
@@ -540,7 +540,7 @@ function render(s) {
       ${oppHTML(s, 'top', pick ? 'kalaTo' : 'act', rel.top)}
       <div class="split act card" style="grid-area:bao;background:none;border:none;padding:0;visibility:${pick ? 'hidden' : 'visible'}">
         <button class="card" data-s="${s}" data-a="act" data-v="bao"${busy ? ' disabled' : ''}><b>我包牌</b><span class="sub">${busy ? note : '我付給另外三家'}</span></button>
-        <button class="card" data-s="${s}" data-a="act" data-v="kala"${busy ? ' disabled' : ''}><b>咔啦碰</b><span class="sub">${busy ? note : '指定捨牌的人 · 直接給 1 台'}</span></button>
+        <button class="card" data-s="${s}" data-a="act" data-v="kala"${busy ? ' disabled' : ''}><b>咔啦碰</b><span class="sub">${busy ? note : '直接付一台'}</span></button>
       </div>
       ${oppHTML(s, 'left', pick ? 'kalaTo' : 'act', rel.left)}
       ${pick
