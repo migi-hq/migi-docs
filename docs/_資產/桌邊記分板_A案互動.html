@@ -91,7 +91,9 @@ button.card:disabled{opacity:.35;cursor:default}
 .ho{background:var(--dk-raised);border:2px solid var(--dk-line);border-radius:12px;display:flex;align-items:center;gap:14px;padding:0 18px;min-width:0}
 .ho .who{display:flex;flex-direction:column;gap:4px;min-width:0}
 .ho .pos{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800;color:var(--dk-text-2)}
-.ho .pos .zh .a,.ho .pos .zh .b{font-size:13px;padding:1px 9px}
+.ho .pos{gap:6px}
+.ho .pp{border:1.5px solid var(--brand);color:var(--brand);border-radius:999px;padding:1px 10px;font-size:13px;font-weight:800;white-space:nowrap}
+.ho .pp.zj{background:var(--brand);color:var(--ink)}   /* 莊家 連 N：粉底墨字（2026-09-25） */
 .ho .nm{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ho .rkp{font-size:14px;align-self:flex-start;padding:2px 11px}
 .opp{gap:11px}
@@ -437,7 +439,8 @@ const meHTML = (s) => `<div class="card me">
   <div class="sc"><span class="lb">我的積分</span><span class="score" data-seat="${s}">${(SHOWN[s] ?? G.total[s]).toLocaleString()}</span></div></div>`;
 const heroOppHTML = (ga, pos, x) => `<div class="ho" style="grid-area:${ga}">
   <img class="av" src="${PROF[x].av}" style="width:74px;height:74px">
-  <div class="who"><span class="pos">${WHERE[pos]}${x === G.dealer ? zhHTML() : ''}</span>   <!-- 莊家標示改放 HERO 卡（2026-09-24；上面的按鈕卡不再顯示） -->
+  <div class="who"><span class="pos"><span class="pp">${WHERE[pos]}</span>${x === G.dealer ? `<span class="pp zj">莊家${G.ren ? ` 連 ${G.ren}` : ''}</span>` : ''}</span>
+    <!-- 方位＝粉框小膠囊（HERO方位標示_比較.html 的 B 版，2026-09-24）；莊家與連莊併成同一種、同一顆膠囊 -->
     <span class="nm" style="font-size:20px">${NAME[x]}</span>   <!-- 名字比段位大一號（2026-09-24） -->
     <span class="rkp">段位: ${PROF[x].rank}</span></div></div>`;
 const oppHTML =(s, pos, act, x, disabled) => `<button class="card opp" style="grid-area:${pos}"
