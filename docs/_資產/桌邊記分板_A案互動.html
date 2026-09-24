@@ -16,6 +16,7 @@
 <style>
 :root{
   --brand:#FAD6DC; --brand-tint:#FFECF1; --ink:#2E2B2C;
+  --gold:#E8B89B;   /* 只給 MIGI 牌型格的邊框（＝成就傳說金邊） */
   --dk-bg:#221F20; --dk-bar:#191718; --dk-raised:#2B2829; --dk-tile:#343132; --dk-line:#524D4E;
   --dk-text:#FFFFFF; --dk-text-2:#C9C4C1; --dk-text-3:#A39E9B;
   --dk-scrim:rgba(20,18,19,.82);
@@ -121,11 +122,10 @@ button.card:disabled{opacity:.35;cursor:default}
 /* 牌型底下的註明（獨聽／三元牌／風牌，2026-09-24） */
 .grid .card small{font-size:13px;font-weight:700;color:var(--dk-text-2);white-space:nowrap}
 .grid .card.on small{color:var(--ink)}
-/* MIGI 牌型：品牌招牌，跟其他格不一樣 —— 粉色雙框＋微光、字用 logo 的寫法。
-   沒用金邊：平板只用粉色系 token（CLAUDE.md 硬規則 13.9，--gold 在平板上不用） */
-.grid .card.migi{border-color:var(--brand);box-shadow:inset 0 0 0 3px var(--dk-tile),inset 0 0 0 5px var(--brand),0 0 14px rgba(250,214,220,.35)}
+/* MIGI 牌型：一圈金邊，跟會員 App 成就「傳說」的金邊同一個 token（--gold，2px）。
+   平板唯一用金色的地方（2026-09-24 使用者指定，CLAUDE.md 硬規則 13.9 的例外） */
+.grid .card.migi{border-color:var(--gold)}
 .grid .card.migi b{color:var(--brand);letter-spacing:3px}
-.grid .card.migi.on{box-shadow:inset 0 0 0 3px var(--brand),inset 0 0 0 5px var(--ink),0 0 14px rgba(250,214,220,.5)}
 .grid .card.migi.on b{color:var(--ink)}
 /* 可以疊加的牌型：右上角顯示點了幾次（取代原本蓋到字的「最多 N」） */
 .grid .card .cnt{position:absolute;top:5px;right:6px;min-width:24px;height:24px;padding:0 6px;border-radius:999px;
