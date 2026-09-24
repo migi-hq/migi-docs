@@ -350,7 +350,7 @@ function render(s) {
     body = `<div class="body${pick ? ' pick' : ''}">
       <div class="q" style="grid-area:q">${pick ? '咔啦碰 · 誰捨的牌？' : '這一局誰放槍？'}<span class="sp"></span>
         ${pick ? `<button class="btn wht" data-s="${s}" data-a="back1">‹ 回到上一步</button>` : ''}</div>
-      <button class="card act" style="grid-area:draw" data-s="${s}" data-a="act" data-v="draw"${busy ? ' disabled' : ''}><b>流局</b><span class="sub">${busy ? note : '沒有人流局'}</span></button>
+      <button class="card act" style="grid-area:draw" data-s="${s}" data-a="act" data-v="draw"${busy ? ' disabled' : ''}><b>流局</b><span class="sub">${busy ? note : '沒有人胡牌'}</span></button>
       ${oppHTML(s, 'top', pick ? 'kalaTo' : 'act', rel.top)}
       <div class="split act card" style="grid-area:bao;background:none;border:none;padding:0;visibility:${pick ? 'hidden' : 'visible'}">
         <button class="card" data-s="${s}" data-a="act" data-v="bao"${busy ? ' disabled' : ''}><b>我包牌</b><span class="sub">${busy ? note : '我付給另外三家'}</span></button>
