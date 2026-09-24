@@ -155,15 +155,17 @@ button.card:disabled{opacity:.35;cursor:default}
    一次只一則、3 秒消失；位置改在畫面正中央（2026-09-24 使用者指定），尺寸放大成平板用 */
 /* 2026-09-24 同日再改：不要陰影；不會自己消失，要按右上角 ✕ 才關；
    好幾個人取消就垂直疊好幾則（整疊在畫面正中央） */
-.toasts{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:5;display:flex;flex-direction:column;align-items:center;gap:12px;max-width:86%}
-.toast{position:relative;background:var(--dk-tile);border:2px solid var(--brand);border-radius:16px;padding:18px 56px 18px 28px;   /* 粉框、右邊留給 ✕ */
+.toasts{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:5;display:flex;flex-direction:column;align-items:center;gap:22px;max-width:86%}
+.toast{position:relative;background:var(--dk-tile);border:2px solid var(--brand);border-radius:16px;padding:18px 28px;   /* 粉框 */
   display:flex;align-items:center;gap:16px}
 .toast.new{animation:toastIn .3s cubic-bezier(.2,.8,.2,1)}
 .toast .av{width:48px;height:48px}
 .toast span{font-size:24px;font-weight:800;color:var(--dk-text);white-space:nowrap}
 .toast b{font-size:inherit;color:var(--brand)}
-.toast .x{position:absolute;top:6px;right:8px;width:36px;height:36px;border:none;background:transparent;color:var(--dk-text-2);
-  font:inherit;font-size:24px;font-weight:800;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+/* ✕：圓形、掛在右上角、一半超出外框（2026-09-24）；疊好幾則時間距 22，下一則的 ✕ 不會壓到上一則 */
+.toast .x{position:absolute;top:-16px;right:-16px;width:34px;height:34px;border-radius:50%;border:2px solid var(--dk-tile);
+  background:var(--brand);color:var(--ink);font:inherit;font-size:16px;font-weight:800;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;padding:0}
 @keyframes toastIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
 .sheet{position:absolute;inset:0;background:var(--dk-scrim);display:flex;align-items:center;justify-content:center;padding:36px}
 .sheet .box{background:var(--dk-raised);border:2px solid var(--dk-line);border-radius:18px;padding:48px 36px 40px;width:100%;max-width:760px;text-align:center}   /* 加高（2026-09-24） */
