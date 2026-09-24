@@ -44,7 +44,7 @@ h1{font-size:23px;margin-bottom:6px}
   font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;color:#5C5754}
 .cap .wait{color:var(--ink);background:var(--brand);border-radius:999px;padding:1px 10px}
 .shell{overflow:hidden;border-radius:10px}
-.frame{width:1024px;height:768px;transform-origin:top left;display:flex;flex-direction:column;
+.frame{width:1280px;height:800px;   /* Lenovo Tab M8 TB-8505F：1280×800、實測螢幕 17.2×10.8 cm（16:10）。1 設計 px ≈ 0.134 mm（2026-09-24） */transform-origin:top left;display:flex;flex-direction:column;
   overflow:hidden;background:var(--dk-bg);color:var(--dk-text);position:relative}
 
 /* ── 頂條（三案定案的樣子）── */
@@ -170,7 +170,7 @@ button.card:disabled{opacity:.35;cursor:default}
    局 ｜ 類型 ｜ 送出的人 ｜ 牌型與台數 ｜ 他的積分 ｜ 另外幾家逐一列出。
    參考圖的綠勾、紅叉、黃時鐘、綠色「已結算」全部換成粉／灰（硬規則 13.9：平板只用粉色系） */
 /* 左欄只講「哪一局、什麼時候」，結算狀態獨立放最右邊（2026-09-24 使用者要求重新規劃，同參考圖） */
-.lg{display:grid;grid-template-columns:100px 72px minmax(0,1fr) 120px 108px 244px 76px;gap:10px;align-items:center;
+.lg{display:grid;grid-template-columns:100px 72px minmax(0,1fr) 120px 108px minmax(244px,1.5fr) 76px;   /* 1200 寬：多的寬度分給名字欄與逐家欄 */gap:10px;align-items:center;
   background:var(--dk-tile);border:2px solid var(--dk-line);border-radius:12px;padding:12px 16px;flex-shrink:0;min-height:96px}
 .lg.hl{border-color:var(--brand)}                       /* 有人取消／還在確認：粉框（同參考圖的高亮列） */
 .lg .c1{display:flex;flex-direction:column;gap:3px;min-width:0}
@@ -646,17 +646,18 @@ function act(s, a, v, x) {
 }
 
 /* ── 畫面 ── */
+const FW = 1280, FH = 800;   // 平板實際尺寸（同 .frame）
 const quad = document.getElementById('quad');
 function paint() {
   const seats = zoom ? [zoom] : SEATS;
   quad.className = 'quad' + (zoom ? ' solo' : '');
   const avail = Math.min(document.body.clientWidth - 40, 1040);
-  const w = zoom ? avail : (avail - 12) / 2, sc = w / 1024;
+  const w = zoom ? avail : (avail - 12) / 2, sc = w / FW;
   quad.innerHTML = seats.map((s) => {
     const waiting = G.pending && isOpenFor(G.pending, s);
     return `<div class="cell"><div class="cap">${NAME[s]} 的平板${s === G.dealer ? '<span class="z">莊</span>' : ''}<span class="sp"></span>
       ${waiting ? '<span class="wait">● 等你確認</span>' : ''}<button data-zoom="${zoom ? 0 : s}">${zoom ? '回到四分割' : '放大'}</button></div>
-      <div class="shell" style="width:${w}px;height:${768 * sc}px"><div class="frame" data-seat="${s}" style="transform:scale(${sc})">${render(s)}</div></div></div>`;
+      <div class="shell" style="width:${w}px;height:${FH * sc}px"><div class="frame" data-seat="${s}" style="transform:scale(${sc})">${render(s)}</div></div></div>`;
   }).join('');
   document.getElementById('zoom').innerHTML = `<button class="${zoom ? '' : 'on'}" data-zoom="0">四分割</button>` +
     SEATS.map((s) => `<button class="${zoom === s ? 'on' : ''}" data-zoom="${s}">${NAME[s]}</button>`).join('');
