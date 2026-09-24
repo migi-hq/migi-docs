@@ -421,8 +421,9 @@ function act(s, a, v, x) {
   else if (a === 'back') { l.confirming = false; l.act = null; }
   else if (a === 'send') {
     if (l.act === 'draw') {
-      G.result = { headline:'流局', desc:'莊家連莊，沒有人付分', by:s, delta:{ 1:0, 2:0, 3:0, 4:0 }, downDealer:false };
-      endHand(G.dealer); G.seen = { [s]:true }; L = { 1:blank(), 2:blank(), 3:blank(), 4:blank() }; return;
+      /* 流局：只有按的人確認一次，另外三家不用確認、也不跳結果卡（2026-09-24 使用者指定） */
+      G.result = null;
+      endHand(G.dealer); L = { 1:blank(), 2:blank(), 3:blank(), 4:blank() }; return;
     }
     const c = compute(s, l);
     /* 包牌跟胡牌一樣進待確認：收的三家各自按了才加分（2026-09-24 使用者指定，推翻「立刻生效」） */
