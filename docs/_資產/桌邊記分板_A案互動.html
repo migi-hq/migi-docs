@@ -88,12 +88,11 @@ button.card:disabled{opacity:.35;cursor:default}
   grid-template-areas:"q q q" "left top right" "draw zimo bao" "me me me" "hl ht hr"}   /* 上家↔流局、下家↔包牌咔啦碰 上下對調（2026-09-24）：三家都在上排；最下面一排是三家的 HERO 卡 */
 /* 三家 HERO 卡（2026-09-24）：三家按鈕拿掉頭像名字之後，身分改放這一排。
    🔴 不放積分 —— 每台只顯示自己的幕前積分（硬規則 13.9） */
-.ho{background:var(--dk-raised);border:2px solid var(--dk-line);border-radius:12px;display:flex;align-items:center;gap:14px;padding:0 18px;min-width:0}
+.ho{background:var(--dk-raised);border:2px solid var(--dk-line);border-radius:12px;display:flex;align-items:center;gap:10px;padding:0 14px;min-width:0}
 .ho .who{display:flex;flex-direction:column;gap:4px;min-width:0}
 .ho .pos{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800;color:var(--dk-text-2)}
 .ho .pos{gap:6px}
 .ho .pp{border:1.5px solid var(--brand);color:var(--brand);border-radius:999px;padding:1px 10px;font-size:13px;font-weight:800;white-space:nowrap}
-.ho .pp.zj{background:var(--brand);color:var(--ink)}   /* 莊家 連 N：粉底墨字（2026-09-25） */
 .ho .nm{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ho .rkp{font-size:14px;align-self:flex-start;padding:2px 11px}   /* 三家段位：粉底膠囊（2026-09-25 灰字版又改回） */
 .opp{gap:11px}
@@ -103,10 +102,14 @@ button.card:disabled{opacity:.35;cursor:default}
 /* 莊家：分層標籤（粉「莊家」＋灰底粉字「連莊 N」，兩層同高、貼合） */
 /* 莊家標示 G 版（2026-09-24 使用者從 莊家標示_六版.html 挑的）：
    「莊家」粉底墨字膠囊 ＋「連 N」粉字粉框膠囊；連莊 0 只留「莊家」 */
-.zh{display:flex;align-items:center;gap:8px}
-.zh .a{background:var(--brand);color:var(--ink);border:1.5px solid var(--brand);border-radius:999px;padding:3px 13px;font-size:18px;font-weight:800;white-space:nowrap}
-.zh .b{color:var(--brand);border:1.5px solid var(--brand);border-radius:999px;padding:3px 11px;font-size:18px;font-weight:800;white-space:nowrap}
-.opp .zh{position:absolute;top:12px;left:50%;transform:translateX(-50%)}   /* 置中（2026-09-24）；「對家放槍」大字維持在正中，不被推動 */
+/* 2026-09-25：莊家放在四張 HERO 卡的最右邊，樣式回到最早那版（使用者貼圖指定）——
+   上「莊家」粉底墨字、下「連莊 N」深灰底粉字，兩格同寬、上下貼合成一塊 */
+.zh{display:flex;flex-direction:column;align-items:stretch;border-radius:8px;overflow:hidden;flex-shrink:0;margin-left:auto}
+.zh .a,.zh .b{height:42px;padding:0 15px;display:flex;align-items:center;justify-content:center;font-weight:800;white-space:nowrap}
+.zh .a{background:var(--brand);color:var(--ink);font-size:23px}
+.zh .b{background:var(--dk-line);color:var(--brand);font-size:23px}   /* 上下字一樣大、格子一樣高（2026-09-25） */
+.ho .zh{border-radius:7px}
+.ho .zh .a,.ho .zh .b{height:30px;padding:0 9px;font-size:16px}
 .split{display:flex;flex-direction:row;gap:12px;min-height:0;align-items:stretch}   /* 我包牌｜咔啦碰 左右並排（2026-09-24） */
 .split .card{flex:1;min-height:0;gap:2px}
 .split .card b{font-size:30px}
@@ -120,7 +123,6 @@ button.card:disabled{opacity:.35;cursor:default}
 .me .nm{font-size:30px;margin-top:-2px}
 .me .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .me .rkp{font-size:19px;padding:4px 16px}
-.me .zh .a,.me .zh .b{font-size:17px}
 .me .sc{display:flex;flex-direction:column;align-items:flex-start;gap:4px;border-left:1px solid var(--dk-line);padding-left:32px;align-self:center}
 .me .sc .lb{font-size:18px;font-weight:700;color:var(--dk-text-2)}
 .me .score{font-size:84px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1;min-width:4.2ch;text-align:right}
@@ -435,14 +437,16 @@ const meHTML = (s) => `<div class="card me">
   <img class="av" src="${PROF[s].av}" style="width:132px;height:132px">
   <div class="who"><span class="ttl">「${PROF[s].title}」</span>
     <span class="nm">${NAME[s]}</span>
-    <span class="row"><span class="rkp">段位: ${PROF[s].rank}</span>${s === G.dealer ? zhHTML() : ''}</span></div>
+    <span class="row"><span class="rkp">段位: ${PROF[s].rank}</span></span></div>
+  ${s === G.dealer ? zhHTML() : ''}
   <div class="sc"><span class="lb">我的積分</span><span class="score" data-seat="${s}">${(SHOWN[s] ?? G.total[s]).toLocaleString()}</span></div></div>`;
 const heroOppHTML = (ga, pos, x) => `<div class="ho" style="grid-area:${ga}">
-  <img class="av" src="${PROF[x].av}" style="width:74px;height:74px">
-  <div class="who"><span class="pos"><span class="pp">${WHERE[pos]}</span>${x === G.dealer ? `<span class="pp zj">莊家${G.ren ? ` 連 ${G.ren}` : ''}</span>` : ''}</span>
-    <!-- 方位＝粉框小膠囊（HERO方位標示_比較.html 的 B 版，2026-09-24）；莊家與連莊併成同一種、同一顆膠囊 -->
+  <img class="av" src="${PROF[x].av}" style="width:62px;height:62px">   <!-- 74→62：右邊要留位子給莊家（2026-09-25） -->
+  <div class="who"><span class="pos"><span class="pp">${WHERE[pos]}</span></span>
+    <!-- 方位＝粉框小膠囊（HERO方位標示_比較.html 的 B 版，2026-09-24） -->
     <span class="nm" style="font-size:20px">${NAME[x]}</span>   <!-- 名字比段位大一號（2026-09-24） -->
-    <span class="rkp">段位: ${PROF[x].rank}</span></div></div>`;
+    <span class="rkp">段位: ${PROF[x].rank}</span></div>
+  ${x === G.dealer ? zhHTML() : ''}</div>`;   /* 莊家放卡片最右邊（2026-09-25） */
 const oppHTML =(s, pos, act, x, disabled) => `<button class="card opp" style="grid-area:${pos}"
     data-s="${s}" data-a="${act}" data-v="ron" data-x="${x}"${disabled ? ' disabled' : ''}>
   <b>${WHERE[pos]}${act === 'kalaTo' ? '' : '放槍'}</b></button>`;   /* 頭像與名字拿掉，只留「上家放槍」（2026-09-24 預覽）；咔啦碰選人時只寫「上家」 */
