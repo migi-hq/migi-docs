@@ -112,7 +112,7 @@ button.card:disabled{opacity:.35;cursor:default}
 
 /* ── 第二步：牌型 ── */
 .body2{flex:1;min-height:0;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
-.grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:1fr;gap:9px}
+.grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(6,1fr);grid-auto-rows:1fr;gap:9px}
 .grid .card{gap:3px;padding:6px;border-radius:10px}
 .grid .card b{font-size:24px;white-space:nowrap}
 .grid .card i{font-style:normal;font-size:14px;font-weight:700;color:var(--dk-text-3)}
@@ -241,6 +241,8 @@ function reset() {
 }
 const blank = () => ({ step:1, act:null, who:null, sel:{}, none:false, confirming:false });
 /* 牌型底下的小字註明 */
+/* 花牌相關的先隱藏（2026-09-24 使用者指定）；PAT 裡保留，要打開時從這裡拿掉就好 */
+const PAT_HIDE = ['正花', '花槓', '七搶一', '八仙過海'];
 const PAT_NOTE = { '獨聽':'單吊 · 中洞 · 邊張', '三元牌':'中發白', '風牌':'東南西北' };
 const extra = () => 1 + 2 * G.ren;
 const isOpenFor = (p, s) => p.need.includes(s) && !p.confirmed.includes(s) && !p.cancelled.includes(s);
@@ -364,7 +366,7 @@ function render(s) {
     const c = compute(s, l);
     body = `<div class="body2">
       <div class="q">胡了什麼牌型？</div>
-      <div class="grid"><button class="card${l.none ? ' on' : ''}" data-s="${s}" data-a="none"><b>沒台</b><i>0 台</i></button>${PAT.map(([lb, v, mx]) => { const n = l.sel[lb] || 0;
+      <div class="grid"><button class="card${l.none ? ' on' : ''}" data-s="${s}" data-a="none"><b>沒台</b><i>0 台</i></button>${PAT.filter(([lb]) => !PAT_HIDE.includes(lb)).map(([lb, v, mx]) => { const n = l.sel[lb] || 0;
         const note = PAT_NOTE[lb] ? `<small>${PAT_NOTE[lb]}</small>` : '';
         /* 可疊加的牌型（三元牌／風牌／正花／花槓）：重複點＋1，超過上限歸 0，右上角顯示次數（2026-09-24 使用者指定） */
         if (mx > 1) return `<button class="card${n ? ' on' : ''}" data-s="${s}" data-a="cyc" data-x="${lb}">${n ? `<span class="cnt">${n}</span>` : ''}<b>${lb}</b>${note}<i>${(n || 1) * v} 台</i></button>`;
