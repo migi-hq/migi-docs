@@ -85,8 +85,16 @@ button.card:disabled{opacity:.35;cursor:default}
 
 /* ── 主頁：座位圖 ── */
 .body{flex:1;min-height:0;padding:16px 18px;display:grid;gap:14px;
-  grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:auto 1fr 1fr 136px;
-  grid-template-areas:"q q q" "left top right" "draw zimo bao" "me me me"}   /* 上家↔流局、下家↔包牌咔啦碰 上下對調（2026-09-24）：三家都在上排 */
+  grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:auto 1fr 1fr 136px 104px;
+  grid-template-areas:"q q q" "left top right" "draw zimo bao" "me me me" "hl ht hr"}   /* 上家↔流局、下家↔包牌咔啦碰 上下對調（2026-09-24）：三家都在上排；最下面一排是三家的 HERO 卡 */
+/* 三家 HERO 卡（2026-09-24）：三家按鈕拿掉頭像名字之後，身分改放這一排。
+   🔴 不放積分 —— 每台只顯示自己的幕前積分（硬規則 13.9） */
+.ho{background:var(--dk-raised);border:2px solid var(--dk-line);border-radius:12px;display:flex;align-items:center;gap:12px;padding:0 16px;min-width:0}
+.ho .who{display:flex;flex-direction:column;gap:4px;min-width:0}
+.ho .pos{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800;color:var(--dk-text-2)}
+.ho .pos .zh .a,.ho .pos .zh .b{font-size:13px;padding:1px 9px}
+.ho .nm{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ho .rkp{font-size:13px;align-self:flex-start;padding:2px 10px}
 .opp{gap:11px}
 .opp .nm{font-size:22px}
 .opp .pos{position:absolute;top:10px;left:14px;font-size:20px;font-weight:800;color:var(--dk-text-2);line-height:1.2}
@@ -424,7 +432,12 @@ const meHTML = (s) => `<div class="card me">
     <span class="nm" style="font-size:${nameFs(NAME[s], 28, 22)}px">${NAME[s]}</span>
     <span class="row"><span class="rkp">段位: ${PROF[s].rank}</span>${s === G.dealer ? zhHTML() : ''}</span></div>
   <span class="score" data-seat="${s}">${(SHOWN[s] ?? G.total[s]).toLocaleString()}</span></div>`;
-const oppHTML = (s, pos, act, x, disabled) => `<button class="card opp${x === G.dealer ? ' d' : ''}" style="grid-area:${pos}"
+const heroOppHTML = (ga, pos, x) => `<div class="ho" style="grid-area:${ga}">
+  <img class="av" src="${PROF[x].av}" style="width:64px;height:64px">
+  <div class="who"><span class="pos">${WHERE[pos]}${x === G.dealer ? zhHTML() : ''}</span>
+    <span class="nm" style="font-size:16px">${NAME[x]}</span>
+    <span class="rkp">段位: ${PROF[x].rank}</span></div></div>`;
+const oppHTML =(s, pos, act, x, disabled) => `<button class="card opp${x === G.dealer ? ' d' : ''}" style="grid-area:${pos}"
     data-s="${s}" data-a="${act}" data-v="ron" data-x="${x}"${disabled ? ' disabled' : ''}>
   ${x === G.dealer ? zhHTML() : ''}
   <b>${WHERE[pos]}${act === 'kalaTo' ? '' : '放槍'}</b></button>`;   /* 頭像與名字拿掉，只留「上家放槍」（2026-09-24 預覽）；咔啦碰選人時只寫「上家」 */
@@ -532,7 +545,8 @@ function render(s) {
         ? `<div style="grid-area:zimo"></div>`   /* 中間留空，說明全部拿掉（2026-09-24） */
         : `<button class="card act zimo" style="grid-area:zimo" data-s="${s}" data-a="act" data-v="tsumo"><b>我自摸</b><span class="sub">另外三家一起付</span></button>`}
       ${oppHTML(s, 'right', pick ? 'kalaTo' : 'act', rel.right)}
-      ${meHTML(s)}</div>`;
+      ${meHTML(s)}
+      ${[['hl', 'left'], ['ht', 'top'], ['hr', 'right']].map(([ga, pos]) => heroOppHTML(ga, pos, rel[pos])).join('')}</div>`;
   } else {
     const c = compute(s, l);
     /* 底部把牌型台與莊家台分開寫（2026-09-24 使用者指定）：有牽涉莊家才出現「莊家 X 台」
