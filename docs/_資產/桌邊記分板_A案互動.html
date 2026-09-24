@@ -124,7 +124,10 @@ button.card:disabled{opacity:.35;cursor:default}
 .grid .card.on small{color:var(--ink)}
 /* MIGI 牌型：一圈金邊，跟會員 App 成就「傳說」的金邊同一個 token（--gold，2px）。
    平板唯一用金色的地方（2026-09-24 使用者指定，CLAUDE.md 硬規則 13.9 的例外） */
-.grid .card.migi{border-color:var(--gold)}
+.grid .card.migi{border-color:var(--gold);animation:migiGlowLegend 1.6s ease-in-out infinite}
+/* 光暈動畫參考會員 App 抽卡模組的「傳說」（rewards.jsx 的 migiGlowLegend ＋ migiSweep，2026-09-24）：
+   只留金色光暈一明一暗（鏡面掃光同日拿掉）。rgba 就是 --gold 的值（keyframes 吃不到變數）。 */
+@keyframes migiGlowLegend{0%,100%{box-shadow:0 0 6px 0 rgba(232,184,155,.25)}50%{box-shadow:0 0 12px 2px rgba(232,184,155,.5)}}   /* 淡一點、範圍小一點（2026-09-24） */
 .grid .card.migi b{color:var(--brand);letter-spacing:3px}
 .grid .card.migi.on b{color:var(--ink)}
 /* 可以疊加的牌型：右上角顯示點了幾次（取代原本蓋到字的「最多 N」） */
@@ -148,16 +151,19 @@ button.card:disabled{opacity:.35;cursor:default}
 
 /* ── 疊在畫面上的那一層 ── */
 .sheet{position:absolute;inset:0;background:var(--dk-scrim);display:flex;align-items:center;justify-content:center;padding:36px}
-.sheet .box{background:var(--dk-raised);border:2px solid var(--dk-line);border-radius:18px;padding:28px 32px;width:100%;max-width:760px;text-align:center}
+.sheet .box{background:var(--dk-raised);border:2px solid var(--dk-line);border-radius:18px;padding:48px 36px 40px;width:100%;max-width:760px;text-align:center}   /* 加高（2026-09-24） */
 /* 彈窗＝使用者 2026-09-24 選的「第 2 版 標準版」：
    小灰字（誰）→ 大白字（牌型 · 台數）→ 粉色大數字 → 一句確認 → 取消／確認一樣寬 */
 .box .k{font-size:20px;font-weight:700;color:var(--dk-text-2)}
-.box .h{font-size:38px;font-weight:800;margin-top:6px;line-height:1.3}
-.box .money{font-size:96px;font-weight:800;line-height:1.05;margin:6px 0 4px;font-variant-numeric:tabular-nums;color:var(--brand)}
+.box .h{font-size:46px;font-weight:800;margin-top:6px;line-height:1.3}
+.box .money{font-size:124px;font-weight:800;line-height:1.05;margin:6px 0 4px;font-variant-numeric:tabular-nums;color:var(--brand)}
 .box .ask{font-size:30px;font-weight:800;margin-top:6px}
+/* 彈窗最上面一行「支付給 對家」（2026-09-24）：動詞灰、對象白，整行放大 */
+.box .hcl{font-size:30px;font-weight:800;color:var(--dk-text-2);margin-bottom:10px}
+.box .hcl b{font-size:inherit;color:var(--dk-text);margin-left:8px}
 .box .who{font-size:18px;color:var(--dk-text-2);line-height:1.6}
 .box .who b{font-size:inherit;color:var(--dk-text)}
-.box .acts{display:flex;gap:12px;margin:18px auto 0;max-width:600px}
+.box .acts{display:flex;gap:12px;margin:32px auto 0;max-width:600px}
 .box .acts .btn{height:76px;font-size:24px;padding:0 20px;flex:1}
 .box .acts .btn.gho{border-color:var(--dk-text-2);color:var(--dk-text)}
 
@@ -288,7 +294,12 @@ function compute(by, l) {
 const signed = (n) => (n > 0 ? '＋' : n < 0 ? '−' : '±') + Math.abs(n).toLocaleString();
 const moneyHTML = (n) => `<div class="money"${n === 0 ? ' style="color:var(--dk-text-3)"' : ''}>${signed(n)}</div>`;
 /* 彈窗骨架（第 2 版）：k 誰／h 牌型與台數／money／ask 一句確認／sub 補充（只在必要時）／acts */
-const boxHTML = ({ k, h, money = '', ask, sub, acts }) => `<div class="sheet"><div class="box">${k ? `<div class="k">${k}</div>` : ''}<div class="h">${h}</div>${money}${ask ? `<div class="ask">${ask}</div>` : ''}${sub ? `<div class="who" style="margin-top:6px">${sub}</div>` : ''}<div class="acts">${acts}</div></div></div>`;
+/* 「1 底 N 台」自己一行，放在牌型下面；這一行不折（2026-09-24） */
+const diTai = (tai, extra = '', pre = '') => `<span style="display:block;white-space:nowrap">${pre}1 底 ${tai} 台${extra}</span>`;
+/* 對方在我的哪個位置（下家／對家／上家） */
+const whereOf = (me, x) => { const r = REL(me); return WHERE[Object.keys(r).find((k) => r[k] === x)]; };
+const heroHTML = (verb, where) => `<div class="hcl">${verb}<b>${where}</b></div>`;
+const boxHTML = ({ k, hero = '', h, money = '', ask, sub, acts }) => `<div class="sheet"><div class="box">${hero || (k ? `<div class="k">${k}</div>` : '')}<div class="h">${h}</div>${money}${ask ? `<div class="ask">${ask}</div>` : ''}${sub ? `<div class="who" style="margin-top:6px">${sub}</div>` : ''}<div class="acts">${acts}</div></div></div>`;
 const twoBtn = (s, no, yes) => `<button class="btn gho" data-s="${s}" data-a="${no}">取消</button><button class="btn pri" data-s="${s}" data-a="${yes}">確認</button>`;
 const elapsed = () => { const t = Math.floor((Date.now() - T0) / 1000); return `${Math.floor(t / 3600)}:${String(Math.floor(t / 60) % 60).padStart(2,'0')}:${String(t % 60).padStart(2,'0')}`; };
 
@@ -332,18 +343,18 @@ function render(s) {
   else if (p && isOpenFor(p, s)) {                        // 要我回應的卡
     const d = p.delta[s], amt = Math.abs(d).toLocaleString();
     sheet = p.act === 'kala'
-      ? boxHTML({ k: NAME[p.by], h: `咔啦碰 · ${KALA_TAI} 台`, money: moneyHTML(d), ask: `確認收下 ${amt} 積分？`, acts: twoBtn(s, 'reject', 'confirm') })
+      ? boxHTML({ hero: heroHTML('收自', whereOf(s, p.by)), h: `咔啦碰 · ${KALA_TAI} 台`, money: moneyHTML(d), ask: `確認收下 ${amt} 積分？`, acts: twoBtn(s, 'reject', 'confirm') })
       : p.act === 'bao'
       /* 包牌：收的三家各自確認，確認了數字才加（2026-09-24 使用者指定） */
-      ? boxHTML({ k: NAME[p.by], h: `包牌 · ${BAO_TAI} 台${s === G.dealer || p.by === G.dealer ? '＋莊家台' : ''}`, money: moneyHTML(d), ask: `確認收下 ${amt} 積分？`, acts: twoBtn(s, 'reject', 'confirm') })
-      : boxHTML({ k: NAME[p.by], h: p.descTai, money: moneyHTML(d), ask: `確認支付 ${amt} 積分？`, acts: twoBtn(s, 'reject', 'confirm') });
+      ? boxHTML({ hero: heroHTML('收自', whereOf(s, p.by)), h: `包牌 ${diTai(BAO_TAI, s === G.dealer || p.by === G.dealer ? '＋莊家台' : '')}`, money: moneyHTML(d), ask: `確認收下 ${amt} 積分？`, acts: twoBtn(s, 'reject', 'confirm') })
+      : boxHTML({ hero: heroHTML('支付給', whereOf(s, p.by)), h: p.descTai, money: moneyHTML(d), ask: `確認支付 ${amt} 積分？`, acts: twoBtn(s, 'reject', 'confirm') });
   }
   else if (l.confirming && l.act === 'draw') {
     sheet = boxHTML({ h: '流局', ask: '確定這一局流局？', sub: `沒有人胡牌　·　莊家連莊（連莊 ${G.ren} → ${G.ren + 1}）`, acts: twoBtn(s, 'back', 'send') });
   }
   else if (l.confirming && l.act === 'bao') {
     const c = compute(s, l);
-    sheet = boxHTML({ k: NAME[s], h: `我包牌 · 每家 ${BAO_TAI} 台`, money: moneyHTML(-c.sum), ask: `確認支付 ${c.sum.toLocaleString()} 積分？`,
+    sheet = boxHTML({ k: NAME[s], h: `我包牌 ${diTai(BAO_TAI, '', '每家 ')}`, money: moneyHTML(-c.sum), ask: `確認支付 ${c.sum.toLocaleString()} 積分？`,
       sub: s === G.dealer ? '你是莊家：三家都另加莊家台，這局之後下莊' : '莊家那一份另加莊家台，莊家繼續連莊', acts: twoBtn(s, 'back', 'send') });
   }
 
@@ -377,7 +388,7 @@ function render(s) {
         if (mx > 1) return `<button class="card${n ? ' on' : ''}" data-s="${s}" data-a="cyc" data-x="${lb}">${n ? `<span class="cnt">${n}</span>` : ''}<b>${lb}</b>${note}<i>${(n || 1) * v} 台</i></button>`;
         return `<button class="card${n ? ' on' : ''}${lb === 'MIGI' ? ' migi' : ''}" data-s="${s}" data-a="pat" data-x="${lb}"><b>${lb}</b>${note}<i>${v} 台</i></button>`; }).join('')}</div>
       <!-- 只顯示台數與總數，像結帳那樣（2026-09-24 使用者指定：說明太多）；上一局卡住時才多一句為什麼不能送出 -->
-      <div class="foot"><div class="lf"><span class="sum"><span><em>${c.patTai}</em> 台</span><span><em>${c.sum.toLocaleString()}</em></span></span>
+      <div class="foot"><div class="lf"><span class="sum"><span><em>1</em> 底</span><span><em>${c.patTai}</em> 台</span><span><em>${c.sum.toLocaleString()}</em></span></span>
         ${busy ? `<span class="calc">${note}，確認完才能送出</span>` : ''}</div>
         <button class="btn wht" data-s="${s}" data-a="back1">‹ 回到上一步</button><button class="btn pri" data-s="${s}" data-a="send"${busy || !(l.none || Object.keys(l.sel).length) ? ' disabled' : ''}>送出</button></div>
       ${meHTML(s)}</div>`;
@@ -416,7 +427,7 @@ function act(s, a, v, x) {
     const c = compute(s, l);
     /* 包牌跟胡牌一樣進待確認：收的三家各自按了才加分（2026-09-24 使用者指定，推翻「立刻生效」） */
     G.pending = { by:s, act:l.act, who:l.who, delta:c.delta, need:c.need, confirmed:[], cancelled:[],
-      descTai:`${Object.entries(l.sel).map(([k, n]) => k + (n > 1 ? ' ×' + n : '')).join('、') || '沒台'} · ${c.patTai} 台` };
+      descTai:`${Object.entries(l.sel).map(([k, n]) => k + (n > 1 ? ' ×' + n : '')).join('、') || '沒台'} ${diTai(c.patTai)}` };
     L[s] = blank();
   }
   else if (a === 'confirm' || a === 'reject') {
