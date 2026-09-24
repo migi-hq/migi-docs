@@ -127,8 +127,8 @@ button.card:disabled{opacity:.35;cursor:default}
 .grid .step button:disabled{opacity:.3;cursor:default}
 .grid .step span{min-width:52px;text-align:center;font-size:14px;font-weight:800;white-space:nowrap}
 .foot{display:flex;align-items:center;gap:14px;flex-shrink:0}
-.foot .sum{font-size:20px;font-weight:800;white-space:nowrap}
-.foot .sum em{font-style:normal;font-size:42px;line-height:1;margin-right:4px}
+.foot .sum{display:flex;align-items:baseline;gap:12px;font-size:20px;font-weight:800;color:var(--dk-text-2);white-space:nowrap}
+.foot .sum em{font-style:normal;font-size:42px;line-height:1;color:var(--dk-text);font-variant-numeric:tabular-nums}
 .foot .calc{font-size:14px;color:var(--dk-text-2);line-height:1.5}
 .foot .calc b{font-size:inherit;color:var(--brand)}
 .foot .sp{flex:1}
@@ -372,8 +372,9 @@ function render(s) {
           <button data-s="${s}" data-a="dec" data-x="${lb}">−</button><span>${n} · ${n * v} 台</span>
           <button data-s="${s}" data-a="inc" data-x="${lb}"${n >= mx ? ' disabled' : ''}>＋</button></span></div>`;
         return `<button class="card${n ? ' on' : ''}" data-s="${s}" data-a="pat" data-x="${lb}"><b>${lb}</b>${note}<i>${v} 台</i></button>`; }).join('')}</div>
-      <div class="foot"><span class="sum"><em>${c.patTai}</em>台</span>
-        <span class="calc">${l.act === 'tsumo' ? '另外三家' : NAME[l.who]} 共付 <b>${c.sum.toLocaleString()}</b><br>${busy ? note + '，確認完才能送出' : '送出後付錢的人各自在平板上確認'}</span>
+      <!-- 只顯示合計，像結帳那樣（2026-09-24 使用者指定：說明太多）；上一局卡住時才多一句為什麼不能送出 -->
+      <div class="foot"><span class="sum">合計<em>${c.sum.toLocaleString()}</em></span>
+        ${busy ? `<span class="calc">${note}，確認完才能送出</span>` : ''}
         <span class="sp"></span><button class="btn pri" data-s="${s}" data-a="send"${busy || !(l.none || Object.keys(l.sel).length) ? ' disabled' : ''}>送出</button></div>
       ${meHTML(s)}</div>`;
   }
