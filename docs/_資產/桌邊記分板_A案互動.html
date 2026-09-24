@@ -368,7 +368,7 @@ function render(s) {
         if (mx > 1) return `<button class="card${n ? ' on' : ''}" data-s="${s}" data-a="cyc" data-x="${lb}">${n ? `<span class="cnt">${n}</span>` : ''}<b>${lb}</b>${note}<i>${(n || 1) * v} 台</i></button>`;
         return `<button class="card${n ? ' on' : ''}" data-s="${s}" data-a="pat" data-x="${lb}"><b>${lb}</b>${note}<i>${v} 台</i></button>`; }).join('')}</div>
       <!-- 只顯示台數與總數，像結帳那樣（2026-09-24 使用者指定：說明太多）；上一局卡住時才多一句為什麼不能送出 -->
-      <div class="foot"><span class="sum"><span><em>${c.patTai}</em> 台</span><span>共 <em>${c.sum.toLocaleString()}</em></span></span>
+      <div class="foot"><span class="sum"><span><em>${c.patTai}</em> 台</span><span><em>${c.sum.toLocaleString()}</em></span></span>
         ${busy ? `<span class="calc">${note}，確認完才能送出</span>` : ''}
         <span class="sp"></span><button class="btn pri" data-s="${s}" data-a="send"${busy || !(l.none || Object.keys(l.sel).length) ? ' disabled' : ''}>送出</button></div>
       ${meHTML(s)}</div>`;
