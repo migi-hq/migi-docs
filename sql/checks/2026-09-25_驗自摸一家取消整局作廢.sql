@@ -69,10 +69,11 @@ begin
     r := public.tbl_confirm_hand_tx(tk[1], h, true);
     st := public.tbl_state_tx(tk[1]);
     v := v || case when r ->> 'reason' = 'not_pending'
+                        and (st -> 'round' ->> 'hand_no')::int = 1
                         and (st -> 'round' ->> 'dealer_seat')::int = 1 and (st -> 'round' ->> 'renzhuang')::int = 0
                   then '✅' else '🔴' end
-           || ' T3 座位 1 晚到的確認回「已經處理過了」；作廢不推進局數（莊 ' || (st -> 'round' ->> 'dealer_seat')
-           || '，連 ' || (st -> 'round' ->> 'renzhuang') || '）' || E'\n';
+           || ' T3 座位 1 晚到的確認回「已經處理過了」；作廢不推進：仍是第 ' || (st -> 'round' ->> 'hand_no')
+           || ' 局、莊 ' || (st -> 'round' ->> 'dealer_seat') || '、連 ' || (st -> 'round' ->> 'renzhuang') || E'\n';
 
     -- ── T4 正對照：重新送一次自摸，三家都確認 ⇒ 一次入帳，金額 ＝ 當初提出的 ──
     r := public.tbl_submit_hand_tx(tk[2], 'tsumo', null, '[]');
@@ -93,6 +94,13 @@ begin
                   then '✅' else '🔴' end
            || ' T4b 第三家確認 ⇒ 一次入帳：座位 2 收 ' || coalesce(st -> 'totals' ->> '2', '?') || '（提出的是 ' || win || '），'
            || '三家各付 ' || (p ->> '1') || ' / ' || (p ->> '3') || ' / ' || (p ->> '4') || E'\n';
+    /* 使用者的原話：「A 重新送出正確的、全部確認 ⇒ 莊家推進、局數推進」。
+       座位 2 是閒家自摸 ⇒ 下莊，莊家輪到座位 1 的下家（座位 2），進入第 2 局 */
+    v := v || case when (st -> 'round' ->> 'hand_no')::int = 2
+                        and (st -> 'round' ->> 'dealer_seat')::int = 2 and (st -> 'round' ->> 'renzhuang')::int = 0
+                  then '✅' else '🔴' end
+           || ' T4c 全部確認之後才推進：第 ' || (st -> 'round' ->> 'hand_no') || ' 局、莊 '
+           || (st -> 'round' ->> 'dealer_seat') || '、連 ' || (st -> 'round' ->> 'renzhuang') || E'\n';
 
     -- ── T5 包牌（三家收）：一家確認、一家取消 ⇒ 整局作廢，包牌的人一分都不付 ──
     st := public.tbl_state_tx(tk[1]);
