@@ -1,5 +1,13 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-09-25 增補 ③（歸檔 `2026-09-25_成就徽章搬進Storage.sql`）
+> **基準：`sql/applied/` 有 272 個 `.sql`**。資料表 60、函式 279 —— 與增補 ② 相同（這一批沒有新表、沒有新函式）。
+> | | |
+> |---|---|
+> | 🆕 Storage bucket `achievement-badges` | 公開、上限 256 KB、只收 webp／png；**沒有寫入 policy**（只有 Dashboard／service_role 傳得進去） |
+> | 🆕 `achievements.badge_path` | 徽章圖在 bucket 裡的路徑（不是完整網址）；null＝沒有圖，前端用 emoji。🔴 改圖換新檔名再改這一欄，不要覆蓋 |
+> | 🔁 `get_my_achievements_tx()` | 多回 `badge_path`（遮蔽的成就照樣回，前端本來就畫灰階剪影） |
+
 > ### 🆕 2026-09-25 增補 ②（歸檔 `2026-09-25_會員隱藏帳號.sql` 時量的，量法同 09-23 那段）
 > **基準：`sql/applied/` 有 271 個 `.sql`**（最後歸檔的是 `2026-09-25_會員隱藏帳號.sql`）
 > ```
