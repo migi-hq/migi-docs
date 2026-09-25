@@ -39,6 +39,11 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const BUCKET = 'team-crests'
 
+/* 縮圖的路徑：`<team>/<uuid>.webp` → `<team>/<uuid>.s.webp`（2026-09-25）。
+   ⚠ 與 `avatar-photo` 與 migi-web `lib/avatar.js` 的 `thumbOf()` **同一條規則**，
+     改要三處一起改（Edge Function 之間沒有共用模組）。 */
+const thumbOf = (p: string) => p.replace(/\.(webp|jpg)$/, '.s.$1')
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -227,7 +232,20 @@ Deno.serve(async (req) => {
       }, 502)
     }
     const token = String(out.url).split('token=')[1] ?? ''
-    return json({ ok: true, path, token, url: `${SUPABASE_URL}/storage/v1${out.url}` })
+
+    /* 縮圖（2026-09-25）：同一張圖的 128px 版本，給團卡清單用。
+       ⚠ 失敗不擋原圖 —— 少了 thumb_token，前端就只傳原圖、畫面讀原圖。 */
+    const thumbPath = thumbOf(path)
+    const tr = await api(`storage/v1/object/upload/sign/${BUCKET}/${thumbPath}`, {
+      method: 'POST', body: JSON.stringify({}),
+    })
+    const tout = await tr.json().catch(() => null)
+    const thumb = tr.ok && tout?.url
+      ? { thumb_path: thumbPath, thumb_token: String(tout.url).split('token=')[1] ?? '' }
+      : {}
+    if (!tr.ok) console.warn('[team-crest] 縮圖簽名失敗（只傳原圖）', tr.status, tout)
+
+    return json({ ok: true, path, token, url: `${SUPABASE_URL}/storage/v1${out.url}`, ...thumb })
   }
 
   /* ── delete ────────────────────────────────────────
@@ -252,7 +270,7 @@ Deno.serve(async (req) => {
     }
     if (out.path) {
       const rm = await api(`storage/v1/object/${BUCKET}`, {
-        method: 'DELETE', body: JSON.stringify({ prefixes: [out.path] }),
+        method: 'DELETE', body: JSON.stringify({ prefixes: [out.path, thumbOf(out.path)] }),
       })
       /* ⚠ 檔案刪不掉**不回失敗** —— 欄位已經清了，畫面是對的，
          留下的只是一個沒有人指向的孤兒檔案。

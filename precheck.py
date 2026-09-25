@@ -226,10 +226,17 @@ def main():
     #   🔴 2026-09-21：29 枚裡 17 枚在 App 裡露白（使用者看到「不是正圓」），
     #     build 與其他檢查器全部沒說話 —— 圖檔不是程式碼，沒有人在看它。
     #     而新徽章會一直進來（C 區 31 枚還沒畫），所以綁在 push 上。
-    assets = os.path.join(src, 'assets')
-    if any(f.startswith('ach_') and f.endswith('.webp') for f in (os.listdir(assets) if os.path.isdir(assets) else [])):
+    #   🔴 2026-09-25 徽章搬進 Storage（bucket achievement-badges），正本改放
+    #     docs/_資產/成就徽章/ —— 那是「上傳前的那一份」，檢查綁在 migi-web 的 push 上
+    #     （跨 repo，同 ⑦）。⚠ 不可以因為 src/assets 沒有徽章了就整項跳過 ——
+    #     那會讓這個閘門安靜地消失，而新徽章照樣會一直進來。
+    badge_dir = os.path.join(ASSETS, '成就徽章')
+    if os.path.basename(repo) == 'migi-web':
         print('\n⑧ badgecheck.py（成就徽章在圓形容器裡會不會露白）')
-        if run([sys.executable, os.path.join(ASSETS, 'badgecheck.py'), assets]) != 0:
+        if not os.path.isdir(badge_dir):
+            print('   🔴 %s 不見了 —— 擋下（資料夾不見不等於沒問題）' % badge_dir)
+            fails.append('徽章正本資料夾不見了')
+        elif run([sys.executable, os.path.join(ASSETS, 'badgecheck.py'), badge_dir]) != 0:
             fails.append('徽章不是正圓')
 
     # ── ⑦ 跨 repo：兩份 discount.js 不可以漂 ───────────────────

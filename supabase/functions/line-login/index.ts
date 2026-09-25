@@ -518,7 +518,9 @@ Deno.serve(async (req) => {
            **而那是刻意的順序**：先讓 session 發得出來且前端拿得到，
            確認沒問題，再把舊路關掉。反過來做會讓 App 當場全掛。 */
     let session: { token_hash: string; otp_type: string } | null = null
-    if (out?.member_id) {
+    /* 🆕 2026-09-25：帳號被隱藏時不發 session —— 他打不開 App，
+       而 current_member_id() 本來就認不出他，發了只是多一張沒用的憑證。 */
+    if (out?.member_id && !out?.hidden) {
       try {
         session = await issueMemberSession(sub)
       } catch (e) {
