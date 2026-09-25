@@ -236,8 +236,12 @@ def main():
         if not os.path.isdir(badge_dir):
             print('   🔴 %s 不見了 —— 擋下（資料夾不見不等於沒問題）' % badge_dir)
             fails.append('徽章正本資料夾不見了')
-        elif run([sys.executable, os.path.join(ASSETS, 'badgecheck.py'), badge_dir]) != 0:
-            fails.append('徽章不是正圓')
+        else:
+            if run([sys.executable, os.path.join(ASSETS, 'badgecheck.py'), badge_dir]) != 0:
+                fails.append('徽章不是正圓')
+            # 🆕 2026-09-25：發布過的檔名不可以換內容（改圖要換新檔名，否則 CDN 給舊圖）
+            if run([sys.executable, os.path.join(ASSETS, 'badgeimmutable.py'), badge_dir]) != 0:
+                fails.append('已發布的徽章被同名換圖')
 
     # ── ⑦ 跨 repo：兩份 discount.js 不可以漂 ───────────────────
     #   🎯 這一項比測試更直接命中 2026-09-08 那個 bug ——

@@ -5295,7 +5295,13 @@ settled_at 09-03 15:18   ← 8 場全部同一個時間點
       線上 `achievements`（`is_active` 且未刪）的 code，減去 `ACH_ART` 裡有 `img:` 的那些。
     📌 做圖的流程已經有了：`docs/_資產/badge_recut.py`（合成圖切片 ＋ 擬合圓裁切），
       push 前 `badgecheck.py`（precheck ⑧）會擋「不是正圓、露白」的徽章。
-    📌 命名：`migi-web/src/assets/ach_<code>.webp`，256×256。
+    📌 命名：`ach_<code>.webp`，256×256。🔴 **2026-09-25 起圖在 Storage**（bucket `achievement-badges`，
+      路徑存在 `achievements.badge_path`），正本放 `docs/_資產/成就徽章/`，**不再進 migi-web**。
+    🔴 **改圖一律換新檔名**（`ach_x.v2.webp`）再改 `badge_path`，不可以覆蓋同一個路徑 ——
+      CDN 會繼續給舊圖而且不報錯。兩道機制在擋，不靠記性：
+      · `docs/_資產/badgeimmutable.py`：比對 `成就徽章_已發布.json`，同名換內容就擋
+        （migi-web 的 push ＋ migi-docs 的 **pre-commit**；⚠ hook 不進版控，換機器要重裝）
+      · 錯誤儀表第 ⑮ 格：Storage 的 `updated_at` 晚於 `created_at` ＝ 有人在後台直接覆蓋
     🎯 **旗艦那兩枚優先** —— 全系統只有它們是傳說稀有度，墨底金框配 emoji 最突兀。
 
 46. 🔴 **系統沒有「刪除帳號」，只有「隱藏」**（2026-09-25 使用者拍板，同日改了三次才定案）。

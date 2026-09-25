@@ -569,13 +569,22 @@ select 序, 項目, 內容 from (
                select o.bucket_id,
                       count(*) as n,
                       coalesce(sum((o.metadata->>'size')::bigint), 0) as bytes,
+                      /* 🆕 2026-09-25 三個修正，少了任一個都會誤報孤兒：
+                         · 縮圖 `x.s.webp` 算在原圖 `x.webp` 身上（去掉 .s 再比對）
+                         · 隱藏中的會員，照片路徑在保險箱 member_hidden 裡
+                         · 成就徽章 bucket：沒有任何成就的 badge_path 指向它才算孤兒 */
                       count(*) filter (where case o.bucket_id
                         when 'member-avatars'
                           then not exists (select 1 from members m
-                                            where m.avatar_photo_path = o.name)
+                                            where m.avatar_photo_path = regexp_replace(o.name, '\.s(\.(webp|jpg))$', '\1'))
+                           and not exists (select 1 from member_hidden h
+                                            where h.avatar_photo_path = regexp_replace(o.name, '\.s(\.(webp|jpg))$', '\1'))
                         when 'team-crests'
                           then not exists (select 1 from teams t
-                                            where t.crest_path = o.name)
+                                            where t.crest_path = regexp_replace(o.name, '\.s(\.(webp|jpg))$', '\1'))
+                        when 'achievement-badges'
+                          then not exists (select 1 from achievements a
+                                            where a.badge_path = o.name and a.deleted_at is null)
                         else false end) as orphan
                  from storage.objects o
                 group by o.bucket_id)
@@ -593,6 +602,28 @@ select 序, 項目, 內容 from (
                        else '🔴 孤兒 ' || sum(f.orphan) || ' 個 —— 清理排程該做了，'
                             || '**一次涵蓋全部 bucket**，不要為單一種照片做一個'
                      end from f)) end
+
+  union all
+  /* ⑮ 成就徽章被「同名覆蓋」（2026-09-25 加）。
+        🔴 規則是**改圖一律換新檔名**（ach_x.v2.webp），不可以覆蓋同一個路徑 ——
+          CDN 與瀏覽器會繼續給舊圖，有人看到新的、有人看到舊的，而且不報錯。
+        本機那一條由 push 前的 badgeimmutable.py 擋（改正本資料夾裡的同名檔）；
+        **這一格擋的是另一條路：直接在 Supabase 後台上傳同名檔覆蓋**，
+        那一條本機看不到，後台的權限也擋不住。
+        判準：Storage 覆蓋時會更新 updated_at ⇒ 比 created_at 晚一分鐘以上就是被蓋過。
+        ⚠ bucket 還不存在或是空的時印 ⚪，不假裝通過。 */
+  select 15, '⑮ 成就徽章有沒有被同名覆蓋（改圖要換新檔名）',
+         case when not exists (select 1 from storage.objects where bucket_id = 'achievement-badges')
+           then '⚪ achievement-badges 還沒有檔案，這一格測不了'
+           else coalesce((
+             select '🔴 ' || count(*) || ' 張被覆蓋過：' || string_agg(o.name, '、' order by o.name)
+                    || E'\n  → 重新上傳成新檔名（例 ach_x.v2.webp），再把 achievements.badge_path 改過去'
+               from storage.objects o
+              where o.bucket_id = 'achievement-badges'
+                and o.updated_at > o.created_at + interval '1 minute'
+             having count(*) > 0),
+             '✅ ' || (select count(*) from storage.objects where bucket_id = 'achievement-badges')
+               || ' 張都沒有被覆蓋過') end
 
   union all
   select 5, '⑤ 測試標記（修好前的歷史資料仍標成營運）',
