@@ -126,6 +126,11 @@ begin
       then '✅ D 沒被隱藏的人再恢復一次回 not_hidden' else '🔴 D 期望 not_hidden，實際 ' || v_out::text end;
 
     -- M 有點數也能隱藏，而且點數不動
+    /* 🔴 2026-09-25 第一次跑這一格是紅的：測試02 還坐在 A1／A2／A3 三張開著的桌上，
+       被 in_session 擋下 —— **擋對了，錯的是樣本沒先離座**（硬規則 3.57）。 */
+    update session_players sp set left_at = now()
+      from table_sessions ts
+     where ts.id = sp.session_id and ts.status = 'open' and sp.member_id = v_m02 and sp.left_at is null;
     select balance into v_bal from wallets where member_id = v_m02;
     v_out := public.admin_hide_member_tx(v_m02, '驗證用');
     v_msg := v_msg || E'\n' || case
