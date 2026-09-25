@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════════
--- 行為測試：「任何一人取消 ⇒ 這一局作廢、不推進，送出的人重送」（2026-09-25）
+-- 行為測試：「任何一人取消 ⇒ 這次操作作廢、不推進，送出的人重送」（2026-09-25）
 --   T1–T4 自摸、T5 包牌、T6 放槍（含重送）
 --   前提：sql/pending/2026-09-25_自摸一家取消整局作廢.sql 已經跑過
 --
@@ -55,7 +55,7 @@ begin
                   then '✅' else '🔴' end
            || ' T1 自摸、座位 3 先確認：四家總分仍是 ' || tot || '（確認的當下不入帳），這一局還在等' || E'\n';
 
-    -- ── T2 座位 4 取消 ⇒ 整局立刻作廢，不等座位 1 ──
+    -- ── T2 座位 4 取消 ⇒ 這次操作立刻作廢，不等座位 1 ──
     r := public.tbl_confirm_hand_tx(tk[4], h, false);
     st := public.tbl_state_tx(tk[1]);
     tot := coalesce(st -> 'totals' ->> '1', '0') || '/' || coalesce(st -> 'totals' ->> '2', '0') || '/'
@@ -63,7 +63,7 @@ begin
     v := v || case when r ->> 'status' = 'rejected' and (r ->> 'voided')::boolean and tot = '0/0/0/0'
                         and (select status from hands where id = h) = 'rejected'
                   then '✅' else '🔴' end
-           || ' T2 座位 4 取消 ⇒ 整局作廢（' || coalesce(r ->> 'status', '?') || '），先確認的座位 3 也沒扣：' || tot || E'\n';
+           || ' T2 座位 4 取消 ⇒ 這次操作作廢（' || coalesce(r ->> 'status', '?') || '），先確認的座位 3 也沒扣：' || tot || E'\n';
 
     -- ── T3 座位 1 晚到的確認 ⇒ 已經處理過了；局數與莊家不動 ──
     r := public.tbl_confirm_hand_tx(tk[1], h, true);
@@ -102,7 +102,7 @@ begin
            || ' T4c 全部確認之後才推進：第 ' || (st -> 'round' ->> 'hand_no') || ' 局、莊 '
            || (st -> 'round' ->> 'dealer_seat') || '、連 ' || (st -> 'round' ->> 'renzhuang') || E'\n';
 
-    -- ── T5 包牌（三家收）：一家確認、一家取消 ⇒ 整局作廢，包牌的人一分都不付 ──
+    -- ── T5 包牌（三家收）：一家確認、一家取消 ⇒ 這次操作作廢，包牌的人一分都不付 ──
     st := public.tbl_state_tx(tk[1]);
     tot := coalesce(st -> 'totals' ->> '3', '0');
     r := public.tbl_submit_hand_tx(tk[3], 'bao', null, '[]');
@@ -112,7 +112,7 @@ begin
     st := public.tbl_state_tx(tk[1]);
     v := v || case when r ->> 'status' = 'rejected' and coalesce(st -> 'totals' ->> '3', '0') = tot
                   then '✅' else '🔴' end
-           || ' T5 包牌一家確認、一家取消 ⇒ 整局作廢，包牌的座位 3 維持 ' || coalesce(st -> 'totals' ->> '3', '0')
+           || ' T5 包牌一家確認、一家取消 ⇒ 這次操作作廢，包牌的座位 3 維持 ' || coalesce(st -> 'totals' ->> '3', '0')
            || '（原本 ' || tot || '）' || E'\n';
 
     -- ── T6 放槍：取消 ⇒ 作廢；重送一次、確認 ⇒ 入帳（送出的人重送那條路是通的）──
