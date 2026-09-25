@@ -1,5 +1,23 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-09-25 增補（歸檔 `2026-09-25_桌邊記分_逐家確認與咔啦碰包牌.sql` 時量的，量法同 09-23 那段）
+> **基準：`sql/applied/` 有 268 個 `.sql`**（最後歸檔的是 `2026-09-25_桌邊記分_逐家確認與咔啦碰包牌.sql`）
+> ```
+> 資料表 58   函式 273   檢視表 22   索引 176   policy 33   CHECK 145
+> ```
+> ⚠ 函式 256 → 273 不全是這一批：09-23 之後還有別的歸檔。這一批**沒有新增函式**（六支都是 CREATE OR REPLACE）。
+>
+> **這一批的結構變動**：
+> | | |
+> |---|---|
+> | 🆕 `stake_levels.start_points` | 桌邊記分板每人開局的積分（頂部「總積分」），NOT NULL 預設 2000，建立時回填 底 × 20 |
+> | 🆕 `hands.proposed_delta` | 送出時提出的每家金額；**`score_delta` 從此是「已生效的」**，每一家確認時才把他那一份搬過去 |
+> | 🆕 `hands.cancelled_seats` | 按了取消的座位；全部需要確認的人都取消 ⇒ `status = rejected`（這局不算） |
+> | 🔁 `hands.result` | 多兩種：`kala`（咔啦碰：winner＝收的人、deal_in＝付的人）、`bao`（包牌：deal_in＝付的人、winner 空） |
+> | 🔁 `uq_hands_confirmed_no` | 排除咔啦碰（它跟當局共用局號） |
+> | 🔁 `scoring_patterns` | 三元牌上限 3 → 2、風牌 4 → 3；🆕 `migi`（8 台，`achievement_event = migi_hu`） |
+> | 🔁 函式 | `tbl_submit_hand_tx`（咔啦碰／包牌）、`tbl_confirm_hand_tx`（逐家確認）、`_tbl_round_state`（咔啦碰不推進、莊家包牌才下莊）、`tbl_state_tx`（起始積分、整場紀錄 `log`、`avatar_photo_path`）、`_score_settle_tx`（收桌時照已確認的部分收尾；MIGI 成就改看牌型）、`tbl_undo_last_tx`（照時間挑最後一筆） |
+
 > ### 🆕 2026-09-23 增補（歸檔時量的，**連量法一起寫**）
 > **基準：`sql/applied/` 有 265 個 `.sql`**（最後歸檔的是 `2026-09-23_電子計分_資料表.sql`）
 > ```
