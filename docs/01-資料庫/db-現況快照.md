@@ -1,5 +1,23 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-09-25 增補 ②（歸檔 `2026-09-25_會員隱藏帳號.sql` 時量的，量法同 09-23 那段）
+> **基準：`sql/applied/` 有 271 個 `.sql`**（最後歸檔的是 `2026-09-25_會員隱藏帳號.sql`）
+> ```
+> 資料表 60   函式 279   檢視表 22   索引 178   policy 33   CHECK 147
+> ```
+> 📌 與上一段的差額**全部**是這一批：資料表 +2（`member_hidden`／`member_hide_log`）、
+>   函式 +6、索引 +2（兩張新表的主鍵）、CHECK +2（紀錄表的 action／source）。
+>
+> **這一批的結構變動**（系統**沒有刪除帳號**，只有隱藏 —— 使用者 2026-09-25 拍板）：
+> | | |
+> |---|---|
+> | 🆕 `members.hidden_at` | 有值＝隱藏中：他打不開 App，別人看到問號 |
+> | 🔁 `members_avatar_source_chk` | 多一個值 `hidden`（三端前端畫 `/hidden-avatar.svg`） |
+> | 🆕 `member_hidden` | 保險箱：隱藏時搬進來的名字／頭像三來源／自介／稱號／打法／作息／寶貝牌，恢復時搬回去。RLS 開、0 policy |
+> | 🆕 `member_hide_log` | 隱藏與恢復的紀錄（action／source self·hq／操作者／原因）。RLS 開、0 policy |
+> | 🆕 函式 | `hide_my_account_tx()`（本人）、`admin_hide_member_tx`／`admin_unhide_member_tx`／`admin_find_members_tx`（總部，`can('member.hide')`）、兩支 `_core`（只有 owner 叫得動） |
+> | 🔁 函式 | `current_member_id()`（跳過隱藏中的人）、`get_member_by_line_tx`（回 `hidden`）、`_season_rank_rows_core`／`get_season_leaderboard_tx`（排名與名人堂濾掉）、`list_buddies_tx`／`list_recent_players_tx`（牌咖與最近同桌濾掉）、`send_buddy_invite_tx`（擋對隱藏會員送邀請） |
+
 > ### 🆕 2026-09-25 增補（歸檔 `2026-09-25_桌邊記分_逐家確認與咔啦碰包牌.sql` 時量的，量法同 09-23 那段）
 > **基準：`sql/applied/` 有 268 個 `.sql`**（最後歸檔的是 `2026-09-25_桌邊記分_逐家確認與咔啦碰包牌.sql`）
 > ```
