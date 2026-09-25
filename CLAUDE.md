@@ -15,6 +15,8 @@ migi github/           ← Claude Code 的 project folder 選這層
 ├─ migi-admin/         ← 後台（migi-hq/migi-admin）
 ├─ migi-table/         ← 🆕 桌邊記分平板（migi-hq/migi-table）。客人自己記分，
 │                        身分是 device_token 不是會員 —— 系統的第三種身分
+│                        🔴 平板的配對／停用／看狀態**只在總部後台**「桌邊平板」頁，
+│                          **POS 不可以有平板管理**（2026-09-25 使用者拍板，後端停用也收成 device.write）
 ├─ migi-assets/        ← 🔴 三端共用的設計 token 與品牌美術（migi-hq/migi-assets）
 │                        **這是唯一一個公開 repo**（其餘三個私有）。詳見硬規則 13
 ├─ sql/                ← 所有 Supabase SQL（非 repo，手動保存）
