@@ -1,5 +1,12 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-09-26 增補 ⑤（歸檔 `2026-09-26_配桌列表回傳頭像.sql`）
+> **基準：`sql/applied/` 有 274 個 `.sql`**。資料表 60、函式 279 —— 不變（只改既有函式）。
+> | | |
+> |---|---|
+> | 🔁 `pos_list_queues_tx` | `members` 每人多回 `avatar_source`／`avatar_photo_path`／`avatar_bear`／`avatar_url`（與 `get_session_tx` 同一組鍵）。在此之前 POS 配桌列表的座位卡一律畫通用小熊 |
+> | ⚪ `pos_queue_members_tx` | 刻意不動：結帳頁預帶座位時會再叫 `pos_member_detail_tx` 補齊頭像 |
+
 > ### 🆕 2026-09-25 增補 ④（歸檔 `2026-09-25_停用平板改成總部權限.sql`，含前一份 `自摸一家取消整局作廢.sql`）
 > **基準：`sql/applied/` 有 273 個 `.sql`**。量過：資料表 60、函式 279、檢視表 22、索引 178、policy 33、CHECK 147 —— 與增補 ② 相同（兩份都只改既有函式）。
 > | | |
