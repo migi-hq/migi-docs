@@ -1,5 +1,14 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-09-27 增補 ⑥（歸檔 `2026-09-27_每一將重新定座位.sql`）
+> **基準：`sql/applied/` 有 275 個 `.sql`**。量過：資料表 60、函式 279（舊的兩參數版 DROP、新版補回，淨 0）、CHECK 147 → **148**。
+> | | |
+> |---|---|
+> | 🆕 `session_rounds.seat_ring smallint[]` | 這一將的繞桌順序 `[莊家, 下家, 對家, 上家]`（座位號）；**null ＝ 1→2→3→4**（第一將與舊資料）。座位號本身永遠代表那個人，換位子只改這一欄 |
+> | 🆕 `session_rounds_seat_ring_chk` | null，或「剛好 4 格且 1～4 都在」（＝一個排列）。⚠ CHECK 裡不能放子查詢，第一版因此被 0A000 擋下 |
+> | 🔁 `tbl_start_round_tx(p_token, p_dealer_seat, p_next_seat, p_opposite_seat)` | 改簽名（DROP 重建、anon／authenticated 已補回）。下家／對家要嘛都給、要嘛都不給（`bad_order`）；都不給 ＝ 舊版平板，順序是預設 |
+> | 🔁 `_tbl_round_state` | 換莊改照這一將的 `seat_ring` 輪；回傳多一個 `seat_ring` 鍵 |
+
 > ### 🆕 2026-09-26 增補 ⑤（歸檔 `2026-09-26_配桌列表回傳頭像.sql`）
 > **基準：`sql/applied/` 有 274 個 `.sql`**。資料表 60、函式 279 —— 不變（只改既有函式）。
 > | | |
