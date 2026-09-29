@@ -1371,6 +1371,22 @@ migi github/           ← Claude Code 的 project folder 選這層
     ⚠ `?a` 撐不久：↻ 重新整理與自動更新都會把網址換成 `?r=…`，參數在那一刻被丟掉 ⇒ 掉回 E。
       **網址參數只適合預覽**；要讓不同店用不同版本，正解是後台設定、平板開機時問後端。
     📌 畫面清單：https://claude.ai/artifact/GoJmKP78qKgELxWycEegyP
+
+    ### ✅ 13.9c 「結算成績」與「收桌」是兩件事（2026-09-29 使用者拍板，`sql/applied/2026-09-29_打完自動結算成績_收桌記錄是誰按的.sql`）
+    ```
+    結算成績  系統自動 —— 約定的將數打完那一刻（session_rounds 的觸發器叫既有的 _score_settle_tx）
+              名次、桌上積分、段位分、成就；平板「牌局結束」卡讀 tbl_state_tx 的 rating_delta
+    收桌      店員在 POS 按 —— 關場次、放桌、放掉平板、記 table_sessions.closed_by_staff_id
+              已經有名次就不再結算（段位分不會重複加）；沒打完約定將數就收桌的，照舊由收桌補算
+    ```
+    · 🔴 **獎金只認 `closed_by_staff_id` 有值的場次**（使用者：避免店員忘了按收桌）。值從登入身分取、只記第一次按的人，
+      不採信前端；跟 `updated_by` 不同（那個會被後續更新蓋掉）。
+    · 🔴 **成績算完就不能加打、不能撤銷**（`trg_session_rounds_guard` 擋開新一將與 finished → playing），
+      那兩件事會讓後面的分數沒被算到而且不報錯。要加打請店員處理。
+    · 「這場算過了沒」只有一份定義：`_session_scored(session)` ＝ 有沒有人已經有 finish_rank。
+    · ⚠ **MIGI 成就只認選了 MIGI 牌型的那一局**（2026-09-25 起，事件 migi_hu），大三元 8 台不算 ——
+      09-23 那份收桌測試的期望值因此過期；以 `sql/checks/2026-09-29_驗打完自動結算與收桌記錄.sql` 為準（26/26）。
+    · ⏳ `v_real_table_sessions` 是寫死欄位的檢視表（25 欄），**還沒有 `closed_by_staff_id`** —— 做獎金報表之前要補。
     📌 對比表在 `migi-assets/README.md` 的「深色」一節 —— **新增深色 token 前先量，不要用挑的**。
 
 12. **每次 session 開始跑一次 `sql/checks/錯誤儀表.sql`。**（2026-08-28 起，MCP 直接跑）
