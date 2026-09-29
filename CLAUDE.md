@@ -1404,8 +1404,11 @@ migi github/           ← Claude Code 的 project folder 選這層
     · 「這場算過了沒」只有一份定義：`_session_scored(session)` ＝ 有沒有人已經有 finish_rank。
     · ⚠ **MIGI 成就只認選了 MIGI 牌型的那一局**（2026-09-25 起，事件 migi_hu），大三元 8 台不算 ——
       09-23 那份收桌測試的期望值因此過期；以 `sql/checks/2026-09-29_驗打完自動結算與收桌記錄.sql` 為準（26/26）。
-    · ⏳ 報表檢視表是寫死欄位的：`v_real_table_sessions`（25 欄）**還沒有 `closed_by_staff_id`**、
-      `v_real_match_queues`（23 欄）**還沒有 `credited_staff_id`** —— 做獎金報表之前兩張都要補。
+    · ✅ 報表檢視表補齊了（`sql/applied/2026-09-29_報表檢視表補欄位並收回前端權限.sql`）：
+      `v_real_table_sessions` 有 `closed_by_staff_id`、`v_real_match_queues` 有 `credited_staff_id`（另外三支同批補）。
+    · 🔴 **同一份順手堵掉：22 支檢視表原本全部 anon 讀得到**（檢視表繞過 RLS，anon 金鑰是公開的）——
+      已全部收回，REST 實測 401。**新建檢視表會再被 default privileges 開成 anon 可讀**，錯誤儀表 ⑯ 在盯；
+      後台要報表一律走 DEFINER ＋ `can()` 的 RPC，**不要把檢視表的權限加回去**。
     · ✅ `closed_by_staff_id` 的欄位說明已更正成「稽核用，不是獎金歸屬」（隨 `配桌完成記當班店員.sql`，線上查證過）。
     📌 對比表在 `migi-assets/README.md` 的「深色」一節 —— **新增深色 token 前先量，不要用挑的**。
 

@@ -626,6 +626,26 @@ select 序, 項目, 內容 from (
                || ' 張都沒有被覆蓋過') end
 
   union all
+  /* ⑯ 檢視表有沒有被前端角色讀得到（2026-09-29 加）。
+        🔴 檢視表預設用擁有者的身分查 ⇒ **RLS 不作用**，而 public schema 被 PostgREST 開放、
+          anon 金鑰本來就是公開的 ⇒ anon 讀得到的檢視表 ＝ 任何人都讀得到。
+        📌 2026-09-29 查到 22 支全部 anon 可讀（連寫入權都有），v_wallet_balance_check 直接吐
+          會員 id／暱稱／餘額 —— 那天用 `報表檢視表補欄位並收回前端權限.sql` 收掉。
+        ⚠ **它一定會再發生**：Supabase 的 default privileges 讓新建的檢視表一建立就是 anon 全開。
+          所以這一格不是提醒，是唯一會發現的方式。後台要報表 → 走 DEFINER ＋ can() 的 RPC。 */
+  select 16, '⑯ 檢視表有沒有被 anon／authenticated 讀得到（檢視表繞過 RLS）',
+         coalesce((
+           select '🔴 ' || count(*) || ' 支前端讀得到：' || string_agg(c.relname, '、' order by c.relname)
+                  || E'\n  → revoke all on public.<檢視表> from public, anon, authenticated'
+             from pg_class c
+            where c.relnamespace = 'public'::regnamespace and c.relkind in ('v', 'm')
+              and (has_table_privilege('anon', c.oid, 'SELECT')
+                   or has_table_privilege('authenticated', c.oid, 'SELECT'))
+           having count(*) > 0),
+           '✅ ' || (select count(*) from pg_class where relnamespace = 'public'::regnamespace and relkind in ('v', 'm'))
+             || ' 支檢視表前端都讀不到')
+
+  union all
   select 5, '⑤ 測試標記（修好前的歷史資料仍標成營運）',
          (select 'is_test=true ' || count(*) filter (where is_test)::text ||
                  '　is_test=false ' || count(*) filter (where not is_test)::text ||

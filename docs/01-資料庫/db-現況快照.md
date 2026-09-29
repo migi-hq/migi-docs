@@ -1,5 +1,13 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-09-29 增補 ⑧（歸檔 `2026-09-29_報表檢視表補欄位並收回前端權限.sql`）
+> **基準：`sql/applied/` 有 279 個 `.sql`**。資料表 60、函式 285、檢視表 22 —— 數量不變。
+> | | |
+> |---|---|
+> | 🔁 5 支 `v_real_*` 補欄位 | `table_sessions`＋`score_channel`／`closed_by_staff_id`、`match_queues`＋`credited_staff_id`、`stores`＋`on_duty_staff_id`／`on_duty_since`、`members`＋`hidden_at`、`session_players`＋`device_id`。過濾條件不變 |
+> | 🔒 **22 支檢視表收回 anon／authenticated／PUBLIC 的全部權限** | 檢視表用擁有者身分查 ⇒ 繞過 RLS；在此之前任何人拿公開的 anon 金鑰都讀得到（實測 `v_wallet_balance_check` 吐會員餘額）。現在 REST 回 401 `permission denied`。service_role 與 postgres 擁有的 DEFINER 函式不受影響 |
+> | ⚠ 新建的檢視表 | Supabase 的 default privileges 會讓它一建立就是 anon 全開 —— 錯誤儀表第 ⑯ 格在盯 |
+
 > ### 🆕 2026-09-29 增補 ⑦（歸檔三份：`打完自動結算成績_收桌記錄是誰按的`／`配桌完成記當班店員`／`配桌玩法拿掉預設值`）
 > **基準：`sql/applied/` 有 278 個 `.sql`**（另有 `.ts`／`.py` 各一個，不算）。唯讀 MCP 量過：
 > 資料表 60、函式 279 → **285**（新 6 支）、檢視表 22、索引 178、policy 33、CHECK 148、觸發器 52 —— 其餘不變。
