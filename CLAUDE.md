@@ -297,6 +297,26 @@ migi github/           ← Claude Code 的 project folder 選這層
      **同時印「明確有沒有」與「PUBLIC 有沒有」**，
      否則收錯方向時看到的症狀跟沒收一模一樣。
 
+   ### ✅ 2.7 從 2026-09-29 起，新建的東西預設「全關」—— 要給前端用的必須明確 grant
+   （`sql/applied/2026-09-29_預設權限改成全關.sql`，驗證段真的建了試探函式與檢視表量過）
+   ```
+   以前   public 新建的函式／表／檢視表 → 一出生 anon 與 authenticated 就全權限（上面 2.6b 那條）
+   現在   一出生只有 postgres 與 service_role 碰得到
+   ```
+   → **要給前端叫的新 RPC，同一份 SQL 裡一定要寫**：
+   ```sql
+   grant execute on function public.xxx(參數型別) to authenticated;          -- 登入的人（會員 App／POS／後台）
+   grant execute on function public.xxx(參數型別) to anon, authenticated;    -- 連沒登入也要（少見：公開主檔）
+   ```
+   🎯 忘了寫的後果從「**安靜地外洩**」變成「**前端一叫就 permission denied**」—— 第一次測試就會發現。
+   ⚠ **上面 2.6b「新建的函式 anon 是明確授權、要 revoke from anon」從這天起不再適用**（只對 09-29 之前建的有效）。
+   ⚠ **DROP 重建 ＝ 新建** ⇒ 預設是關的，硬規則 2 的「補 grant」從此是必要不是保險。
+   ⚠ 函式開放給前端之後，**身分仍然要函式自己問**（DEFINER 繞過 RLS）：
+     會員功能用 `current_member_id()`、POS 用 `perform public._api_staff_only();`，
+     **不可以把「你是誰」當參數收**。錯誤儀表 ⑰ 在掃這件事、⑱ 盯預設權限有沒有被改回全開。
+   📌 起點是使用者問「是不是每做一個新功能都要檢查 anon 繞過 RLS」—— 答案是**以前是**，
+     因為預設全開；9/4、9/10、9/11、9/20、9/29 ×2 修了六次同一個形狀。
+
    ### 🔴 2.6c `create extension` 一律寫 `with schema extensions`
    （2026-09-01 踩到，踩坑第 30 條）
    ```sql
@@ -1416,7 +1436,7 @@ migi github/           ← Claude Code 的 project folder 選這層
       （只擋「從 API 進來又不是店員」，排程照常）。延後的 7 支見現況快照增補 ⑨。
     · 🔴 **根因：這個專案的 default privileges 是全開** —— public 新建的函式／表／檢視表一建立就是 anon 與 authenticated 全權限。
       ⇒ 每個新功能一出生就是公開的，要有人記得收；9/4、9/10、9/11、9/20、9/29 ×2 都是這個形狀。
-      ⏳ 正解是把預設反過來（全關，要給前端的才明確 grant）＋ 錯誤儀表常駐一格掃「前端叫得動、收指定人參數、沒有身分檢查」。
+      ✅ **同日已把預設反過來（全關）＋ 錯誤儀表 ⑰⑱ 常駐** —— 見硬規則 2.7。
     · ✅ `closed_by_staff_id` 的欄位說明已更正成「稽核用，不是獎金歸屬」（隨 `配桌完成記當班店員.sql`，線上查證過）。
     📌 對比表在 `migi-assets/README.md` 的「深色」一節 —— **新增深色 token 前先量，不要用挑的**。
 

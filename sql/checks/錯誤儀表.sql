@@ -646,6 +646,45 @@ select 序, 項目, 內容 from (
              || ' 支檢視表前端都讀不到')
 
   union all
+  /* ⑰ 前端叫得動、收「指定人」的參數、函式裡卻沒有任何身分檢查（2026-09-29 加）。
+        🔴 DEFINER 函式本來就繞過 RLS，所以「你是誰」只能靠函式自己問 current_member_id()／
+          current_staff()／can()／_api_staff_only()。把身分當參數收（p_member／p_inviter…）
+          ＝ 知道別人的 id 就能冒名。9/11、9/20 只掃了叫 p_member_id 的，這一格**不看參數叫什麼**。
+        ⚠ 下面那 4 支是刻意延後的（見現況快照增補 ⑨），印成 ⚪；**任何其他名字出現就是新的洞**。 */
+  select 17, '⑰ 前端叫得動卻不檢查身分的函式（冒名的洞）',
+         (with x as (
+            select p.proname
+              from pg_proc p, lateral (select pg_get_functiondef(p.oid) d) f
+             where p.pronamespace = 'public'::regnamespace and p.prokind = 'f' and p.prosecdef
+               and (has_function_privilege('anon', p.oid, 'EXECUTE') or has_function_privilege('authenticated', p.oid, 'EXECUTE'))
+               and pg_get_function_result(p.oid) <> 'trigger'
+               and f.d !~ 'current_member_id\(\)|current_staff\(\)|\mcan\(|_api_staff_only|_tbl_(device|auth|hash)|p_token|migi_jwt'
+               and pg_get_function_identity_arguments(p.oid) ~ 'p_(member|member_id|inviter|invitee|liker|blocker|opener|queue|order_id|session_id|invoice_id|team|a|b|target|buddy|blocked)\M')
+          select coalesce(
+                   (select '🔴 ' || string_agg(proname, '、' order by proname) from x
+                     where proname not in ('_blocked_between','_try_auto_seat_tx','has_daypass_tx','pos_queue_members_tx')),
+                   '✅ 沒有新的') || E'\n  ⚪ 刻意延後：' ||
+                 coalesce((select string_agg(proname, '、' order by proname) from x
+                            where proname in ('_blocked_between','_try_auto_seat_tx','has_daypass_tx','pos_queue_members_tx')), '（已全部處理）'))
+
+  union all
+  /* ⑱ 預設權限還是「全關」嗎（2026-09-29 加）。
+        🔴 這是讓新東西「一出生就安全」的那道開關。有人（或 Supabase 的某次更新）把它改回去的話，
+          新功能又會一出生就公開 —— 而且沒有任何症狀。 */
+  select 18, '⑱ 新建東西的預設權限還是全關嗎',
+         case when exists (
+                select 1 from pg_default_acl d, aclexplode(d.defaclacl) a
+                 where d.defaclrole = 'postgres'::regrole and d.defaclnamespace = 'public'::regnamespace
+                   and a.grantee in ('anon'::regrole::oid, 'authenticated'::regrole::oid))
+              then '🔴 postgres 在 public 的預設又開放給前端了 —— 重跑 sql/applied/2026-09-29_預設權限改成全關.sql'
+              when not exists (
+                select 1 from pg_default_acl d
+                 where d.defaclrole = 'postgres'::regrole and d.defaclnamespace = 0 and d.defaclobjtype = 'f'
+                   and not exists (select 1 from aclexplode(d.defaclacl) a where a.grantee = 0))
+              then '🔴 全域那條（新函式給 PUBLIC）又回來了 —— 同上'
+              else '✅ 全關：新建的函式／表／檢視表前端碰不到，要用的要明確 grant' end
+
+  union all
   select 5, '⑤ 測試標記（修好前的歷史資料仍標成營運）',
          (select 'is_test=true ' || count(*) filter (where is_test)::text ||
                  '　is_test=false ' || count(*) filter (where not is_test)::text ||

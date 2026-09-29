@@ -1,5 +1,14 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-09-29 增補 ⑩（歸檔 `2026-09-29_預設權限改成全關.sql`）
+> **基準：`sql/applied/` 有 281 個 `.sql`**。物件數量不變（只改預設權限）。
+> | | |
+> |---|---|
+> | 🔒 `pg_default_acl`（postgres × public） | 函式／表／序列**不再預設給 anon、authenticated**；service_role 保留 |
+> | 🔒 `pg_default_acl`（postgres × 全域 × 函式） | 新增一列，只有 postgres —— 收掉 Postgres 內建「新函式給 PUBLIC」 |
+> | ⚪ supabase_admin 那一組、storage schema | 刻意不動（Supabase 自己用的身分／schema） |
+> | 📌 以後 | 給前端叫的新 RPC 要明確 `grant execute … to authenticated`（硬規則 2.7）；錯誤儀表 ⑰⑱ 盯著 |
+
 > ### 🆕 2026-09-29 增補 ⑨（歸檔 `2026-09-29_補上函式的身分檢查.sql`）
 > **基準：`sql/applied/` 有 280 個 `.sql`**。函式 285 → **286**（新 `_api_staff_only`），其餘數量不變。行為測試 14/14，REST 實測過。
 > | | |
