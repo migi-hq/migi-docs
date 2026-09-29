@@ -1379,14 +1379,33 @@ migi github/           ← Claude Code 的 project folder 選這層
     收桌      店員在 POS 按 —— 關場次、放桌、放掉平板、記 table_sessions.closed_by_staff_id
               已經有名次就不再結算（段位分不會重複加）；沒打完約定將數就收桌的，照舊由收桌補算
     ```
-    · 🔴 **獎金只認 `closed_by_staff_id` 有值的場次**（使用者：避免店員忘了按收桌）。值從登入身分取、只記第一次按的人，
-      不採信前端；跟 `updated_by` 不同（那個會被後續更新蓋掉）。
+    · 🔴 **獎金規則**（2026-09-29 使用者，同日更正過一次）：
+      ```
+      列入條件  有收桌（status = completed）＋ 這一場是配桌來的；包桌預約、現場直接開桌不列入
+      算給誰    **配桌完成（match_queues.matched_at）那一刻當班的店員** —— 一間店同一時間只有一位店員
+      ```
+      ⚠ **不是按收桌的人**：交班時下一位常常只是代為按收桌。`closed_by_staff_id` 只是稽核（誰按的），
+        值從登入身分取、只記第一次按的人。
+      ⚠ **也不是開桌的人**：配桌完成之後可能換下一班才開桌。
+      ✅ **歸屬記在 `match_queues.credited_staff_id`**（`sql/applied/2026-09-29_配桌完成記當班店員.sql`，行為 11/11）：
+        ```
+        當班      POS 本來就是「登入的人＝當班的人」；門市確定或切換時 pos_set_on_duty_tx 寫 stores.on_duty_staff_id，
+                  交班登出時 pos_clear_on_duty_tx 只清自己（下一位已經登入的不會被清掉）
+        記歸屬    觸發器：waiting → matched 那一刻把當班店員複製過去；退回 waiting 清掉；seated → matched 不動
+        沒人當班  記成 null ⇒ 那一場算不到任何人（看得出來，不是默默算錯人）
+        ```
+        ⚠ 配桌湊滿常常是客人在 App 按的、pg_cron 自動帶桌，那一刻沒有任何店員動作 —— 所以非得有「資料庫也知道的當班」。
+        ⚠ 已知情況：上一位忘了交班登出，下一位登入前湊滿的配桌算給上一位；老闆／總部在某店 POS 登入也會變成那店當班。
+      ⚠ `match_queues.game_type` 的**欄位預設值「16張」不在約束允許的值裡**（CHECK 只收 台麻／美麻，NOT VALID）——
+        任何不明確傳玩法的新寫法都會撞，2026-09-29 行為測試就撞過。修法是把預設改成「台麻」（未做）。
     · 🔴 **成績算完就不能加打、不能撤銷**（`trg_session_rounds_guard` 擋開新一將與 finished → playing），
       那兩件事會讓後面的分數沒被算到而且不報錯。要加打請店員處理。
     · 「這場算過了沒」只有一份定義：`_session_scored(session)` ＝ 有沒有人已經有 finish_rank。
     · ⚠ **MIGI 成就只認選了 MIGI 牌型的那一局**（2026-09-25 起，事件 migi_hu），大三元 8 台不算 ——
       09-23 那份收桌測試的期望值因此過期；以 `sql/checks/2026-09-29_驗打完自動結算與收桌記錄.sql` 為準（26/26）。
     · ⏳ `v_real_table_sessions` 是寫死欄位的檢視表（25 欄），**還沒有 `closed_by_staff_id`** —— 做獎金報表之前要補。
+    · ⏳ 欄位說明（`comment on column table_sessions.closed_by_staff_id`）還寫著「獎金只認這一欄」—— **是錯的**，
+      跟下一份 SQL 一起改。
     📌 對比表在 `migi-assets/README.md` 的「深色」一節 —— **新增深色 token 前先量，不要用挑的**。
 
 12. **每次 session 開始跑一次 `sql/checks/錯誤儀表.sql`。**（2026-08-28 起，MCP 直接跑）
