@@ -1,5 +1,16 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-09-29 增補 ⑪（歸檔 `2026-09-29_延後的7支補身分檢查.sql`）
+> **基準：`sql/applied/` 有 282 個 `.sql`**。函式 286 → **292**（6 支內層）。行為測試 8/8（含客人報名湊滿 → 自動帶桌），REST 實測 401。
+> | | |
+> |---|---|
+> | 🆕 `*_core` ×6 | `pos_table_forecast_tx`／`pos_queue_members_tx`／`_try_auto_seat_tx`／`pos_list_queues_tx`／`pos_list_recurring_tx`／`has_daypass_tx` 的**原本程式**，只給 service_role 與內部呼叫 |
+> | 🔁 同名外層 ×6 | 改成 plpgsql：先 `_api_staff_only()` 再轉給內層；簽名不變，POS 前端不用改 |
+> | 🔁 內部呼叫改接內層 | `pos_seat_queue_tx`、`_finalize_queue_full_tx`、`sweep_auto_seat_tx`、`_try_auto_seat_tx_core` —— 客人報名湊滿與排程不會撞到「限店員」 |
+> | 🔒 `_blocked_between` | 前端權限收回（前端根本沒在叫） |
+> | ✅ 結構掃描 | 「前端叫得動、收指定人參數、沒有身分檢查」的函式 **0 支** |
+> | ⚠ 以後要改這 6 支的邏輯 | **改 `_core` 那支**，外層只負責檢查身分 |
+
 > ### 🆕 2026-09-29 增補 ⑩（歸檔 `2026-09-29_預設權限改成全關.sql`）
 > **基準：`sql/applied/` 有 281 個 `.sql`**。物件數量不變（只改預設權限）。
 > | | |
