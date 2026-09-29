@@ -10,12 +10,12 @@ GitHub organization：`migi-hq`
 ```
 migi github/           ← Claude Code 的 project folder 選這層
 ├─ CLAUDE.md           ← 本檔
-├─ migi-pos/           ← 店員端 POS，React 18 + Vite（migi-hq/migi-pos）
-├─ migi-web/           ← 會員端 App，LIFF（migi-hq/migi-web）
-├─ migi-admin/         ← 後台（migi-hq/migi-admin）
-├─ migi-table/         ← 🆕 桌邊記分平板（migi-hq/migi-table）。客人自己記分，
+├─ migi-pos/           ← MIGI 門市 POS，React 18 + Vite（migi-hq/migi-pos）
+├─ migi-web/           ← MIGI 會員 App，LIFF（migi-hq/migi-web）
+├─ migi-admin/         ← MIGI 管理後台（migi-hq/migi-admin）
+├─ migi-table/         ← MIGI 智慧計分板（migi-hq/migi-table）。客人自己記分，日後也點餐，
 │                        身分是 device_token 不是會員 —— 系統的第三種身分
-│                        🔴 平板的配對／停用／看狀態**只在總部後台**「桌邊平板」頁，
+│                        🔴 平板的配對／停用／看狀態**只在管理後台**「智慧計分板」頁，
 │                          **POS 不可以有平板管理**（2026-09-25 使用者拍板，後端停用也收成 device.write）
 ├─ migi-assets/        ← 🔴 三端共用的設計 token 與品牌美術（migi-hq/migi-assets）
 │                        **這是唯一一個公開 repo**（其餘三個私有）。詳見硬規則 13
@@ -58,7 +58,24 @@ migi github/           ← Claude Code 的 project folder 選這層
   | `migi-web` | **`app.migi.tw`** ← LIFF endpoint 指這裡 |
   | `migi-admin` | **`hq.migi.tw`** |
   | **`migi-site`** | **`migi.tw`** ＋ `www.migi.tw` ← 🆕 官網（2026-09-05） |
-  | **`migi-table`** | **`table.migi.tw`** ← 🆕 桌邊記分平板（2026-09-23） |
+  | **`migi-table`** | **`table.migi.tw`** ← 🆕 智慧計分板（2026-09-23） |
+
+  ### 🔴 平台的中文名稱（2026-09-30 使用者定名）
+  | 給人看的名字 | repo／網址（程式代號，**不跟著改**） | 舊稱（不要再用） |
+  |---|---|---|
+  | **MIGI 會員 App** | `migi-web`／`app.migi.tw` | 會員端 App、MIGI 會員 |
+  | **MIGI 門市 POS** | `migi-pos`／`pos.migi.tw` | 店員 POS、店員端 |
+  | **MIGI 管理後台** | `migi-admin`／`hq.migi.tw` | 總部後台 |
+  | **MIGI 智慧計分板** | `migi-table`／`table.migi.tw` | 桌邊平板、桌邊記分、桌邊記分板 |
+  | ⏳ **MIGI 自助櫃檯**（未來，自助麻將館入口那台，業界叫 Kiosk） | 還沒有 | — |
+  · **命名公式：「誰用／在哪」＋「是什麼」**。英文只留全台灣店員都認得的（POS、App），前面一定加中文；
+    Kiosk 在台灣不夠普及，所以那一台用純中文「自助櫃檯」（它就是沒有店員的櫃檯：開桌、收錢、儲值）。
+  · **不要用硬體命名**（「平板」會換成嵌入式螢幕），也**不要用單一功能命名到裝不下**（計分板日後點餐也在它上面 ——
+    同 KTV 點歌機也能點餐，用最核心的功能命名是可以的）。
+  · ⚠ 「平板」仍然可以用來講**手上那台硬體**（「配對新平板」「用平板掃 QR」），那不是產品名。
+  · ⚠ 自助櫃檯與智慧計分板**不是同一個東西**：自助櫃檯在門口（開桌、付款、儲值，取代有人的櫃檯），計分板在每一張桌上。
+    自助館兩者都會有 —— 做自助櫃檯時先回頭看硬規則 5.6「價格／贈點信前端 → KIOSK 一出現就變成洞」。
+  · 🔴 已歸檔的 SQL、`docs/_資產/` 的舊原型、舊文件檔名**保留舊稱**（那是歷史）；新寫的一律用新名字。
 
   🔴 **`migi-site` 是第五個 repo，而且部署設定跟另外三個不一樣**：
   ```
