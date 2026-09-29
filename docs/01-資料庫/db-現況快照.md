@@ -1,5 +1,24 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-09-29 增補 ⑦（歸檔三份：`打完自動結算成績_收桌記錄是誰按的`／`配桌完成記當班店員`／`配桌玩法拿掉預設值`）
+> **基準：`sql/applied/` 有 278 個 `.sql`**（另有 `.ts`／`.py` 各一個，不算）。唯讀 MCP 量過：
+> 資料表 60、函式 279 → **285**（新 6 支）、檢視表 22、索引 178、policy 33、CHECK 148、觸發器 52 —— 其餘不變。
+> | | |
+> |---|---|
+> | 🆕 `table_sessions.closed_by_staff_id` | 按收桌的店員（登入身分、只記第一次按的人）。**稽核用，不是獎金歸屬** |
+> | 🆕 `stores.on_duty_staff_id`／`on_duty_since` | 這間店現在當班的店員；POS 門市確定或切換時寫、交班登出清掉（只清自己） |
+> | 🆕 `match_queues.credited_staff_id` | 配桌完成（waiting → matched）那一刻的當班店員 ＝ **獎金歸屬**；退回 waiting 清掉 |
+> | 🆕 `_session_scored(uuid)` | 「這場成績算過了沒」唯一定義 ＝ 有人已有 `finish_rank`。不給前端叫 |
+> | 🆕 `pos_set_on_duty_tx(p_store_id)`／`pos_clear_on_duty_tx()` | POS 登記／清除當班；身分從 JWT 取。authenticated 可叫，anon／PUBLIC 不行 |
+> | 🆕 觸發器 `trg_session_rounds_auto_score`（after update of status） | 最後一將（`round_no >= planned_rounds`，約定 ≥ 2 將）打完 ⇒ 自動呼叫 `_score_settle_tx`；失敗吞掉，收桌補算 |
+> | 🆕 觸發器 `trg_session_rounds_guard`（before insert／update of status） | 成績算完後擋開新一將、擋 finished → playing |
+> | 🆕 觸發器 `trg_match_queues_credit`（before update of status） | 湊滿那一刻把 `stores.on_duty_staff_id` 複製到 `credited_staff_id` |
+> | 🔁 `_score_settle_tx` | 不再放掉平板（搬到收桌） |
+> | 🔁 `settle_session_tx` | 放掉平板、寫 `closed_by_staff_id`；已有名次就不再結算（段位分不重複加） |
+> | 🔁 `tbl_state_tx` | 多回 `rating_delta`（座位 → `score_points`），成績算完才有，否則 null |
+> | 🔁 `match_queues.game_type` 預設值 | 不合法的 `'16張'` → **`'台麻'`**（CHECK 只收 台麻／美麻） |
+> | ⏳ `v_real_table_sessions`（25 欄）／`v_real_match_queues`（23 欄） | **還沒有** `closed_by_staff_id`／`credited_staff_id` —— 做獎金報表之前要補 |
+
 > ### 🆕 2026-09-27 增補 ⑥（歸檔 `2026-09-27_每一將重新定座位.sql`）
 > **基準：`sql/applied/` 有 275 個 `.sql`**。量過：資料表 60、函式 279（舊的兩參數版 DROP、新版補回，淨 0）、CHECK 147 → **148**。
 > | | |

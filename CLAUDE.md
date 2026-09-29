@@ -1404,9 +1404,9 @@ migi github/           ← Claude Code 的 project folder 選這層
     · 「這場算過了沒」只有一份定義：`_session_scored(session)` ＝ 有沒有人已經有 finish_rank。
     · ⚠ **MIGI 成就只認選了 MIGI 牌型的那一局**（2026-09-25 起，事件 migi_hu），大三元 8 台不算 ——
       09-23 那份收桌測試的期望值因此過期；以 `sql/checks/2026-09-29_驗打完自動結算與收桌記錄.sql` 為準（26/26）。
-    · ⏳ `v_real_table_sessions` 是寫死欄位的檢視表（25 欄），**還沒有 `closed_by_staff_id`** —— 做獎金報表之前要補。
-    · ⏳ 欄位說明（`comment on column table_sessions.closed_by_staff_id`）還寫著「獎金只認這一欄」—— **是錯的**，
-      跟下一份 SQL 一起改。
+    · ⏳ 報表檢視表是寫死欄位的：`v_real_table_sessions`（25 欄）**還沒有 `closed_by_staff_id`**、
+      `v_real_match_queues`（23 欄）**還沒有 `credited_staff_id`** —— 做獎金報表之前兩張都要補。
+    · ✅ `closed_by_staff_id` 的欄位說明已更正成「稽核用，不是獎金歸屬」（隨 `配桌完成記當班店員.sql`，線上查證過）。
     📌 對比表在 `migi-assets/README.md` 的「深色」一節 —— **新增深色 token 前先量，不要用挑的**。
 
 12. **每次 session 開始跑一次 `sql/checks/錯誤儀表.sql`。**（2026-08-28 起，MCP 直接跑）
