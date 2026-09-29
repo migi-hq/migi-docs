@@ -1409,6 +1409,14 @@ migi github/           ← Claude Code 的 project folder 選這層
     · 🔴 **同一份順手堵掉：22 支檢視表原本全部 anon 讀得到**（檢視表繞過 RLS，anon 金鑰是公開的）——
       已全部收回，REST 實測 401。**新建檢視表會再被 default privileges 開成 anon 可讀**，錯誤儀表 ⑯ 在盯；
       後台要報表一律走 DEFINER ＋ `can()` 的 RPC，**不要把檢視表的權限加回去**。
+    · 🔴 **同日第二批：54 支函式補身分檢查**（`sql/applied/2026-09-29_補上函式的身分檢查.sql`，行為 14/14）——
+      `list_members_tx` 原本 anon 給 org id 就回全部會員手機；一批會員功能把「你是誰」當參數收（`p_member`／`p_inviter`／`p_liker`…），
+      9/11、9/20 只掃了叫 `p_member_id` 的所以漏掉（判準畫太窄，第三次）。
+      新規矩：**會員功能的身分一律 `current_member_id()`；POS 函式開頭 `perform public._api_staff_only();`**
+      （只擋「從 API 進來又不是店員」，排程照常）。延後的 7 支見現況快照增補 ⑨。
+    · 🔴 **根因：這個專案的 default privileges 是全開** —— public 新建的函式／表／檢視表一建立就是 anon 與 authenticated 全權限。
+      ⇒ 每個新功能一出生就是公開的，要有人記得收；9/4、9/10、9/11、9/20、9/29 ×2 都是這個形狀。
+      ⏳ 正解是把預設反過來（全關，要給前端的才明確 grant）＋ 錯誤儀表常駐一格掃「前端叫得動、收指定人參數、沒有身分檢查」。
     · ✅ `closed_by_staff_id` 的欄位說明已更正成「稽核用，不是獎金歸屬」（隨 `配桌完成記當班店員.sql`，線上查證過）。
     📌 對比表在 `migi-assets/README.md` 的「深色」一節 —— **新增深色 token 前先量，不要用挑的**。
 

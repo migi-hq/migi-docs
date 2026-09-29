@@ -1,5 +1,19 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-09-29 增補 ⑨（歸檔 `2026-09-29_補上函式的身分檢查.sql`）
+> **基準：`sql/applied/` 有 280 個 `.sql`**。函式 285 → **286**（新 `_api_staff_only`），其餘數量不變。行為測試 14/14，REST 實測過。
+> | | |
+> |---|---|
+> | 🆕 `_api_staff_only()` | 從 API 進來（有 `request.jwt.claims` 或 `request.method`）又不是店員 ⇒ 42501。排程與 SQL Editor 沒有 API 身分 ⇒ 放行。前端叫不到 |
+> | 🔁 15 支「只認本人」 | 通知／未讀／已讀、最近同桌、報名與開房、牌咖邀請與回覆與移除、封鎖與解封、按讚、約桌邀請與回覆、我的配桌 —— 身分一律 `current_member_id()`，沒登入 28000 |
+> | 🔁 3 支「本人或店員」 | `leave_match_queue_tx`／`list_buddies_tx`／`list_blocks_tx` |
+> | 🔁 2 支「清單公開、身分選填」 | `list_match_queues_tx`／`list_match_queues_by_city_tx` |
+> | 🔁 `update_play_at_tx` | 只有開房的人或店員能改（原本任何人都能改任何房） |
+> | 🔁 15 支「限店員」 | POS 的讀寫函式、`calc_session_fee_tx`、`cleanup_empty_sessions_tx`、`sweep_auto_seat_tx`、`list_tables_tx`、`get_session_tx` 等 |
+> | 🔒 15 支前端完全叫不到 | `list_members_tx`（原本 anon 給 org id 就回全部會員手機）、`dev_*` 兩支、發票三支、`_finalize_queue_full_tx`、`_check_join_conflict`、排程用的幾支等；只給 service_role |
+> | 🔒 3 支只收 anon | `get_session_tx`／`list_tables_tx`／`next_doc_no` |
+> | ⏳ 延後 | 純 SQL 的 `pos_list_queues_tx`／`pos_list_recurring_tx`；會被報名路徑從內部叫的 `pos_queue_members_tx`／`pos_table_forecast_tx`／`_try_auto_seat_tx`；只回是否的 `_blocked_between`／`has_daypass_tx` |
+
 > ### 🆕 2026-09-29 增補 ⑧（歸檔 `2026-09-29_報表檢視表補欄位並收回前端權限.sql`）
 > **基準：`sql/applied/` 有 279 個 `.sql`**。資料表 60、函式 285、檢視表 22 —— 數量不變。
 > | | |
