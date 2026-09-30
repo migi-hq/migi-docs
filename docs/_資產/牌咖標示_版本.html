@@ -80,8 +80,8 @@
     const nameSide = variant === 'A' ? `<span class="pA">${word}</span>` : variant === 'B' ? `<span class="pB">✓ ${word}</span>` : '';
     const under = variant === '0' ? `<div class="rel0"><i>✓</i>${rel === 'team' ? '同團成員' : '已加為牌咖好友'}</div>` : '';
     const rankRow = variant === 'E'
-      ? `<div class="rowE"><span class="me">✓ ${word}</span><span>段位: 白銀熊 II</span></div>`
-      : `<span class="rank">段位: 白銀熊 II</span>`;
+      ? `<div class="rowE"><span class="me">✓ ${word}</span><span>段位: 銀牌熊 II</span></div>`
+      : `<span class="rank">段位: 銀牌熊 II</span>`;
     const rib = variant === 'D' ? `<span class="ribD">✓ ${rel === 'team' ? '同團成員' : '牌咖'}</span>` : '';
     return `<div class="hero ${variant === 'D' ? 'hasRib' : ''}">${rib}<span class="likes">👍 12</span>
       <div class="id"><div class="avw"><div class="av">🐻</div>${avExtra}</div><div>
