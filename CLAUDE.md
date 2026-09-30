@@ -4558,6 +4558,11 @@ settled_at 09-03 15:18   ← 8 場全部同一個時間點
     · 「誰能看我的成績」只剩「牌咖」／「只有自己」，只管成績那一塊。
     · 成績與同桌紀錄**不是另算一份**：`_member_stats_core`（成績頁也叫它）、`_pair_history`（牌咖清單也叫它）。
     · 📄 `docs/_資產/他人個人卡_牌咖限定_預覽.html`
+    ### ✅ 2026-09-30：段位熊頭像「升到過就永久保留」（使用者拍板）
+    · 後端記 `members.best_rank_tier`（只升不降，觸發器維護）；解鎖清單只有一份 `_member_bear_unlocks()`，
+      由 `get_my_avatar_tx.unlocked_bears` 給前端；`set_avatar_tx` 選沒解鎖的段位熊回 `bear_locked`。
+    · 🔴 **雀神熊不是段位**（`rank_tiers` 只有 6 階）—— 條件是當過任何一季的賽季冠軍（`season_champions`）。
+    · 前端不要再用段位文字自己算解鎖（舊的 `unlockedBearCount` 已刪）。行為測試 `sql/checks/2026-09-30_驗段位熊頭像解鎖.sql` 10/10。
     🎯 名次借 `season_rank_rows_tx`（與成績頁的「全國排名」**同一份定義**）——
       自己寫 `order by rating desc` 會出現「成績頁說我第 3、排行榜說我第 4」
       而**兩邊都不算 bug**。

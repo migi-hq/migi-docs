@@ -1,5 +1,16 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-09-30 增補 ⑭（歸檔 `2026-09-30_段位熊頭像永久解鎖.sql`）
+> **基準：`sql/applied/` 有 287 個 `.sql`**。函式 297 → **300**（297 ＋ 3 支新增）。驗證 9/9，提交後另查線上。
+> | | |
+> |---|---|
+> | 🆕 `members.best_rank_tier` | 曾經到過的最高段位（FK → `rank_tiers.code`），**只升不降**。回填：目前段位／歷來 `rating_after`／賽季快照取最高 |
+> | 🆕 `trg_members_best_rank` | `members` 的 BEFORE INSERT／UPDATE OF rank：段位每次變動就維護最高段位（每場結算、換季降階、補名次全部涵蓋） |
+> | 🆕 `_rank_tier_of(rank)` | 「銀牌熊 III」→ `silver`，唯一一份對照。前端叫不到 |
+> | 🆕 `_member_bear_unlocks(member)` | 解鎖了哪幾隻段位熊：最高段位以下全部（至少銅牌）＋ 當過賽季冠軍就有 `quegod`。前端叫不到 |
+> | ✏️ `get_my_avatar_tx` | 多回 `unlocked_bears`；**身分只認 JWT**（原本沒登入時退回前端送的 id）。收回 anon／PUBLIC |
+> | ✏️ `set_avatar_tx` | 選段位熊或雀神熊時要已解鎖，否則回 `bear_locked`；其他造型鍵照舊不擋。收回 anon／PUBLIC |
+
 > ### 🆕 2026-09-30 增補 ⑬（歸檔 `2026-09-30_他人個人卡限牌咖.sql`）
 > **基準：`sql/applied/` 有 286 個 `.sql`**。函式 294 → **297**。驗證 10/10、行為測試 12/12（`sql/checks/2026-09-30_驗他人個人卡限牌咖.sql`）。
 > | | |
