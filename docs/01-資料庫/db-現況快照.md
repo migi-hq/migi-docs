@@ -1,5 +1,17 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-01 增補 ㉑（歸檔 `2026-10-01_優惠券適用範圍改成規則表.sql`）
+> **基準：`sql/applied/` 有 292 個 `.sql`**（當場數的：版控 291 ＋ 這一份）。⚠ 增補 ⑳／⑲ 寫的 293／292 是多算的，以這一次為準。
+> 資料表 ＋1、函式 313 → **316**。驗證 ①–⑥ 全綠，提交後另查線上；行為測試 `sql/checks/2026-10-01_驗優惠券適用範圍規則表.sql`：舊的三種範圍新舊 120/120、新範圍 8/8、報價＝實收 ⓒ 綠。
+> | | |
+> |---|---|
+> | 🆕 `coupon_scopes(coupon_id, scope_type, scope_value)` | 券的適用範圍規則，一張券可多列；**沒有任何一列＝全品項**。`scope_type` ∈ `revenue_type`／`subcategory`／`product`。觸發器 `trg_coupon_scopes_check` 驗值存在於主檔。既有 5 張券已搬進來 |
+> | 🆕 `_coupon_scope_label(券)` | 給人看的那一句：「全品項」「限檯費」「限飲料、甜點」「限 拿鐵」。只有後端叫得到 |
+> | 🆕 `trg_coupons_applies_to_frozen` | **寫入 `coupons.applies_to` 會被擋**（舊欄位凍結，只讀不寫；contract 之後整欄拿掉） |
+> | ✏️ `_cart_pricing` | 券改成逐品項判斷適用；指定商品免費券只從那個商品扣 |
+> | ✏️ `pos_member_detail_tx`／`get_wallet_tx` | 每張券多回 `scope_label`。POS 兩處顯示已改讀它（`migi-pos` 2bbc5f4） |
+> ⏳ contract：`coupons.applies_to` 與 `coupons_applies_to_check` 還在。四個前端已經沒有任何一處讀它（10-01 掃過），拿掉前再查一次後端函式有沒有人讀。
+>
 > ### 🆕 2026-10-01 增補 ⑳（歸檔 `2026-10-01_結帳報價共用核心.sql`）
 > **基準：`sql/applied/` 有 293 個 `.sql`**。函式 310 → **313**。驗證 5/5，提交後另查線上；行為測試 `sql/checks/2026-10-01_驗結帳報價共用核心.sql`：
 > 結帳新舊 96/96（成功與失敗各 48）、報價＝實收 96/96、入座新舊 7/7（4 案真的入座）、入座報價＝實收 7/7。
