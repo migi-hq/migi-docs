@@ -686,6 +686,32 @@ select 序, 項目, 內容 from (
               else '✅ 全關：新建的函式／表／檢視表前端碰不到，要用的要明確 grant' end
 
   union all
+  /* ⑲ 賽季有沒有照時間結算（2026-09-30 加）。
+        pg_cron `season-close` 每 10 分鐘結算「已結束、還沒結算」的賽季（sweep_season_close_tx）。
+        🔴 它壞掉的症狀是「什麼都沒發生」：沒有雀神、名次沒存、段位分沒重置，而且不報錯。
+          ⇒ 結束超過 1 小時還沒結算就紅；結算失敗會寫 season_close_error，也列出來。 */
+  select 19, '⑲ 賽季結算有沒有照時間跑',
+         coalesce(
+           (select '下一次結算：' || rs.code || ' 在 ' || to_char(rs.ends_at at time zone 'Asia/Taipei', 'YYYY-MM-DD HH24:MI') || ' 結束後 10 分鐘內'
+              from rank_seasons rs
+             where rs.ends_at >= now() - interval '1 hour'
+               and not exists (select 1 from season_champions c where c.org_id = rs.org_id and c.season = rs.code)
+             order by rs.ends_at limit 1), '（沒有排定中的賽季）')
+         || coalesce(
+           (select E'\n  🔴 已結束超過 1 小時還沒結算：' || string_agg(rs.code || '（' || to_char(rs.ends_at at time zone 'Asia/Taipei', 'MM-DD HH24:MI') || ' 結束）', '、')
+              from rank_seasons rs
+             where rs.ends_at < now() - interval '1 hour'
+               and not exists (select 1 from season_champions c where c.org_id = rs.org_id and c.season = rs.code)
+            having count(*) > 0), '')
+         || coalesce(
+           (select E'\n  🔴 近 30 天結算失敗 ' || count(*) || ' 次，最後一次：' || max(props ->> 'message')
+              from app_events where event = 'season_close_error' and created_at > now() - interval '30 days'
+            having count(*) > 0), '')
+         || coalesce(
+           (select case when not exists (select 1 from cron.job where jobname = 'season-close' and active)
+                        then E'\n  🔴 排程 season-close 不見了或被停用' end), '')
+
+  union all
   select 5, '⑤ 測試標記（修好前的歷史資料仍標成營運）',
          (select 'is_test=true ' || count(*) filter (where is_test)::text ||
                  '　is_test=false ' || count(*) filter (where not is_test)::text ||
