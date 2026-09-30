@@ -1,0 +1,24 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:/Users/user/Desktop/migi github/.claude/hooks/zh_remind.py\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:/Users/user/Desktop/migi github/.claude/hooks/zh_stop.py\""
+          }
+        ]
+      }
+    ]
+  }
+}
