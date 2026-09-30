@@ -386,9 +386,12 @@ exception when others then
 end $$;
 
 -- ⓒ 入座 7 案
+-- ⚠ 2026-10-01 第一次跑：借 A1 那一場，而測試01～04 都坐在那一場 ⇒ 同一場同一人只能有一筆入座紀錄，
+--   四個「該成功」的案例新舊兩版**一起失敗**，於是「新舊一致」是假綠。
+--   改成交易內在空桌 C2 開一場新的，並加上正對照：該成功的 4 案一定要真的成功。
 do $$
 declare
-  v_sid uuid := '1ea984c6-e15e-4888-a4d6-9f99f0860120';
+  v_sid uuid;
   x uuid := '526aa8b9-cc93-4327-b878-6d21d399af8e';   -- 測試04
   y uuid := '218378e1-fb6c-43fb-b642-99fdbf5c52b1';   -- 測試02
   z uuid := 'd0db928e-5a75-4535-90d4-93ede67790a8';   -- 測試03
@@ -396,12 +399,19 @@ declare
   v_org uuid := '11111111-1111-1111-1111-111111111111';
   p_fee uuid; p_dk uuid; p_day uuid;
   v_type text; v_pf uuid[]; v_items jsonb; v_old jsonb; v_new jsonb; v_q jsonb; v_case text;
-  v_n int := 0; v_same int := 0; v_qn int := 0; v_qsame int := 0; v_bad text := ''; v_msg text;
+  v_n int := 0; v_same int := 0; v_qn int := 0; v_qsame int := 0; v_bad text := ''; v_msg text; v_okn int := 0;
 begin
   select id into p_fee from public.products where sku = 'SVC-TBL-M3' and org_id = v_org and deleted_at is null;
   select id into p_dk  from public.products where sku = 'FNB-DRK-BLCK' and org_id = v_org and deleted_at is null;
   select id into p_day from public.products where sku = 'SVC-TBL-DAY' and org_id = v_org and deleted_at is null;
-  update public.session_players set left_at = now() where session_id = v_sid and left_at is null;   -- 交易內把座位空出來
+  -- 交易內在空桌開一場新的 3 將配桌（跟 A1 同一種，檯費 150、中途加入 100）
+  insert into public.table_sessions (org_id, store_id, table_id, mode, planned_rounds)
+  select v_org, t.store_id, t.id, 'matched', 3 from public.tables t
+   where t.store_id = '22222222-2222-2222-2222-222222222222'
+     and not exists (select 1 from public.table_sessions s where s.table_id = t.id and s.status = 'open' and s.deleted_at is null)
+   order by t.label limit 1
+  returning id into v_sid;
+  if v_sid is null then raise exception '🔴 找不到空桌，這一段測不了'; end if;
   update public.wallets set balance = 1000000000 where member_id = x;
 
   for v_case, v_type, v_pf, v_items in select * from (values
@@ -416,6 +426,7 @@ begin
     v_old := pg_temp.run_join('old', v_sid, x, v_type, v_pf, v_items);
     v_new := pg_temp.run_join('new', v_sid, x, v_type, v_pf, v_items);
     v_n := v_n + 1;
+    if coalesce((v_new ->> 'ok')::boolean, false) then v_okn := v_okn + 1; end if;
     if v_old = v_new then v_same := v_same + 1;
     else v_bad := v_bad || E'\n    ✗ ' || v_case || ' 舊 ' || v_old::text || E'\n      新 ' || v_new::text; end if;
 
@@ -427,10 +438,11 @@ begin
          and coalesce((v_q ->> 'payable')::bigint, 0) = coalesce((v_new ->> 'payable')::bigint, 0))
        or (not coalesce((v_new ->> 'ok')::boolean, false) and not (v_q ->> 'ok')::boolean and v_q ->> 'reason' = v_new ->> 'reason') then
       v_qsame := v_qsame + 1;
-    else v_bad := v_bad || E'\n    ✗ 報價 ' || v_case || ' ' || v_q::text; end if;
+    else v_bad := v_bad || E'\n    ✗ 報價 ' || v_case || ' ' || v_q::text || E'\n      實收 ' || v_new::text; end if;
   end loop;
 
-  v_msg := case when v_same = v_n and v_n = 7 then '✅' else '🔴' end || ' ⓒ 入座新舊一致 ' || v_same || ' / ' || v_n || E'\n'
+  v_msg := case when v_same = v_n and v_n = 7 and v_okn = 4 then '✅' else '🔴' end || ' ⓒ 入座新舊一致 ' || v_same || ' / ' || v_n
+        || '（其中真的入座成功 ' || v_okn || ' 案，期望 4 —— 少了就是兩版一起失敗）' || E'\n'
         || case when v_qsame = v_qn and v_qn = 7 then '✅' else '🔴' end || ' ⓒ 入座的報價與實收一致 ' || v_qsame || ' / ' || v_qn
         || v_bad || E'\n';
   raise exception 'migi_rollback';
