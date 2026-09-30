@@ -1,5 +1,17 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-09-30 增補 ⑯（歸檔 `2026-09-30_爆卡與追加積分.sql`）
+> **基準：`sql/applied/` 有 289 個 `.sql`**。資料表 ＋1、函式 302 → **306**。驗證 7/7、行為測試 11/11（`sql/checks/2026-09-30_驗爆卡與追加積分.sql`）。
+> | | |
+> |---|---|
+> | 🆕 `session_busts` | 一列＝一次爆卡：`seat`／`hand_id`／`by_seat`（胡的人）／`decision` pending·added·ended·voided／`added_points`。RLS 開、0 policy |
+> | 🆕 `_tbl_balances(session)` | 每個座位剩多少 ＝ 起始 ＋ 追加 ＋ 已生效得失。前端叫不到 |
+> | 🆕 `trg_hands_bust_clamp` | `hands` BEFORE INSERT：爆卡中不准送；金額夾到付的人剩的（一個收款人拿實付合計；包牌照比例分） |
+> | 🆕 `trg_hands_bust_detect` | `hands` AFTER UPDATE OF status：生效時誰歸零就記 pending；撤銷就 voided |
+> | 🆕 `tbl_bust_decide_tx(token, amount)` | 爆卡的人決定：> 0 追加；0 不追加 ⇒ 這一將標成打完並結算成績（約定 2 將以上）。anon ＋ authenticated |
+> | ✏️ `tbl_state_tx` | 多回 `extras`、`bust`、`session.ended_reason`／`session.bust_seat` |
+> | ✏️ `_ach_session_events` ＋ 成就 | 「爆卡」`game_25`、「讓對手爆卡」`game_26` 接上並上架（純娛樂不算） |
+
 > ### 🆕 2026-09-30 增補 ⑮（歸檔 `2026-09-30_成就第2批_牌局局勢段位.sql`）
 > **基準：`sql/applied/` 有 288 個 `.sql`**。函式 300 → **302**。驗證 9/9，提交後另查線上。
 > | | |
