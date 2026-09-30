@@ -1,0 +1,105 @@
+<title>牌咖標示版本</title>
+<style>
+  :root {
+    --brand:#FAD6DC; --brand-tint:#FFECF1; --brand-light:#FFE7EE; --ink:#2E2B2C;
+    --accent:#C2607A; --accent-deep:#974B5F; --gray-1:#5C5754; --gray-2:#726D69;
+    --gray-3:#ECEAE9; --gray-4:#F2F0EE; --divider:#DED9D5; --white:#FFFFFF; --page:#EFEBE8;
+    --r-pill:999px; --r-lg:16px; --r-card:14px;
+    color-scheme: light;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--page); color:var(--ink);
+    font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif; padding-inline:16px; padding-block:24px 48px; }
+  header, .grid, .notes { max-width:1200px; margin-inline:auto; }
+  header { margin-bottom:20px; }
+  h1 { font-size:22px; margin:0 0 6px; text-wrap:balance; }
+  header p { margin:0; font-size:14px; color:var(--gray-1); line-height:1.7; max-width:72ch; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:18px; }
+  .card { background:var(--white); border-radius:var(--r-card); padding:16px; box-shadow:0 2px 8px rgba(46,43,44,.06); }
+  .card h2 { margin:0 0 4px; font-size:15px; }
+  .card .sub { margin:0 0 12px; font-size:13px; color:var(--gray-1); line-height:1.6; }
+  .pair { display:grid; gap:10px; }
+  .lbl { font-size:12px; font-weight:700; color:var(--gray-2); margin-bottom:-4px; }
+  .hero { background:var(--brand-light); border-radius:var(--r-lg); padding:18px 16px; position:relative; max-width:343px; }
+  .likes { position:absolute; top:14px; right:14px; background:rgba(255,255,255,.6); border-radius:var(--r-pill); padding:3px 10px; font-size:12px; font-weight:700; }
+  .id { display:flex; align-items:center; gap:14px; }
+  .avw { position:relative; flex:none; }
+  .av { width:60px; height:60px; border-radius:50%; background:var(--white); display:grid; place-items:center; font-size:30px; }
+  .ttl { font-size:12px; font-weight:700; }
+  .nmrow { display:flex; align-items:center; gap:8px; margin-top:4px; flex-wrap:wrap; }
+  .nm { font-size:18px; font-weight:700; margin:0; }
+  .rank { display:inline-block; margin-top:8px; background:rgba(255,255,255,.6); border-radius:var(--r-pill); padding:3px 10px; font-size:12px; font-weight:700; }
+
+  /* 0 現行 */
+  .rel0 { display:flex; align-items:center; gap:5px; font-size:13px; font-weight:700; color:var(--accent-deep); margin-top:6px; }
+  .rel0 i { width:15px; height:15px; border-radius:50%; background:var(--accent-deep); color:var(--white); display:inline-grid; place-items:center; font-size:10px; font-style:normal; }
+  /* A 名字旁的深墨小膠囊 */
+  .pA { font-size:12px; font-weight:700; background:var(--ink); color:var(--white); border-radius:var(--r-pill); padding:3px 10px; }
+  /* B 名字旁的白色小膠囊 */
+  .pB { font-size:12px; font-weight:700; background:var(--white); color:var(--ink); border-radius:var(--r-pill); padding:3px 10px; }
+  /* C 頭像角標 */
+  .badgeC { position:absolute; right:-2px; bottom:-2px; width:22px; height:22px; border-radius:50%; background:var(--ink); color:var(--white);
+    display:grid; place-items:center; font-size:12px; font-weight:800; border:2px solid var(--brand-light); }
+  /* D 左上角的條 */
+  .ribD { position:absolute; top:14px; left:14px; font-size:12px; font-weight:700; background:var(--ink); color:var(--white); border-radius:var(--r-pill); padding:3px 10px; }
+  .hero.hasRib { padding-top:44px; }
+  /* E 跟段位同一排的膠囊 */
+  .rowE { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+  .rowE span { background:rgba(255,255,255,.6); border-radius:var(--r-pill); padding:3px 10px; font-size:12px; font-weight:700; }
+  .rowE .me { background:var(--ink); color:var(--white); }
+  .notes { margin-top:24px; background:var(--white); border-radius:var(--r-card); padding:16px 18px; font-size:14px; line-height:1.7; }
+  .notes h3 { margin:0 0 6px; font-size:15px; }
+  .notes ul { margin:0; padding-left:20px; }
+</style>
+
+<header>
+  <h1>「已加為牌咖」要怎麼標</h1>
+  <p>只換粉色卡裡那一個標示，其他不動。每一種都畫兩張：牌咖、同團成員（同團視同牌咖，但要讓人分得出是團員）。</p>
+</header>
+
+<div class="grid" id="g"></div>
+
+<div class="notes">
+  <h3>差別</h3>
+  <ul>
+    <li><b>現行</b>：一整行字，佔掉名字與段位之間一整列，而「好友」兩個字在 App 其他地方都不用（牌咖就是牌咖）。</li>
+    <li><b>A 名字旁深墨膠囊</b>：最短、最醒目；深墨在粉底上對比最強。</li>
+    <li><b>B 名字旁白膠囊</b>：比 A 安靜，跟段位膠囊同一個家族。</li>
+    <li><b>C 頭像角標</b>：完全不佔文字列；但只有一個勾，第一次看的人不一定懂它代表牌咖，而且<b>牌咖與同團成員長得一模一樣</b>。</li>
+    <li><b>D 左上角</b>：跟右上角的獲讚對稱；代價是粉色卡要多出一列高度。</li>
+    <li><b>E 跟段位同一排</b>：把「關係」跟「段位」並排成一組膠囊，粉色卡最短。</li>
+    <li>⚠ 都不用桃紅：桃紅在 App 裡是強調文字色，這裡講的是一個狀態，用深墨或白膠囊就夠。</li>
+  </ul>
+</div>
+
+<script>
+  const base = (opts) => {
+    const { rel, variant } = opts;
+    const word = rel === 'team' ? '同團' : '牌咖';
+    const avExtra = variant === 'C' ? `<span class="badgeC">✓</span>` : '';
+    const nameSide = variant === 'A' ? `<span class="pA">${word}</span>` : variant === 'B' ? `<span class="pB">✓ ${word}</span>` : '';
+    const under = variant === '0' ? `<div class="rel0"><i>✓</i>${rel === 'team' ? '同團成員' : '已加為牌咖好友'}</div>` : '';
+    const rankRow = variant === 'E'
+      ? `<div class="rowE"><span class="me">✓ ${word}</span><span>段位: 白銀熊 II</span></div>`
+      : `<span class="rank">段位: 白銀熊 II</span>`;
+    const rib = variant === 'D' ? `<span class="ribD">✓ ${rel === 'team' ? '同團成員' : '牌咖'}</span>` : '';
+    return `<div class="hero ${variant === 'D' ? 'hasRib' : ''}">${rib}<span class="likes">👍 12</span>
+      <div class="id"><div class="avw"><div class="av">🐻</div>${avExtra}</div><div>
+        <span class="ttl">「新手村制霸」</span>
+        <div class="nmrow"><p class="nm">小雲</p>${nameSide}</div>
+        ${under}${rankRow}
+      </div></div></div>`;
+  };
+  const vs = [
+    ['0', '現行', '名字下面一行「✓ 已加為牌咖好友」。'],
+    ['A', 'A　名字旁深墨膠囊', '名字右邊一顆深墨小膠囊「牌咖」。'],
+    ['B', 'B　名字旁白膠囊', '名字右邊一顆白色小膠囊「✓ 牌咖」。'],
+    ['C', 'C　頭像角標', '頭像右下角一顆深墨圓形勾勾，文字列不動。'],
+    ['D', 'D　左上角', '粉色卡左上角「✓ 牌咖」，跟右上角的獲讚對稱。'],
+    ['E', 'E　跟段位同一排', '「✓ 牌咖」與段位膠囊並排成一組。'],
+  ];
+  document.getElementById('g').innerHTML = vs.map(([v, h, s]) => `
+    <div class="card"><h2>${h}</h2><p class="sub">${s}</p>
+      <div class="pair"><div class="lbl">牌咖</div>${base({ rel: 'buddy', variant: v })}
+        <div class="lbl">同團成員</div>${base({ rel: 'team', variant: v })}</div></div>`).join('');
+</script>

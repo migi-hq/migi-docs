@@ -1,0 +1,159 @@
+<title>牌咖個人卡版型</title>
+<style>
+  :root {
+    --brand:#FAD6DC; --brand-tint:#FFECF1; --brand-light:#FFE7EE; --ink:#2E2B2C;
+    --accent:#C2607A; --accent-deep:#974B5F; --gray-1:#5C5754; --gray-2:#726D69;
+    --gray-3:#ECEAE9; --gray-4:#F2F0EE; --divider:#DED9D5; --white:#FFFFFF;
+    --field-bg:#F8F7F6; --page:#EFEBE8; --tile-face:#FFFDF9; --tile-face-bd:#E5DCCF;
+    --r-pill:999px; --r-lg:16px; --r-card:14px; --r-field:12px; --r-sm:8px;
+    color-scheme: light;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--page); color:var(--ink);
+    font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif; padding-inline:16px; padding-block:24px 48px; }
+  header, .row, .notes { max-width:1600px; margin-inline:auto; }
+  header { margin-bottom:20px; }
+  h1 { font-size:22px; margin:0 0 6px; text-wrap:balance; }
+  header p { margin:0; font-size:14px; color:var(--gray-1); line-height:1.7; max-width:72ch; }
+  .row { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:20px; align-items:start; }
+  .col h2 { font-size:16px; margin:0 0 4px; }
+  .col .sub { font-size:13px; color:var(--gray-1); margin:0 0 10px; line-height:1.6; min-height:42px; }
+  .phone { width:100%; max-width:375px; background:var(--white); border-radius:22px; box-shadow:0 6px 24px rgba(0,0,0,.12); overflow:hidden; }
+  .grab { width:40px; height:5px; border-radius:3px; background:var(--gray-3); margin:10px auto 4px; }
+  .sheet-t { text-align:center; font-weight:700; font-size:16px; padding:6px 0 10px; border-bottom:1px solid var(--field-bg); }
+  .body { padding:14px 16px 20px; }
+  .hero { background:var(--brand-light); border-radius:var(--r-lg); padding:18px 16px; position:relative; }
+  .likes { position:absolute; top:14px; right:14px; background:rgba(255,255,255,.6); border-radius:var(--r-pill); padding:3px 10px; font-size:12px; font-weight:700; }
+  .id { display:flex; align-items:center; gap:14px; }
+  .av { width:60px; height:60px; border-radius:50%; background:var(--white); display:grid; place-items:center; font-size:30px; flex:none; }
+  .ttl { font-size:12px; font-weight:700; }
+  .nm { font-size:18px; font-weight:700; margin:4px 0 0; }
+  .rank { display:inline-block; margin-top:8px; background:rgba(255,255,255,.6); border-radius:var(--r-pill); padding:3px 10px; font-size:12px; font-weight:700; }
+  .rel { display:inline-flex; align-items:center; gap:5px; font-size:13px; font-weight:700; color:var(--accent-deep); margin-top:6px; }
+  .rel i { width:15px; height:15px; border-radius:50%; background:var(--accent-deep); color:var(--white); display:inline-grid; place-items:center; font-size:10px; font-style:normal; }
+  section { padding:14px 0; border-top:1px solid var(--field-bg); }
+  .first { border-top:0; padding-top:16px; }
+  .hd { margin:0 0 12px; font-size:16px; font-weight:700; }
+  .about { background:var(--field-bg); border-radius:var(--r-field); padding:13px 14px; font-size:14px; line-height:1.7; }
+  .tags { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+  .tag { font-size:13px; padding:5px 12px; border-radius:var(--r-pill); background:var(--brand-tint); }
+  .tag.f { background:var(--field-bg); }
+  .three { display:flex; }
+  .three div { flex:1; text-align:center; min-width:0; }
+  .three b { display:block; font-size:16px; }
+  .three span { font-size:13px; color:var(--gray-1); }
+  .hl { background:var(--brand); border-radius:var(--r-card); padding:15px; display:flex; align-items:center; gap:14px; }
+  .tile { width:44px; height:58px; border-radius:var(--r-sm); background:var(--tile-face); border:1.5px solid var(--tile-face-bd); display:grid; place-items:center; font-weight:800; font-size:18px; flex:none; }
+  .baby { display:flex; align-items:center; gap:14px; background:var(--field-bg); border-radius:var(--r-card); padding:14px 16px; font-size:14px; }
+  .btn { display:block; width:100%; border:0; border-radius:var(--r-pill); padding:12px 0; font-size:15px; font-weight:700; font-family:inherit; }
+  .btn.p { background:var(--brand); color:var(--ink); }
+  .btn.g { background:var(--gray-4); color:var(--gray-1); margin-top:9px; }
+  .block { margin-top:9px; width:100%; background:var(--white); border:1px dashed var(--divider); color:var(--gray-1); border-radius:var(--r-pill); padding:10px 0; font-size:13px; font-weight:700; font-family:inherit; }
+  .empty { font-size:13px; color:var(--gray-1); background:var(--field-bg); border-radius:var(--r-field); padding:14px; text-align:center; }
+
+  /* V2 數字磚 */
+  .tiles { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .tl { background:var(--field-bg); border-radius:var(--r-field); padding:12px 6px; text-align:center; }
+  .tl b { display:block; font-size:22px; font-weight:800; font-variant-numeric:tabular-nums; }
+  .tl span { font-size:12px; color:var(--gray-1); }
+  .tl.pk { background:var(--brand-tint); }
+  .strip { display:flex; align-items:center; gap:10px; background:var(--brand-tint); border:1px solid var(--brand); border-radius:var(--r-card); padding:12px 14px; font-size:14px; }
+  .strip b { font-size:20px; }
+  .strip .sep { width:1px; align-self:stretch; background:var(--brand); }
+
+  /* V3 分頁 */
+  .seg { display:flex; background:var(--gray-4); border-radius:var(--r-pill); padding:4px; margin:16px 0 4px; }
+  .seg span { flex:1; text-align:center; font-size:14px; font-weight:700; padding:8px 0; border-radius:var(--r-pill); color:var(--gray-1); }
+  .seg span.on { background:var(--white); color:var(--ink); box-shadow:0 2px 8px rgba(46,43,44,.08); }
+  .kv { display:flex; justify-content:space-between; padding:11px 0; border-bottom:1px solid var(--field-bg); font-size:14px; }
+  .kv span { color:var(--gray-1); } .kv b { font-variant-numeric:tabular-nums; }
+
+  /* V4 精簡兩欄 */
+  .g2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px; }
+  .mini { background:var(--field-bg); border-radius:var(--r-field); padding:12px; }
+  .mini p { margin:0; font-size:12px; color:var(--gray-1); }
+  .mini b { display:block; font-size:18px; margin-top:4px; }
+  .mini small { font-size:12px; color:var(--gray-1); }
+  .mini.wide { grid-column:1 / -1; display:flex; align-items:center; gap:12px; }
+  .notes { margin-top:24px; background:var(--white); border-radius:var(--r-card); padding:16px 18px; font-size:14px; line-height:1.7; }
+  .notes h3 { margin:0 0 6px; font-size:15px; }
+  .notes ul { margin:0; padding-left:20px; }
+</style>
+
+<header>
+  <h1>加為牌咖之後，個人卡的幾種排法</h1>
+  <p>內容一樣（公開的粉色卡與自我介紹 ＋ 牌咖才看得到的標籤、你和他、成績、最近亮點、寶貝牌），只換排法。最右邊一張是對方把成績設成「只有自己」時，牌咖看到的樣子。</p>
+</header>
+
+<div class="row" id="row"></div>
+
+<div class="notes">
+  <h3>四版的差別</h3>
+  <ul>
+    <li><b>V1 現行排法</b>：改動最小；但整張很長，成績要往下捲兩個區塊才看得到。</li>
+    <li><b>V2 數字磚</b>：「你們一起打了幾場」做成一條粉色橫幅放最上面，成績變六塊大字方磚（多了場數、首位率、連對率） —— 加完牌咖最想看的兩件事都在第一屏。</li>
+    <li><b>V3 分頁</b>：資訊最整齊、單頁最短；但分頁裡的東西要多點一下才看得到，而「看到更多」正是加牌咖的回報。</li>
+    <li><b>V4 精簡兩欄</b>：整張最短，一屏看完；代價是每一格的字比較小。</li>
+    <li>🔴 對方選「只有自己」時，成績那一區顯示一句「小雲沒有公開成績」—— 不畫橫條（橫條是「加了就看得到」的暗示，這裡加了也看不到）。</li>
+  </ul>
+</div>
+
+<script>
+  const hero = `
+    <div class="hero"><span class="likes">👍 12</span>
+      <div class="id"><div class="av">🐻</div><div>
+        <span class="ttl">「新手村制霸」</span><p class="nm">小雲</p>
+        <div class="rel"><i>✓</i>已加為牌咖好友</div><br><span class="rank">段位: 白銀熊 II</span>
+      </div></div></div>`;
+  const about = (first = true) => `
+    <section class="${first ? 'first' : ''}"><p class="hd">關於小雲</p>
+      <div class="about">「早上場固定班底，喜歡安靜認真打～」</div>
+      <div class="tags"><span class="tag">早上為主</span><span class="tag">穩扎穩打</span><span class="tag f">台麻</span></div></section>`;
+  const you = `<section><p class="hd">你和小雲</p><div class="three"><div><b>7</b><span>同桌次數</span></div><div><b>3 天前</b><span>上次同桌</span></div><div><b>週六晚上</b><span>常一起打</span></div></div></section>`;
+  const stats = `<section><p class="hd">小雲的成績</p><div class="three"><div><b>2.3</b><span>平均順位</span></div><div><b>58%</b><span>勝率</span></div><div><b>+640</b><span>單場最多</span></div></div></section>`;
+  const hl = `<section><p class="hd">最近亮點</p><div class="hl"><div style="flex:1"><span style="font-size:13px">近期最大台的一手</span><div style="font-size:22px;font-weight:800;margin-top:4px">清一色</div></div><div style="text-align:center;padding-left:14px;border-left:1px solid rgba(46,43,44,.15)"><b style="font-size:26px">8</b><div style="font-size:13px">台</div></div></div></section>`;
+  const baby = `<section><p class="hd">小雲的寶貝牌</p><div class="baby"><span class="tile">八萬</span>發財就靠這張！</div></section>`;
+  const acts = `<section><button class="btn p">邀進牌咖團</button><button class="btn g">解除牌咖</button><button class="block">不想再跟 小雲 同桌</button></section>`;
+  const phone = (inner) => `<div class="phone"><div class="grab"></div><div class="sheet-t">個人檔案</div><div class="body">${inner}</div></div>`;
+
+  const v2 = hero + `
+    <div class="strip" style="margin-top:14px"><div><b>7</b> 場</div><div class="sep"></div><div style="flex:1;font-size:13px;color:var(--gray-1)">你們同桌過 · 上次 3 天前<br>常一起打 <b style="font-size:14px;color:var(--ink)">週六晚上</b></div></div>
+    ${about()}
+    <section><p class="hd">小雲的成績</p><div class="tiles"><div class="tl pk"><b>2.3</b><span>平均順位</span></div><div class="tl pk"><b>58%</b><span>勝率</span></div><div class="tl pk"><b>+640</b><span>單場最多</span></div></div>
+      <div class="tiles" style="margin-top:8px"><div class="tl"><b>31</b><span>場數</span></div><div class="tl"><b>32%</b><span>首位率</span></div><div class="tl"><b>61%</b><span>連對率</span></div></div></section>
+    ${hl}${baby}${acts}`;
+
+  const v3 = hero + `
+    <div class="seg"><span>關於</span><span class="on">成績</span><span>你們</span></div>
+    <section class="first">
+      <div class="kv"><span>場數</span><b>31</b></div>
+      <div class="kv"><span>平均順位</span><b>2.3</b></div>
+      <div class="kv"><span>勝率</span><b>58%</b></div>
+      <div class="kv"><span>連對率</span><b>61%</b></div>
+      <div class="kv"><span>單場最多積分</span><b>+640</b></div>
+    </section>${hl}${acts}`;
+
+  const v4 = hero + `
+    <div class="about" style="margin-top:14px">「早上場固定班底，喜歡安靜認真打～」</div>
+    <div class="tags"><span class="tag">早上為主</span><span class="tag">穩扎穩打</span><span class="tag f">台麻</span></div>
+    <div class="g2">
+      <div class="mini"><p>你們同桌</p><b>7 場</b><small>上次 3 天前</small></div>
+      <div class="mini"><p>常一起打</p><b>週六晚上</b></div>
+      <div class="mini"><p>平均順位</p><b>2.3</b><small>31 場</small></div>
+      <div class="mini"><p>勝率</p><b>58%</b><small>單場最多 +640</small></div>
+      <div class="mini wide"><span class="tile">八萬</span><div><p>寶貝牌</p><b style="font-size:15px">發財就靠這張！</b></div></div>
+    </div>
+    <section style="margin-top:14px">${'<p class="hd">最近亮點</p>'}<div class="hl"><div style="flex:1"><span style="font-size:13px">近期最大台的一手</span><div style="font-size:22px;font-weight:800;margin-top:4px">清一色</div></div><div style="text-align:center;padding-left:14px;border-left:1px solid rgba(46,43,44,.15)"><b style="font-size:26px">8</b><div style="font-size:13px">台</div></div></div></section>
+    ${acts}`;
+
+  const priv = hero + about() + you + `<section><p class="hd">小雲的成績</p><div class="empty">小雲沒有公開成績</div></section>` + hl + baby + acts;
+
+  const cols = [
+    ['V1 現行排法', '區塊由上往下：關於 → 你和他 → 成績 → 最近亮點 → 寶貝牌。', phone(hero + about() + you + stats + hl + baby + acts)],
+    ['V2 數字磚', '「你們同桌 7 場」變成最上面的粉色橫幅；成績變六塊大字方磚。', phone(v2)],
+    ['V3 分頁', '粉色卡下面一排「關於／成績／你們」，一次只看一頁（圖中是「成績」頁）。', phone(v3)],
+    ['V4 精簡兩欄', '自我介紹之後，全部塞進兩欄小卡，整張最短。', phone(v4)],
+    ['對方設成「只有自己」', '（用 V1 示範）成績那一區換成一句話，其餘照常。', phone(priv)],
+  ];
+  document.getElementById('row').innerHTML = cols.map(([h, s, p]) => `<div class="col"><h2>${h}</h2><p class="sub">${s}</p>${p}</div>`).join('');
+</script>

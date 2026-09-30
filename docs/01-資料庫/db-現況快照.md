@@ -1,5 +1,16 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-09-30 增補 ⑬（歸檔 `2026-09-30_他人個人卡限牌咖.sql`）
+> **基準：`sql/applied/` 有 286 個 `.sql`**。函式 294 → **297**。驗證 10/10、行為測試 12/12（`sql/checks/2026-09-30_驗他人個人卡限牌咖.sql`）。
+> | | |
+> |---|---|
+> | 🆕 `get_member_card_tx(p_target)` | 會員 App 他人個人卡唯一的資料來源。公開：頭像／名字／稱號／段位／獲讚／自我介紹。限牌咖（含同團）：`style`／`sched`／`baby_tile`／`together`（同桌紀錄）／`stats`。非牌咖只回 `can_invite`，**不回同桌次數**。封鎖回 `blocked`。只給 authenticated |
+> | 🆕 `_member_stats_core(org, member)` | 成績的唯一算法，從 `get_my_stats_tx` 機械抽出（拿掉身分兩行）。前端叫不到 |
+> | 🆕 `_pair_history(org, a, b)` | 兩人的同桌場數／上次同桌／常一起打，從 `list_buddies_tx` 抽出。前端叫不到 |
+> | ✏️ `get_my_stats_tx` · `list_buddies_tx` | 改成叫上面兩支，回傳不變（行為測試逐字比對過） |
+> | ✏️ `members.see_score` | 只剩「牌咖」（預設）／「只有自己」；只管個人卡的成績區塊。`set_my_see_score_tx` 收到「所有人」視同「牌咖」 |
+> | ✏️ `get_season_leaderboard_tx` | 排行榜與名人堂**加回 `id`**（09-04 拿掉的理由 09-20 已不成立，使用者 09-30 拍板） |
+
 > ### 🆕 2026-09-29 增補 ⑫（歸檔 `2026-09-29_牌咖團邀請連結.sql`）
 > **基準：`sql/applied/` 有 283 個 `.sql`**。資料表 60 → **61**、函式 292 → **294**。行為測試 9/9。
 > | | |

@@ -1,0 +1,152 @@
+<title>牌咖限定個人卡</title>
+<style>
+  :root {
+    --brand:#FAD6DC; --brand-tint:#FFECF1; --brand-light:#FFE7EE; --ink:#2E2B2C;
+    --accent-deep:#974B5F; --gray-1:#5C5754; --gray-2:#726D69;
+    --gray-3:#ECEAE9; --gray-4:#F2F0EE; --divider:#DED9D5; --white:#FFFFFF;
+    --field-bg:#F8F7F6; --page:#EFEBE8;
+    --tile-face:#FFFDF9; --tile-face-bd:#E5DCCF;
+    --r-pill:999px; --r-lg:16px; --r-card:14px; --r-field:12px; --r-sm:8px;
+    color-scheme: light;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--page); color:var(--ink);
+    font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif; padding-inline:16px; padding-block:24px 48px; }
+  header { max-width:1560px; margin:0 auto 20px; }
+  h1 { font-size:22px; margin:0 0 6px; text-wrap:balance; }
+  header p { margin:0; font-size:14px; color:var(--gray-1); line-height:1.7; max-width:72ch; }
+  .rule { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+  .rule span { font-size:12px; font-weight:700; padding:5px 12px; border-radius:var(--r-pill); }
+  .pub { background:var(--white); border:1px solid var(--divider); }
+  .lk { background:var(--ink); color:var(--white); }
+  .row { max-width:1560px; margin:0 auto; display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:20px; align-items:start; }
+  .col h2 { font-size:16px; margin:0 0 4px; }
+  .col .sub { font-size:13px; color:var(--gray-1); margin:0 0 10px; line-height:1.6; min-height:42px; }
+  .phone { position:relative; width:100%; max-width:375px; background:var(--white); border-radius:22px; box-shadow:0 6px 24px rgba(0,0,0,.12); overflow:hidden; }
+  .grab { width:40px; height:5px; border-radius:3px; background:var(--gray-3); margin:10px auto 4px; }
+  .sheet-t { text-align:center; font-weight:700; font-size:16px; padding:6px 0 10px; border-bottom:1px solid var(--field-bg); }
+  .body { padding:14px 16px 20px; }
+  .hero { background:var(--brand-light); border-radius:var(--r-lg); padding:18px 16px; position:relative; }
+  .likes { position:absolute; top:14px; right:14px; background:rgba(255,255,255,.6); border-radius:var(--r-pill); padding:3px 10px; font-size:12px; font-weight:700; }
+  .hero .id { display:flex; align-items:center; gap:14px; }
+  .av { width:60px; height:60px; border-radius:50%; background:var(--white); display:grid; place-items:center; font-size:30px; flex:none; }
+  .ttl { font-size:12px; font-weight:700; }
+  .nm { font-size:18px; font-weight:700; margin:4px 0 0; }
+  .rank { display:inline-block; margin-top:8px; background:rgba(255,255,255,.6); border-radius:var(--r-pill); padding:3px 10px; font-size:12px; font-weight:700; }
+  .rel { display:inline-flex; align-items:center; gap:5px; font-size:13px; font-weight:700; color:var(--accent-deep); margin-top:6px; }
+  .rel i { width:15px; height:15px; border-radius:50%; background:var(--accent-deep); color:var(--white); display:inline-grid; place-items:center; font-size:10px; font-style:normal; }
+  section { padding:14px 0; border-top:1px solid var(--field-bg); }
+  .first { border-top:0; padding-top:16px; }
+  .hd { margin:0 0 12px; font-size:16px; font-weight:700; }
+  .about { background:var(--field-bg); border-radius:var(--r-field); padding:13px 14px; font-size:14px; line-height:1.7; }
+  .tags { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+  .tag { font-size:13px; padding:5px 12px; border-radius:var(--r-pill); background:var(--brand-tint); }
+  .tag.f { background:var(--field-bg); }
+  .three { display:flex; }
+  .three div { flex:1; text-align:center; min-width:0; }
+  .three b { display:block; font-size:16px; }
+  .three span { font-size:13px; color:var(--gray-1); }
+  .hl { background:var(--brand); border-radius:var(--r-card); padding:15px; display:flex; align-items:center; gap:14px; }
+  .tile { width:44px; height:58px; border-radius:var(--r-sm); background:var(--tile-face); border:1.5px solid var(--tile-face-bd); display:grid; place-items:center; font-weight:800; font-size:18px; flex:none; }
+  .baby { display:flex; align-items:center; gap:14px; background:var(--field-bg); border-radius:var(--r-card); padding:14px 16px; font-size:14px; }
+  .bar { height:12px; border-radius:var(--r-pill); background:var(--gray-4); }
+  .bars { display:flex; flex-direction:column; gap:9px; }
+  .bars .bar:nth-child(2) { width:70%; }
+  .three .bar { width:54px; height:16px; margin:0 auto 6px; }
+  .pillbars { display:flex; gap:8px; margin-top:12px; } .pillbars .bar { height:26px; width:62px; }
+  .btn { display:block; width:100%; border:0; border-radius:var(--r-pill); padding:12px 0; font-size:15px; font-weight:700; font-family:inherit; }
+  .btn.p { background:var(--brand); color:var(--ink); }
+  .btn.g { background:var(--gray-4); color:var(--gray-1); margin-top:9px; }
+  .btn.off { background:var(--gray-4); color:var(--gray-2); }
+  .note { margin:8px 0 0; font-size:13px; color:var(--gray-1); text-align:center; }
+  .block { margin-top:9px; width:100%; background:var(--white); border:1px dashed var(--divider); color:var(--gray-1); border-radius:var(--r-pill); padding:10px 0; font-size:13px; font-weight:700; font-family:inherit; }
+
+  /* A：遮罩蓋在鎖住的區塊上，中間一顆浮動膠囊 */
+  .lockwrap { position:relative; }
+  .veil { position:absolute; inset:0; background:rgba(255,255,255,.55); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
+    display:flex; align-items:flex-start; justify-content:center; padding-top:120px; }
+  /* 深墨膠囊、只有字、沒有圖示（2026-09-30 使用者從加人／驚嘆號／問號／叉叉比較後選回這一版） */
+  .float { background:var(--ink); color:var(--white); font-size:14px; font-weight:700;
+    padding:10px 20px; border-radius:var(--r-pill); box-shadow:0 6px 18px rgba(46,43,44,.25); }
+  /* B：Toast（跟 App 的 showToast 同一種長相） */
+  .toast { position:absolute; left:50%; bottom:150px; transform:translateX(-50%); background:var(--ink); color:var(--white);
+    font-size:14px; font-weight:700; padding:10px 20px; border-radius:var(--r-pill); box-shadow:0 6px 18px rgba(46,43,44,.3); white-space:nowrap; }
+  .tap { position:absolute; width:34px; height:34px; border-radius:50%; border:2px solid var(--accent-deep); background:rgba(151,75,95,.12); }
+  /* C：整張卡蓋遮罩，中間一個彈窗 */
+  .scrim { position:absolute; inset:0; background:rgba(46,43,44,.45); display:flex; align-items:center; justify-content:center; padding:24px; }
+  .dlg { width:100%; max-width:280px; background:var(--white); border-radius:var(--r-lg); padding:22px 18px 16px; text-align:center; box-shadow:0 6px 24px rgba(0,0,0,.25); }
+  .dlg b { display:block; font-size:18px; margin-bottom:16px; }
+  .dlg .row2 { display:flex; gap:8px; }
+  .dlg .row2 .btn { padding:11px 0; font-size:14px; }
+  .cmp { max-width:1560px; margin:0 auto 24px; display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px;
+    background:var(--white); border-radius:var(--r-card); padding:18px; }
+  .cmp > div { display:flex; flex-direction:column; align-items:flex-start; gap:10px; }
+  .cmp .float { display:inline-flex; }
+  .cmp p { margin:0; font-size:13px; color:var(--gray-1); line-height:1.6; }
+  .cmp p b { color:var(--ink); }
+  .notes { max-width:1560px; margin:24px auto 0; background:var(--white); border-radius:var(--r-card); padding:16px 18px; font-size:14px; line-height:1.7; }
+  .notes h3 { margin:0 0 6px; font-size:15px; }
+  .notes ul { margin:0; padding-left:20px; }
+</style>
+
+<header>
+  <h1>別人的個人卡：還不是牌咖時怎麼講</h1>
+  <p>公開的是粉色卡與自我介紹，其餘限牌咖。還不是牌咖時只講一句「尚未加為牌咖」。</p>
+  <div class="rule">
+    <span class="pub">公開：頭像 · 名字 · 稱號 · 段位 · 獲讚 · 自我介紹</span>
+    <span class="lk">限牌咖：打法與作息標籤 · 你和他 · 成績 · 最近亮點 · 寶貝牌</span>
+  </div>
+</header>
+
+<div class="row" id="row"></div>
+
+<div class="notes">
+  <h3>定案：A 案遮罩 ＋ 深墨膠囊（沒有圖示）</h3>
+  <ul>
+    <li>膠囊：深墨底、只有「尚未加為牌咖」幾個字、沒有圖示。比較過加人／驚嘆號／問號／叉叉之後選回這一版（問號撞到「隱藏的會員」、叉叉撞到「失敗」的 Toast）。</li>
+    <li>它是常駐的 —— 遮罩在，它就在。</li>
+    <li>最下面的「＋ 加牌咖」不在遮罩底下，照常按得到。</li>
+    <li>只做在會員 App；資料本身在後端就不送出來，遮罩只是畫面上的樣子。</li>
+  </ul>
+</div>
+
+<script>
+  const hero = (buddy) => `
+    <div class="hero"><span class="likes">👍 12</span>
+      <div class="id"><div class="av">🐻</div><div>
+        <span class="ttl">「新手村制霸」</span><p class="nm">小雲</p>
+        ${buddy ? '<div class="rel"><i>✓</i>已加為牌咖好友</div><br>' : ''}
+        <span class="rank">段位: 白銀熊 II</span>
+      </div></div></div>`;
+  const about = (buddy) => `
+    <section class="first"><p class="hd">關於小雲</p>
+      <div class="about">「早上場固定班底，喜歡安靜認真打～」</div>
+      ${buddy ? '<div class="tags"><span class="tag">早上為主</span><span class="tag">穩扎穩打</span><span class="tag f">台麻</span></div>' : ''}
+    </section>`;
+  const full = `
+    <section><p class="hd">你和小雲</p><div class="three"><div><b>7</b><span>同桌次數</span></div><div><b>3 天前</b><span>上次同桌</span></div><div><b>週六晚上</b><span>常一起打</span></div></div></section>
+    <section><p class="hd">小雲的成績</p><div class="three"><div><b>2.3</b><span>平均順位</span></div><div><b>58%</b><span>勝率</span></div><div><b>+640</b><span>單場最多</span></div></div></section>
+    <section><p class="hd">最近亮點</p><div class="hl"><div style="flex:1"><span style="font-size:13px">近期最大台的一手</span><div style="font-size:22px;font-weight:800;margin-top:4px">清一色</div></div><div style="text-align:center;padding-left:14px;border-left:1px solid rgba(46,43,44,.15)"><b style="font-size:26px">8</b><div style="font-size:13px">台</div></div></div></section>
+    <section><p class="hd">小雲的寶貝牌</p><div class="baby"><span class="tile">八萬</span>發財就靠這張！</div></section>`;
+  const three = (a, b, c) => `<div class="three"><div><div class="bar"></div><span>${a}</span></div><div><div class="bar"></div><span>${b}</span></div><div><div class="bar"></div><span>${c}</span></div></div>`;
+  const locked = `
+    <section style="border-top:0;padding-top:0"><div class="pillbars"><div class="bar"></div><div class="bar"></div><div class="bar"></div></div></section>
+    <section><p class="hd">你和小雲</p>${three('同桌次數','上次同桌','常一起打')}</section>
+    <section><p class="hd">小雲的成績</p>${three('平均順位','勝率','單場最多')}</section>
+    <section><p class="hd">最近亮點</p><div class="bars"><div class="bar"></div><div class="bar"></div></div></section>
+    <section><p class="hd">小雲的寶貝牌</p><div class="bars"><div class="bar"></div></div></section>`;
+  const addBtn = `<section><button class="btn p">＋ 加牌咖</button><p class="note">對方接受邀請後，才會成為牌咖</p><button class="block">不想再跟 小雲 同桌</button></section>`;
+  const cantBtn = `<section><button class="btn off" disabled>同桌對局過才能加牌咖</button><button class="block">不想再跟 小雲 同桌</button></section>`;
+  const phone = (inner, extra = '') => `<div class="phone"><div class="grab"></div><div class="sheet-t">個人檔案</div><div class="body">${inner}</div>${extra}</div>`;
+
+  const veil = `<div class="veil"><span class="float">尚未加為牌咖</span></div>`;
+  const cols = [
+    ['① 已經是牌咖', '全部看得到。',
+      phone(hero(true) + about(true) + full + `<section><button class="btn p">邀進牌咖團</button><button class="btn g">解除牌咖</button><button class="block">不想再跟 小雲 同桌</button></section>`)],
+    ['② 同桌過，還不是牌咖', '自我介紹以下蓋一層霧面遮罩，中間浮一顆跟 App Toast 同長相的「尚未加為牌咖」（常駐，不會消失）。',
+      phone(hero(false) + about(false) + `<div class="lockwrap">${locked}${veil}</div>` + addBtn)],
+    ['③ 沒同桌過', '一樣的遮罩；按鈕換成「同桌對局過才能加牌咖」，規則照舊。',
+      phone(hero(false) + about(false) + `<div class="lockwrap">${locked}${veil}</div>` + cantBtn)],
+  ];
+  document.getElementById('row').innerHTML = cols.map(([h, s, p]) => `<div class="col"><h2>${h}</h2><p class="sub">${s}</p>${p}</div>`).join('');
+</script>
