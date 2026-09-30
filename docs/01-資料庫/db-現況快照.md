@@ -1,5 +1,14 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-09-30 增補 ⑰（歸檔 `2026-09-30_起始積分後台與追加積分紀錄.sql`）
+> **基準：`sql/applied/` 有 290 個 `.sql`**。函式 306 → **308**。驗證 4/4，提交後另查線上；行為測試 `sql/checks/2026-09-30_驗起始積分後台與追加積分紀錄.sql`。
+> | | |
+> |---|---|
+> | 🆕 `admin_list_stake_levels_tx()` | 管理後台「積分級距」頁：全部級距（含停用）＋ 每個級距現在有幾桌在打（`open_tables`）。`can('stake.write')`，只給 authenticated |
+> | 🆕 `admin_set_stake_start_points_tx(id, points)` | 只改 `stake_levels.start_points`（1–9,999,999），`updated_by` 取自 `current_staff()`。名稱／底／台／純娛樂不開放。只給 authenticated |
+> | ✏️ `tbl_state_tx` | 多回 `bust_log`（追加 added／不追加 ended，新的在前；將／風圈／局號取自造成爆卡的那一局）。**另開一個鍵，不混進 `log`**（舊版平板會畫壞） |
+> ⚠ 起始積分是即時讀的（`_tbl_balances`、`tbl_state_tx`）⇒ 改了之後，正在打的桌每個人的積分會立刻跟著變。
+>
 > ### 🆕 2026-09-30 增補 ⑯（歸檔 `2026-09-30_爆卡與追加積分.sql`）
 > **基準：`sql/applied/` 有 289 個 `.sql`**。資料表 ＋1、函式 302 → **306**。驗證 7/7、行為測試 11/11（`sql/checks/2026-09-30_驗爆卡與追加積分.sql`）。
 > | | |
