@@ -24,62 +24,59 @@
    settle_session_tx  兩段成就（2026-09-20 那段與 2026-09-30 那段）只在「這場有名次」時才跑
                       ⇒ 判準沿用唯一的定義 _session_scored()
    ⚠ 改的是線上全文（pg_get_functiondef），錨點必須剛好出現一次，否則整份不執行。可重跑。
+   🔴 2026-10-01 第一版跑失敗：同一支函式分兩步改，第一步加 `if`、第二步才加 `end if`，
+     而工具每改一步就立刻重建 ⇒ 第一步做完時函式不完整 ⇒ 42601。（整份回滾，線上沒變，查證過。）
+     ✅ 改成「同一支函式的所有改動先在文字上全部做完，最後只重建一次」。
    ============================================================ */
 
-create or replace function pg_temp.patch(p_fn regprocedure, p_marker text, p_anchor text, p_new text)
+create or replace function pg_temp.patch_many(p_fn regprocedure, p_marker text, p_anchors text[], p_news text[])
 returns text language plpgsql as $$
-declare v_def text; v_n int;
+declare v_def text; v_n int; i int;
 begin
   v_def := pg_get_functiondef(p_fn);
-  if position(p_marker in v_def) > 0 then return p_fn::text || ' 已經改過：' || left(p_marker, 20); end if;
-  v_n := (length(v_def) - length(replace(v_def, p_anchor, ''))) / length(p_anchor);
-  if v_n <> 1 then
-    raise exception '% 的錨點出現 % 次（要剛好 1 次），整份不執行：%', p_fn, v_n, left(p_anchor, 40);
-  end if;
-  execute replace(v_def, p_anchor, p_new);
-  return p_fn::text || ' 已改：' || left(p_marker, 20);
+  if position(p_marker in v_def) > 0 then return p_fn::text || ' 已經改過'; end if;
+  for i in 1 .. array_length(p_anchors, 1) loop
+    v_n := (length(v_def) - length(replace(v_def, p_anchors[i], ''))) / length(p_anchors[i]);
+    if v_n <> 1 then
+      raise exception '% 的第 % 個錨點出現 % 次（要剛好 1 次），整份不執行：%', p_fn, i, v_n, left(p_anchors[i], 40);
+    end if;
+    v_def := replace(v_def, p_anchors[i], p_news[i]);
+  end loop;
+  execute v_def;   -- 所有改動都做完才重建一次 ⇒ 不會有半改的中間狀態
+  return p_fn::text || ' 已改 ' || array_length(p_anchors, 1) || ' 處';
 end $$;
 
--- ① 總分只算打完的將
-select pg_temp.patch('public._score_settle_tx(uuid)'::regprocedure,
+-- ①② 結算：總分只算打完的將；打完 1 將就寫名次與桌上積分（段位分那段不動）
+select pg_temp.patch_many('public._score_settle_tx(uuid)'::regprocedure,
   '只算打完的將（含咔啦碰）',
-  $a$-- 整場每個座位的總分（所有生效的，包含咔啦碰與沒打完的那一將）$a$,
-  $b$-- 整場每個座位的總分：只算打完的將（含咔啦碰）；沒打完的那一將不算（2026-10-01 使用者拍板）$b$);
-
-select pg_temp.patch('public._score_settle_tx(uuid)'::regprocedure,
-  'rr.status = ''finished''',
-  $a$where h2.session_id = p_session_id and h2.status = 'confirmed' group by 1) x;$a$,
-  $b$where h2.session_id = p_session_id and h2.status = 'confirmed'
+  array[
+    $a$-- 整場每個座位的總分（所有生效的，包含咔啦碰與沒打完的那一將）$a$,
+    $a$where h2.session_id = p_session_id and h2.status = 'confirmed' group by 1) x;$a$,
+    $a$-- ③ 名次與桌上積分：只在段位分真的算了才寫（兩者要嘛都有要嘛都沒有，同 placeholder）$a$,
+    $a$  if v_rated then$a$],
+  array[
+    $b$-- 整場每個座位的總分：只算打完的將（含咔啦碰）；沒打完的那一將不算（2026-10-01 使用者拍板）$b$,
+    $b$where h2.session_id = p_session_id and h2.status = 'confirmed'
              and exists (select 1 from session_rounds rr where rr.id = h2.round_id and rr.status = 'finished')
-           group by 1) x;$b$);
+           group by 1) x;$b$,
+    $b$-- ③ 名次與桌上積分：打完 1 將就寫（2026-10-01）。段位分仍要 2 將（上面那段），
+  --   所以只打完 1 將的場次會「有名次、有桌上積分、沒有段位分」—— 那是拍板的結果，不是寫壞$b$,
+    $b$  if v_nfin >= 1 then$b$]);
 
--- ② 名次與桌上積分：打完 1 將就寫（段位分那段不動）
-select pg_temp.patch('public._score_settle_tx(uuid)'::regprocedure,
-  '打完 1 將就寫',
-  $a$-- ③ 名次與桌上積分：只在段位分真的算了才寫（兩者要嘛都有要嘛都沒有，同 placeholder）$a$,
-  $b$-- ③ 名次與桌上積分：打完 1 將就寫（2026-10-01）。段位分仍要 2 將（上面那段），
-  --   所以只打完 1 將的場次會「有名次、有桌上積分、沒有段位分」—— 那是拍板的結果，不是寫壞$b$);
-
-select pg_temp.patch('public._score_settle_tx(uuid)'::regprocedure,
-  'if v_nfin >= 1 then',
-  $a$  if v_rated then$a$,
-  $b$  if v_nfin >= 1 then$b$);
-
--- ③ 收桌：一將都沒打完（沒有名次）就不發成就
-select pg_temp.patch('public.settle_session_tx(uuid,uuid,boolean)'::regprocedure,
+-- ③ 收桌：一將都沒打完（沒有名次）就不發成就 —— if 的頭與尾一次改完
+select pg_temp.patch_many('public.settle_session_tx(uuid,uuid,boolean)'::regprocedure,
   '一將都沒打完就不發成就',
-  $a$  /* 🆕 2026-09-20：成就事件（第 ③ 步）。$a$,
-  $b$  /* 🆕 2026-10-01：一將都沒打完就不發成就（成績不算 ⇒「完成一場牌局」也不算）。
+  array[
+    $a$  /* 🆕 2026-09-20：成就事件（第 ③ 步）。$a$,
+    $a$  -- ── 收完保留給現場$a$],
+  array[
+    $b$  /* 🆕 2026-10-01：一將都沒打完就不發成就（成績不算 ⇒「完成一場牌局」也不算）。
      判準沿用唯一的定義 _session_scored()；下面兩段成就到「收完保留給現場」之前都包在這個 if 裡 */
   if public._session_scored(p_session_id) then
-  /* 🆕 2026-09-20：成就事件（第 ③ 步）。$b$);
+  /* 🆕 2026-09-20：成就事件（第 ③ 步）。$b$,
+    $b$  end if;   /* ↑ 2026-10-01：成就那兩段只在有名次時才跑 */
 
-select pg_temp.patch('public.settle_session_tx(uuid,uuid,boolean)'::regprocedure,
-  '成就那兩段只在有名次時才跑',
-  $a$  -- ── 收完保留給現場$a$,
-  $b$  end if;   /* ↑ 2026-10-01：成就那兩段只在有名次時才跑 */
-
-  -- ── 收完保留給現場$b$);
+  -- ── 收完保留給現場$b$]);
 
 -- ④ 驗證（只讀狀態、不寫東西，不用 raise —— 硬規則 1.8）
 do $$
