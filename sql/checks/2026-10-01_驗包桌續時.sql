@@ -126,6 +126,18 @@ begin
   v_msg := v_msg || case when v_ok then '✅' else '🔴' end || ' ⓕ 計分板狀態：' || coalesce(v_r -> 'pkg' ->> 'phase', coalesce(v_r ->> 'err', 'null'))
         || '，名單 ' || coalesce(jsonb_array_length(v_r -> 'pkg' -> 'payers')::text, '?') || ' 人、不含會員 id' || E'\n';
 
+  -- ⓕ2（第二版）四人名單：依座位，A 還沒補、B 還沒補且寫出代付人、C 暢打、D 還沒補
+  v_total := v_total + 1;
+  v_err := (select string_agg(e ->> 'status', ',' order by (e ->> 'seat')::int) from jsonb_array_elements(v_r -> 'pkg' -> 'players') e);
+  v_ok := jsonb_array_length(coalesce(v_r -> 'pkg' -> 'players', '[]')) = 4
+      and v_err = 'owed,owed,daypass,owed'
+      and (select e ->> 'payer_name' from jsonb_array_elements(v_r -> 'pkg' -> 'players') e where (e ->> 'seat')::int = 2) is not null
+      and (select e ->> 'payer_name' from jsonb_array_elements(v_r -> 'pkg' -> 'players') e where (e ->> 'seat')::int = 1) is null
+      and not exists (select 1 from jsonb_array_elements(v_r -> 'pkg' -> 'players') e where e ? 'member_id');
+  if v_ok then v_pass := v_pass + 1; end if;
+  v_msg := v_msg || case when v_ok then '✅' else '🔴' end || ' ⓕ2 四人名單：' || coalesce(v_err, '沒有')
+        || '（應為 owed,owed,daypass,owed；座位 2 寫出代付人、不含會員 id）' || E'\n';
+
   v_r := public.list_tables_tx(v_org, v_store);
   select e ->> 'pkg_phase' into v_err
     from jsonb_path_query(v_r, 'lax $.**') e
@@ -164,6 +176,14 @@ begin
   if v_ok then v_pass := v_pass + 1; end if;
   v_msg := v_msg || case when v_ok then '✅' else '🔴' end || ' ⓘ A 付完：' || coalesce(v_r ->> 'message', v_r ->> 'reason', 'ok')
         || '，狀態 ' || coalesce(v_pkg ->> 'phase', 'null') || '（應仍 locked，A 欠 0、D 欠 1）' || E'\n';
+
+  -- ⓘ2（第二版）A 付完：A 與他代付的 B 都變已補，D 還沒補
+  v_total := v_total + 1;
+  v_err := (select string_agg(e ->> 'status', ',' order by (e ->> 'seat')::int) from jsonb_array_elements(v_pkg -> 'players') e);
+  v_ok := v_err = 'paid,paid,daypass,owed';
+  if v_ok then v_pass := v_pass + 1; end if;
+  v_msg := v_msg || case when v_ok then '✅' else '🔴' end || ' ⓘ2 A 付完後四人名單：' || coalesce(v_err, '沒有')
+        || '（應為 paid,paid,daypass,owed）' || E'\n';
 
   -- ⓙ A 再付一次：沒有要補的了
   v_q := public.pos_pkg_quote_tx(v_sess, m[1]);
