@@ -1,5 +1,21 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-02 增補 ㉜（歸檔 `2026-10-02_POS看四台平板畫面.sql`）
+> **基準：`sql/applied/` 有 303 個 `.sql`**。函式數 323 → **325**（＋`_tbl_state_for_device`、＋`pos_tbl_watch_tx`）。
+> 驗證 6/6 ＋ 行為 5/5（`sql/checks/2026-10-02_驗POS看四台平板畫面.sql`），提交後另查線上（版本、內容、授權）。
+> ✏️ 平板讀狀態拆成「共用核心 ＋ 兩個入口」，POS 座位頁才能看到跟平板**一模一樣**的四格畫面：
+>   · `_tbl_state_for_device(table_devices)`：原本 `tbl_state_tx` 的全文，只把認平板那一行換成直接收平板。**前端叫不到**。
+>   · `tbl_state_tx(token)`：平板用，認出平板 → 叫核心。簽名與授權沒變。
+>   · 🆕 `pos_tbl_watch_tx(table_id)`：POS 用，回 `{ok, devices:[{device_id,label,last_seen_at,state}]}`。
+>     只給 authenticated；身分問 `current_staff()` ＋ `has_store_access()`（not_staff／not_found／forbidden）。
+>     ⚠ 不經過認平板那一步 ⇒ **不會改到平板的最後上線時間**（不然店員開著座位頁，平板看起來永遠在線）。
+>   🔴 以後改平板畫面要的資料，**改核心那一支**，兩個入口自動一起變。
+>
+> ### 🆕 2026-10-02 增補 ㉛（歸檔 `2026-10-02_桌況標打完待收桌.sql`）
+> **基準：`sql/applied/` 有 302 個 `.sql`**。函式數不變。驗證 5/5（含反向：還在打的、空桌都不是打完），提交後另查線上。
+> ✏️ `list_tables_tx` 多回 `game_over`：這一場已經有人有名次（判斷只用 `_session_scored`）＝ 打完了、等店員收桌。
+>   POS 桌況把那張桌標「已打完 · 待收桌」。`status` 維持 off／use／idle 三值不動（舊版 POS 遇到沒見過的值會畫成灰卡）。
+>
 > ### 🆕 2026-10-02 增補 ㉚（歸檔 `2026-10-02_牌局結束時間不等收桌.sql`）
 > **基準：`sql/applied/` 有 301 個 `.sql`**。函式數不變（323）。驗證 4/4（含正對照：已收桌的結束時間沒變），提交後另查線上。
 > ✏️ `_game_row` 的 `ended_at` 與 `duration_minutes`：**收桌時間，還沒收桌就用這個人這一場的結算時間**（`session_players.settled_at`）。
