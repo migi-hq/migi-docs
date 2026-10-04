@@ -171,7 +171,7 @@ select 序, 項目, 內容 from (
           **四個數字一個都沒動** —— 而那是一次真正的安全性變更。
           → 所以第 ⑦ 段數的是**授權**：明確授權 anon 的支數，
             以及「只靠 PUBLIC 進來」的支數（**那個應該永遠是 0**）。 */
-  select 6, '⑥ 結構物件數 vs baseline（2026-09-19：表51 函式232 索引98 policy29 帶can20）',
+  select 6, '⑥ 結構物件數 vs baseline（2026-09-19：表51 函式232 索引98 policy29；帶can 期望 21，10-05 更新）',
          (select '表 ' || (select count(*)::text from pg_class c
                             join pg_namespace n on n.oid=c.relnamespace
                            where n.nspname='public' and c.relkind='r')
@@ -190,14 +190,20 @@ select 序, 項目, 內容 from (
                     因為那是 drop + create 同名，數量不變。
                  → 所以這裡多數一個「帶 `can()` 的有幾條」：
                     3 條寫入（products／order_items／order_payments）
-                    ＋ 17 條敏感讀取 = **20**。
+                    ＋ 17 條敏感讀取 = **20**
+                    ＋ 1 條成就（member_achievements 的總部讀取，成就系統上線時加）= **21**（2026-10-05 更新）。
                  ⚠ 少了就是有人把權限判斷拿掉了，而**那不會有任何症狀** ——
-                    症狀是「開了 JWT 之後會員讀得到全 org 的手機與消費明細」。 */
+                    症狀是「開了 JWT 之後會員讀得到全 org 的手機與消費明細」。
+                 ⚠ 多了通常是新功能加了一條總部讀取：核對是哪一條、確定是刻意的，再把這裡的期望值改掉
+                    （2026-10-05 就是這樣：期望值停在 20，⑥ 一直印紅，而那是儀表過期不是權限被拿掉）。 */
               || '　帶 can() ' || (select count(*)::text from pg_policies
                                    where schemaname='public' and coalesce(qual,'') like '%can(%')
               || case when (select count(*) from pg_policies
-                             where schemaname='public' and coalesce(qual,'') like '%can(%') <> 20
-                      then E'\n  🔴 帶 can() 的 policy 不是 20 條 —— 有人動了權限判斷'
+                             where schemaname='public' and coalesce(qual,'') like '%can(%') < 21
+                      then E'\n  🔴 帶 can() 的 policy 少於 21 條 —— 有人把權限判斷拿掉了'
+                      when (select count(*) from pg_policies
+                             where schemaname='public' and coalesce(qual,'') like '%can(%') > 21
+                      then E'\n  ⚠ 帶 can() 的 policy 多於 21 條 —— 新加的那一條核對過是刻意的，就把期望值改掉'
                       else '' end
               || case when (select count(*) from pg_class c
                              join pg_namespace n on n.oid=c.relnamespace
