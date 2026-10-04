@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>POS 店員提醒預覽</title>
+<style>
+  /* 2026-10-02 預覽：POS 桌況卡片與座位頁要標出「店員該過去處理」的事。
+     顏色照 @migi/assets 的 token 值（POS 用的那一套），卡片樣式逐項抄 migi-pos/src/App.jsx 的 TableCard。 */
+  :root { --brand:#FAD6DC; --brand-light:#FFE7EE; --ink:#2E2B2C; --accent:#C2607A; --gray-1:#5C5754; --gray-2:#726D69;
+          --gray-3:#ECEAE9; --gray-4:#F2F0EE; --white:#FFFFFF; --bg:#F7F5F3; --ok:#63B58C; }
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: -apple-system, "PingFang TC", "Segoe UI", "Noto Sans TC", sans-serif; background: var(--bg); color: var(--ink); padding: 24px; }
+  h1 { font-size: 22px; margin-bottom: 6px; }
+  h2 { font-size: 17px; margin: 28px 0 10px; }
+  p.lead { color: var(--gray-1); font-size: 14px; line-height: 1.7; max-width: 880px; }
+  table.rule { border-collapse: collapse; font-size: 13.5px; margin-top: 12px; background: var(--white); }
+  table.rule th, table.rule td { border: 1px solid var(--gray-3); padding: 7px 10px; text-align: left; vertical-align: top; }
+  table.rule th { background: var(--gray-4); font-weight: 700; }
+  .new { display:inline-block; background: var(--accent); color: var(--white); font-size: 11px; font-weight: 800; border-radius: 999px; padding: 0 7px; margin-left: 4px; }
+
+  /* 桌況卡片（照 TableCard） */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, 230px); gap: 12px; }   /* 真的桌況一列 5 張平分：1366 寬約 210px、1920 寬約 320px */
+  .card { border-radius: 14px; padding: 14px 16px; min-height: 104px; display: flex; flex-direction: column; background: var(--brand); }
+  .card .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; }
+  .num { font-size: 26px; font-weight: 800; letter-spacing: 1px; }
+  .pill { border-radius: 999px; padding: 3px 11px; font-size: 13px; font-weight: 500; line-height: 1.4; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+  .pill i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: 0 0 6px; }
+  .p-use { background: rgba(255,255,255,.6); }
+  .p-dark { background: var(--ink); color: var(--white); }
+  .p-white { background: var(--white); color: var(--ink); }
+  .l1 { font-size: 15px; margin-top: 8px; font-weight: 500; }
+  .l2 { font-size: 13px; margin-top: 3px; color: var(--gray-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .l2 b { color: var(--ink); font-weight: 700; }
+  .more { font-size: 11px; font-weight: 800; color: var(--ink); background: rgba(255,255,255,.6); border-radius: 999px; padding: 1px 6px; margin-left: 4px; }
+  .cap { font-size: 12px; color: var(--gray-1); margin-top: 6px; text-align: center; }
+
+  /* 座位頁四格 */
+  .watch { display: grid; grid-template-columns: repeat(auto-fill, 420px); gap: 12px; margin-top: 4px; }
+  .cell .lab { height: 22px; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; color: var(--gray-1); margin-bottom: 6px; }
+  .cell .lab .nm { color: var(--ink); }
+  .tag { font-size: 12px; font-weight: 700; border-radius: 999px; padding: 1px 9px; white-space: nowrap; }
+  .t-gray { background: var(--gray-1); color: var(--white); }
+  .t-dark { background: var(--ink); color: var(--white); }
+  .scr { width: 420px; height: 262px; border-radius: 8px; background: #26232A; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+  .scr.hot { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .scr .board { position: absolute; inset: 0; padding: 12px; display: grid; grid-template-rows: 1fr 1.1fr 0.9fr; gap: 8px; opacity: .9; }
+  .scr .row { display: flex; justify-content: space-between; gap: 8px; }
+  .scr .blk { background: #3A3640; border-radius: 6px; flex: 1; }
+  .scr .blk.me { background: #403A45; }
+  .scr .lock { position: absolute; inset: 0; background: rgba(20,18,22,.62); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #fff; font-size: 13px; font-weight: 700; }
+  .scr .lock small { font-size: 11px; color: #E8D8DD; font-weight: 500; }
+  .note { font-size: 12.5px; color: var(--gray-1); margin-top: 10px; line-height: 1.7; max-width: 860px; }
+</style>
+</head>
+<body>
+  <h1>POS 店員提醒 · 預覽</h1>
+  <p class="lead">店員不會一直盯著畫面看，所以這裡只標「需要你過去一趟」的桌。沒事的桌維持原樣，畫面才不會到處都在提醒。
+    兩個地方用同一套話：<b>桌況卡片</b>（掃一眼就知道哪桌有事）與<b>座位頁那一格</b>（點進去看是哪一台、卡在誰身上）。</p>
+
+  <table class="rule">
+    <tr><th>狀況</th><th>什麼時候出現</th><th>桌況卡片的膠囊</th><th>卡片第二行</th><th>座位頁標在哪一格</th></tr>
+    <tr><td>打完待收桌</td><td>最後一將打完（已上線）</td><td>已打完 · 待收桌</td><td>點進去收桌</td><td>—</td></tr>
+    <tr><td>有人爆卡 <span class="new">新</span></td><td>有人積分不夠付、還沒決定追加或結束</td><td>爆卡 · 等決定</td><td>阿哲 要決定追加或結束</td><td>爆卡那個人的平板：「要決定追加」</td></tr>
+    <tr><td>等確認太久 <span class="new">新</span></td><td>送出一局超過 <b>3 分鐘</b>還有人沒按確認（多半有爭議）</td><td>等確認 4 分</td><td>等 小美 按確認</td><td>還沒按的那幾台：「等確認 · 4 分」</td></tr>
+    <tr><td>包桌快到期／待補檯費</td><td>到期前 30 分鐘／到期之後（已上線）</td><td>包桌快到期／待補檯費</td><td>（不變）</td><td>—</td></tr>
+    <tr><td>平板離線 <span class="new">新</span></td><td>超過 1 分鐘沒回報（沒電、斷網、被拿走）</td><td>1 台平板離線</td><td>A3-4 沒有回應</td><td>那一台：「離線」（已上線）</td></tr>
+  </table>
+  <p class="note">同時有好幾件事時，膠囊只寫<b>最急的那一件</b>（順序就是上表由上往下），其他的用「+1」表示還有。
+    等確認的 3 分鐘門檻：正常確認幾秒內就按完，超過 3 分鐘多半是有人不同意那一局，店員要過去看。</p>
+
+  <h2>① 桌況卡片</h2>
+  <div class="cards">
+    <div>
+      <div class="card"><div class="top"><span class="num">A1</span><span class="pill p-use"><i></i>使用中</span></div>
+        <div class="l1">4 人</div><div class="l2">1 小時 12 分</div></div>
+      <div class="cap">沒事（不變）</div>
+    </div>
+    <div>
+      <div class="card"><div class="top"><span class="num">A2</span><span class="pill p-dark"><i></i>爆卡 · 等決定</span></div>
+        <div class="l1">4 人</div><div class="l2"><b>阿哲</b> 要決定追加或結束</div></div>
+      <div class="cap">新：有人爆卡</div>
+    </div>
+    <div>
+      <div class="card"><div class="top"><span class="num">A3</span><span class="pill p-dark"><i></i>等確認 4 分</span></div>
+        <div class="l1">4 人</div><div class="l2">等 <b>小美</b> 按確認</div></div>
+      <div class="cap">新：等確認太久</div>
+    </div>
+    <div>
+      <div class="card"><div class="top"><span class="num">A5</span><span class="pill p-white"><i></i>1 台平板離線</span></div>
+        <div class="l1">4 人</div><div class="l2">A5-4 沒有回應</div></div>
+      <div class="cap">新：平板離線</div>
+    </div>
+    <div>
+      <div class="card"><div class="top"><span class="num">A6</span><span class="pill p-dark"><i></i>等確認 6 分<span class="more">+1</span></span></div>
+        <div class="l1">4 人</div><div class="l2">等 <b>大雄</b> 按確認 · 1 台離線</div></div>
+      <div class="cap">新：兩件事同時發生</div>
+    </div>
+    <div>
+      <div class="card"><div class="top"><span class="num">A7</span><span class="pill p-dark"><i></i>已打完 · 待收桌</span></div>
+        <div class="l1">4 人</div><div class="l2">點進去收桌</div></div>
+      <div class="cap">已上線（不變）</div>
+    </div>
+  </div>
+  <p class="note">要處理的一律深墨底白字（跟「已打完 · 待收桌」「待補檯費」同一個樣子）；平板離線用白底，因為它不擋客人打牌，只是那台看不到。</p>
+
+  <h2>② 座位頁（A3 等確認 4 分鐘的時候）</h2>
+  <div class="watch">
+    <div class="cell">
+      <div class="lab"><span class="nm">A3-1</span></div>
+      <div class="scr"><div class="board"><div class="row"><div class="blk"></div></div><div class="row"><div class="blk"></div><div class="blk"></div><div class="blk"></div></div><div class="row"><div class="blk me"></div></div></div>
+        <div class="lock">小美 確認中…<small>咖勁凱 已確認</small></div></div>
+    </div>
+    <div class="cell">
+      <div class="lab"><span class="nm">A3-2</span><span class="tag t-dark">等確認 · 4 分</span></div>
+      <div class="scr hot"><div class="board"><div class="row"><div class="blk"></div></div><div class="row"><div class="blk"></div><div class="blk"></div><div class="blk"></div></div><div class="row"><div class="blk me"></div></div></div>
+        <div class="lock">確認彈窗開著<small>小美 還沒按</small></div></div>
+    </div>
+    <div class="cell">
+      <div class="lab"><span class="nm">A3-3</span></div>
+      <div class="scr"><div class="board"><div class="row"><div class="blk"></div></div><div class="row"><div class="blk"></div><div class="blk"></div><div class="blk"></div></div><div class="row"><div class="blk me"></div></div></div>
+        <div class="lock">小美 確認中…</div></div>
+    </div>
+    <div class="cell">
+      <div class="lab"><span class="nm">A3-4</span><span class="tag t-gray">離線</span></div>
+      <div class="scr"><div class="board"><div class="row"><div class="blk"></div></div><div class="row"><div class="blk"></div><div class="blk"></div><div class="blk"></div></div><div class="row"><div class="blk me"></div></div></div>
+        <div class="lock" style="background:rgba(20,18,22,.35)"><small>最後回報 3 分鐘前的畫面</small></div></div>
+    </div>
+  </div>
+  <p class="note">真的畫面裡四格是平板本身的畫面（這裡用色塊代替）。卡住的那一台：<b>標籤列加深墨膠囊、畫面外框加一圈桃紅</b>，店員一眼就知道要找哪一位客人（那一台本來就是那位客人的平板）。</p>
+</body>
+</html>
