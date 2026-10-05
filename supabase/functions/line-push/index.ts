@@ -50,7 +50,8 @@ const rpc = async (fn: string, args: Record<string, unknown>) => {
   return body
 }
 
-type Job = { id: string; to: string; retry_key: string; text: string }
+// messages：資料庫組好的訊息框（文字／卡片，最多 5 個，幾個都只算 1 則）；text 是舊版只有文字時的退路
+type Job = { id: string; to: string; retry_key: string; text: string; messages?: unknown[] }
 type Outcome = { outcome: 'sent' | 'skipped' | 'failed' | 'retry'; http?: number; reason?: string; request_id?: string; error?: string }
 
 const line = (path: string, init: RequestInit = {}) =>
@@ -84,7 +85,12 @@ async function deliver(job: Job): Promise<Outcome> {
     res = await line('/v2/bot/message/push', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Line-Retry-Key': job.retry_key },
-      body: JSON.stringify({ to: job.to, messages: [{ type: 'text', text: job.text }] }),
+      body: JSON.stringify({
+        to: job.to,
+        messages: Array.isArray(job.messages) && job.messages.length > 0
+          ? job.messages.slice(0, 5)
+          : [{ type: 'text', text: job.text }],
+      }),
     })
   } catch (e) {
     return { outcome: 'retry', reason: 'network', error: String(e) }

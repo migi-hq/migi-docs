@@ -22,7 +22,8 @@ with me as (
 )
 insert into app_notifications (org_id, member_id, type, payload, ref_id)
 select me.org_id, me.member_id, 'table_ok',
-       jsonb_build_object('text', '【推播測試】這一則是測試 LINE 推播用的，可以忽略', 'queue_id', q.id, 'test', true),
+       -- style：'both' 一次送文字版＋卡片版兩個框（只算 1 則），方便在手機上比；也可以改 'text' 或 'card'
+       jsonb_build_object('text', '【推播測試】這一則是測試 LINE 推播用的，可以忽略', 'queue_id', q.id, 'test', true, 'style', 'both'),
        q.id
   from me, q
 returning id as "通知 id", created_at as "建立時間";
