@@ -8,7 +8,7 @@
    _push_text(notif)      ✏️ 改成讀 _push_fields；第一行加稱呼、多一行玩法（照使用者給的業界通知參考）
    _push_flex(notif)      🆕 卡片版：品牌標題列、稱呼、開打時間放最大、門市／桌號／玩法／同桌、
                              一顆「查看牌局詳情」（打開會員 App 直接到配桌頁）
-   _push_messages(notif)  🆕 決定這一則送哪幾個框：預設只送文字；通知 payload 帶 style 可以指定
+   _push_messages(notif)  🆕 決定這一則送哪幾個框：預設只送卡片（2026-10-05 使用者選定）；通知 payload 帶 style 可以指定
    push_claim_tx          ✏️ 交件時多帶 messages（Edge Function 照著送）；text 仍保留
    ```
    🎯 為什麼要拆 _push_fields：文字版與卡片版各自查一次資料，遲早會出現
@@ -195,7 +195,7 @@ security definer
 set search_path = public
 as $$
 declare
-  v_default text := 'text';          -- 🔴 正式推播用哪一種就改這裡：'text'／'card'／'both'
+  v_default text := 'card';          -- 🔴 2026-10-05 使用者選卡片版。要換就改這裡：'text'／'card'／'both'
   v_style text;
   v_text text; v_flex jsonb;
 begin
@@ -308,8 +308,8 @@ select concat_ws(E'\n',
                         then '✅ ② 卡片版組得出來，通知那一行：' || (public._push_flex(s.id) ->> 'altText')
                         else '🔴 ② 卡片版缺東西' end from s), '⚪ ②'),
   coalesce((select case when jsonb_array_length(public._push_messages(s.id)) = 1
-                         and public._push_messages(s.id) #>> '{0,type}' = 'text'
-                        then '✅ ③ 預設只送文字版（1 個框）'
+                         and public._push_messages(s.id) #>> '{0,type}' = 'flex'
+                        then '✅ ③ 預設只送卡片版（1 個框）'
                         else '🔴 ③ 預設不是文字版：' || public._push_messages(s.id)::text end from s), '⚪ ③'),
   (select case when has_function_privilege('service_role', 'public.push_claim_tx(text,int)', 'execute')
                 and not has_function_privilege('anon', 'public.push_claim_tx(text,int)', 'execute')

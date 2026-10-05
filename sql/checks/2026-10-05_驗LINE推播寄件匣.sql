@@ -45,7 +45,7 @@ begin
   v_claim := push_claim_tx(v_key, 50);
   v_msg := v_msg || E'\n' || coalesce((
     select case when (e ->> 'text') like '%你的牌局湊滿了%' and (e ->> 'text') like '%明天%'
-                 and jsonb_array_length(e -> 'messages') = 1 and e #>> '{messages,0,type}' = 'text'   -- 加卡片版之後：預設只送文字框
+                 and jsonb_array_length(e -> 'messages') = 1 and e #>> '{messages,0,type}' = 'flex'   -- 使用者選卡片版：預設只送卡片框
                 then '✅ ⓒ 取件拿到真 LINE 會員那一筆，訊息：' || replace(e ->> 'text', E'\n', ' ／ ')
                 else '🔴 ⓒ 訊息不對：' || (e ->> 'text') end
       from jsonb_array_elements(v_claim) e where (e ->> 'id')::uuid = v_d1), '🔴 ⓒ 取件沒有拿到真 LINE 會員那一筆');
