@@ -118,7 +118,9 @@ end $$;
 revoke execute on function public._push_text(uuid) from public, anon, authenticated;
 
 -- ③ 卡片版（LINE Flex Message）
---    顏色取 MIGI 品牌：標題列 --brand #FAD6DC、按鈕 --accent #C2607A 配白字、灰字 #8B8582
+--    顏色（2026-10-05 使用者指定，不用桃紅）：標題列 --brand #FAD6DC、主按鈕 --ink #2E2B2C 配白字、
+--    次按鈕粉底 #FAD6DC 黑字、灰字 #8B8582。
+--    ⚠ 粉色不當字色用：白底上對比約 1.3:1，等於看不見 —— 要粉就當底色
 create or replace function public._push_flex(p_notif uuid)
 returns jsonb
 language plpgsql
@@ -163,7 +165,7 @@ begin
                              'color', '#2E2B2C', 'align', 'center'))
           || case when (f ->> 'test')::boolean
                   then jsonb_build_array(jsonb_build_object('type', 'text', 'text', '推播測試', 'size', 'xxs',
-                                                            'color', '#974B5F', 'align', 'center'))
+                                                            'color', '#2E2B2C', 'align', 'center'))
                   else '[]'::jsonb end),
       'body', jsonb_build_object('type', 'box', 'layout', 'vertical', 'paddingAll', '18px',
         'contents', jsonb_build_array(
@@ -179,12 +181,12 @@ begin
           jsonb_build_object('type', 'text', 'text', '請準時到店，到櫃檯報到就能入座。',
                              'size', 'xs', 'color', '#8B8582', 'wrap', true, 'margin', 'lg'))),
       -- 按鈕：主要「查看牌局」；門市有電話才多一顆「打給門市」
-      'footer', jsonb_build_object('type', 'box', 'layout', 'vertical', 'spacing', 'xs', 'paddingAll', '12px',
+      'footer', jsonb_build_object('type', 'box', 'layout', 'vertical', 'spacing', 'sm', 'paddingAll', '12px',
         'contents', jsonb_build_array(
-          jsonb_build_object('type', 'button', 'style', 'primary', 'color', '#C2607A', 'height', 'sm',
+          jsonb_build_object('type', 'button', 'style', 'primary', 'color', '#2E2B2C', 'height', 'sm',
             'action', jsonb_build_object('type', 'uri', 'label', '查看牌局', 'uri', f ->> 'url')))
           || case when f ->> 'phone' is not null
-                  then jsonb_build_array(jsonb_build_object('type', 'button', 'style', 'link', 'color', '#974B5F', 'height', 'sm',
+                  then jsonb_build_array(jsonb_build_object('type', 'button', 'style', 'secondary', 'color', '#FAD6DC', 'height', 'sm',
                          'action', jsonb_build_object('type', 'uri', 'label', '不能準時到？打給門市', 'uri', 'tel:' || (f ->> 'phone'))))
                   else '[]'::jsonb end)));
 end $$;
