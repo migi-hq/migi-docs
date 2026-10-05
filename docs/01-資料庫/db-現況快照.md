@@ -1,5 +1,20 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-05 增補 ㉟（歸檔 `2026-10-05_LINE推播_配桌湊滿.sql`）
+> **基準：`sql/applied/` 有 308 個 `.sql`**。表 65 → 66、函式 325 → 330（＋5，算式對得上）。驗證 8/8，提交後另查線上。
+> 🆕 擴充套件 **`pg_net`**（請求在交易提交後才送出，回滾就不送）。
+> 🆕 表 `notification_deliveries`（推播寄件匣）：一則通知一個管道一列，`status` ∈ pending／sending／sent／skipped／failed，
+>   `reason` 記不送或失敗的原因，`retry_key` 是送 LINE 時的 `X-Line-Retry-Key`。RLS 開、0 policy、anon／authenticated 無權限。
+>   🔴 **刻意沒有 `member_id`**：誰收從 `app_notifications` 查（指向 members 的外鍵已 40 個）。
+> 🆕 觸發器 `trg_app_notifications_push`（每個陳述式一次）→ `_push_enqueue()`：白名單只有 `table_ok`，排進寄件匣後叫 `_push_kick()`。
+> 🆕 `_push_kick()`：有到期的待送才用 `net.http_post` 打 Edge Function `line-push`，header 帶 vault 裡的 `push_worker_key`。
+> 🆕 `_push_text(notif)`：送的那一刻才組訊息（時間／店名＋桌號／同桌／LIFF 連結）。改文案改這支。
+> 🆕 `push_claim_tx(key, limit)`／`push_report_tx(...)`：只給 service_role；鑰匙不對回空陣列／forbidden。
+>   不送的當場標 skipped：`member_gone`／`no_line`／`bad_line_id`（測試帳號的假 id）／`stale`（房取消、牌局已過、塞超過 6 小時）。
+>   retry 退避 1、2、4、8 分鐘，第 5 次失敗改 failed／`too_many_attempts`；卡在 sending 超過 5 分鐘退回 pending。
+> 🆕 vault secret `push_worker_key`（資料庫自己產生）、pg_cron `line-push-sweep`（每分鐘）。
+> ⚠ LINE 的 channel access token **不在資料庫**，在 Edge Function Secrets 的 `LINE_MESSAGING_TOKEN`。
+>
 > ### 🆕 2026-10-04 增補 ㉞（歸檔 `2026-10-04_成績頁補每一局的統計.sql`）
 > **基準：`sql/applied/` 有 305 個 `.sql`**。函式數不變（325）。驗證 5/5（含正對照：函式回的局／胡／自摸／放槍與單局最大台，跟直接數 hands 一樣），提交後另查線上。
 > ✏️ `_member_stats_core`（`get_my_stats_tx` 與他人個人卡共用）讀電子計分的 `hands`：

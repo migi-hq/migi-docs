@@ -718,6 +718,43 @@ select 序, 項目, 內容 from (
                         then E'\n  🔴 排程 season-close 不見了或被停用' end), '')
 
   union all
+  /* ⑳ LINE 推播寄件匣（2026-10-05 加）。
+        🔴 推播失敗**客人不會知道**，店員也不會 —— 只有這一格看得到。
+        · 等待中卡超過 5 分鐘 ＝ Edge Function line-push 沒在跑，或 LINE_MESSAGING_TOKEN 沒設／錯了
+        · 免費則數（輕用量每月 200）用完，LINE 回 429，之後全部送不出去
+        · 「沒加好友」多 ＝ 門市 QR 那條「先加好友」的路沒走好（推播只送得到好友） */
+  select 20, '⑳ LINE 推播寄件匣（近 7 天）',
+         (select '送出 ' || count(*) filter (where status = 'sent')
+              || '　不送 ' || count(*) filter (where status = 'skipped')
+              || '（沒加好友 ' || count(*) filter (where reason = 'not_friend') || '）'
+              || '　失敗 ' || count(*) filter (where status = 'failed')
+              || '　等待中 ' || count(*) filter (where status in ('pending', 'sending'))
+              || '　本月已送 ' || (select count(*) from notification_deliveries
+                                   where status = 'sent'
+                                     and sent_at >= date_trunc('month', now() at time zone 'Asia/Taipei') at time zone 'Asia/Taipei')
+              || ' 則（輕用量免費 200）'
+              || case when exists (select 1 from notification_deliveries
+                                    where status in ('pending', 'sending') and created_at < now() - interval '5 minutes'
+                                      and coalesce(reason, '') <> 'line_busy')
+                      then E'\n  🔴 有待送的超過 5 分鐘還沒送出 —— Edge Function line-push 沒在跑，或 LINE_MESSAGING_TOKEN 沒設／錯了（看 Edge Function 的 Logs）'
+                      else '' end
+              || case when exists (select 1 from notification_deliveries where reason = 'quota' and updated_at > now() - interval '30 days')
+                      then E'\n  🔴 本月免費則數用完了 —— 之後的推播都送不出去，要升方案'
+                      else '' end
+              || coalesce((select E'\n  ⚠ 近 7 天失敗的原因：' || string_agg(distinct coalesce(reason, '?'), '、')
+                             from notification_deliveries
+                            where status = 'failed' and created_at > now() - interval '7 days'
+                           having count(*) > 0), '')
+              || coalesce((select E'\n  ⚠ 近 1 小時呼叫 line-push 有 ' || count(*) || ' 次不是 200（最後一次：'
+                                  || coalesce((array_agg(coalesce(status_code::text, error_msg) order by created desc))[1], '?') || '）'
+                             from net._http_response
+                            where created > now() - interval '1 hour' and (status_code is null or status_code <> 200)
+                           having count(*) > 0), '')
+              || case when not exists (select 1 from cron.job where jobname = 'line-push-sweep' and active)
+                      then E'\n  🔴 排程 line-push-sweep 不見了或被停用' else '' end
+            from notification_deliveries where created_at > now() - interval '7 days')
+
+  union all
   select 5, '⑤ 測試標記（修好前的歷史資料仍標成營運）',
          (select 'is_test=true ' || count(*) filter (where is_test)::text ||
                  '　is_test=false ' || count(*) filter (where not is_test)::text ||
