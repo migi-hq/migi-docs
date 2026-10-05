@@ -7,7 +7,7 @@
    _push_fields(notif)    🆕 唯一一份「這則要講什麼」：時間、地點（店名＋桌號）、同桌、是不是測試
    _push_text(notif)      ✏️ 改成讀 _push_fields；第一行加稱呼、多一行玩法（照使用者給的業界通知參考）
    _push_flex(notif)      🆕 卡片版：品牌標題列、稱呼、開打時間放最大、門市／桌號／玩法／同桌、
-                             「查看牌局」＋（門市有電話時）「不能準時到？打給門市」
+                             一顆「查看牌局」
    _push_messages(notif)  🆕 決定這一則送哪幾個框：預設只送文字；通知 payload 帶 style 可以指定
    push_claim_tx          ✏️ 交件時多帶 messages（Edge Function 照著送）；text 仍保留
    ```
@@ -41,7 +41,7 @@ begin
   select * into n from app_notifications where id = p_notif;
   if n.id is null or n.type <> 'table_ok' then return null; end if;
 
-  select mq.id, mq.play_at, mq.matched_session_id, s.name as store_name, s.phone as store_phone,
+  select mq.id, mq.play_at, mq.matched_session_id, s.name as store_name,
          concat_ws(' · ', mq.game_type, mq.flower, mq.rounds) as game,
          case when sl.is_hygiene then sl.label else '積分 ' || sl.label end as stake,
          (select m.display_name from members m where m.id = n.member_id) as my_name
@@ -86,8 +86,6 @@ begin
     'name',   q.my_name,                                   -- 稱呼客人（參考業界通知：開頭先叫名字）
     'game',   nullif(q.game, ''),                          -- 台麻 · 無花 · 2 將
     'stake',  q.stake,                                     -- 「積分 50/20」；純娛樂的桌只寫「純娛樂」
-    'phone',  nullif(regexp_replace(coalesce(q.store_phone, ''), '[^0-9+]', '', 'g'), ''),  -- 打電話用，只留數字
-    'phone_label', q.store_phone,
     'url',    'https://liff.line.me/2011312117-Zuul0Ndo');
 end $$;
 revoke execute on function public._push_fields(uuid) from public, anon, authenticated;
@@ -119,7 +117,7 @@ revoke execute on function public._push_text(uuid) from public, anon, authentica
 
 -- ③ 卡片版（LINE Flex Message）
 --    顏色（2026-10-05 使用者指定，不用桃紅）：標題列 --brand #FAD6DC、主按鈕 --ink #2E2B2C 配白字、
---    次按鈕粉底 #FAD6DC 黑字、灰字 #8B8582。
+--    灰字 #8B8582。
 --    ⚠ 粉色不當字色用：白底上對比約 1.3:1，等於看不見 —— 要粉就當底色
 create or replace function public._push_flex(p_notif uuid)
 returns jsonb
@@ -180,15 +178,11 @@ begin
           jsonb_build_object('type', 'separator', 'margin', 'lg', 'color', '#DED9D5'),
           jsonb_build_object('type', 'text', 'text', '請準時到店，到櫃檯報到就能入座。',
                              'size', 'xs', 'color', '#8B8582', 'wrap', true, 'margin', 'lg'))),
-      -- 按鈕：主要「查看牌局」；門市有電話才多一顆「打給門市」
-      'footer', jsonb_build_object('type', 'box', 'layout', 'vertical', 'spacing', 'sm', 'paddingAll', '12px',
+      -- 按鈕只有一顆「查看牌局」（「打給門市」2026-10-05 使用者決定不要）
+      'footer', jsonb_build_object('type', 'box', 'layout', 'vertical', 'paddingAll', '12px',
         'contents', jsonb_build_array(
           jsonb_build_object('type', 'button', 'style', 'primary', 'color', '#2E2B2C', 'height', 'sm',
-            'action', jsonb_build_object('type', 'uri', 'label', '查看牌局', 'uri', f ->> 'url')))
-          || case when f ->> 'phone' is not null
-                  then jsonb_build_array(jsonb_build_object('type', 'button', 'style', 'secondary', 'color', '#FAD6DC', 'height', 'sm',
-                         'action', jsonb_build_object('type', 'uri', 'label', '不能準時到？打給門市', 'uri', 'tel:' || (f ->> 'phone'))))
-                  else '[]'::jsonb end)));
+            'action', jsonb_build_object('type', 'uri', 'label', '查看牌局', 'uri', f ->> 'url'))))));
 end $$;
 revoke execute on function public._push_flex(uuid) from public, anon, authenticated;
 
