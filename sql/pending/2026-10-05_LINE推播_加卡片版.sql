@@ -7,7 +7,7 @@
    _push_fields(notif)    🆕 唯一一份「這則要講什麼」：時間、地點（店名＋桌號）、同桌、是不是測試
    _push_text(notif)      ✏️ 改成讀 _push_fields；第一行加稱呼、多一行玩法（照使用者給的業界通知參考）
    _push_flex(notif)      🆕 卡片版：品牌標題列、稱呼、開打時間放最大、門市／桌號／玩法／同桌、
-                             一顆「查看牌局」
+                             一顆「查看牌局詳情」（打開會員 App 直接到配桌頁）
    _push_messages(notif)  🆕 決定這一則送哪幾個框：預設只送文字；通知 payload 帶 style 可以指定
    push_claim_tx          ✏️ 交件時多帶 messages（Edge Function 照著送）；text 仍保留
    ```
@@ -86,7 +86,7 @@ begin
     'name',   q.my_name,                                   -- 稱呼客人（參考業界通知：開頭先叫名字）
     'game',   nullif(q.game, ''),                          -- 台麻 · 無花 · 2 將
     'stake',  q.stake,                                     -- 「積分 50/20」；純娛樂的桌只寫「純娛樂」
-    'url',    'https://liff.line.me/2011312117-Zuul0Ndo');
+    'url',    'https://liff.line.me/2011312117-Zuul0Ndo?tab=match');   -- ?tab=match：App 打開直接到配桌頁（migi-web lib/deeplink.js）
 end $$;
 revoke execute on function public._push_fields(uuid) from public, anon, authenticated;
 
@@ -111,7 +111,7 @@ begin
          then '玩法：' || concat_ws(' · ', f ->> 'game', f ->> 'stake') end,
     case when f ->> 'others' is not null then '同桌：' || (f ->> 'others') end,
     '請準時到店，到櫃檯報到就能入座。',
-    '查看牌局：' || (f ->> 'url'));
+    '查看牌局詳情：' || (f ->> 'url'));
 end $$;
 revoke execute on function public._push_text(uuid) from public, anon, authenticated;
 
@@ -178,11 +178,11 @@ begin
           jsonb_build_object('type', 'separator', 'margin', 'lg', 'color', '#DED9D5'),
           jsonb_build_object('type', 'text', 'text', '請準時到店，到櫃檯報到就能入座。',
                              'size', 'xs', 'color', '#8B8582', 'wrap', true, 'margin', 'lg'))),
-      -- 按鈕只有一顆「查看牌局」（「打給門市」2026-10-05 使用者決定不要）
+      -- 按鈕只有一顆「查看牌局詳情」（「打給門市」2026-10-05 使用者決定不要）
       'footer', jsonb_build_object('type', 'box', 'layout', 'vertical', 'paddingAll', '12px',
         'contents', jsonb_build_array(
           jsonb_build_object('type', 'button', 'style', 'primary', 'color', '#2E2B2C', 'height', 'sm',
-            'action', jsonb_build_object('type', 'uri', 'label', '查看牌局', 'uri', f ->> 'url'))))));
+            'action', jsonb_build_object('type', 'uri', 'label', '查看牌局詳情', 'uri', f ->> 'url'))))));
 end $$;
 revoke execute on function public._push_flex(uuid) from public, anon, authenticated;
 
@@ -297,7 +297,7 @@ with s as (
 )
 select concat_ws(E'\n',
   coalesce((select case when public._push_text(s.id) like '%你的牌局湊滿了！' || E'\n' || '時間：%'
-                         and public._push_text(s.id) like '%查看牌局：https://liff.line.me/%'
+                         and public._push_text(s.id) like '%查看牌局詳情：https://liff.line.me/%'
                         then '✅ ① 文字版：' || replace(public._push_text(s.id), E'\n', ' ／ ')
                         else '🔴 ① 文字版變了：' || coalesce(public._push_text(s.id), 'null') end from s),
            '⚪ ① 線上沒有 table_ok 通知可以試（行為測試那份會自己造）'),

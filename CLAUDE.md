@@ -1508,6 +1508,7 @@ migi github/           ← Claude Code 的 project folder 選這層
 | `migi_evt_queue` | 埋點離線佇列 | — 本來就該在本機 |
 | `migi_reload_mark` | 版本重載記號 | — 本機 |
 | `migi_pending_table_invite` | 待處理的桌邀請 | — 暫存 |
+| `migi_pending_tab` | 打開 App 要直接到哪一頁（LINE 推播帶 `?tab=match`，10 分鐘內有效、讀一次就清） | — 暫存（`lib/deeplink.js`） |
 | `migi_noti_*` | 通知開關 | ⚠ 只在本機，換裝置會回預設（可接受，但要知道） |
 
 ✅ **已搬進後端**：小熊名字 → `member_app_state.bear.name`（2026-08-30，零 SQL）。
