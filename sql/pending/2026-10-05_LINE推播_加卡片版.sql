@@ -5,8 +5,9 @@
    ── 改了什麼 ────────────────────────────────────────
    ```
    _push_fields(notif)    🆕 唯一一份「這則要講什麼」：時間、地點（店名＋桌號）、同桌、是不是測試
-   _push_text(notif)      ✏️ 改成讀 _push_fields（輸出逐字不變）
-   _push_flex(notif)      🆕 卡片版：粉色標題列、時間／地點／同桌三列、「查看牌局」按鈕
+   _push_text(notif)      ✏️ 改成讀 _push_fields；第一行加稱呼、多一行玩法（照使用者給的業界通知參考）
+   _push_flex(notif)      🆕 卡片版：品牌標題列、稱呼、開打時間放最大、門市／桌號／玩法／同桌、
+                             「查看牌局」＋（門市有電話時）「不能準時到？打給門市」
    _push_messages(notif)  🆕 決定這一則送哪幾個框：預設只送文字；通知 payload 帶 style 可以指定
    push_claim_tx          ✏️ 交件時多帶 messages（Edge Function 照著送）；text 仍保留
    ```
@@ -40,8 +41,14 @@ begin
   select * into n from app_notifications where id = p_notif;
   if n.id is null or n.type <> 'table_ok' then return null; end if;
 
-  select mq.id, mq.play_at, mq.matched_session_id, s.name as store_name into q
-    from match_queues mq left join stores s on s.id = mq.store_id
+  select mq.id, mq.play_at, mq.matched_session_id, s.name as store_name, s.phone as store_phone,
+         concat_ws(' · ', mq.game_type, mq.flower, mq.rounds) as game,
+         case when sl.is_hygiene then sl.label else '積分 ' || sl.label end as stake,
+         (select m.display_name from members m where m.id = n.member_id) as my_name
+    into q
+    from match_queues mq
+    left join stores s on s.id = mq.store_id
+    left join stake_levels sl on sl.id = mq.stake_level_id
    where mq.id = coalesce((n.payload ->> 'queue_id')::uuid, n.ref_id);
   if q.id is null then return null; end if;
 
@@ -76,6 +83,11 @@ begin
     'table',  v_tbl,
     'place',  coalesce(q.store_name, 'MIGI') || coalesce(' · ' || v_tbl || ' 桌', ''),
     'others', v_others,
+    'name',   q.my_name,                                   -- 稱呼客人（參考業界通知：開頭先叫名字）
+    'game',   nullif(q.game, ''),                          -- 台麻 · 無花 · 2 將
+    'stake',  q.stake,                                     -- 「積分 50/20」；純娛樂的桌只寫「純娛樂」
+    'phone',  nullif(regexp_replace(coalesce(q.store_phone, ''), '[^0-9+]', '', 'g'), ''),  -- 打電話用，只留數字
+    'phone_label', q.store_phone,
     'url',    'https://liff.line.me/2011312117-Zuul0Ndo');
 end $$;
 revoke execute on function public._push_fields(uuid) from public, anon, authenticated;
@@ -91,11 +103,14 @@ as $$
 declare f jsonb := _push_fields(p_notif);
 begin
   if f is null then return null; end if;
+  -- 2026-10-05 照業界通知的寫法加了稱呼與玩法（第一行就是手機通知會露出來的那一句）
   return concat_ws(E'\n',
     case when (f ->> 'test')::boolean then '【推播測試】' end,
-    '你的牌局湊滿了！',
+    coalesce((f ->> 'name') || '，', '') || '你的牌局湊滿了！',
     '時間：' || (f ->> 'when'),
     '地點：' || (f ->> 'place'),
+    case when coalesce(f ->> 'game', f ->> 'stake') is not null
+         then '玩法：' || concat_ws(' · ', f ->> 'game', f ->> 'stake') end,
     case when f ->> 'others' is not null then '同桌：' || (f ->> 'others') end,
     '請準時到店，到櫃檯報到就能入座。',
     '查看牌局：' || (f ->> 'url'));
@@ -118,45 +133,60 @@ declare
 begin
   if f is null then return null; end if;
 
-  v_rows := jsonb_build_array(
-    jsonb_build_object('type', 'box', 'layout', 'baseline', 'spacing', 'md', 'contents', jsonb_build_array(
-      jsonb_build_object('type', 'text', 'text', '時間', 'size', 'sm', 'color', '#8B8582', 'flex', 1),
-      jsonb_build_object('type', 'text', 'text', f ->> 'when', 'size', 'md', 'color', '#2E2B2C', 'weight', 'bold', 'wrap', true, 'flex', 4))),
-    jsonb_build_object('type', 'box', 'layout', 'baseline', 'spacing', 'md', 'contents', jsonb_build_array(
-      jsonb_build_object('type', 'text', 'text', '地點', 'size', 'sm', 'color', '#8B8582', 'flex', 1),
-      jsonb_build_object('type', 'text', 'text', f ->> 'place', 'size', 'sm', 'color', '#2E2B2C', 'wrap', true, 'flex', 4))));
-  if f ->> 'others' is not null then
-    v_rows := v_rows || jsonb_build_array(
-      jsonb_build_object('type', 'box', 'layout', 'baseline', 'spacing', 'md', 'contents', jsonb_build_array(
-        jsonb_build_object('type', 'text', 'text', '同桌', 'size', 'sm', 'color', '#8B8582', 'flex', 1),
-        jsonb_build_object('type', 'text', 'text', f ->> 'others', 'size', 'sm', 'color', '#2E2B2C', 'wrap', true, 'flex', 4))));
-  end if;
-  v_rows := v_rows || jsonb_build_array(
-    jsonb_build_object('type', 'text', 'text', '請準時到店，到櫃檯報到就能入座。',
-                       'size', 'xs', 'color', '#8B8582', 'wrap', true, 'margin', 'md'));
+  -- 細項：一列「項目 → 內容」，沒有值的那一列整列不畫
+  select jsonb_agg(jsonb_build_object('type', 'box', 'layout', 'baseline', 'spacing', 'md', 'contents', jsonb_build_array(
+           jsonb_build_object('type', 'text', 'text', k, 'size', 'sm', 'color', '#8B8582', 'flex', 2),
+           jsonb_build_object('type', 'text', 'text', v, 'size', 'sm', 'color', '#2E2B2C', 'wrap', true, 'flex', 7)))
+         order by o)
+    into v_rows
+    from (values (1, '門市', f ->> 'store'),
+                 (2, '桌號', coalesce((f ->> 'table') || ' 桌', '到店後櫃檯帶位')),
+                 (3, '玩法', nullif(concat_ws(' · ', f ->> 'game', f ->> 'stake'), '')),
+                 (4, '同桌', f ->> 'others')) t(o, k, v)
+   where v is not null;
 
   -- 手機通知與聊天列表只看得到這一句（卡片本身不會出現在那裡）
   v_alt := case when (f ->> 'test')::boolean then '【推播測試】' else '' end
-        || '你的牌局湊滿了！' || (f ->> 'short') || coalesce(' · ' || (f ->> 'table') || ' 桌', '');
+        || coalesce((f ->> 'name') || '，', '') || '你的牌局湊滿了！'
+        || (f ->> 'short') || coalesce(' · ' || (f ->> 'table') || ' 桌', '');
 
   return jsonb_build_object(
     'type', 'flex',
     'altText', left(v_alt, 400),
     'contents', jsonb_build_object(
       'type', 'bubble',
+      -- 標題列：品牌名置中（參考業界的預約通知）
       'header', jsonb_build_object(
-        'type', 'box', 'layout', 'vertical', 'backgroundColor', '#FAD6DC', 'paddingAll', '16px',
+        'type', 'box', 'layout', 'vertical', 'backgroundColor', '#FAD6DC', 'paddingAll', '14px',
         'contents', jsonb_build_array(
-          jsonb_build_object('type', 'text', 'size', 'xs', 'weight', 'bold', 'color', '#974B5F',
-                             'text', case when (f ->> 'test')::boolean then '配桌成功（推播測試）' else '配桌成功' end),
-          jsonb_build_object('type', 'text', 'text', '你的牌局湊滿了！', 'size', 'xl', 'weight', 'bold',
-                             'color', '#2E2B2C', 'margin', 'xs'))),
-      'body', jsonb_build_object('type', 'box', 'layout', 'vertical', 'spacing', 'sm', 'paddingAll', '16px',
-                                 'contents', v_rows),
-      'footer', jsonb_build_object('type', 'box', 'layout', 'vertical', 'paddingAll', '12px',
+          jsonb_build_object('type', 'text', 'text', 'MIGI 咪吉麻將', 'size', 'lg', 'weight', 'bold',
+                             'color', '#2E2B2C', 'align', 'center'))
+          || case when (f ->> 'test')::boolean
+                  then jsonb_build_array(jsonb_build_object('type', 'text', 'text', '推播測試', 'size', 'xxs',
+                                                            'color', '#974B5F', 'align', 'center'))
+                  else '[]'::jsonb end),
+      'body', jsonb_build_object('type', 'box', 'layout', 'vertical', 'paddingAll', '18px',
+        'contents', jsonb_build_array(
+          jsonb_build_object('type', 'text', 'text', coalesce((f ->> 'name') || '，', '') || '你的牌局湊滿了！',
+                             'size', 'sm', 'color', '#2E2B2C', 'wrap', true),
+          jsonb_build_object('type', 'text', 'text', '開打時間', 'size', 'xs', 'color', '#8B8582', 'margin', 'lg'),
+          jsonb_build_object('type', 'text', 'text', f ->> 'short', 'size', 'xxl', 'weight', 'bold',
+                             'color', '#2E2B2C', 'margin', 'xs'),
+          jsonb_build_object('type', 'separator', 'margin', 'lg', 'color', '#DED9D5'),
+          jsonb_build_object('type', 'box', 'layout', 'vertical', 'spacing', 'sm', 'margin', 'lg',
+                             'contents', coalesce(v_rows, '[]'::jsonb)),
+          jsonb_build_object('type', 'separator', 'margin', 'lg', 'color', '#DED9D5'),
+          jsonb_build_object('type', 'text', 'text', '請準時到店，到櫃檯報到就能入座。',
+                             'size', 'xs', 'color', '#8B8582', 'wrap', true, 'margin', 'lg'))),
+      -- 按鈕：主要「查看牌局」；門市有電話才多一顆「打給門市」
+      'footer', jsonb_build_object('type', 'box', 'layout', 'vertical', 'spacing', 'xs', 'paddingAll', '12px',
         'contents', jsonb_build_array(
           jsonb_build_object('type', 'button', 'style', 'primary', 'color', '#C2607A', 'height', 'sm',
-            'action', jsonb_build_object('type', 'uri', 'label', '查看牌局', 'uri', f ->> 'url'))))));
+            'action', jsonb_build_object('type', 'uri', 'label', '查看牌局', 'uri', f ->> 'url')))
+          || case when f ->> 'phone' is not null
+                  then jsonb_build_array(jsonb_build_object('type', 'button', 'style', 'link', 'color', '#974B5F', 'height', 'sm',
+                         'action', jsonb_build_object('type', 'uri', 'label', '不能準時到？打給門市', 'uri', 'tel:' || (f ->> 'phone'))))
+                  else '[]'::jsonb end)));
 end $$;
 revoke execute on function public._push_flex(uuid) from public, anon, authenticated;
 
@@ -270,14 +300,15 @@ with s as (
   select n.id from app_notifications n where n.type = 'table_ok' order by n.created_at desc limit 1
 )
 select concat_ws(E'\n',
-  coalesce((select case when public._push_text(s.id) like '你的牌局湊滿了！' || E'\n' || '時間：%'
-                        then '✅ ① 文字版照舊：' || replace(public._push_text(s.id), E'\n', ' ／ ')
+  coalesce((select case when public._push_text(s.id) like '%你的牌局湊滿了！' || E'\n' || '時間：%'
+                         and public._push_text(s.id) like '%查看牌局：https://liff.line.me/%'
+                        then '✅ ① 文字版：' || replace(public._push_text(s.id), E'\n', ' ／ ')
                         else '🔴 ① 文字版變了：' || coalesce(public._push_text(s.id), 'null') end from s),
            '⚪ ① 線上沒有 table_ok 通知可以試（行為測試那份會自己造）'),
   coalesce((select case when public._push_flex(s.id) ->> 'type' = 'flex'
                          and public._push_flex(s.id) #>> '{contents,type}' = 'bubble'
                          and public._push_flex(s.id) #>> '{contents,footer,contents,0,action,uri}' like 'https://liff.line.me/%'
-                         and public._push_flex(s.id) ->> 'altText' like '你的牌局湊滿了！%'
+                         and public._push_flex(s.id) ->> 'altText' like '%你的牌局湊滿了！%'
                         then '✅ ② 卡片版組得出來，通知那一行：' || (public._push_flex(s.id) ->> 'altText')
                         else '🔴 ② 卡片版缺東西' end from s), '⚪ ②'),
   coalesce((select case when jsonb_array_length(public._push_messages(s.id)) = 1
