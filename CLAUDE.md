@@ -1461,6 +1461,9 @@ migi github/           ← Claude Code 的 project folder 選這層
     · 🔴 **成績算完就不能加打、不能撤銷**（`trg_session_rounds_guard` 擋開新一將與 finished → playing），
       那兩件事會讓後面的分數沒被算到而且不報錯。要加打請店員處理。
     · 「這場算過了沒」只有一份定義：`_session_scored(session)` ＝ 有沒有人已經有 finish_rank。
+    · 📣 **名次寫進去那一刻**（觸發器 `trg_session_players_settle_notify`）每位建一則「牌局結算完成」通知，
+      同時排 LINE 推播「牌局結束」卡片（2026-10-07，`sql/applied/2026-10-07_LINE推播_牌局結束.sql`）——
+      **不是收桌時**；一場一人只有一則（唯一索引擋重複）。一將都沒打完的不送卡片。
     · ⚠ **MIGI 成就只認選了 MIGI 牌型的那一局**（2026-09-25 起，事件 migi_hu），大三元 8 台不算 ——
       09-23 那份收桌測試的期望值因此過期；以 `sql/checks/2026-09-29_驗打完自動結算與收桌記錄.sql` 為準（26/26）。
     · ✅ 報表檢視表補齊了（`sql/applied/2026-09-29_報表檢視表補欄位並收回前端權限.sql`）：

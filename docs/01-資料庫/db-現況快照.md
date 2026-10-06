@@ -1,5 +1,16 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-07 增補 ㊴（歸檔 `2026-10-07_LINE推播_牌局結束.sql`）
+> **基準：`sql/applied/` 有 312 個 `.sql`**。函式 333 → 338（＋5，算式對得上）。驗證 8/8（⑥ 線上無樣本 ⚪），提交後另查線上。
+> 🆕 唯一索引 `uq_app_notifications_settle_once (member_id, ref_id) where type = 'settle'`：同一場同一人只有一則「牌局結算完成」。
+> 🆕 觸發器 `trg_session_players_settle_notify`（每個陳述式一次，帶新舊兩張表）→ `_settle_notify_on_rank()`：
+>   名次從 null 變成有值的那一刻，替整桌每一位建 settle 通知 ⇒ **App 通知改在成績算好時出現，不再等收桌**。
+>   收桌時 `settle_session_tx` 那段 insert 撞唯一索引、被它自己的例外處理略過；沒名次的場次照舊由收桌建通知。
+> ✏️ `_push_enqueue` 白名單 `('table_ok', 'settle')`。
+> 🆕 `_push_signed`／`_push_settle_fields`／`_push_settle_text`／`_push_settle_flex`：牌局結束卡片（段位分讀 `score_points`，同平板）。
+> ✏️ `_push_messages` 依通知種類分流；`push_claim_tx` 過期判斷分種類（配桌看房間與開打時間，結算只看 6 小時），
+>   結算通知沒有名次 ⇒ `skipped / no_result`。
+>
 > ### 🆕 2026-10-07 增補 ㊳（歸檔 `2026-10-05_LINE推播_加卡片版.sql`）
 > **基準：`sql/applied/` 有 311 個 `.sql`**。函式 330 → 333（＋`_push_fields`／`_push_flex`／`_push_messages`）。驗證 5/5，提交後另查線上。
 > 🆕 `_push_fields(notif)`：配桌湊滿推播的唯一一份內容（時間、門市、桌號、玩法、同桌、稱呼）；文字版與卡片版都讀它。
