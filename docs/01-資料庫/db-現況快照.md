@@ -1,5 +1,11 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-07 增補 ㊹（歸檔 `2026-10-07_LINE卡片開頭改回一行小字.sql`）
+> **基準：`sql/applied/` 有 317 個 `.sql`**。函式數不變（344），只改四支的內容。驗證 7/7，提交後另查線上。
+> ✏️ `_push_text`／`_push_flex`／`_push_settle_text`／`_push_settle_flex`：卡片開頭從「名字一行＋大字」改回**一行小字**
+>   （使用者看過實機）：「名字，你的牌局成桌了！」／「名字，這場牌局結束了！」。手機通知列：「…你的牌局成桌了！明天 21:00」／「…牌局結束！第 N 名 · 段位分 +N」。
+>   細項、按鈕、kilo 尺寸都沒動。⚠ 上面 ㊸ 那句「開頭名字一行＋大字」已過期。
+>
 > ### 🆕 2026-10-07 增補 ㊸（歸檔 `2026-10-07_LINE確定會到與歡迎卡片.sql`）
 > **基準：`sql/applied/` 有 316 個 `.sql`**。函式 340 → 344（＋`_url_encode`／`_push_when_short`／`line_attend_confirm_tx`／`line_welcome_flex_tx`）。驗證 11/11，提交後另查線上。
 > 🆕 `match_queue_players.attend_confirmed_at`：客人在 LINE 成桌卡片按「確定會到」的時間。只由 `line_attend_confirm_tx` 寫。
