@@ -5566,7 +5566,7 @@ settled_at 09-03 15:18   ← 8 場全部同一個時間點
 
 48. 🔧 **LINE 推播加「確定會到」按鈕：客人按了就回報出席，降低放鳥**（2026-10-06 使用者列入）。
     ✅ **2026-10-07 資料庫那一半上線**（`sql/applied/2026-10-07_LINE確定會到與歡迎卡片.sql`，11/11）；
-      接收程式 `supabase/functions/line-webhook` 寫好了，⏳ 還要部署 ＋ Secret `LINE_CHANNEL_SECRET` ＋ LINE 後台 Webhook URL ＋ 關掉後台的歡迎訊息。
+      接收程式 `supabase/functions/line-webhook` 寫好了，⏳ 還要部署 ＋ Secret `LINE_MESSAGING_SECRET`（🔴 不是 `LINE_CHANNEL_SECRET`，那是店員登入用的）＋ LINE 後台 Webhook URL ＋ 關掉後台的歡迎訊息。
       拍板：**不做「不克前往」**、開打前**先不再提醒**；三張卡片都小一號（kilo）；預覽 https://claude.ai/artifact/B3uxjfVBUur9nfAFJru3e2
     起點是使用者給的業界參考（牙醫預約提醒卡：「點此確定會到！」＋「不克前往」）。
     接在 LINE 推播第一種（配桌湊滿，`sql/applied/2026-10-05_LINE推播_配桌湊滿.sql`）之後做。

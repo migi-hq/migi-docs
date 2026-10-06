@@ -15,7 +15,8 @@
    ── 部署 ────────────────────────────────────────────
    Supabase Dashboard → Edge Functions → 新增 `line-webhook` → 貼上 → **Verify JWT 關掉** → Deploy
    Secrets：
-     LINE_CHANNEL_SECRET  = Messaging API 頻道（@254blful）Basic settings 裡的 Channel secret
+     LINE_MESSAGING_SECRET = Messaging API 頻道（@254blful）Basic settings 裡的 Channel secret
+     🔴 不是 LINE_CHANNEL_SECRET —— 那個名字是店員登入（staff-login）在用的 LINE 登入頻道密鑰，換掉 POS 與後台就登不進去
      LINE_MESSAGING_TOKEN = （line-push 已經在用的那一個，共用）
    LINE Developers → Messaging API 分頁 → Webhook URL 填
      https://roksgepxxmcewlkshtzn.supabase.co/functions/v1/line-webhook
@@ -26,7 +27,7 @@
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const CHANNEL_SECRET = Deno.env.get('LINE_CHANNEL_SECRET') ?? ''
+const CHANNEL_SECRET = Deno.env.get('LINE_MESSAGING_SECRET') ?? ''
 const LINE_TOKEN = Deno.env.get('LINE_MESSAGING_TOKEN') ?? ''
 
 const json = (b: unknown, s = 200) =>
