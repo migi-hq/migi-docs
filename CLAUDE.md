@@ -5564,6 +5564,9 @@ settled_at 09-03 15:18   ← 8 場全部同一個時間點
 48. ⏳ **LINE 推播加「確定會到」按鈕：客人按了就回報出席，降低放鳥**（2026-10-06 使用者列入）。
     起點是使用者給的業界參考（牙醫預約提醒卡：「點此確定會到！」＋「不克前往」）。
     接在 LINE 推播第一種（配桌湊滿，`sql/applied/2026-10-05_LINE推播_配桌湊滿.sql`）之後做。
+    ✅ **LINE 推播 2026-10-07 上線**：Edge Function `line-push` 已部署（Verify JWT 關）、Secret `LINE_MESSAGING_TOKEN` 已設；
+      第一次測試兩張卡片（配桌湊滿、牌局結束）都在 3 秒內送達、LINE 回 200。
+      現在推兩種：`table_ok`（配桌湊滿）、`settle`（牌局結束，名次寫進去那一刻）。測試：`sql/_工具/推播測試_發給自己.sql`。
     ```
     卡片按鈕   postback（不是開網址）：data 帶「哪一則推播」，按了留在 LINE 裡
     接收端     🆕 Edge Function 收 LINE webhook，一定要驗 X-Line-Signature（用 Messaging API 的 channel secret）
