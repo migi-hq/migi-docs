@@ -5564,7 +5564,10 @@ settled_at 09-03 15:18   ← 8 場全部同一個時間點
       **店員官方帳號必須建在同一個 Provider 底下**（否則 LINE id 對不上 `staff.member_id`）。
     ⚠ PENDING 那段寫「員工編號、薪資、班表刻意不做（那些系統不存在）」—— 那是 09-05 的判斷，這一條取代它。
 
-48. ⏳ **LINE 推播加「確定會到」按鈕：客人按了就回報出席，降低放鳥**（2026-10-06 使用者列入）。
+48. 🔧 **LINE 推播加「確定會到」按鈕：客人按了就回報出席，降低放鳥**（2026-10-06 使用者列入）。
+    ✅ **2026-10-07 資料庫那一半上線**（`sql/applied/2026-10-07_LINE確定會到與歡迎卡片.sql`，11/11）；
+      接收程式 `supabase/functions/line-webhook` 寫好了，⏳ 還要部署 ＋ Secret `LINE_CHANNEL_SECRET` ＋ LINE 後台 Webhook URL ＋ 關掉後台的歡迎訊息。
+      拍板：**不做「不克前往」**、開打前**先不再提醒**；三張卡片都小一號（kilo）；預覽 https://claude.ai/artifact/B3uxjfVBUur9nfAFJru3e2
     起點是使用者給的業界參考（牙醫預約提醒卡：「點此確定會到！」＋「不克前往」）。
     接在 LINE 推播第一種（配桌湊滿，`sql/applied/2026-10-05_LINE推播_配桌湊滿.sql`）之後做。
     ✅ **LINE 推播 2026-10-07 上線**：Edge Function `line-push` 已部署（Verify JWT 關）、Secret `LINE_MESSAGING_TOKEN` 已設；

@@ -1,5 +1,15 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-07 增補 ㊸（歸檔 `2026-10-07_LINE確定會到與歡迎卡片.sql`）
+> **基準：`sql/applied/` 有 316 個 `.sql`**。函式 340 → 344（＋`_url_encode`／`_push_when_short`／`line_attend_confirm_tx`／`line_welcome_flex_tx`）。驗證 11/11，提交後另查線上。
+> 🆕 `match_queue_players.attend_confirmed_at`：客人在 LINE 成桌卡片按「確定會到」的時間。只由 `line_attend_confirm_tx` 寫。
+> 🆕 `line_attend_confirm_tx(line_user_id, queue_id)`／`line_welcome_flex_tx(name)`：只給 service_role（接收程式 `line-webhook`）。
+>   「確定會到」只認真的在那一房、還沒離開、房還沒結束的人；回 `{ok, reply}`，reply 是官方帳號要回的那一句。
+> ✏️ 三張 LINE 卡片定案版：開頭「名字一行＋大字」（成桌了！／牌局結束了／歡迎加入＋MIGI 配桌計分系統），全部 `size: kilo`。
+>   成桌卡片多地址（點了開 Google 地圖）、積分一列、「確定會到」（postback `attend:<queue>`）；
+>   牌局結束卡片細項分兩段、加花費時間（開打到最後一局確認；沒有計分板紀錄就不畫）。
+> ✏️ `pos_list_queues_tx_core` 每人多回 `attend_confirmed`（POS 座位卡「✓ 會到」，migi-pos 4db0cc8）。
+>
 > ### 🆕 2026-10-07 增補 ㊷（歸檔 `2026-10-07_結算抽屜完成與查看成績.sql`）
 > **基準：`sql/applied/` 有 315 個 `.sql`**。函式 339 → 340。驗證 4/4，提交後另查線上。
 > 🆕 `app_notifications.done_at`：這則通知要做的事做完了沒（**跟 read_at 已讀分開**）。目前只有 settle 用：「給同桌評價」抽屜按了「完成」。
