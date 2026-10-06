@@ -1,5 +1,12 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-07 增補 ㊷（歸檔 `2026-10-07_結算抽屜完成與查看成績.sql`）
+> **基準：`sql/applied/` 有 315 個 `.sql`**。函式 339 → 340。驗證 4/4，提交後另查線上。
+> 🆕 `app_notifications.done_at`：這則通知要做的事做完了沒（**跟 read_at 已讀分開**）。目前只有 settle 用：「給同桌評價」抽屜按了「完成」。
+> 🆕 `mark_settle_done_tx(session)`：本人那一場的 settle 記成完成（順便標已讀），只給 authenticated。
+> ✏️ `list_notifications_tx` 每則多回 `done`；`_push_settle_fields` 的「查看成績」網址多帶 `&settle=<session>`。
+>   ⇒ App：那一場還沒完成就開「給同桌評價」抽屜，完成了就到成績頁（migi-web 94f1d49）。
+>
 > ### 🆕 2026-10-07 增補 ㊶（歸檔 `2026-10-07_單則通知標成已讀.sql`）
 > **基準：`sql/applied/` 有 314 個 `.sql`**。函式 338 → 339。驗證 3/3，提交後另查線上。
 > 🆕 `mark_notif_read_tx(p_id)`：只把**那一則**標成已讀，只認登入的本人（`current_member_id`），只給 authenticated。
