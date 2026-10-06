@@ -5567,6 +5567,8 @@ settled_at 09-03 15:18   ← 8 場全部同一個時間點
     ✅ **LINE 推播 2026-10-07 上線**：Edge Function `line-push` 已部署（Verify JWT 關）、Secret `LINE_MESSAGING_TOKEN` 已設；
       第一次測試兩張卡片（配桌湊滿、牌局結束）都在 3 秒內送達、LINE 回 200。
       現在推兩種：`table_ok`（配桌湊滿）、`settle`（牌局結束，名次寫進去那一刻）。測試：`sql/_工具/推播測試_發給自己.sql`。
+    · 配桌湊滿：湊滿那一刻沒空桌（或那房改成手動配桌）時，卡片桌號寫「到店後櫃檯帶位」——
+      **維持立刻送，不等配好桌**（2026-10-07 使用者決定）。正常情況同一個交易裡就自動帶桌，卡片上會有桌號。
     ```
     卡片按鈕   postback（不是開網址）：data 帶「哪一則推播」，按了留在 LINE 裡
     接收端     🆕 Edge Function 收 LINE webhook，一定要驗 X-Line-Signature（用 Messaging API 的 channel secret）
