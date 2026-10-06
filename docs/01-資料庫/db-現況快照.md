@@ -1,5 +1,13 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-07 增補 ㊳（歸檔 `2026-10-05_LINE推播_加卡片版.sql`）
+> **基準：`sql/applied/` 有 311 個 `.sql`**。函式 330 → 333（＋`_push_fields`／`_push_flex`／`_push_messages`）。驗證 5/5，提交後另查線上。
+> 🆕 `_push_fields(notif)`：配桌湊滿推播的唯一一份內容（時間、門市、桌號、玩法、同桌、稱呼）；文字版與卡片版都讀它。
+> 🆕 `_push_flex(notif)`：LINE Flex 卡片（粉色標題列、開打時間最大、黑色「查看牌局詳情」開 `?tab=match`）。
+> 🆕 `_push_messages(notif)`：決定送哪幾個框，預設 `card`；通知 payload 帶 `style` 可改 `text`／`both`。
+> ✏️ `_push_text` 改讀 `_push_fields`；`push_claim_tx` 交件多帶 `messages`（`text` 仍留給舊版推播程式）。
+> ⚠ 推播程式 `line-push` 這時**還沒部署**、`LINE_MESSAGING_TOKEN` 還沒設 ⇒ 寄件匣 0 筆，一則都還沒送過。
+>
 > ### 🆕 2026-10-06 增補 ㊲（歸檔 `2026-10-06_封測客人不給隨機名次.sql`）
 > **基準：`sql/applied/` 有 310 個 `.sql`**。函式數不變（330）。驗證 4/4，提交後另查線上（版本數 1、新閘門在、仍是 DEFINER）。
 > ✏️ `placeholder_ranks_tx` 多一道閘門：桌上四人有任何一位 `is_test = false` 就回 `real_players`、什麼都不寫，其餘逐字照舊。
