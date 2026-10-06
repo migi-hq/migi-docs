@@ -7,7 +7,13 @@
    · 湊滿卡片維持現行版，只多兩列：地址（點了開 Google 地圖）、積分（從玩法拆出來；純娛樂寫「純娛樂」）
    · 按鈕：黑色「確定會到」＋ 白框「查看牌局詳情」。**不做「不克前往」**；開打前也先不再提醒
    · 按了「確定會到」：記下來、官方帳號回一句；重複按不重複記，只回「已經收到囉」
-   · 加好友歡迎卡片：「{LINE 名字}，歡迎加入！」／大字「你負責胡牌，其他交給 MIGI」／配桌、成績、獎勵三列／
+   · 開頭一律「名字一行、下一行大字」（2026-10-07 使用者）：
+       配桌湊滿「咖勁凱，」＋大字「成桌了！」／牌局結束「咖勁凱，」＋大字「牌局結束了」／
+       歡迎「阿明，歡迎加入」＋大字「MIGI 配桌計分系統」
+   · 牌局結束卡片：細項分兩段（結果：桌上積分、段位分、目前段位／牌局：門市、桌號、玩法、積分、同桌、花費時間），
+     純娛樂不畫「桌上積分」那一列（下面「積分」寫純娛樂）
+   · 📄 三張一起的預覽：https://claude.ai/artifact/B3uxjfVBUur9nfAFJru3e2
+   · 加好友歡迎卡片：配桌、成績、獎勵三列／
      「第一次使用要先註冊，大約一分鐘。」／按鈕「開始使用 MIGI」
 
    ── 改了什麼 ─────────────────────────────────────────
@@ -142,7 +148,7 @@ begin
   if f is null then return null; end if;
   return concat_ws(E'\n',
     case when (f ->> 'test')::boolean then '【推播測試】' end,
-    coalesce((f ->> 'name') || '，', '') || '你的牌局湊滿了！',
+    coalesce((f ->> 'name') || '，', '') || '成桌了！',
     '時間：' || (f ->> 'when'),
     '地點：' || (f ->> 'place'),
     case when f ->> 'addr' is not null then '地址：' || (f ->> 'addr') end,
@@ -189,14 +195,14 @@ begin
 
   -- 手機通知與聊天列表只看得到這一句（卡片本身不會出現在那裡）
   v_alt := case when (f ->> 'test')::boolean then '【推播測試】' else '' end
-        || coalesce((f ->> 'name') || '，', '') || '你的牌局湊滿了！'
+        || coalesce((f ->> 'name') || '，', '') || '成桌了！'
         || (f ->> 'short') || coalesce(' · ' || (f ->> 'table') || ' 桌', '');
 
   return jsonb_build_object(
     'type', 'flex',
     'altText', left(v_alt, 400),
     'contents', jsonb_build_object(
-      'type', 'bubble',
+      'type', 'bubble', 'size', 'kilo',   -- 2026-10-07 使用者：比預設（mega，幾乎滿版）小一號，約 260 點寬
       'header', jsonb_build_object(
         'type', 'box', 'layout', 'vertical', 'backgroundColor', '#FAD6DC', 'paddingAll', '14px',
         'contents', jsonb_build_array(
@@ -207,9 +213,13 @@ begin
                                                             'color', '#2E2B2C', 'align', 'center'))
                   else '[]'::jsonb end),
       'body', jsonb_build_object('type', 'box', 'layout', 'vertical', 'paddingAll', '18px',
-        'contents', jsonb_build_array(
-          jsonb_build_object('type', 'text', 'text', coalesce((f ->> 'name') || '，', '') || '你的牌局湊滿了！',
-                             'size', 'sm', 'color', '#2E2B2C', 'wrap', true),
+        -- 開頭：名字一行（小字）＋「成桌了！」（大字）。⚠ 拿不到名字就不放那一行 —— LINE 不收空白的文字元件
+        'contents', case when f ->> 'name' is not null
+                         then jsonb_build_array(jsonb_build_object('type', 'text', 'text', (f ->> 'name') || '，',
+                                                                   'size', 'sm', 'color', '#2E2B2C', 'wrap', true))
+                         else '[]'::jsonb end || jsonb_build_array(
+          jsonb_build_object('type', 'text', 'text', '成桌了！', 'size', 'xl', 'weight', 'bold',
+                             'color', '#2E2B2C', 'wrap', true),
           jsonb_build_object('type', 'text', 'text', '開打時間', 'size', 'xs', 'color', '#8B8582', 'margin', 'lg'),
           jsonb_build_object('type', 'text', 'text', f ->> 'short', 'size', 'xxl', 'weight', 'bold',
                              'color', '#2E2B2C', 'margin', 'xs'),
@@ -307,9 +317,9 @@ set search_path = public
 as $$
   select jsonb_build_object(
     'type', 'flex',
-    'altText', coalesce(nullif(p_name, '') || '，', '') || '歡迎加入 MIGI 咪吉麻將！',
+    'altText', coalesce(nullif(p_name, '') || '，', '') || '歡迎加入 MIGI 配桌計分系統',
     'contents', jsonb_build_object(
-      'type', 'bubble',
+      'type', 'bubble', 'size', 'kilo',   -- 2026-10-07 使用者：比預設（mega，幾乎滿版）小一號，約 260 點寬
       'header', jsonb_build_object(
         'type', 'box', 'layout', 'vertical', 'backgroundColor', '#FAD6DC', 'paddingAll', '14px',
         'contents', jsonb_build_array(
@@ -317,12 +327,11 @@ as $$
                              'color', '#2E2B2C', 'align', 'center'))),
       'body', jsonb_build_object('type', 'box', 'layout', 'vertical', 'paddingAll', '18px',
         'contents', jsonb_build_array(
-          jsonb_build_object('type', 'text', 'text', coalesce(nullif(p_name, '') || '，', '') || '歡迎加入！',
+          -- 開頭：「阿明，歡迎加入」（小字）＋「MIGI 配桌計分系統」（大字）（2026-10-07 使用者）
+          jsonb_build_object('type', 'text', 'text', coalesce(nullif(p_name, '') || '，', '') || '歡迎加入',
                              'size', 'sm', 'color', '#2E2B2C', 'wrap', true),
-          jsonb_build_object('type', 'text', 'text', '你負責胡牌，', 'size', 'xl', 'weight', 'bold',
-                             'color', '#2E2B2C', 'margin', 'lg'),
-          jsonb_build_object('type', 'text', 'text', '其他交給 MIGI', 'size', 'xl', 'weight', 'bold',
-                             'color', '#2E2B2C'),
+          jsonb_build_object('type', 'text', 'text', 'MIGI 配桌計分系統', 'size', 'xl', 'weight', 'bold',
+                             'color', '#2E2B2C', 'wrap', true),
           jsonb_build_object('type', 'separator', 'margin', 'lg', 'color', '#DED9D5'),
           jsonb_build_object('type', 'box', 'layout', 'vertical', 'spacing', 'sm', 'margin', 'lg',
             'contents', (select jsonb_agg(jsonb_build_object('type', 'box', 'layout', 'baseline', 'spacing', 'md',
@@ -344,6 +353,224 @@ as $$
 $$;
 revoke execute on function public.line_welcome_flex_tx(text) from public, anon, authenticated;
 grant  execute on function public.line_welcome_flex_tx(text) to service_role;
+
+-- ⑩ 牌局結束卡片新版（細項分兩段、加花費時間、開頭「名字一行＋牌局結束了」）
+--   以線上 2026-10-07 版（沒有逐將紀錄照約定將數、網址帶 &settle=）為底，只加不改原本的鍵
+create or replace function public._push_settle_fields(p_notif uuid)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  n app_notifications%rowtype;
+  v_sid uuid;
+  sp record;
+  s record;
+  v_done int;
+  v_others text;
+  v_game text;
+  v_play text;
+  v_end timestamptz;
+  v_min int;
+begin
+  select * into n from app_notifications where id = p_notif;
+  if n.id is null or n.type <> 'settle' then return null; end if;
+  v_sid := coalesce((n.payload ->> 'session_id')::uuid, n.ref_id);
+
+  select p.finish_rank, p.final_score, p.score_points into sp
+    from session_players p
+   where p.session_id = v_sid and p.member_id = n.member_id;
+  if sp.finish_rank is null then return null; end if;   -- 沒有名次（一將都沒打完）⇒ 不送
+
+  select ts.game_type, ts.flower, ts.planned_rounds,
+         coalesce(ts.activated_at, ts.started_at) as began,
+         st.name as store, t.label as tbl,
+         sl.label as stake, coalesce(sl.is_hygiene, false) as hyg,
+         m.display_name as my_name, m.rank as my_rank
+    into s
+    from table_sessions ts
+    left join stores       st on st.id = ts.store_id
+    left join tables       t  on t.id  = ts.table_id
+    left join stake_levels sl on sl.id = ts.stake_level_id
+    left join members      m  on m.id  = n.member_id
+   where ts.id = v_sid;
+
+  select count(*) into v_done
+    from session_rounds where session_id = v_sid and status = 'finished';
+  /* 有名次卻沒有任何逐將紀錄 ⇒ 成績是一次給的（隨機名次），照約定將數算 */
+  if v_done = 0 then
+    v_done := coalesce(s.planned_rounds, 2);
+  end if;
+
+  -- 隱藏的會員名字已經是「隱藏的會員」（隱藏時就換掉了），這裡不用另外判斷
+  select string_agg(m.display_name, '、' order by p.seat nulls last) into v_others
+    from session_players p join members m on m.id = p.member_id
+   where p.session_id = v_sid and p.member_id <> n.member_id;
+
+  -- 玩法：打滿約定將數寫「3 將」；提早收桌寫「3 將（打完 2 將）」；計分桌補上級距，純娛樂不寫（桌上積分那一列已經寫了）
+  v_game := concat_ws(' · ', s.game_type, s.flower,
+              case when s.planned_rounds is null or v_done >= s.planned_rounds then v_done || ' 將'
+                   else s.planned_rounds || ' 將（打完 ' || v_done || ' 將）' end,
+              case when not s.hyg and s.stake is not null then '積分 ' || s.stake end);
+  -- 🆕 新版的「玩法」一列不帶積分（積分自己一列）
+  v_play := concat_ws(' · ', s.game_type, s.flower,
+              case when s.planned_rounds is null or v_done >= s.planned_rounds then v_done || ' 將'
+                   else s.planned_rounds || ' 將（打完 ' || v_done || ' 將）' end);
+
+  -- 🆕 花費時間：開打（平板定好座位）到最後一局確認。沒有用計分板打的（沒有確認過的局）算不出來 ⇒ 不畫
+  select max(h.confirmed_at) into v_end
+    from hands h where h.session_id = v_sid and h.status = 'confirmed';
+  if s.began is not null and v_end is not null and v_end > s.began then
+    v_min := round(extract(epoch from (v_end - s.began)) / 60.0);
+  end if;
+
+  return jsonb_build_object(
+    'test',    n.payload ->> 'test' = 'true',
+    'style',   n.payload ->> 'style',
+    'name',    s.my_name,
+    'rank_no', sp.finish_rank,
+    -- 桌上積分：純娛樂寫「純娛樂」（那一欄是 null 不是 0）
+    'score',   case when s.hyg then '純娛樂'
+                    when sp.final_score is not null then _push_signed(sp.final_score) end,
+    -- 段位分：未滿 2 將不計（2026-10-01 拍板，只打 1 將「有名次沒段位分」）
+    'rating',  case when v_done < 2 then '未滿 2 將，不計段位分'
+                    when sp.score_points is not null then _push_signed(sp.score_points) end,
+    'rating_short', case when v_done >= 2 and sp.score_points is not null then _push_signed(sp.score_points) end,
+    'tier',    s.my_rank,
+    'place',   coalesce(s.store, 'MIGI') || coalesce(' · ' || s.tbl || ' 桌', ''),
+    'game',    nullif(v_game, ''),
+    'others',  v_others,
+    -- 🆕 新版細項用的鍵
+    'hyg',     s.hyg,
+    'store',   coalesce(s.store, 'MIGI'),
+    'table',   s.tbl,
+    'play',    nullif(v_play, ''),
+    'stake_label', s.stake,
+    'duration', case when v_min is null then null
+                     when v_min >= 60 then (v_min / 60) || ' 小時' || case when v_min % 60 > 0 then ' ' || (v_min % 60) || ' 分' else '' end
+                     else v_min || ' 分' end,
+    'url',     'https://liff.line.me/2011312117-Zuul0Ndo?tab=stats&settle=' || v_sid);   -- ?tab=stats：App 打開直接到成績頁；settle：還沒評完先開「給同桌評價」
+end $$;
+revoke execute on function public._push_settle_fields(uuid) from public, anon, authenticated;
+
+-- 文字版（卡片版之外的退路，也給舊版推播程式用）
+create or replace function public._push_settle_text(p_notif uuid)
+returns text
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare f jsonb := _push_settle_fields(p_notif);
+begin
+  if f is null then return null; end if;
+  return concat_ws(E'\n',
+    case when (f ->> 'test')::boolean then '【推播測試】' end,
+    coalesce((f ->> 'name') || '，', '') || '牌局結束了',
+    '名次：第 ' || (f ->> 'rank_no') || ' 名',
+    case when not (f ->> 'hyg')::boolean and f ->> 'score' is not null then '桌上積分：' || (f ->> 'score') end,
+    case when f ->> 'rating' is not null then '段位分：' || (f ->> 'rating') end,
+    case when f ->> 'tier'   is not null then '目前段位：' || (f ->> 'tier') end,
+    '門市：' || (f ->> 'store'),
+    case when f ->> 'table' is not null then '桌號：' || (f ->> 'table') || ' 桌' end,
+    case when f ->> 'play'  is not null then '玩法：' || (f ->> 'play') end,
+    case when f ->> 'stake_label' is not null then '積分：' || (f ->> 'stake_label') end,
+    case when f ->> 'others'   is not null then '同桌：' || (f ->> 'others') end,
+    case when f ->> 'duration' is not null then '花費時間：' || (f ->> 'duration') end,
+    '想回顧這場？App 有每一局的紀錄。',
+    '查看成績：' || (f ->> 'url'));
+end $$;
+revoke execute on function public._push_settle_text(uuid) from public, anon, authenticated;
+
+-- 卡片版
+create or replace function public._push_settle_flex(p_notif uuid)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  f jsonb := _push_settle_fields(p_notif);
+  v_res jsonb;
+  v_info jsonb;
+  v_alt text;
+begin
+  if f is null then return null; end if;
+
+  -- 一列「項目 → 內容」，沒有值的整列不畫；桌上積分與段位分的數字用粗體
+  -- 第一段：這場的結果。純娛樂不畫「桌上積分」（下面「積分」那一列已經寫純娛樂）
+  select jsonb_agg(jsonb_build_object('type', 'box', 'layout', 'baseline', 'spacing', 'md', 'contents', jsonb_build_array(
+           jsonb_build_object('type', 'text', 'text', k, 'size', 'sm', 'color', '#8B8582', 'flex', 3),
+           jsonb_build_object('type', 'text', 'text', v, 'size', 'sm', 'color', '#2E2B2C', 'wrap', true, 'flex', 7,
+                              'weight', case when bold then 'bold' else 'regular' end)))
+         order by o)
+    into v_res
+    from (values (1, '桌上積分', case when (f ->> 'hyg')::boolean then null else f ->> 'score' end, true),
+                 (2, '段位分',   f ->> 'rating', (f ->> 'rating') ~ '^[+−0-9]'),
+                 (3, '目前段位', f ->> 'tier',   false)) t(o, k, v, bold)
+   where v is not null;
+  -- 第二段：這場牌局
+  select jsonb_agg(jsonb_build_object('type', 'box', 'layout', 'baseline', 'spacing', 'md', 'contents', jsonb_build_array(
+           jsonb_build_object('type', 'text', 'text', k, 'size', 'sm', 'color', '#8B8582', 'flex', 3),
+           jsonb_build_object('type', 'text', 'text', v, 'size', 'sm', 'color', '#2E2B2C', 'wrap', true, 'flex', 7)))
+         order by o)
+    into v_info
+    from (values (1, '門市',     f ->> 'store'),
+                 (2, '桌號',     (f ->> 'table') || ' 桌'),
+                 (3, '玩法',     f ->> 'play'),
+                 (4, '積分',     f ->> 'stake_label'),
+                 (5, '同桌',     f ->> 'others'),
+                 (6, '花費時間', f ->> 'duration')) t(o, k, v)
+   where v is not null;
+
+  -- 手機通知與聊天列表只看得到這一句
+  v_alt := case when (f ->> 'test')::boolean then '【推播測試】' else '' end
+        || coalesce((f ->> 'name') || '，', '') || '牌局結束了，第 ' || (f ->> 'rank_no') || ' 名'
+        || coalesce(' · 段位分 ' || (f ->> 'rating_short'), '');
+
+  return jsonb_build_object(
+    'type', 'flex',
+    'altText', left(v_alt, 400),
+    'contents', jsonb_build_object(
+      'type', 'bubble', 'size', 'kilo',   -- 2026-10-07 使用者：比預設（mega，幾乎滿版）小一號，約 260 點寬
+      'header', jsonb_build_object(
+        'type', 'box', 'layout', 'vertical', 'backgroundColor', '#FAD6DC', 'paddingAll', '14px',
+        'contents', jsonb_build_array(
+          jsonb_build_object('type', 'text', 'text', 'MIGI 咪吉麻將', 'size', 'lg', 'weight', 'bold',
+                             'color', '#2E2B2C', 'align', 'center'))
+          || case when (f ->> 'test')::boolean
+                  then jsonb_build_array(jsonb_build_object('type', 'text', 'text', '推播測試', 'size', 'xxs',
+                                                            'color', '#2E2B2C', 'align', 'center'))
+                  else '[]'::jsonb end),
+      'body', jsonb_build_object('type', 'box', 'layout', 'vertical', 'paddingAll', '18px',
+        -- 開頭：名字一行（小字）＋「牌局結束了」（大字）。⚠ 拿不到名字就不放那一行 —— LINE 不收空白的文字元件
+        'contents', case when f ->> 'name' is not null
+                         then jsonb_build_array(jsonb_build_object('type', 'text', 'text', (f ->> 'name') || '，',
+                                                                   'size', 'sm', 'color', '#2E2B2C', 'wrap', true))
+                         else '[]'::jsonb end || jsonb_build_array(
+          jsonb_build_object('type', 'text', 'text', '牌局結束了', 'size', 'xl', 'weight', 'bold',
+                             'color', '#2E2B2C', 'wrap', true),
+          jsonb_build_object('type', 'text', 'text', '本場名次', 'size', 'xs', 'color', '#8B8582', 'margin', 'lg'),
+          jsonb_build_object('type', 'text', 'text', '第 ' || (f ->> 'rank_no') || ' 名', 'size', 'xxl', 'weight', 'bold',
+                             'color', '#2E2B2C', 'margin', 'xs'),
+          jsonb_build_object('type', 'separator', 'margin', 'lg', 'color', '#DED9D5'),
+          jsonb_build_object('type', 'box', 'layout', 'vertical', 'spacing', 'sm', 'margin', 'lg',
+                             'contents', coalesce(v_res, '[]'::jsonb)),
+          jsonb_build_object('type', 'separator', 'margin', 'lg', 'color', '#DED9D5'),
+          jsonb_build_object('type', 'box', 'layout', 'vertical', 'spacing', 'sm', 'margin', 'lg',
+                             'contents', coalesce(v_info, '[]'::jsonb)),
+          jsonb_build_object('type', 'separator', 'margin', 'lg', 'color', '#DED9D5'),
+          jsonb_build_object('type', 'text', 'text', '想回顧這場？App 有每一局的紀錄。',
+                             'size', 'xs', 'color', '#8B8582', 'wrap', true, 'margin', 'lg'))),
+      'footer', jsonb_build_object('type', 'box', 'layout', 'vertical', 'paddingAll', '12px',
+        'contents', jsonb_build_array(
+          jsonb_build_object('type', 'button', 'style', 'primary', 'color', '#2E2B2C', 'height', 'sm',
+            'action', jsonb_build_object('type', 'uri', 'label', '查看成績', 'uri', f ->> 'url'))))));
+end $$;
+revoke execute on function public._push_settle_flex(uuid) from public, anon, authenticated;
 
 -- ⑨ POS 配桌列表：每個人多回 attend_confirmed（其餘逐字照線上 2026-10-07 版）
 create or replace function public.pos_list_queues_tx_core(p_org uuid, p_store uuid, p_before timestamp with time zone DEFAULT NULL::timestamp with time zone, p_limit integer DEFAULT 20)
@@ -458,6 +685,10 @@ $function$;
    ============================================================ */
 with tok as (
   select n.id from app_notifications n where n.type = 'table_ok' order by n.created_at desc limit 1
+), stl as (   -- 有名次的結算通知（牌局結束卡片）
+  select n.id from app_notifications n
+    join session_players sp on sp.session_id = n.ref_id and sp.member_id = n.member_id and sp.finish_rank is not null
+   where n.type = 'settle' order by n.created_at desc limit 1
 )
 select concat_ws(E'\n',
   case when exists (select 1 from information_schema.columns where table_schema = 'public'
@@ -481,9 +712,9 @@ select concat_ws(E'\n',
   case when public.line_attend_confirm_tx('U00000000000000000000000000000000', gen_random_uuid()) ->> 'reason' = 'not_member'
        then '✅ ⑥ 不是會員的 LINE 按「確定會到」：' || (public.line_attend_confirm_tx('U00000000000000000000000000000000', gen_random_uuid()) ->> 'reply')
        else '🔴 ⑥ 陌生 LINE 帳號沒被擋' end,
-  case when public.line_welcome_flex_tx('阿明') ->> 'altText' = '阿明，歡迎加入 MIGI 咪吉麻將！'
-        and public.line_welcome_flex_tx('阿明')::text like '%你負責胡牌%'
-        and public.line_welcome_flex_tx(null) ->> 'altText' = '歡迎加入 MIGI 咪吉麻將！'
+  case when public.line_welcome_flex_tx('阿明') ->> 'altText' = '阿明，歡迎加入 MIGI 配桌計分系統'
+        and public.line_welcome_flex_tx('阿明')::text like '%MIGI 配桌計分系統%'
+        and public.line_welcome_flex_tx(null) ->> 'altText' = '歡迎加入 MIGI 配桌計分系統'
        then '✅ ⑦ 歡迎卡片組得出來（拿不到名字時不叫名字）' else '🔴 ⑦ 歡迎卡片不對' end,
   case when has_function_privilege('service_role', 'public.line_attend_confirm_tx(text,uuid)', 'execute')
         and not has_function_privilege('anon', 'public.line_attend_confirm_tx(text,uuid)', 'execute')
@@ -496,5 +727,18 @@ select concat_ws(E'\n',
             ~ '''attend_confirmed'', p\.attend_confirmed_at is not null'
         and (select pg_get_functiondef('public.pos_list_queues_tx_core(uuid,uuid,timestamptz,int)'::regprocedure))
             ~ '''paid_count'''
-       then '✅ ⑨ POS 配桌列表多回「會到了沒」，原本的欄位還在' else '🔴 ⑨ POS 配桌列表沒換到或換壞了' end
+       then '✅ ⑨ POS 配桌列表多回「會到了沒」，原本的欄位還在' else '🔴 ⑨ POS 配桌列表沒換到或換壞了' end,
+  coalesce((select case when public._push_flex(tok.id) ->> 'altText' like '%成桌了！%'
+                         and public._push_flex(tok.id)::text like '%"成桌了！"%'
+                         and public._push_flex(tok.id) #>> '{contents,size}' = 'kilo'
+                         and public.line_welcome_flex_tx('阿明') #>> '{contents,size}' = 'kilo'
+                        then '✅ ⑩ 湊滿卡片開頭是「成桌了！」，卡片都是小一號（kilo）' else '🔴 ⑩ 湊滿卡片開頭或卡片尺寸沒換到' end from tok), '⚪ ⑩'),
+  coalesce((select case when public._push_settle_flex(stl.id) ->> 'altText' like '%牌局結束了，第 % 名%'
+                         and public._push_settle_flex(stl.id)::text like '%"牌局結束了"%'
+                         and public._push_settle_flex(stl.id)::text like '%"門市"%'
+                         and public._push_settle_flex(stl.id) #>> '{contents,footer,contents,0,action,uri}' like '%&settle=%'
+                        then '✅ ⑪ 牌局結束卡片新版組得出來，通知那一行：' || (public._push_settle_flex(stl.id) ->> 'altText')
+                             || '；花費時間：' || coalesce(public._push_settle_fields(stl.id) ->> 'duration', '（這場沒有計分板紀錄，不畫）')
+                        else '🔴 ⑪ 牌局結束卡片缺東西' end from stl),
+           '⚪ ⑪ 線上沒有有名次的結算通知可以試')
 ) as "驗證";
