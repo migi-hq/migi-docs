@@ -454,7 +454,7 @@
 > **這一批的結構變動**：
 > | | |
 > |---|---|
-> | 🆕 `stake_levels.start_points` | 桌邊記分板每人開局的積分（頂部「總積分」），NOT NULL 預設 2000，建立時回填 底 × 20 |
+> | 🆕 `stake_levels.start_points` | 智慧計分板每人開局的積分（頂部「總積分」），NOT NULL 預設 2000，建立時回填 底 × 20 |
 > | 🆕 `hands.proposed_delta` | 送出時提出的每家金額；**`score_delta` 從此是「已生效的」**，每一家確認時才把他那一份搬過去 |
 > | 🆕 `hands.cancelled_seats` | 按了取消的座位；全部需要確認的人都取消 ⇒ `status = rejected`（這局不算） |
 > | 🔁 `hands.result` | 多兩種：`kala`（咔啦碰：winner＝收的人、deal_in＝付的人）、`bao`（包牌：deal_in＝付的人、winner 空） |
