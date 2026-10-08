@@ -1,5 +1,14 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-09 增補 ㊾（歸檔 `2026-10-09_計分板回報電池電量.sql`）
+> **基準：`sql/applied/` 有 323 個檔案**。函式 344 → **345**（＋`tbl_report_battery_tx`）。驗證 5/5，提交後另查線上。
+> | | |
+> |---|---|
+> | 🆕 `table_devices.battery_level`／`battery_charging`／`battery_at` | 平板最後回報的電量（0–100，CHECK `table_devices_battery_level_check`）、是否充電、回報時間；null＝沒回報過 |
+> | 🆕 `tbl_report_battery_tx(p_token, p_level, p_charging)` | 平板用憑證回報自己的電量（先過 `_tbl_device`）；anon／authenticated 可叫 |
+> | ✏️ `list_table_devices_tx` | 每台多回三個電量欄位（簽名不變） |
+> 前端：`migi-table` a8ec495（頂條電池、電量一變或每 5 分鐘回報）、`migi-admin` 2faa4c4（卡片電量，20% 以下沒充電標紅）。
+
 > ### 🆕 2026-10-09 增補 ㊽（歸檔 `2026-10-09_高雄自由店桌號改成A1-1.sql` ＋ `…改回A1.sql`）
 > **基準：`sql/applied/` 有 322 個檔案**。只改資料，結構與函式數不變（344）。兩份驗證都全綠，提交後另查線上。
 > ⚪ 淨效果是零：高雄自由店桌名改成 A1-1… 之後又改回 A1–A5／B1–B5／C1–C4（我把「計分板桌號」誤解成桌子改名）。
