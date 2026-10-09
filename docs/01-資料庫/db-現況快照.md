@@ -1,5 +1,14 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-09 增補 52（歸檔 `2026-10-09_智慧計分板分紅.sql`）
+> **基準：`sql/applied/` 有 326 個檔案**。函式 345 → **346**（＋`tbl_bonus_tx`）。驗證 6/6，提交後另查線上。
+> | | |
+> |---|---|
+> | ✏️ `hands_result_check`／`hands_result_shape` | 結果多一種 `bonus`（形狀同咔啦碰：winner＝收的人、deal_in＝付的人） |
+> | 🆕 `tbl_bonus_tx(p_token, p_to_seat, p_tai)` | 分紅：台數 × 每台積分，只收 10 的倍數、10～990 台；付的人按就生效；先寫待確認再生效（經過爆卡檢查）；分完會歸零就擋；anon／authenticated |
+> | ✏️ 5 支 6 處 | `_ach_session_events`／`_score_settle_tx` ×2／`_tbl_round_state`／`_tbl_state_for_device`／`tbl_confirm_hand_tx`：「不是咔啦碰才算一局」→「不是咔啦碰也不是分紅」 |
+> ⚠ 前端計分引擎 `migi-table/src/lib/engine.js`（教學模式與預覽）同一套規則，改規則兩邊一起改（CLAUDE.md 待辦 51）。
+
 > ### 🆕 2026-10-09 增補 51（歸檔 `2026-10-09_創辦人舊牌局從本人紀錄藏起來.sql`）
 > **基準：`sql/applied/` 有 325 個檔案**。函式數不變（345）。驗證 6/6，提交後另查線上。
 > | | |
