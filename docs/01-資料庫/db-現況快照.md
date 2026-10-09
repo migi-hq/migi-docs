@@ -1,5 +1,12 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-10 增補 63（歸檔 `2026-10-10_排行榜加胡牌率自摸率放槍率.sql`）
+> **基準：`sql/applied/` 有 337 個檔案**。函式數不變。驗證 4/4，提交後另查線上（版本數 1）。
+> ✏️ `get_season_leaderboard_tx`（簽名不變）多回 `hand_leaders`：`{ min_hands, hu[], tsumo[], deal_in[] }`，每列 `rank_no／id／name／rank_label／hands／n／rate`，各最多 5 列。
+>   · 名單＝`season_rank_rows_display_tx` 同一批人；局數與次數的算法跟 `_member_stats_core`「每一局」那一段同一套（驗證段逐人比對過）
+>   · 規定局數 `v_min_hands = 30`（只寫在這支函式裡）；放槍率由低排到高；同率同名次（`rank()`）
+>   ⚠ 改「一局怎麼算」時，這裡跟 `_member_stats_core` 要一起改 —— 兩份目前是逐字相同的抄寫，不是同一支函式。
+
 > ### 🆕 2026-10-10 增補 62（歸檔 `2026-10-10_牌型新增骰龜.sql`）
 > **基準：`sql/applied/` 有 336 個檔案**。只加資料、結構不變：`scoring_patterns.shaigui`「骰龜」2 台、最多 1 次、special、排序 417（全紅與 MIGI 之間）。驗證 1/1，提交後另查線上。
 >   ⚠ 有花的局牌型格變 31 格（6 排），平板用 `.grid.tight` 收緊間距（`migi-table` a102d2f）。
