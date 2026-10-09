@@ -1,5 +1,11 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-10 增補 57（歸檔 `2026-10-10_智慧計分板豹子.sql`）
+> **基準：`sql/applied/` 有 331 個檔案**。函式數不變。驗證 7/7，提交後另查線上（含乘倍數那一行在自摸自動帶之後、算錢之前）。
+> 🆕 `scoring_patterns.baozi`「豹子」：0 台、最多 2 次、special、排序 430。
+> ✏️ `tbl_submit_hand_tx`：倍數 `v_mult` ＝ 1 ＋ 豹子次數；**牌型台數（含自動帶的自摸）× 倍數**存進 `hands.tai_pattern`，**每一份的莊家台也 × 倍數**，底不乘。
+>   ⚠ 前端 `migi-table/src/lib/rules.js`（`baoziMult`／`multOfPatterns`）與教學 `engine.js` 同一套；顯示莊家台時要自己再乘倍數（後端不存莊家台）。
+
 > ### 🆕 2026-10-10 增補 56（歸檔 `2026-10-10_智慧計分板流局回溯.sql`）
 > **基準：`sql/applied/` 有 330 個檔案**。函式 346 → **347**。驗證 5/5，提交後另查線上。
 > 🆕 `tbl_undo_draw_tx(p_token)`：撤銷「上一局的流局」—— 照抄 `tbl_undo_last_tx`，多兩道：最後一筆已入帳的局必須是 `draw`（`not_draw`）、有人爆卡在等決定不能撤（`bust_pending`）。DEFINER，開給 anon ＋ authenticated。
