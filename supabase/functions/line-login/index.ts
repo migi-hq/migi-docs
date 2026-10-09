@@ -262,6 +262,33 @@ function toE164TW(local: string): string {
   return d.startsWith('0') ? '+886' + d.slice(1) : (d.startsWith('886') ? '+' + d : local)
 }
 
+/* 手機號碼遮罩：0988***818。紀錄（console 與 app_events）一律只留這個。 */
+function maskPhone(p: string): string {
+  const d = (p || '').replace(/\D/g, '')
+  return d.length >= 7 ? `${d.slice(0, 4)}***${d.slice(-3)}` : '***'
+}
+
+/* ── 簡訊送失敗寫進 app_events（2026-10-09 補）──────────
+   🔴 起點：MAAC Go 從某天起要求帳號擁有者先驗證手機才放行正式發送，
+     回 403 phone_verification_required —— 而那句原因**只寫在這支函式的 console**，
+     沒有人在看。直到第一位真客人註冊收不到簡訊才發現，還要開 Supabase 的紀錄頁截圖。
+   → 事件名結尾是 `_error`，錯誤儀表（`event like '%\_error'`）自動看得到。
+   ⚠ props 不放手機號碼（只放遮罩過的）；簡訊商的回應本身不含號碼。
+   ⚠ 寫失敗不影響主流程 —— 埋點壞掉不可以讓註冊壞掉。 */
+async function logSmsError(provider: string, phone: string, status: number, detail: string) {
+  try {
+    await db('rpc/log_app_event_tx', {
+      method: 'POST',
+      body: JSON.stringify({
+        p_org_id: MIGI_ORG_ID, p_member_id: null, p_event: 'sms_error',
+        p_props: { provider, status, phone: maskPhone(phone), detail: (detail || '').slice(0, 400) },
+      }),
+    })
+  } catch (e) {
+    console.warn('[line-login] sms_error 埋點寫不進去', e)
+  }
+}
+
 async function sendSms(phone: string, text: string): Promise<boolean> {
   if (!smsConfigured()) {
     console.warn('[line-login] 簡訊商還沒設定，這則沒有送出')
@@ -307,6 +334,7 @@ async function sendSms(phone: string, text: string): Promise<boolean> {
            下次被退時它會直接告訴你原因，不用再猜。 */
       if (!res.ok) {
         console.error('[line-login] cresclab 送出失敗', res.status, out.slice(0, 400))
+        await logSmsError('cresclab', phone, res.status, out)
         return false
       }
       console.log('[line-login] cresclab 送出成功', res.status, out.slice(0, 200))
@@ -332,6 +360,7 @@ async function sendSms(phone: string, text: string): Promise<boolean> {
       const out = await res.json().catch(() => null)
       if (out?.result !== 1) {
         console.error('[line-login] labspace 回報失敗', res.status, JSON.stringify(out).slice(0, 200))
+        await logSmsError('labspace', phone, res.status, JSON.stringify(out))
         return false
       }
       return true
@@ -358,6 +387,7 @@ async function sendSms(phone: string, text: string): Promise<boolean> {
       const m = raw.match(/statuscode\s*=\s*(\w+)/)
       if (!m || !['1', '2', '4'].includes(m[1])) {
         console.error('[line-login] 三竹回報失敗', res.status, raw.slice(0, 200))
+        await logSmsError('mitake', phone, res.status, raw)
         return false
       }
       return true
@@ -367,6 +397,7 @@ async function sendSms(phone: string, text: string): Promise<boolean> {
     return false
   } catch (e) {
     console.error('[line-login] 簡訊送出失敗', e)
+    await logSmsError(provider ?? '', phone, 0, String(e))
     return false
   }
 }
@@ -625,7 +656,7 @@ Deno.serve(async (req) => {
        🔴 走到這裡代表簡訊商**已經設定好了**，所以送不出去就是失敗，
          不可以放行 —— 放行等於「沒驗證也讓你過」，整套 OTP 就失效了。 */
     if (!sent) {
-      console.error('[line-login] 簡訊送不出去', out.phone)
+      console.error('[line-login] 簡訊送不出去', maskPhone(out.phone))
       return json({ ok: true, otp_required: true, sent: false, reason: 'sms_failed' })
     }
     return json({ ok: true, otp_required: true, sent: true })
