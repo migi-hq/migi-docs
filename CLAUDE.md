@@ -5648,7 +5648,8 @@ settled_at 09-03 15:18   ← 8 場全部同一個時間點
     ```
     🔴 **計分規則現在有三份要一起改**：後端（tbl_submit_hand_tx／tbl_bonus_tx／tbl_confirm_hand_tx／_tbl_round_state／爆卡觸發器）
       ＋ `migi-table/src/lib/engine.js`（預覽頁與教學模式共用）。後端改了規則、engine.js 沒跟上 ⇒ 教學模式教的是舊規則而且不報錯。
-    📄 SQL：`sql/applied/2026-10-09_智慧計分板分紅.sql`（6/6，提交後查過線上）· 前端 `migi-table` c4b94f7（分紅）／a2ba5ff（教學模式）
+    📄 SQL：`sql/applied/2026-10-09_智慧計分板分紅.sql`（6/6）＋ `…_分紅改成每台固定10積分.sql`（4/4），都提交後查過線上
+      · 前端 `migi-table` a2ba5ff（教學模式）／dd7a9ae（分紅每台 10 積分、爆卡文案）
 
 ### 上線當天
 
