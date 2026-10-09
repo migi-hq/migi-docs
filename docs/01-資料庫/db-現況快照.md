@@ -1,5 +1,10 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-10 增補 56（歸檔 `2026-10-10_智慧計分板流局回溯.sql`）
+> **基準：`sql/applied/` 有 330 個檔案**。函式 346 → **347**。驗證 5/5，提交後另查線上。
+> 🆕 `tbl_undo_draw_tx(p_token)`：撤銷「上一局的流局」—— 照抄 `tbl_undo_last_tx`，多兩道：最後一筆已入帳的局必須是 `draw`（`not_draw`）、有人爆卡在等決定不能撤（`bust_pending`）。DEFINER，開給 anon ＋ authenticated。
+>   ⚠ 教學模式的同一條規則在 `migi-table/src/lib/engine.js` 的 `undoDraw`。
+
 > ### 🆕 2026-10-09 增補 55（歸檔 `2026-10-09_A1誤按流局撤銷.sql`）
 > **基準：`sql/applied/` 有 329 個檔案**。**只改資料，結構不變**：A1 那場誤按的流局標成 `undone`（照 `tbl_undo_last_tx` 的做法），驗證 4/4，提交後另查線上。
 
