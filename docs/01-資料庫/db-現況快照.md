@@ -1,5 +1,9 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-10 增補 62（歸檔 `2026-10-10_牌型新增骰龜.sql`）
+> **基準：`sql/applied/` 有 336 個檔案**。只加資料、結構不變：`scoring_patterns.shaigui`「骰龜」2 台、最多 1 次、special、排序 417（全紅與 MIGI 之間）。驗證 1/1，提交後另查線上。
+>   ⚠ 有花的局牌型格變 31 格（6 排），平板用 `.grid.tight` 收緊間距（`migi-table` a102d2f）。
+
 > ### 🆕 2026-10-10 增補 61（歸檔 `2026-10-10_局號唯一排除分紅.sql`）
 > **基準：`sql/applied/` 有 335 個檔案**。函式數不變。驗證 3/3，提交後另查線上。
 > ✏️ `uq_hands_confirmed_no` 改成 `(round_id, hand_no) where status = 'confirmed' and result not in ('kala', 'bonus')` —— 原本只排除咔啦碰。
