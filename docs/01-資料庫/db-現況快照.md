@@ -1,5 +1,17 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-11 增補 68（歸檔 `2026-10-11_計分板回報版本離線原因與錯誤.sql`）
+> **基準：`sql/applied/` 有 342 個檔案**。函式 +1（public 一般函式現為 350；明確授權 anon 92 → 93）。驗證 3/3，提交後另查線上；
+> 行為測試 `sql/checks/2026-10-11_驗計分板回報.sql` 8/8（交易內造一台假平板，全部回滾）。
+> ✏️ `table_devices` 加四欄：`app_version`／`app_loaded_at`（平板開機回報）、`gone_reason`／`gone_at`（最後一次離開前景的原因，回前景就清掉）。
+>   CHECK `table_devices_gone_reason_check`：`gone_reason` 是 null 或 `hidden`／`closed`。
+> 🆕 `tbl_report_tx(p_token text, p_kind text, p_data jsonb default '{}')` → `{ ok }`，DEFINER，**anon ＋ authenticated**（平板用憑證叫，身分由 `_tbl_device` 決定）。
+>   kind：`hello`（版本）／`gone`（hidden｜closed ＋ 當時電量）／`back`／`offline_was`（斷了幾秒 ⇒ `app_events` `table_offline`）／
+>   `error`（⇒ `app_events` `table_error`，**每台每小時最多 30 筆**，超過回 `skipped`）；其他回 `bad_kind`。`is_test` 跟門市。
+> ✏️ `list_table_devices_tx`（簽名不變）每台多回 `app_version`、`app_loaded_at`、`gone_reason`、`gone_at`、
+>   `errors_24h`、`last_error {at,msg,kind,fn}`、`offline_24h`、`offline_max_s`。
+>   📌 `table_error` 以 `_error` 結尾 ⇒ 錯誤儀表自動看得到，不用改儀表。
+
 > ### 🆕 2026-10-10 增補 67（歸檔 `2026-10-10_報表檢視表補藏起來的場次欄位.sql`）
 > **基準：`sql/applied/` 有 341 個檔案**。函式數不變。驗證 3/3，提交後另查線上。
 > ✏️ `v_real_session_players` 最後面加 `hidden_from_history_at`（10-09 session_players 新加的欄位，錯誤儀表 ⑫ 抓到）。

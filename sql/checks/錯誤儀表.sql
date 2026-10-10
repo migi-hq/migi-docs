@@ -233,15 +233,17 @@ select 序, 項目, 內容 from (
        · **變多** ＝ 有人把函式開放給前端 ⇒ 那是**要逐支確認的事**
      ⚠ 舊版寫 `<> 129` 一律警告 —— 而「收緊之後永遠紅」正是
        這個專案記過三次的病（永遠紅的檢查會訓練人忽略紅色）。 */
-  select 7, '⑦ 函式授權 vs baseline（2026-10-05：明確 anon 89、只靠 PUBLIC 0）',
+  /* 93 ＝ 10-05 baseline 89 ＋ 計分板 tbl_bonus_tx（10-09）＋ tbl_undo_draw_tx（10-10）＋ tbl_report_battery_tx（10-09）
+          ＋ tbl_report_tx（10-11）—— 四支都是平板用憑證叫的，刻意給 anon */
+  select 7, '⑦ 函式授權 vs baseline（2026-10-11：明確 anon 93、只靠 PUBLIC 0）',
          (select '明確授權 anon ' || count(*) filter (where anon明確)::text
               || '　只靠 PUBLIC ' || count(*) filter (where public有 and not anon明確)::text
               || '　兩者都沒有 ' || count(*) filter (where not anon明確 and not public有)::text
               || case when count(*) filter (where public有 and not anon明確) > 0
                       then E'\n  🔴 有函式只靠 PUBLIC 進來 —— 那不是決定，是預設值。逐支確認要不要給 anon'
-                      when count(*) filter (where anon明確) > 89
+                      when count(*) filter (where anon明確) > 93
                       then E'\n  🔴 明確授權 anon 的支數**變多了** —— 有人把函式開放給前端，逐支確認'
-                      when count(*) filter (where anon明確) < 89
+                      when count(*) filter (where anon明確) < 93
                       then E'\n  ⚠ 比 baseline 少（有人收緊了，方向是對的）—— 重跑匯出把基準對上'
                       else E'\n  ✅ 與 baseline 相同' end
             from (select
