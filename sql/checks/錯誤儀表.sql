@@ -334,13 +334,15 @@ select 序, 項目, 內容 from (
                📌 實證：CLAUDE.md 記「23 個外鍵」，2026-09-04 實查 **25** ——
                  差額全是同一週自己新建的 `season_standings` / `season_champions`，
                  而**沒有任何東西提醒過我**。 */
-            select 4, case when (select count(*) from pg_constraint
-                                  where contype='f' and confrelid='public.members'::regclass) <> 25
-                   then '🔴 ④ 指向 members 的外鍵變成 ' ||
-                        (select count(*)::text from pg_constraint
-                          where contype='f' and confrelid='public.members'::regclass) ||
-                        ' 個（合併稿只搬 25 個）—— 動它之前先重跑 checks/2026-09-04_合併會員前的盤點.sql'
-                   else '⏸ ④ 會員合併：稿在 _設計稿未落地/，外鍵仍是 25 個（等第一個真客人）' end
+            /* 🔴 2026-10-10 改：原本「外鍵 ≠ 25 就紅」—— 封測一開始外鍵已經 40 個，那一格會永遠紅，
+                  而永遠紅的格子會訓練人忽略紅色。合併稿本來就過期了，紅燈不會讓它變新。
+               ✅ 改成資訊格：印目前的外鍵數 ＋ 一句提醒。
+               📌 同日使用者拍板：觸發時機從「第一位真客人」延到「設 live_from（正式上線）那天」——
+                  封測 5 人都綁 LINE ＋ 驗過手機、沒有重複；真的發生就寫一次性 SQL 處理。 */
+            select 4, '⏸ ④ 會員合併：等設 live_from 那天再做（稿在 _設計稿未落地/，寫的是 25 個外鍵，現在 '
+                      || (select count(*)::text from pg_constraint
+                           where contype='f' and confrelid='public.members'::regclass)
+                      || ' 個 —— 稿已過期，要用之前先重跑 checks/2026-09-04_合併會員前的盤點.sql）'
             union all
             select 5, case when exists (select 1 from staff where member_id is not null and deleted_at is null)
                    then '✅ ⑤ 有店員綁了會員（LINE 登入那條路）'
