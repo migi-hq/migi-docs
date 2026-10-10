@@ -1,5 +1,10 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-10 增補 64（歸檔 `2026-10-10_排行榜補頭像欄位.sql`）
+> **基準：`sql/applied/` 有 338 個檔案**。函式數不變。驗證 3/3，提交後另查線上（版本數 1、數據排行還在）。
+> ✏️ `get_season_leaderboard_tx`：`rows`／`champions`／`hand_leaders` 每一列多回 `avatar_source／avatar_url／avatar_photo_path／avatar_bear`（同 `list_buddies_tx` 那一組）。
+>   在此之前排行榜從來沒回頭像，前端一律畫預設小熊（`migi-web` 0a67aaf 起改用 `<Avatar member>`）。
+
 > ### 🆕 2026-10-10 增補 63（歸檔 `2026-10-10_排行榜加胡牌率自摸率放槍率.sql`）
 > **基準：`sql/applied/` 有 337 個檔案**。函式數不變。驗證 4/4，提交後另查線上（版本數 1）。
 > ✏️ `get_season_leaderboard_tx`（簽名不變）多回 `hand_leaders`：`{ min_hands, hu[], tsumo[], deal_in[] }`，每列 `rank_no／id／name／rank_label／hands／n／rate`，各最多 5 列。
