@@ -1,5 +1,16 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-10 增補 65（歸檔 `2026-10-10_每一局統計收成一支共用函式.sql`）
+> **基準：`sql/applied/` 有 339 個檔案**。函式 +1（public 一般函式現為 348）。驗證 7/7，提交後另查線上（全庫寫了「局的結果」條件的只剩一支）。
+> 🆕 `_member_hand_counts(p_org_id, p_from timestamptz default null, p_member_ids uuid[] default null)`
+>   → `table(member_id, hands, hu, tsumo, deal_in, max_tai, max_renzhuang)`，DEFINER，**只有 service_role**。
+>   · 「一局怎麼算」的**唯一一份**：已收桌、有名次、有座位；局只算已入帳的胡／自摸／流局／包牌（咔啦碰、分紅不算）；
+>     單局台數＝牌型台＋莊台（跟平板同一套）。
+>   · `p_from` null ＝ 不限時間（生涯）；`p_member_ids` null ＝ 這個機構所有人；一局都沒有的人不會出現。
+> ✏️ `_member_stats_core`：本季（`p_from = v_win`）、生涯（null）各叫一次；`get_season_leaderboard_tx`：傳段位排行那一批人的名單（空名單傳 `'{}'` 不傳 null）。
+>   兩支簽名、授權都沒變；驗證是改前改後每位會員、每個機構的整份回傳逐字相同。
+>   ⇒ 增補 63 那句「要一起改、兩份是抄寫」**從這一份起不成立**：改「一局怎麼算」只改 `_member_hand_counts`。
+
 > ### 🆕 2026-10-10 增補 64（歸檔 `2026-10-10_排行榜補頭像欄位.sql`）
 > **基準：`sql/applied/` 有 338 個檔案**。函式數不變。驗證 3/3，提交後另查線上（版本數 1、數據排行還在）。
 > ✏️ `get_season_leaderboard_tx`：`rows`／`champions`／`hand_leaders` 每一列多回 `avatar_source／avatar_url／avatar_photo_path／avatar_bear`（同 `list_buddies_tx` 那一組）。
