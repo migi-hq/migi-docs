@@ -1,5 +1,15 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-10 增補 66（歸檔 `2026-10-10_賽季自動建下一季.sql`）
+> **基準：`sql/applied/` 有 340 個檔案**。函式 +1（public 一般函式現為 349）。驗證 5/5，提交後另查線上（賽季仍是 2026H2、2027H1 兩季，沒有多建）；
+> 行為測試 `sql/checks/2026-10-10_驗賽季自動建下一季.sql`（交易內建季後全部退回）。
+> 🆕 `_ensure_next_seasons(p_org_id, p_until timestamptz default now() + 60 天)` → `{ ok, created: [代碼…] }`，DEFINER，**只有 service_role**。
+>   · 從最後一季的 `ends_at` 接著建，直到 `p_until` 那一刻有一季在進行（區間含開始不含結束 ⇒ 期限正好是季末時會再多建一季）
+>   · 台北時間 1/1–6/30 ＝ `YYYYH1`「YYYY 段位春季賽」、7/1–12/31 ＝ `YYYYH2`「YYYY 段位秋季賽」；一次最多 8 季；一季都沒有的機構不建
+>   · 全庫唯一會寫 `rank_seasons` 的函式（在此之前 0 支，賽季都是手動建的）
+> ✏️ `sweep_season_close_tx`（簽名不變）：結算前先對每個有賽季的機構叫一次；失敗不擋結算，寫 `app_events` `season_create_error`。
+>   回傳多一個 `created_seasons`。2027H2 會在 2027-05-01 前後自動出現。
+
 > ### 🆕 2026-10-10 增補 65（歸檔 `2026-10-10_每一局統計收成一支共用函式.sql`）
 > **基準：`sql/applied/` 有 339 個檔案**。函式 +1（public 一般函式現為 348）。驗證 7/7，提交後另查線上（全庫寫了「局的結果」條件的只剩一支）。
 > 🆕 `_member_hand_counts(p_org_id, p_from timestamptz default null, p_member_ids uuid[] default null)`

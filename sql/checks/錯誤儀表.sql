@@ -716,6 +716,20 @@ select 序, 項目, 內容 from (
          || coalesce(
            (select case when not exists (select 1 from cron.job where jobname = 'season-close' and active)
                         then E'\n  🔴 排程 season-close 不見了或被停用' end), '')
+         /* ★ 2026-10-10：下一季有沒有自動建好（_ensure_next_seasons，結算排程每 10 分鐘先跑它，建到「現在＋60 天」）。
+              空檔的症狀：排行榜與段位頁回空、成績頁照樣算本季，而且結算時下一季的起點段位分會漏寫。 */
+         || coalesce(
+           (select case when not exists (select 1 from rank_seasons where now() >= starts_at and now() < ends_at)
+                        then E'\n  🔴 現在沒有進行中的賽季（兩季之間有空檔）' end), '')
+         || coalesce(
+           (select E'\n  已排到 ' || code || '（打到 ' || to_char((ends_at at time zone 'Asia/Taipei') - interval '1 second', 'YYYY-MM-DD') || '）'
+                   || case when ends_at < now() + interval '30 days'
+                           then ' 🔴 最後一季 30 天內就結束，卻還沒有下一季 —— 自動建季沒在動' else '' end
+              from rank_seasons order by ends_at desc limit 1), '')
+         || coalesce(
+           (select E'\n  🔴 近 30 天自動建季失敗 ' || count(*) || ' 次，最後一次：' || max(props ->> 'message')
+              from app_events where event = 'season_create_error' and created_at > now() - interval '30 days'
+            having count(*) > 0), '')
 
   union all
   /* ⑳ LINE 推播寄件匣（2026-10-05 加）。
