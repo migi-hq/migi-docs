@@ -1,5 +1,11 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-13 增補 78（歸檔 `2026-10-13_天胡不疊.sql`）
+> **基準：`sql/applied/` 有 352 個檔案**。函式數不變。驗證 5/5，提交後另查線上；行為 4/4（`sql/checks/2026-10-13_驗天胡不疊.sql`）。
+> `scoring_patterns.tianhu.conflicts` ＝ `{duting, menqing, menqing_tsumo, pinghu, zimo}`（原本空的）；`result_only = tsumo`、`dealer_only` 不變。
+> `tbl_submit_hand_tx`（簽名不變）：自摸自動帶「自摸」1 台的條件改成「選了的牌型都沒有跟自摸互斥（雙向看 conflicts）」，
+>   不再寫死門清自摸。前端同一條規則在 `migi-table/src/lib/rules.js` 的 `blocksZimo()`。
+
 > ### 🆕 2026-10-13 增補 77（歸檔 `2026-10-13_手機計分_後端.sql`）
 > **基準：`sql/applied/` 有 351 個檔案**。驗證 10/10，提交後另查線上（13 台平板全部 kind=tablet、沒被動到）。
 > 行為測試 `sql/checks/2026-10-13_驗手機計分.sql`（自己造樣本、整段回滾）。
