@@ -145,8 +145,10 @@ if mode == 'sheet':
     spec = sys.argv[4] if len(sys.argv) > 4 else DEFAULT_ROWS
     rows = [r.split(',') for r in spec.split(';')]
     for n, box in sheet_boxes(im, rows):
-        c = fit(im, box); report('onboarding_' + n, c)
-        cut(im, c, os.path.join(outd, f'ach_onboarding_{n}.webp'))
+        # 只寫編號（"13"）＝ 新手引導那一區；寫完整代碼（"rank_18"）就照用（2026-10-12 段位徽章那張）
+        code = n if '_' in n else 'onboarding_' + n
+        c = fit(im, box); report(code, c)
+        cut(im, c, os.path.join(outd, f'ach_{code}.webp'))
 elif mode == 'single':
     im = Image.open(sys.argv[2]).convert('RGB'); code = sys.argv[3]; outd = sys.argv[4]
     W, H = im.size

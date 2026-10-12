@@ -1,5 +1,13 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-12 增補 74（歸檔 `2026-10-12_成就新增升上銅牌熊.sql`）
+> **基準：`sql/applied/` 有 348 個檔案**。結構不變（函式數不變，改一支 ＋ 新增一列成就）。驗證 4/4，提交後另查線上；行為 3/3（`sql/checks/2026-10-12_驗升上銅牌熊.sql`）。
+> 🆕 成就 `rank_18`「升上銅牌熊」（段位區，sort 96，事件 `rank_reach_bronze`，prestige／norm）。
+>   · `trg_members_rank_events` 的跨階迴圈從 `sort >= 2` 改成 `sort >= 1`：段位從「沒有」變成銅牌也發事件
+>   · 補發給當時有段位的 15 人（冪等鍵 `backfill:2026-10-12:<會員>`）；連帶 1 人湊滿 `rank_17` 段位收藏家
+>   · ⚠ 與新手引導的 `onboarding_26`「取得正式段位」同一刻解鎖 —— 使用者知道重疊、選擇兩枚都留
+>   · 徽章圖 `ach_rank_18.webp` 等七張待上傳，`badge_path` 由 `sql/pending/2026-10-12_段位徽章回填路徑.sql` 回填
+
 > ### 🆕 2026-10-11 增補 73（歸檔 `2026-10-11_計分板重選這一將的位置.sql`）
 > **基準：`sql/applied/` 有 347 個檔案**。函式 350 → **351**（＋1）。驗證 3/3，提交後另查線上；行為 5/5（`sql/checks/2026-10-11_驗計分板重選位置.sql`）。
 > 🆕 `tbl_reorder_round_tx(p_token, p_dealer_seat, p_next_seat, p_opposite_seat)`：平板「重選位置」，改**這一將**的 `seat_ring` 與 `first_dealer_seat`。
