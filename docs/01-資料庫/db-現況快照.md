@@ -1,5 +1,14 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-12 增補 76（歸檔 `2026-10-12_計分板數字鍵直接輸入台數.sql`）
+> **基準：`sql/applied/` 有 350 個檔案**。函式數不變（`tbl_submit_hand_tx` DROP 重建、另兩支改內容）。驗證 5/5，提交後另查線上；行為 7/7（`sql/checks/2026-10-12_驗計分板數字鍵台數.sql`）。
+> 🆕 `hands.manual_tai boolean not null default false`（9/23 刪掉、10-12 加回）：計分板用數字鍵直接輸入台數的那一局。
+> `tbl_submit_hand_tx(p_token, p_result, p_deal_in_seat, p_patterns, p_manual_tai)`：多一個參數（預設 null ＝ 選牌型）。
+>   · 數字鍵：只有胡／自摸、0～99 台、不能同時帶牌型；台數只算牌型（莊家台照舊系統加）、不自動帶自摸、沒有豹子
+>   · anon／authenticated／service_role 明確授權，PUBLIC 沒有
+> `_tbl_state_for_device`：待確認、本將歷史、牌局紀錄三處多回 `manual_tai`。
+> `_ach_session_events`：「8 台以上」三處排除手動台數（牌型成就本來就看 patterns，自然不觸發）。
+
 > ### 🆕 2026-10-12 增補 75（歸檔 `2026-10-12_段位徽章回填路徑.sql`）
 > **基準：`sql/applied/` 有 349 個檔案**。結構不變（只改七列資料）。驗證 3/3，提交後另查線上。
 > `rank_18`／`rank_02`～`rank_06`／`season_06` 的 `badge_path` 指向 Storage `achievement-badges` 的 `ach_<code>.webp`
