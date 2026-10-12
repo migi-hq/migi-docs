@@ -12,9 +12,18 @@ declare
   v_code text; v_code2 text; r jsonb; v_phone text; v_phone2 text; v_n int; v_ok boolean;
   ck text;  -- 每一格的結果
 begin
-  -- 樣本：測試會員兩位、一張現在沒有牌局的桌
-  select id, org_id into v_a, v_org from members where is_test and deleted_at is null and hidden_at is null order by created_at limit 1;
-  select id into v_b from members where is_test and deleted_at is null and hidden_at is null and id <> v_a order by created_at limit 1;
+  -- 樣本：兩位「現在沒在任何一場牌局裡」的測試會員（有的話手機會被帶到那一場）、一張現在沒有牌局的桌
+  -- 2026-10-13 第一次跑撞到：原本只挑最早建立的兩位，其中一位剛好坐在開著的牌局裡 ⇒ 改成先排除
+  select m.id, m.org_id into v_a, v_org from members m
+   where m.is_test and m.deleted_at is null and m.hidden_at is null
+     and not exists (select 1 from session_players sp join table_sessions s on s.id = sp.session_id
+                      where sp.member_id = m.id and sp.left_at is null and s.status = 'open' and s.deleted_at is null)
+   order by m.created_at limit 1;
+  select m.id into v_b from members m
+   where m.is_test and m.deleted_at is null and m.hidden_at is null and m.id <> v_a
+     and not exists (select 1 from session_players sp join table_sessions s on s.id = sp.session_id
+                      where sp.member_id = m.id and sp.left_at is null and s.status = 'open' and s.deleted_at is null)
+   order by m.created_at limit 1;
   select t.id, t.store_id into v_table, v_store from tables t
    where t.org_id = v_org and t.deleted_at is null
      and not exists (select 1 from table_sessions s where s.table_id = t.id and s.status = 'open' and s.deleted_at is null)

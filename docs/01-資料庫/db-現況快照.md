@@ -1,5 +1,12 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-13 增補 79（歸檔 `2026-10-13_後台列出客人的手機.sql`）
+> **基準：`sql/applied/` 有 353 個檔案**。驗證 5/5，提交後另查線上。
+> 🆕 `_tbl_device_report(table_devices)`（平板與手機共用的狀態欄位：版本、離線原因、近 24 小時錯誤與斷網；前端叫不到）。
+> `list_table_devices_tx`：平板那組只列 `kind = 'tablet'`；🆕 `phones`＝最近 30 天在這間店用過、還能用的客人手機（多 `owner`／`table`／`this_game_only`）。
+> `_tbl_device`：手機每次連線把它最後在哪間店用寫進 `table_devices.store_id`（桌不寫回）。
+> `revoke_table_device_tx`：手機也能停用（手機可能還沒記過門市）。
+
 > ### 🆕 2026-10-13 增補 78（歸檔 `2026-10-13_天胡不疊.sql`）
 > **基準：`sql/applied/` 有 352 個檔案**。函式數不變。驗證 5/5，提交後另查線上；行為 4/4（`sql/checks/2026-10-13_驗天胡不疊.sql`）。
 > `scoring_patterns.tianhu.conflicts` ＝ `{duting, menqing, menqing_tsumo, pinghu, zimo}`（原本空的）；`result_only = tsumo`、`dealer_only` 不變。
@@ -8,7 +15,7 @@
 
 > ### 🆕 2026-10-13 增補 77（歸檔 `2026-10-13_手機計分_後端.sql`）
 > **基準：`sql/applied/` 有 351 個檔案**。驗證 10/10，提交後另查線上（13 台平板全部 kind=tablet、沒被動到）。
-> 行為測試 `sql/checks/2026-10-13_驗手機計分.sql`（自己造樣本、整段回滾）。
+> 行為測試 **16/16** `sql/checks/2026-10-13_驗手機計分.sql`（自己造樣本、整段回滾；第一次跑因為樣本會員坐在舊測試牌局裡停下，改成只挑沒在打牌的會員）。
 > `table_devices`：🆕 `kind`（tablet／phone，預設 tablet）、`member_id`（手機的主人）、`bound_session_id`（有值＝只限那一場）；
 >   `store_id`／`table_id` 改成可空；CHECK `table_devices_kind_check`：平板一定綁桌、手機一定綁人且不綁桌。
 > 🆕 `table_phone_codes`（6 位數配對碼，用一次；`session_id` 有值＝平板發的、只限那一場；`notification_id`＝成桌通知發的）、
