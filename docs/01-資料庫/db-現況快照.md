@@ -1,5 +1,17 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-13 增補 77（歸檔 `2026-10-13_手機計分_後端.sql`）
+> **基準：`sql/applied/` 有 351 個檔案**。驗證 10/10，提交後另查線上（13 台平板全部 kind=tablet、沒被動到）。
+> 行為測試 `sql/checks/2026-10-13_驗手機計分.sql`（自己造樣本、整段回滾）。
+> `table_devices`：🆕 `kind`（tablet／phone，預設 tablet）、`member_id`（手機的主人）、`bound_session_id`（有值＝只限那一場）；
+>   `store_id`／`table_id` 改成可空；CHECK `table_devices_kind_check`：平板一定綁桌、手機一定綁人且不綁桌。
+> 🆕 `table_phone_codes`（6 位數配對碼，用一次；`session_id` 有值＝平板發的、只限那一場；`notification_id`＝成桌通知發的）、
+>   `table_phone_code_fails`（猜錯紀錄：10 分鐘 60 次就暫停兌換）。兩張都開 RLS、0 policy。
+> 🆕 函式：`tbl_phone_redeem_tx(p_code, p_token)`、`tbl_phone_code_tx(p_token)`（anon／authenticated）；
+>   內部 `_tbl_new_phone_code`、`_tbl_device_stale`（45 秒）、`_tbl_phone_code_on_table_ok`（觸發器 `trg_app_notifications_phone_code`）。
+> 改：`_tbl_device`（手機換上它主人現在那一場的桌；最後上線改 15 秒記一次）、`tbl_claim_seat_tx`（手機只能選自己、別台斷線 45 秒才能接手、回 took_over）、
+>   `_tbl_state_for_device`（每人多 `is_mine`／`stale`／`device_label`，裝置多 `kind`／`owner`）、`_push_fields`（`phone_code`）、`_push_flex`（配對碼一格＋「加到主畫面」連結）。
+
 > ### 🆕 2026-10-12 增補 76（歸檔 `2026-10-12_計分板數字鍵直接輸入台數.sql`）
 > **基準：`sql/applied/` 有 350 個檔案**。函式數不變（`tbl_submit_hand_tx` DROP 重建、另兩支改內容）。驗證 5/5，提交後另查線上；行為 7/7（`sql/checks/2026-10-12_驗計分板數字鍵台數.sql`）。
 > 🆕 `hands.manual_tai boolean not null default false`（9/23 刪掉、10-12 加回）：計分板用數字鍵直接輸入台數的那一局。
