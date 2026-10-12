@@ -13,7 +13,7 @@
         ach_rank_06.webp   升上大師熊（紫盾）
         ach_season_06.webp 賽季雀神（皇冠）
      ③ 才跑這一份
-   只回填「bucket 裡確實有那個檔案、而且 badgAe_path 還是空的」—— 沒傳到的維持 emoji，補傳後再跑一次即可。
+   只回填「bucket 裡確實有那個檔案、而且 badge_path 還是空的」—— 沒傳到的維持 emoji，補傳後再跑一次即可。
    ============================================================ */
 
 update public.achievements a
