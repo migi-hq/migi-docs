@@ -3,10 +3,11 @@
    2026-10-07 建立 · MIGI 咪吉麻將
    📄 預覽：https://claude.ai/artifact/3HytBmMi9f9d7i4SoPyMRz
 
-   處理兩種事件，其餘一律不理（回 200）：
+   只處理一種事件，其餘一律不理（回 200）：
    · follow（加好友）     → 回一張歡迎卡片（內容由資料庫 line_welcome_flex_tx 組，開頭叫他的 LINE 名字）
-   · postback attend:<房> → 配桌湊滿卡片上的「確定會到」→ line_attend_confirm_tx 記下來，回一句話
-   ⚠ 兩種都是「回覆訊息」（reply），不扣每月免費則數。
+   ⚠ 是「回覆訊息」（reply），不扣每月免費則數。
+   📌 2026-10-13 使用者：「確定會到」按鈕與整個機制拿掉 —— 原本處理按鈕的 postback 那一段已刪除，
+     舊卡片上的按鈕按了不會有任何反應（這支照樣回 200，LINE 不會重送）。
 
    🔴 安全：每一個請求都先驗 X-Line-Signature（用 Messaging API 頻道的 Channel secret 做 HMAC-SHA256）。
      簽名不對 ⇒ 直接 401、什麼都不做 —— 別人假冒 LINE 打這個網址沒有用。
@@ -80,7 +81,6 @@ type LineEvent = {
   type: string
   replyToken?: string
   source?: { userId?: string }
-  postback?: { data?: string }
 }
 
 async function handle(ev: LineEvent) {
@@ -96,15 +96,6 @@ async function handle(ev: LineEvent) {
     } catch { /* 拿不到名字不影響歡迎卡片 */ }
     const flex = await rpc('line_welcome_flex_tx', { p_name: name })
     await reply(ev.replyToken, [flex])
-    return
-  }
-
-  if (ev.type === 'postback') {
-    const data = ev.postback?.data ?? ''
-    const m = /^attend:([0-9a-f-]{36})$/i.exec(data)
-    if (!m) return
-    const res = await rpc('line_attend_confirm_tx', { p_line_user_id: userId, p_queue_id: m[1] }) as { reply?: string }
-    if (res?.reply) await reply(ev.replyToken, [{ type: 'text', text: res.reply }])
   }
 }
 
