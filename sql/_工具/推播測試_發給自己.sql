@@ -3,6 +3,8 @@
    常駐工具，可重複跑。⚠ 它**真的會寫入**正式資料庫：
      · app_notifications（老闆 App 的通知清單會多出來，配桌那張的內文開頭寫「推播測試」）
      · notification_deliveries（寄件匣，會被 Edge Function line-push 送出去）
+     · table_phone_codes（2026-10-13 起：配桌那張會由觸發器發一組手機計分配對碼，24 小時、用一次；
+       老闆已經配對過手機的話不發，卡片就是「已配對」那一種 —— 沒有配對碼、沒有藍字連結）
    只發給 staff.role = 'owner' 那一位，不會發給任何客人。
 
    ── 要測哪一張：改下面 opt 那一行 ──────────────────────
@@ -22,7 +24,7 @@
    pending 一直不動 ＝ Edge Function 沒部署、或 LINE_MESSAGING_TOKEN 沒設（看 Edge Function 的 Logs）。
    ============================================================ */
 with opt as (
-  select '兩張'::text as k          -- 🔴 要測哪一張：'配桌'／'結束'／'兩張'
+  select '配桌'::text as k          -- 🔴 要測哪一張：'配桌'／'結束'／'兩張'（預設只發配桌：「結束」每跑一次用掉一場）
 ), me as (
   select s.org_id, s.member_id
     from staff s
