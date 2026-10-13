@@ -31,6 +31,11 @@ $b$;
   v_tail_new text := $d$)));$d$;
   n1 int; n2 int; n3 int;
 begin
+  -- 🔴 貼進 SQL Editor 時這幾段原文的換行可能是 \r\n（從 Windows 的檔案複製），要跟線上那份一樣統一成 \n，
+  --   不然一處都比對不到（2026-10-13 第一次跑就是這樣被守衛擋下：三處都是 0）
+  v_decl := replace(v_decl, E'\r\n', E'\n');
+  v_block := replace(v_block, E'\r\n', E'\n');
+  v_tail_old := replace(v_tail_old, E'\r\n', E'\n');
   n1 := (length(v_def) - length(replace(v_def, v_decl, ''))) / length(v_decl);
   n2 := (length(v_def) - length(replace(v_def, v_block, ''))) / length(v_block);
   n3 := (length(v_def) - length(replace(v_def, v_tail_old, ''))) / length(v_tail_old);
