@@ -8,8 +8,6 @@
 --   （2026-10-13 實例：芙芙、Chan、Y 配好了還沒入座；創辦人中午測試配的那一支）
 --
 -- 改法：store_id 是 null、同一個機構的手機，每一間店的清單都列；多回一個 never_seated 標記，畫面寫「還沒入座過」。
---   同日加：通用配對碼配的手機還沒選「我是誰」時沒有主人 ⇒ members 改 left join，名字寫「還沒選人」、標 unowned
---   （⚠ 通用配對碼那一份要先跑：它的手機會記門市，這裡才列得到）
 --   其餘一個字都不改（權限判斷、平板清單、30 天、只限一場的過濾都照舊）。簽名不變 ⇒ CREATE OR REPLACE，不掉授權。
 -- ============================================================
 
@@ -38,10 +36,9 @@ begin
     'phones', coalesce((
       select jsonb_agg(x.j order by x.playing desc, x.seen desc nulls last)
         from (select public._tbl_device_report(dv) || jsonb_build_object(
-                       'owner', coalesce(m.display_name, '還沒選人'),   -- 通用配對碼配的手機，選「我是誰」之前沒有主人
-                       'unowned', dv.member_id is null,
+                       'owner', m.display_name,
                        'this_game_only', dv.bound_session_id is not null,
-                       -- 有沒有坐過任何座位（不看門市：通用碼配的手機一配對就記了門市）
+                       -- 有沒有坐過任何座位
                        'never_seated', not exists (select 1 from session_players sp0 where sp0.device_id = dv.id),
                        'table', (select t.label from session_players sp
                                    join table_sessions ts on ts.id = sp.session_id
@@ -51,7 +48,7 @@ begin
                                   limit 1)) as j,
                      exists (select 1 from session_players sp where sp.device_id = dv.id and sp.left_at is null) as playing,
                      dv.last_seen_at as seen
-                from table_devices dv left join members m on m.id = dv.member_id   -- left：還沒選人的手機也要列
+                from table_devices dv join members m on m.id = dv.member_id
                where dv.kind = 'phone' and dv.is_active
                  and (dv.store_id = p_store_id
                       or (dv.store_id is null and dv.org_id = (select s.org_id from stores s where s.id = p_store_id)))
