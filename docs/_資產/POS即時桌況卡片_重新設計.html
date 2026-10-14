@@ -1,0 +1,293 @@
+<meta charset="utf-8">
+<title>即時桌況卡片</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Special+Gothic+Expanded+One&display=swap">
+<style>
+/* 頁面本身（說明文字）跟著深淺色；POS 畫面的示範一律照 POS 真實的淺色 token */
+:root{
+  --pg-bg:#F6F4F3; --pg-panel:#FFFFFF; --pg-fg:#2E2B2C; --pg-mute:#5C5754; --pg-line:#E4DFDC; --pg-tint:#FFECF1; --pg-accent:#974B5F;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --pg-bg:#1B191A; --pg-panel:#242122; --pg-fg:#F2EEEC; --pg-mute:#B3ACA8; --pg-line:#3A3536; --pg-tint:#3A2A2E; --pg-accent:#F3A9BC; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --pg-bg:#1B191A; --pg-panel:#242122; --pg-fg:#F2EEEC; --pg-mute:#B3ACA8; --pg-line:#3A3536; --pg-tint:#3A2A2E; --pg-accent:#F3A9BC; color-scheme:dark;}
+
+/* POS 的 token（@migi/assets 實際值） */
+.pos{
+  --brand:#FAD6DC; --brand-tint:#FFECF1; --brand-light:#FFE7EE; --ink:#2E2B2C; --accent:#C2607A; --accent-deep:#974B5F;
+  --gray-1:#5C5754; --gray-2:#726D69; --gray-3:#ECEAE9; --gray-4:#F2F0EE; --divider:#DED9D5; --white:#FFFFFF; --field-bg:#F8F7F6; --ok:#63B58C;
+  color-scheme:light; color:var(--ink);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--pg-bg);color:var(--pg-fg);
+  font-family:"PingFang TC","Microsoft JhengHei","Noto Sans TC",system-ui,sans-serif;line-height:1.6}
+.wrap{max-width:1240px;margin:0 auto;padding-block:28px 64px;padding-inline:16px}
+h1{font-size:26px;font-weight:900;margin:0 0 6px;text-wrap:balance}
+h2{font-size:19px;font-weight:800;margin:40px 0 6px}
+.lead,.note{color:var(--pg-mute);font-size:14.5px;max-width:78ch;margin:0}
+.note b{color:var(--pg-fg)}
+
+/* ───────── POS 外框（整頁示範） ───────── */
+.scroll{overflow-x:auto;margin-top:14px;border-radius:14px;border:1px solid var(--pg-line)}
+.screen{width:1240px;display:flex;background:#F7F6F5;font-family:"PingFang TC","Microsoft JhengHei","Noto Sans TC",system-ui,sans-serif}
+.side{width:170px;flex:none;background:var(--white);border-right:1px solid var(--gray-3);padding:22px 14px}
+.logo{font-family:"Special Gothic Expanded One","PingFang TC",sans-serif;font-size:22px;letter-spacing:1px;margin:0 6px 22px}
+.nav{font-size:13px;color:var(--gray-2);margin:14px 6px 6px}
+.nav-i{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:10px;font-size:14px;color:var(--gray-1);margin-bottom:2px}
+.nav-i.on{background:var(--brand);color:var(--ink);font-weight:700}
+.nav-i i{font-style:normal;background:var(--accent-deep);color:#fff;border-radius:999px;font-size:11px;padding:0 7px;font-weight:700}
+.main{flex:1;min-width:0}
+.top{display:flex;align-items:center;gap:10px;padding:16px 24px;background:var(--white);border-bottom:1px solid var(--gray-3)}
+.top h3{margin:0;font-size:22px;font-weight:800}
+.top small{font-size:15px;color:var(--gray-1);font-weight:400}
+.sum{margin-left:auto;display:flex;gap:8px;align-items:center}
+.sp{border-radius:999px;padding:3px 12px;font-size:13px;font-weight:600;white-space:nowrap;display:inline-flex;gap:6px;align-items:center}
+.board{padding:18px 24px 26px}
+.area{font-size:15px;font-weight:700;color:var(--gray-1);margin:0 0 10px}
+.area span{font-weight:400;color:var(--gray-2)}
+.grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:20px}
+
+/* ───────── 卡片 ───────── */
+.card{position:relative;border-radius:14px;padding:12px 14px;min-height:108px;display:flex;flex-direction:column;gap:6px;
+  background:var(--white);border:1px solid var(--gray-3);cursor:pointer;text-align:left;font:inherit;color:var(--ink);
+  transition:box-shadow .15s ease, transform .15s ease}
+.card:hover{box-shadow:0 4px 14px rgba(46,43,44,.10)}
+.card:active{transform:translateY(1px)}
+.hd{display:flex;align-items:center;gap:6px;min-width:0}
+.no{font-size:22px;font-weight:800;letter-spacing:.5px;line-height:1.1;white-space:nowrap}
+.kind{font-size:12px;color:var(--gray-1);white-space:nowrap}
+.flex{flex:1}
+.pill{font-size:12px;font-weight:700;border-radius:999px;padding:2px 10px;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;line-height:1.5}
+.pill .dot{width:7px;height:7px;border-radius:50%;flex:none}
+.pill .plus{font-size:11px;border-radius:999px;padding:0 6px;margin-left:2px}
+.why{font-size:13px;font-weight:700;color:var(--accent-deep);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.why.ink{color:var(--ink)}
+.ft{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;font-size:13px;color:var(--gray-1);white-space:nowrap;font-variant-numeric:tabular-nums}
+.ft b{color:var(--ink)}
+.ft .warn{color:var(--accent-deep);font-weight:700}
+.seats{display:inline-flex;gap:3px;margin-right:6px;vertical-align:-1px}
+.seats i{width:9px;height:9px;border-radius:50%;background:var(--ink);display:inline-block}
+.seats i.o{background:transparent;box-shadow:inset 0 0 0 1.5px var(--gray-2)}
+.names{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.wtag{font-size:11px;font-weight:800;background:var(--ink);color:#fff;border-radius:999px;padding:1px 8px;white-space:nowrap}
+
+/* 空桌：安靜的白卡；開桌是文字按鈕，不再是一整條黑棒 */
+.open{font-size:14px;font-weight:800;color:var(--ink);background:none;border:0;padding:0;cursor:pointer;font-family:inherit}
+.open:hover{text-decoration:underline;text-underline-offset:3px}
+.sw{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--gray-1);background:none;border:0;padding:0;cursor:pointer;font-family:inherit}
+.sw .tr{width:28px;height:16px;border-radius:999px;background:var(--gray-3);position:relative;transition:background .15s}
+.sw .tr::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .15s}
+.sw[aria-pressed="true"]{color:var(--ink);font-weight:700}
+.sw[aria-pressed="true"] .tr{background:var(--ink)}
+.sw[aria-pressed="true"] .tr::after{left:14px}
+
+/* 狀態 */
+.c-idle.walk{border:1.5px solid var(--ink)}
+.c-use{background:var(--brand-tint);border-color:var(--brand)}
+.c-hold{background:var(--white);border:1.5px dashed var(--accent)}
+.c-alert{border:2px solid var(--accent)}
+.c-alert.c-use{background:var(--brand-tint)}
+.c-done{border:2px solid var(--ink);background:var(--white)}
+.c-off{background:var(--field-bg);border-color:var(--gray-3);cursor:default}
+.c-off .no,.c-off .kind{color:var(--gray-2)}
+.c-off:hover{box-shadow:none}
+
+/* ───────── 狀態一覽 ───────── */
+.states{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:22px 18px;margin-top:16px}
+.st{display:flex;flex-direction:column;gap:10px}
+.st .pos{padding:14px;border-radius:14px;background:#F7F6F5;border:1px solid var(--pg-line)}
+.st h4{margin:0;font-size:15px;font-weight:800}
+.st p{margin:0;font-size:13.5px;color:var(--pg-mute)}
+.st p b{color:var(--pg-fg)}
+.tag-n{font-size:11px;font-weight:700;color:var(--pg-accent);border:1px solid currentColor;border-radius:999px;padding:0 7px;margin-left:6px;vertical-align:2px}
+
+.diff{margin:14px 0 0;padding:0;list-style:none;display:grid;gap:10px;max-width:86ch}
+.diff li{background:var(--pg-panel);border:1px solid var(--pg-line);border-radius:12px;padding:12px 16px;font-size:14.5px}
+.diff li b{display:block;margin-bottom:2px}
+.diff li span{color:var(--pg-mute)}
+@media (max-width:640px){h1{font-size:22px}}
+</style>
+
+<div class="wrap">
+  <h1>即時桌況卡片 · 重新設計</h1>
+  <p class="lead">參考後台平板卡片的骨架，四個角各講一件事：左上桌號、右上狀態、中間「有事才出現」的原因、下排人數與時間。
+    空桌不再是一整排黑棒，店員一眼先看到的是<b>要處理的桌</b>。下面是整頁示範（14 桌、各種狀態混在一起），再往下是每一種狀態單獨一張。</p>
+
+  <h2>整頁示範</h2>
+  <p class="note">卡片可以點；空桌右下的「現場」開關可以切切看。名字與時間都是示範。</p>
+  <div class="scroll"><div class="screen pos" id="screen">
+    <aside class="side">
+      <div class="logo">MIGI</div>
+      <div class="nav">現場</div>
+      <div class="nav-i on">即時桌況</div>
+      <div class="nav-i">配桌列表 <i>3</i></div>
+      <div class="nav-i">包桌預約</div>
+      <div class="nav">櫃檯</div>
+      <div class="nav-i">會員查詢</div>
+      <div class="nav-i">快速結帳</div>
+    </aside>
+    <div class="main">
+      <div class="top">
+        <h3>即時桌況 <small>· MIGI 高雄自由店</small></h3>
+        <div class="sum" id="sum"></div>
+      </div>
+      <div class="board" id="board"></div>
+    </div>
+  </div></div>
+
+  <h2>每一種狀態</h2>
+  <p class="note">右上那顆膠囊永遠只講一件事（最急的那件，其餘寫「+N」）；<b>深墨底＝要店員過去</b>，粉底＝留意就好。標 <span class="tag-n" style="margin:0">新</span> 的是這次才有的東西。</p>
+  <div class="states" id="states"></div>
+
+  <h2>跟現在差在哪</h2>
+  <ul class="diff">
+    <li><b>空桌安靜下來</b><span>原本每張空桌一條黑色「＋ 開桌」，14 桌就是 14 條黑棒，眼睛最先看到的是空桌。改成白卡、左下一個「＋ 開桌」文字鈕（整張卡也能點），黑色只留給「要處理」。</span></li>
+    <li><b>右上一顆狀態膠囊，跟後台平板卡片同一套</b><span>空桌（綠點）／使用中／預留／開桌中／待收桌／要處理的事。左下座位點旁邊寫「配桌」或「包桌」，一眼分得出是哪一種客人。</span></li>
+    <li><b>人數畫成四顆座位點</b><span>「2 人 · 差 2 位」改成 ●●○○，中間那一行寫「還差 2 位」，隔半公尺也看得出缺人。</span></li>
+    <li><b>時間放右下，包桌改寫「剩多久」</b><span>配桌寫「已打 1:23」；包桌用開打時間 ＋ 預計時長算出「剩 0:45」，快到期時變粗體桃紅。資料後端已經有（started_at、planned_minutes），不用改 SQL。</span></li>
+    <li><b>「要處理」多一個總數</b><span>上方摘要多一顆「要處理 N」（爆卡、等確認太久、待補檯費、平板離線、待收桌），0 的時候不出現。</span></li>
+    <li><b>停用的桌寫原因</b><span>後端已經有回 note（例如「冷氣維修」），以前沒畫出來。</span></li>
+    <li><b>規則一條都沒改</b><span>什麼時候算等太久、離線幾秒算離線，照舊只看 lib/tabletAlerts.js 那一份；這次只換畫面。</span></li>
+  </ul>
+</div>
+
+<script>
+/* ───────── 示範資料（形狀跟 list_tables_tx 回的一樣，數字是示範） ───────── */
+var T = [
+  { label:'A1', area:'A', kind:'use',  mode:'matched', seated:4, start:83 },
+  { label:'A2', area:'A', kind:'use',  mode:'matched', seated:4, start:41,
+    alerts:[{ pill:'爆卡 · 等決定', line:'小美 要決定追加或結束', dark:true }] },
+  { label:'A3', area:'A', kind:'hold', hold:'queue', playIn:80, playAt:'21:00', names:['阿明','小芸','阿凱','Joy'] },
+  { label:'A4', area:'A', kind:'idle', walk:true },
+  { label:'A5', area:'A', kind:'use',  mode:'private', seated:4, start:282, planned:300,
+    alerts:[{ pill:'包桌快到期', line:null, dark:false }] },
+  { label:'B1', area:'B', kind:'use',  mode:'matched', seated:4, start:151, done:true },
+  { label:'B2', area:'B', kind:'use',  mode:'matched', seated:4, start:18,
+    alerts:[{ pill:'等確認 4 分', line:'等 阿凱、小芸 按確認', dark:true }, { pill:'平板離線', line:'B2-3 沒有回應', dark:false, short:'1 台離線' }] },
+  { label:'B3', area:'B', kind:'use',  mode:'matched', seated:2, start:6 },
+  { label:'B4', area:'B', kind:'idle' },
+  { label:'B5', area:'B', kind:'hold', hold:'setup', ago:2 },
+  { label:'C1', area:'C', kind:'use',  mode:'private', seated:4, start:310, planned:300,
+    alerts:[{ pill:'待補檯費', line:'時間到了，請客人補檯費', dark:true }] },
+  { label:'C2', area:'C', kind:'idle' },
+  { label:'C3', area:'C', kind:'use',  mode:'matched', seated:4, start:57,
+    alerts:[{ pill:'平板離線', line:'C3-2 沒有回應', dark:false }] },
+  { label:'C4', area:'C', kind:'off',  note:'冷氣維修' },
+];
+
+var hm = function (min) { var m = Math.max(0, Math.round(min)); return Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0'); };
+var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); };
+var pill = function (txt, bg, fg, dot, plus) {
+  return '<span class="pill" style="background:' + bg + ';color:' + fg + '">' + (dot ? '<i class="dot" style="background:' + dot + '"></i>' : '') + txt +
+    (plus ? '<span class="plus" style="background:' + (bg === 'var(--ink)' ? '#fff' : 'var(--brand)') + ';color:var(--ink)">+' + plus + '</span>' : '') + '</span>';
+};
+var seats = function (n, of) { var s = ''; for (var i = 0; i < of; i++) s += '<i' + (i < n ? '' : ' class="o"') + '></i>'; return '<span class="seats" aria-hidden="true">' + s + '</span>'; };
+var MODE = { matched:'配桌', private:'包桌' };
+
+function needs(t) { return !!(t.done || (t.alerts && t.alerts.some(function (a) { return a.dark; }))); }
+
+function card(t) {
+  var cls = 'card', hd = '', why = '', ft = '';
+  var walkTag = t.walk ? '<span class="wtag">現場專用</span>' : '';
+  if (t.kind === 'idle') {
+    cls += ' c-idle' + (t.walk ? ' walk' : '');
+    hd = '<b class="no">' + t.label + '</b>' + walkTag + '<span class="flex"></span>' + pill('空桌', 'var(--gray-4)', 'var(--gray-1)', 'var(--ok)');
+    ft = '<button class="open" data-act="open">＋ 開桌</button>' +
+      '<button class="sw" data-act="walk" aria-pressed="' + (t.walk ? 'true' : 'false') + '" title="' + (t.walk ? '改回讓系統自動配' : '留給現場客人，系統不自動配') + '">現場<span class="tr"></span></button>';
+  } else if (t.kind === 'hold') {
+    cls += ' c-hold';
+    if (t.hold === 'queue') {
+      hd = '<b class="no">' + t.label + '</b><span class="flex"></span>' + pill('預留', 'var(--brand-light)', 'var(--accent-deep)', 'var(--accent)');
+      why = '<div class="why ink">' + t.playAt + ' 開打 · 還沒有人到</div>';
+      var n = t.names || [];
+      ft = '<span class="names">' + esc(n.slice(0, 2).join('、')) + (n.length > 2 ? ' +' + (n.length - 2) : '') + '</span><span>還有 ' + hm(t.playIn) + '</span>';
+    } else {
+      hd = '<b class="no">' + t.label + '</b><span class="flex"></span>' + pill('開桌中', 'var(--brand-light)', 'var(--accent-deep)', 'var(--accent)');
+      why = '<div class="why ink">還沒有人結帳，點進去繼續</div>';
+      ft = '<span></span><span>' + t.ago + ' 分鐘前開的</span>';
+    }
+  } else if (t.kind === 'use') {
+    var al = t.alerts || [];
+    var top = al[0], rest = al.length - 1;
+    cls += ' c-use' + (t.done ? ' c-done' : (al.length ? ' c-alert' : ''));
+    var p = t.done ? pill('待收桌', 'var(--ink)', '#fff')
+      : top ? (top.dark ? pill(top.pill, 'var(--ink)', '#fff', null, rest) : pill(top.pill, 'var(--brand)', 'var(--ink)', null, rest))
+      : pill('使用中', 'var(--white)', 'var(--ink)', 'var(--accent)');
+    hd = '<b class="no">' + t.label + '</b><span class="flex"></span>' + p;
+    var lines = [];
+    if (t.done) why = '<div class="why ink">打完了 · 點進去收桌</div>';
+    else {
+      if (top && top.line) lines.push(esc(top.line));
+      if (rest) lines.push(al.slice(1).map(function (a) { return a.short || a.pill; }).join(' · '));
+      if (t.seated < 4) lines.push('還差 ' + (4 - t.seated) + ' 位');
+      if (lines.length) why = '<div class="why">' + lines.join(' · ') + '</div>';
+    }
+    /* 下排左邊：四顆座位點 ＋ 配桌／包桌（2026-10-14：原本放桌號後面，195px 寬的卡片會把膠囊擠出去） */
+    var left = seats(t.seated, 4) + '<b>' + MODE[t.mode] + '</b>';
+    var right;
+    if (t.done) right = '共 ' + hm(t.start);
+    else if (t.mode === 'private' && t.planned) {
+      var left2 = t.planned - t.start;
+      right = left2 > 0 ? '<span class="' + (left2 <= 30 ? 'warn' : '') + '">剩 ' + hm(left2) + '</span>' : '<span class="warn">超過 ' + hm(-left2) + '</span>';
+    } else right = '已打 ' + hm(t.start);
+    ft = '<span>' + left + '</span><span>' + right + '</span>';
+  } else {
+    cls += ' c-off';
+    hd = '<b class="no">' + t.label + '</b><span class="flex"></span>' + pill('停用', 'var(--gray-4)', 'var(--gray-2)');
+    why = '<div class="why ink" style="color:var(--gray-2);font-weight:500">' + esc(t.note || '') + '</div>';
+  }
+  return '<div class="' + cls + '" role="button" tabindex="0" data-label="' + t.label + '"><div class="hd">' + hd + '</div>' + why + '<div class="ft">' + ft + '</div></div>';
+}
+
+function render() {
+  var use = T.filter(function (t) { return t.kind === 'use'; }).length;
+  var hold = T.filter(function (t) { return t.kind === 'hold'; }).length;
+  var idle = T.filter(function (t) { return t.kind === 'idle'; }).length;
+  var walk = T.filter(function (t) { return t.walk; }).length;
+  var need = T.filter(needs).length;
+  document.getElementById('sum').innerHTML =
+    (need ? '<span class="sp" style="background:var(--ink);color:#fff">要處理 ' + need + '</span>' : '') +
+    '<span class="sp" style="background:var(--brand)">使用 ' + use + '/' + T.length + '</span>' +
+    (hold ? '<span class="sp" style="background:var(--brand-light);color:var(--accent-deep)">預留 ' + hold + '</span>' : '') +
+    '<span class="sp" style="background:var(--gray-4);color:var(--gray-1)"><i style="width:7px;height:7px;border-radius:50%;background:var(--ok);display:inline-block"></i>空桌 ' + idle + '</span>' +
+    (walk ? '<span class="sp" style="background:var(--white);color:var(--ink);border:1px solid var(--ink)">現場專用 ' + walk + '</span>' : '') +
+    '<span class="sp" style="color:var(--accent-deep);padding:3px 4px">重新整理</span>';
+  var areas = {};
+  T.forEach(function (t) { (areas[t.area] = areas[t.area] || []).push(t); });
+  document.getElementById('board').innerHTML = Object.keys(areas).sort().map(function (a) {
+    return '<div class="area">' + a + ' 區 <span>' + areas[a].length + ' 桌</span></div><div class="grid">' + areas[a].map(card).join('') + '</div>';
+  }).join('');
+}
+
+document.getElementById('board').addEventListener('click', function (e) {
+  var b = e.target.closest('[data-act="walk"]');
+  if (!b) return;
+  e.stopPropagation();
+  var lab = b.closest('.card').getAttribute('data-label');
+  T.forEach(function (t) { if (t.label === lab) t.walk = !t.walk; });
+  render();
+});
+render();
+
+/* ───────── 每一種狀態 ───────── */
+var S = [
+  { t:{ label:'B4', kind:'idle' }, h:'空桌', d:'可以開桌。綠點只出現在這裡 —— 店員掃桌況找的就是「哪張能用」。<b>整張卡都能點</b>，左下「＋ 開桌」只是讓人知道點下去會做什麼。' },
+  { t:{ label:'A4', kind:'idle', walk:true }, h:'空桌 · 現場專用', d:'右下開關打開 ⇒ 系統不自動配這張桌，留給櫃檯的現場客人。桌號旁一顆深墨「現場專用」、外框加深，<b>週一還開著一定看得到</b>。' },
+  { t:{ label:'A3', kind:'hold', hold:'queue', playIn:80, playAt:'21:00', names:['阿明','小芸','阿凱','Joy'] }, h:'預留（配桌湊滿佔的）', d:'虛線框＝位子留著但沒人。中間寫幾點開打、還沒有人到；下排是誰要來、還有多久。' },
+  { t:{ label:'B5', kind:'hold', hold:'setup', ago:2 }, h:'開桌中', d:'店員按了開桌設定還沒結帳。點進去接著做。', n:'下排「幾分鐘前開的」' },
+  { t:{ label:'A1', kind:'use', mode:'matched', seated:4, start:83 }, h:'使用中 · 配桌', d:'粉底＝有人在打。左下四顆座位點 ＋ 配桌，右下已打多久。' },
+  { t:{ label:'B3', kind:'use', mode:'matched', seated:2, start:6 }, h:'使用中 · 還差人', d:'座位點兩空兩實，中間那一行寫「還差 2 位」。', n:'座位點' },
+  { t:{ label:'D2', kind:'use', mode:'private', seated:4, start:95, planned:300 }, h:'使用中 · 包桌', d:'右下改寫「剩多久」（開打時間 ＋ 預計時長）。', n:'剩幾小時' },
+  { t:{ label:'A5', kind:'use', mode:'private', seated:4, start:282, planned:300, alerts:[{ pill:'包桌快到期', line:null, dark:false }] }, h:'包桌快到期', d:'到期前 30 分鐘。粉色膠囊、外框桃紅，右下「剩 0:18」變粗體 —— 留意就好，還不用過去。' },
+  { t:{ label:'C1', kind:'use', mode:'private', seated:4, start:310, planned:300, alerts:[{ pill:'待補檯費', line:'時間到了，請客人補檯費', dark:true }] }, h:'待補檯費', d:'寬限中或已鎖定。深墨膠囊＝要過去處理，中間一行寫要做什麼，右下寫超過多久。' },
+  { t:{ label:'A2', kind:'use', mode:'matched', seated:4, start:41, alerts:[{ pill:'爆卡 · 等決定', line:'小美 要決定追加或結束', dark:true }] }, h:'爆卡 · 等決定', d:'最急的一種，排第一。中間寫是誰在等決定。' },
+  { t:{ label:'B2', kind:'use', mode:'matched', seated:4, start:18, alerts:[{ pill:'等確認 4 分', line:'等 阿凱、小芸 按確認', dark:true }, { pill:'平板離線', line:'B2-3 沒有回應', dark:false, short:'1 台離線' }] }, h:'等確認太久（＋另一件事）', d:'超過 3 分鐘才出現。同時有兩件事時膠囊只寫最急的、後面「+1」，第二件接在原因那一行後面。' },
+  { t:{ label:'C3', kind:'use', mode:'matched', seated:4, start:57, alerts:[{ pill:'平板離線', line:'C3-2 沒有回應', dark:false }] }, h:'平板離線', d:'1 分鐘沒回報。不擋客人打牌，所以是粉色膠囊，中間寫是哪一台。' },
+  { t:{ label:'B1', kind:'use', mode:'matched', seated:4, start:151, done:true }, h:'打完了 · 待收桌', d:'成績已經自動算好，桌子要店員按收桌才放出來。白底深墨粗框，跟「有人在打」的粉底分開。', n:'白底粗框' },
+  { t:{ label:'C4', kind:'off', note:'冷氣維修' }, h:'停用', d:'灰底、不能點。中間寫原因（後端本來就有回 note，以前沒畫）。', n:'停用原因' },
+];
+document.getElementById('states').innerHTML = S.map(function (s) {
+  return '<div class="st"><div class="pos">' + card(s.t) + '</div><h4>' + s.h + (s.n ? '<span class="tag-n">新：' + s.n + '</span>' : '') + '</h4><p>' + s.d + '</p></div>';
+}).join('');
+</script>
