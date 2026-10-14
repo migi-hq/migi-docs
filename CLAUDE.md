@@ -5641,6 +5641,7 @@ settled_at 09-03 15:18   ← 8 場全部同一個時間點
     ```
     開關      migi-web/src/lib/beta.js   BETA = !import.meta.env.DEV
     正式站    分頁只剩 配桌／成績／獎勵，打開落在成績；任何入口要跳去被藏的頁一律改落成績（App.jsx safeTab）
+              🆕 10-14 使用者：「把牌咖頁安裝回來」⇒ 牌咖分頁重新打開，封測期間只藏錢包（BETA_HIDDEN_TABS = [0]）
     本機 dev  五頁全部看得到 —— 藏起來的頁照常開發
     結束封測  BETA 改成 false
     ```
