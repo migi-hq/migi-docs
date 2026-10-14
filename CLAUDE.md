@@ -5642,6 +5642,13 @@ settled_at 09-03 15:18   ← 8 場全部同一個時間點
     開關      migi-web/src/lib/beta.js   BETA = !import.meta.env.DEV
     正式站    分頁只剩 配桌／成績／獎勵，打開落在成績；任何入口要跳去被藏的頁一律改落成績（App.jsx safeTab）
               🆕 10-14 使用者：「把牌咖頁安裝回來」⇒ 牌咖分頁重新打開，封測期間只藏錢包（BETA_HIDDEN_TABS = [0]）
+              🆕 同日：牌咖頁「邀請朋友」的 50 點與推薦碼先藏起來（buddies.jsx 的 REFERRAL = false，那一塊是寫死的示範、後端沒有推薦機制）；
+                 綠色「LINE 邀請朋友」改成**牌咖邀請連結**：朋友點了登入或註冊完自動成為牌咖
+                 （`sql/applied/2026-10-14_牌咖邀請連結.sql` ＋ 行為 8/8 `sql/checks/2026-10-14_驗牌咖邀請連結.sql`）。
+                 🔴 跟牌咖團邀請連結**是兩套**（使用者：「牌咖團的會自動入團，牌咖的邀請只需要自動加牌咖」）：
+                    參數 `?b=` 對 `?t=`、表 buddy_invite_links 對 team_invite_links、函式 create/redeem_buddy_invite_* 對 *_team_invite_*
+                 規則同牌咖團那套：一次性、7 天、自己點或已經是牌咖不消耗、有封鎖不加；origin 記 pre_existing（不算配桌認識的護城河）
+                 ⚠ 這條路可以加還沒同桌過的人（一般「＋ 加牌咖」仍要同桌過）
     本機 dev  五頁全部看得到 —— 藏起來的頁照常開發
     結束封測  BETA 改成 false
     ```
