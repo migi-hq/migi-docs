@@ -30,8 +30,9 @@ begin
     select id into v_d from members where is_test and phone = '0910000003';
     select id into v_a from members where is_test and phone = '0910000004';
     if v_b is null or v_c is null or v_d is null or v_a is null then raise exception '四個測試帳號不齊'; end if;
-    if exists (select 1 from session_players sp join table_sessions ts on ts.id = sp.session_id
-                where sp.member_id in (v_b, v_c, v_d, v_a) and sp.left_at is null and ts.status = 'open') then
+    -- 別名不可以叫 sp：下面有一個同名的變數，Postgres 會分不出是哪一個（10-15 第一次跑就撞到）
+    if exists (select 1 from session_players x join table_sessions ts on ts.id = x.session_id
+                where x.member_id in (v_b, v_c, v_d, v_a) and x.left_at is null and ts.status = 'open') then
       raise exception '測試帳號現在有牌局，這份測不了';
     end if;
 
