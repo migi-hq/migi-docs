@@ -10,7 +10,7 @@ declare
   v_msg text := '';
   v_org uuid; v_store uuid; v_table uuid; v_sess uuid; v_round uuid; v_hand uuid;
   v_b uuid; v_c uuid; v_d uuid; v_a uuid;
-  v_tab uuid; v_ph uuid; v_row uuid;
+  v_tab uuid; v_ph uuid; v_row uuid; v_q uuid;
   c_tab constant text := repeat('t', 40);   -- 平板憑證（樣本用）
   c_ph  constant text := repeat('p', 40);   -- A 手機憑證（樣本用）
   r jsonb; r2 jsonb; v_code text; v_code1 text; n int;
@@ -46,6 +46,12 @@ begin
     insert into session_players (org_id, session_id, member_id, seat, charged_points, fee_waived_amount, fee_waived_reason, device_id)
     values (v_org, v_sess, v_b, 1, 100, 0, null, v_tab) returning id into v_row;
     insert into session_players (org_id, session_id, member_id, seat) values (v_org, v_sess, v_c, 2), (v_org, v_sess, v_d, 3);
+    -- 配桌房（10-15 補：使用者回報被換下的人報不了配桌 —— 名單沒跟著換）
+    insert into match_queues (org_id, store_id, stake_level_id, play_at, status, matched_session_id, game_type)
+    values (v_org, v_store, (select id from stake_levels where org_id = v_org limit 1), now(), 'seated', v_sess, '台麻')
+    returning id into v_q;
+    insert into match_queue_players (org_id, queue_id, member_id, join_source)
+    values (v_org, v_q, v_b, 'browse'), (v_org, v_q, v_c, 'browse'), (v_org, v_q, v_d, 'browse');
     insert into session_extensions (org_id, session_id, member_id, paid_by, kind, to_minutes) values (v_org, v_sess, v_b, v_b, '2h', 240);
     insert into session_extensions (org_id, session_id, member_id, paid_by, kind, to_minutes) values (v_org, v_sess, v_b, v_b, 'daypass', null);
 
@@ -103,9 +109,29 @@ begin
                                      then '✅ ⑧ 2 小時跟著位置、暢打留給 B、免收金額照留（原因改 daypass_swapped）'
                                      else '🔴 ⑧ 加時間或暢打搬錯' end;
 
+    -- ⑧-2 配桌名單一起換：B 標成被換下、A 補進來、房裡還是 3 人；B 報名檢查不再被這一場擋
+    v_msg := v_msg || E'\n' || case
+      when exists (select 1 from match_queue_players where queue_id = v_q and member_id = v_b and left_at is not null and leave_reason = 'swapped')
+       and exists (select 1 from match_queue_players where queue_id = v_q and member_id = v_a and left_at is null and join_source = 'swap')
+       and (select count(*) from match_queue_players where queue_id = v_q and left_at is null) = 3
+      then '✅ ⑧-2 配桌名單一起換：B 標成被換下、A 補進名單、人數不變' else '🔴 ⑧-2 配桌名單沒換好' end;
+    begin
+      perform public._check_join_conflict(v_org, v_b, now(), 'member');
+      v_msg := v_msg || E'\n✅ ⑧-3 被換下的 B 可以再報名配桌（不再被這一場擋）';
+    exception when others then
+      v_msg := v_msg || E'\n🔴 ⑧-3 B 還是被擋：' || sqlerrm;
+    end;
+    -- 正對照：還在這一場的 C 仍然被擋（沒有把整房放掉）
+    begin
+      perform public._check_join_conflict(v_org, v_c, now(), 'member');
+      v_msg := v_msg || E'\n🔴 ⑧-4 C 沒被擋 —— 檢查失效了';
+    exception when others then
+      v_msg := v_msg || E'\n✅ ⑧-4 正對照：還在這一場的 C 照樣被擋';
+    end;
+
     -- ⑨ 換人紀錄留下原樣
     v_msg := v_msg || E'\n' || coalesce((select case when used_at is not null and to_member_id = v_a and (before_row ->> 'member_id')::uuid = v_b
-                                                         and (before_row ->> 'charged_points')::int = 100 and moved_extensions = 1
+                                                         and (before_row ->> 'charged_points')::int = 100 and moved_extensions = 1 and moved_queue_rows = 1
                                                     then '✅ ⑨ 紀錄留下換人前的原樣（原本收 100、搬了 1 筆加時間）' else '🔴 ⑨ 紀錄不完整' end
                                          from session_seat_swaps where code = v_code), '🔴 ⑨ 找不到紀錄');
 
