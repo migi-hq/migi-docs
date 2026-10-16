@@ -289,7 +289,9 @@ async function logSmsError(provider: string, phone: string, status: number, deta
   }
 }
 
-async function sendSms(phone: string, text: string): Promise<boolean> {
+/* meta：寄出成功時帶回簡訊商的訊息 ID（目前只有 MAAC Go 有接），
+   用來對上 sms-webhook 收到的送達／失敗通知（2026-10-17） */
+async function sendSms(phone: string, text: string, meta: { id?: string } = {}): Promise<boolean> {
   if (!smsConfigured()) {
     console.warn('[line-login] 簡訊商還沒設定，這則沒有送出')
     return false
@@ -338,6 +340,10 @@ async function sendSms(phone: string, text: string): Promise<boolean> {
         return false
       }
       console.log('[line-login] cresclab 送出成功', res.status, out.slice(0, 200))
+      /* 回應是 { message_id: 'sms_xxx', status, segments, cost_cents, balance_cents }（官方套件的型別）。
+         ⚠ 「送出成功」只代表 MAAC Go 收下了 —— 10-16 那次就是收下之後才判定 gateway_error，
+           真正送到沒，要等 sms-webhook 收到通知 */
+      try { const o = JSON.parse(out); if (typeof o?.message_id === 'string') meta.id = o.message_id } catch { /* 拿不到 ID 就不追蹤，不影響寄出 */ }
       return true
     }
 
@@ -454,7 +460,7 @@ Deno.serve(async (req) => {
      `check_phone` 是 2026-08-30 拿掉的 —— 舊版前端還在打的話，
      沒有這道就會變成「用 check_phone 的參數去跑註冊」，
      然後噴一句 `display_name required` 給客人看。 */
-  const KNOWN = ['sync_avatar', 'whoami', 'otp_send', 'otp_verify', 'set_phone']
+  const KNOWN = ['sync_avatar', 'whoami', 'otp_send', 'otp_status', 'otp_verify', 'set_phone']
   if (body.mode && !KNOWN.includes(body.mode)) {
     console.warn('[line-login] 不認得的 mode', body.mode)
     return json({ ok: false, reason: 'unknown_mode', message: '請重新整理頁面' }, 400)
@@ -644,7 +650,20 @@ Deno.serve(async (req) => {
        📌 log 裡的另一條 `NO_STOP`（建議加 STOP 退訂）是 **warn 不是 block**，
          而且那是給**行銷訊息**的建議。驗證碼是交易型訊息，
          客人不可能「退訂自己的驗證碼」—— 刻意不加。 */
-    const sent = await sendSms(out.phone, `【MIGI咪吉麻將】你的驗證碼是 ${out.code}，5 分鐘內有效。`)
+    const meta: { id?: string } = {}
+    const sent = await sendSms(out.phone, `【MIGI咪吉麻將】你的驗證碼是 ${out.code}，5 分鐘內有效。`, meta)
+    /* 記下訊息 ID，sms-webhook 收到「沒送到」時才對得上是哪一組（2026-10-17）。
+       ⚠ 記不進去不影響寄出 —— 只是這一組沒辦法提醒「沒送到」 */
+    if (sent && meta.id) {
+      try {
+        await db('rpc/otp_set_sms_id_tx', {
+          method: 'POST',
+          body: JSON.stringify({ p_org_id: MIGI_ORG_ID, p_phone: out.phone, p_line_user_id: sub, p_message_id: meta.id }),
+        })
+      } catch (e) {
+        console.warn('[line-login] 訊息 ID 記不進去', e)
+      }
+    }
 
     /* 🔴 **這裡沒有旁路，而且刻意不做。**
        2026-08-30 曾經寫過一版「簡訊還沒接通就把碼顯示在畫面上」，
@@ -660,6 +679,24 @@ Deno.serve(async (req) => {
       return json({ ok: true, otp_required: true, sent: false, reason: 'sms_failed' })
     }
     return json({ ok: true, otp_required: true, sent: true })
+  }
+
+  /* ── ②b 剛要的那組驗證碼送到了沒（2026-10-17）────────────
+     會員 App 在輸入驗證碼那一頁每幾秒問一次；sms-webhook 收到 MAAC Go「沒送到」之後這裡回 failed，
+     畫面就寫「簡訊沒送到，請稍後再試」，客人不用一直按重送。
+     🔒 只回**同一個 LINE 帳號**要的那一組（sub 是驗過簽的），別人拿號碼來問查不到東西。 */
+  if (body.mode === 'otp_status') {
+    try {
+      const r = await db('rpc/otp_sms_status_tx', {
+        method: 'POST',
+        body: JSON.stringify({ p_org_id: MIGI_ORG_ID, p_phone: body.phone ?? '', p_line_user_id: sub }),
+      })
+      const out = await r.json().catch(() => null)
+      if (!r.ok || !out || out.ok !== true) return json({ ok: true, status: null })
+      return json({ ok: true, status: out.status ?? null })
+    } catch {
+      return json({ ok: true, status: null })   // 查不到就當不知道，前端不提示
+    }
   }
 
   /* ── ②c 驗證碼 ────────────────────────────────────
