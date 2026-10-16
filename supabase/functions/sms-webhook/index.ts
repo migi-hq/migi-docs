@@ -11,6 +11,8 @@
      （官方套件 @maacgo/sms README 的寫法）。不對 ⇒ 401、什麼都不做。
    ⇒ **Verify JWT 要關掉**（MAAC Go 不會帶 Supabase 的登入憑證）。
 
+   ✅ 2026-10-17 實測：一封簡訊會收到 sms.sent（中間狀態，不記）→ sms.delivered（約 10 秒），
+     訊息 ID 在 data.id、狀態在 data.status。失敗通知的格式還沒實際看過（應該是 sms.failed）。
    ⚠ 通知的欄位名稱官方只寫了 `event`（例：sms.delivered），其餘這裡多認幾種寫法：
      訊息 ID：message_id／id／data.message_id／data.id
      失敗原因：error／reason／error_code／data.error／data.reason／data.error_code
@@ -103,6 +105,13 @@ Deno.serve(async (req) => {
   // 事件 → 狀態：名稱或 status 裡有 fail ⇒ failed；有 deliver ⇒ delivered
   const kind = /fail|undeliver|reject|error/.test(event + ' ' + st) ? 'failed'
     : /deliver/.test(event + ' ' + st) ? 'delivered' : null
+
+  /* 中間狀態（2026-10-17 第一次實測看到）：MAAC Go 在送達／失敗之前會先送一個 sms.sent，格式
+     { event: 'sms.sent', data: { id: 'sms_xxx', to: '09xx***xxx', status: 'sent', team: null }, created_at }
+     ⇒ 不是錯誤，直接回 200、不記（不然每寄一封就多一筆假的 sms_error） */
+  if (id && !kind && /^(sms\.)?(sent|queued|accepted|submitted)$/.test(event || st)) {
+    return json({ ok: true, ignored: 'intermediate' })
+  }
 
   if (!id || !kind) {
     // 認不出格式：整包記下來，回 200（不要讓 MAAC Go 一直重送一個我們看不懂的東西）

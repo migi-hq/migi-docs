@@ -5900,6 +5900,20 @@ settled_at 09-03 15:18   ← 8 場全部同一個時間點
       · 系統開「減少動態效果」：不轉不抖，只留光暈。預覽頁場景「連莊 3（發光）」「連莊 5（更強）」
       ⚠ **試過又取消的，不要加回來**：卡片外圈一圈轉的虛線（「這哪是放射光芒」）、比 0.2 亮的光束、加大加快的光暈（「連 3 光暈取消」）、
         連 5 光芒加強（更亮更長更快）。數值以 `index.css` 那一段註解為準
+    ✅ **10-17 簡訊沒送到時提醒客人**（使用者：「接 MAAC Go 的 Webhooks：簡訊被退件時，告訴客人『沒送到，請稍後再試』」）：
+      起因 10-16 13:23 起 MAAC Go `gateway_error`（先收下、事後才判定失敗）⇒ 畫面寫「已寄出」，三支號碼 7 分鐘要了 12 組碼。
+      ```
+      line-login     寄出後把 MAAC Go 的 message_id 記到那一組碼（otp_set_sms_id_tx）；新增 mode otp_status（只回同一個 LINE 的那一組）
+      sms-webhook    🆕 收 MAAC Go 通知（驗 X-Cresclab-Signature ＝ hex HMAC-SHA256，Secret SMS_WEBHOOK_SECRET，Verify JWT 關）
+                     → sms_delivery_tx 寫 phone_otps.sms_status；失敗另記 app_events 的 sms_error（錯誤儀表看得到）
+      會員 App       lib/otp.jsx 的 useSmsWatch：輸入驗證碼那一頁每 3 秒問一次、最多 60 秒，failed 就提示（註冊與換手機兩邊）
+      ```
+      · 實測（10-17 00:49 使用者用換手機寄一封）：訊息 ID 有記、10 秒內收到 sms.delivered、狀態寫成 delivered ✅。
+        通知格式 `{ event: 'sms.sent'|'sms.delivered', data: { id, to, status }, created_at }`；**失敗通知還沒實際看過**。
+        sms.sent 是中間狀態，第一版當成「認不出的通知」記進 sms_error，同日改成直接略過（要重新部署 sms-webhook）
+      · 只提示不擋：10-16 有三位在 MAAC Go 標「失敗」的碼上驗過，簡訊商的狀態不一定準
+      · SQL `sql/applied/2026-10-17_簡訊送達狀態.sql`（phone_otps 加 sms_message_id／sms_status／sms_status_at／sms_fail_reason）
+      ⚠ 現場曾用 0928822681 這支號碼替收不到簡訊的客人收碼 ⇒ 客人帳號掛上別人的號碼（Steven、葉昌閔已人工改回）。不要再這樣做
     ✅ **10-16 POS 座位頁平板畫面加逾時**（`migi-pos` b88ed77）：A2 卡在「讀取平板畫面中…」——
       `rpc()` 沒有逾時，一次請求沒回應 `busy` 就永遠是 true，之後每 5 秒的重讀全被跳過。改成 12 秒放棄、顯示「讀取逾時，自動重試中」。
       ⚠ **卡住的根因還沒查到**（後端用唯讀身分叫不動、也沒有 API 紀錄權限）；那時 A2 是 4 支手機、0 台平板、69 局。
