@@ -1466,6 +1466,10 @@ migi github/           ← Claude Code 的 project folder 選這層
         · 會員 App 自己開一桌、POS 開桌設定、POS 配桌開房都能選（`migi-web` 4cf40a6、`migi-pos` a5d0ab9）；計分板不用改
         · 判斷「這一場約幾將」一律看 `table_sessions.planned_rounds`；改了 8 支（開桌、檯費、帶桌、自動結算、爆卡結束、結算、段位分、LINE 卡片）
       · 沒打完那一將裡胡的牌、牌型成就**照算**（事情確實發生了）。
+    · 🆕 **POS 收桌按鈕：配桌在約定將數打完之前反灰**（2026-10-18 使用者）——
+      桌工作區底欄寫「牌局進行中 · 約定 N 將打完才能收桌」，旁邊一顆「**提前結束**」：先跳確認、說明只結算打完的將，
+      按「提前結束並收桌」走同一支 `settle_session_tx`。判斷看 `get_session_tx.game_over`（＝`_session_scored`，跟桌況「待收桌」同一個），
+      鎖著時每 10 秒重讀。**包桌沒有約定將數，照舊隨時能收**（`sql/applied/2026-10-18_場次資料回傳成績算好了沒.sql`，migi-pos 1b867cd）
     · 🔴 **成績算完就不能加打、不能撤銷**（`trg_session_rounds_guard` 擋開新一將與 finished → playing），
       那兩件事會讓後面的分數沒被算到而且不報錯。要加打請店員處理。
     · 「這場算過了沒」只有一份定義：`_session_scored(session)` ＝ 有沒有人已經有 finish_rank。

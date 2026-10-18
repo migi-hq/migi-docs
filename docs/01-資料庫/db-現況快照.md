@@ -1,5 +1,11 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-18 增補 86（歸檔 `2026-10-18_場次資料回傳成績算好了沒.sql`）
+> **基準：`sql/applied/` 有 397 個檔案**。驗證 4/4，提交後另查線上（public 函式 369、表 71，結構沒變）。
+> `get_session_tx(p_session_id)`（簽名不變、DEFINER、只給 authenticated、開頭 `_api_staff_only`）：回傳多一個
+> `game_over` ＝ `public._session_scored(s.id)`（跟 `list_tables_tx` 的 `game_over` 同一個判斷）。
+> POS 收桌按鈕用它：配桌在成績算好之前反灰，另有「提前結束」（migi-pos 1b867cd）。
+
 > ### 🆕 2026-10-18 增補 85（歸檔 `2026-10-18_全部牌咖團列出自己的團.sql`）
 > **基準：`sql/applied/` 有 396 個檔案**。驗證 4/4，提交後另查線上（public 函式 369、表 71，結構沒變）。
 > `search_teams_tx(p_q, p_limit)`（簽名不變、DEFINER、只給 authenticated）：**不再濾掉自己已經加入的團**；
