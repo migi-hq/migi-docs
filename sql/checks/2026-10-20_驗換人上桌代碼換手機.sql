@@ -85,15 +85,17 @@ begin
                                        and not exists (select 1 from session_players where session_id = v_sess and device_id = v_tab)
                                      then '✅ ⑤ 平板給的代碼：C 的位置換到新手機，平板讓出' else '🔴 ⑤ ' || r::text end;
 
-    -- ⑦ 一般配對碼照樣能用（回歸）：D 配一支手機，自動接上座位
+    -- ⑦ 一般配對碼照樣能用（回歸）：D 配一支手機（一般配對碼不綁座位 —— 座位由手機打開時自己接上，10-20 第一次跑期望值寫錯）
     v_pc := public._tbl_new_phone_code(v_org, v_d, null, null, null, now() + interval '1 hour');
     r := public.tbl_phone_redeem_tx(v_pc, null);
     v_msg := v_msg || E'\n' || case when (r ->> 'ok')::boolean and not (r ->> 'changed_phone')::boolean
-                                       and (select d.member_id from session_players sp join table_devices d on d.id = sp.device_id
-                                             where sp.session_id = v_sess and sp.member_id = v_d) = v_d
-                                     then '✅ ⑦ 一般配對碼照樣能配、D 自動接上座位（不是換手機）' else '🔴 ⑦ ' || r::text end;
-    -- ⑥ D 的手機給一組代碼；別人（A）已經配好的手機在「輸入配對碼」輸入 ⇒ 不換，請他走「接手別人的位置」
+                                       and (select member_id from table_devices where token_hash = public._tbl_hash(r ->> 'token')) = v_d
+                                     then '✅ ⑦ 一般配對碼照樣能配，手機屬於 D（不是換手機）' else '🔴 ⑦ ' || r::text end;
+    -- ⑥ 讓 D 的手機坐上他的位置、給一組代碼；別人（A）已經配好的手機在「輸入配對碼」輸入 ⇒ 不換，請他走「接手別人的位置」
+    update session_players set device_id = (select id from table_devices where token_hash = public._tbl_hash(r ->> 'token'))
+     where session_id = v_sess and member_id = v_d;
     v_code := public.tbl_swap_code_tx(r ->> 'token') ->> 'code';
+    if v_code is null then raise exception 'D 的手機拿不到代碼，⑥ 測不了'; end if;
     r := public.tbl_phone_redeem_tx(v_code, c_aph);
     v_msg := v_msg || E'\n' || case when r ->> 'reason' = 'use_takeover'
                                        and (select member_id from table_devices where id = v_aph) = v_a
