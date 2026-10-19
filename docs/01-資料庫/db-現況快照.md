@@ -1,5 +1,14 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-19 增補 87（歸檔 `2026-10-19_POS配桌改開打時間.sql`；同日另歸檔兩份 A1 第 2 將輪莊資料更正，結構沒變）
+> **基準：`sql/applied/` 有 400 個檔案**。驗證 7/7，提交後另查線上（public 函式 369 → 370、表 71）。
+> · `match_queues` 加三欄：`play_at_changed_by_staff_id`（→ staff）、`play_at_changed_at`、`play_at_original`（第一次改之前的開打時間）。
+> · 🆕 `pos_set_queue_play_at_tx(p_queue uuid, p_play_at timestamptz)`：DEFINER、只給 authenticated、開頭 `_api_staff_only`；
+>   只收 waiting／matched／seated（seated 已開打回 `already_started`），新時間要晚於現在、7 天內；
+>   **`expires_at` 跟著改**（原本 expires_at ＝ play_at，只延 play_at 照樣會被掃成流局）；房裡的人收一則 `system` 通知。
+> · `generate_recurring_instances_tx`：判斷「這一場產生過了沒」改認 `play_at = 時間 or play_at_original = 時間`（改過時間的固定牌局不會被再產生一場）。
+> · `v_real_match_queues` 補上三個新欄位，仍然不給 anon 讀。
+
 > ### 🆕 2026-10-18 增補 86（歸檔 `2026-10-18_場次資料回傳成績算好了沒.sql`）
 > **基準：`sql/applied/` 有 397 個檔案**。驗證 4/4，提交後另查線上（public 函式 369、表 71，結構沒變）。
 > `get_session_tx(p_session_id)`（簽名不變、DEFINER、只給 authenticated、開頭 `_api_staff_only`）：回傳多一個
