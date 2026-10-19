@@ -1,5 +1,13 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-20 增補 89（歸檔 `2026-10-20_牌咖團成員申請與邀請通知回傳頭像.sql`）
+> **基準：`sql/applied/` 有 403 個檔案**。驗證 4/4，提交後另查線上（public 函式 370、表 71，結構沒變）。
+> 三支簽名不變，只多回頭像欄位（`avatar_url／avatar_bear／avatar_source／avatar_photo_path`，同 `list_recent_players_tx`）：
+> · `get_team_tx` 的 `members[]`、`list_team_requests_tx` 的 `requests[]`
+> · `list_notifications_tx` 每則多一個 `actor`（上面四欄 ＋ `rank`）：`buddy_req` ＝ `ref_id`（邀請人）；
+>   `team_req` ＝ 申請單 `kind='invite'` 取 `created_by`（邀請的人）、`apply` 取 `member_id`（申請的人）；其他類型 null。
+> ⚠ 待審核名單與審核（`respond_team_request_tx`）仍然只有團長，副團長看不到。
+
 > ### 🆕 2026-10-20 增補 88（歸檔 `2026-10-20_回到第一局每一將都能用.sql`、`2026-10-20_換人上桌代碼也能換手機.sql`）
 > **基準：`sql/applied/` 有 402 個檔案**。驗證 4/4 與 5/5，兩份提交後都另查線上（public 函式 370、表 71，結構沒變）。
 > · `tbl_reset_round_tx(p_token)`（簽名不變）：拿掉「只有第 1 將」，每一將畫面上第 2、3 局都能回到第一局；
