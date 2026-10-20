@@ -1,11 +1,25 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:/Users/user/Desktop/migi github/.claude/hooks/dash_remind.py\" session"
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "hooks": [
           {
             "type": "command",
             "command": "python \"C:/Users/user/Desktop/migi github/.claude/hooks/zh_remind.py\""
+          },
+          {
+            "type": "command",
+            "command": "python \"C:/Users/user/Desktop/migi github/.claude/hooks/dash_remind.py\" prompt"
           }
         ]
       }

@@ -14,6 +14,8 @@
 
 # Claude Code 的本機設定（含個人權限選擇，不共用）
 /.claude/settings.local.json
+# 錯誤儀表提醒的「上次提醒時間」（dash_remind.py 寫的，每台電腦各自一份）
+/.claude/hooks/.dash_last
 
 # 🔴 MCP 設定：裡面有 Supabase Personal Access Token，絕不可進版控。
 #   （這個 repo 是私有的，但 token 進 git 之後就永遠在歷史裡，
