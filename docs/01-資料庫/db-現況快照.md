@@ -1,5 +1,12 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-21 增補 96（歸檔 `2026-10-21_POS店員代客人管理黑名單.sql`）
+> **基準：`sql/applied/` 有 410 個檔案**。驗證 5/5，提交後另查線上。
+> · `member_blocks` 新增 `created_by_staff_id uuid → staff(id)`：店員在 POS 替客人加的才有值（`current_staff()` 解析），客人自己加的是 null。
+> · `block_member_tx`／`unblock_member_tx`（簽名不變）：店員替**別的**客人操作（`p_blocker` 不是自己）時用 `p_blocker`，機構改用 `current_org_id()`、兩人都要是該機構會員；
+>   其餘情況照舊只認登入的本人（店員本人在會員 App 封鎖別人也走這一條，不記成店員代加）。
+> 行為測試：`sql/checks/2026-10-21_驗POS店員代客人管理黑名單.sql`。前端 migi-pos：會員資料「黑名單」區塊（名單預設收起）。
+
 > ### 🆕 2026-10-21 增補 95（歸檔 `2026-10-21_報表會員檢視表補名人頭銜.sql`）
 > **基準：`sql/applied/` 有 409 個檔案**。驗證 3/3，提交後另查線上：錯誤儀表 ⑫ 回到「都沒有漏」。
 > · `v_real_members` 最後一欄補上 `legend_title`（10-17 加欄位時漏了）。權限照舊只有 postgres、service_role。
