@@ -76,9 +76,11 @@ select 序, 項目, 內容 from (
                                    `app.migi.tw/assets/...` = 舊版 hash，舊分頁還開著
                                  ⚠ **刻意不過濾那些已知無害的** —— 過濾掉的話，
                                    真的發生 LIFF CDN 中斷時它會變成看不見。 */
+                              /* 2026-10-21 補 `detail`：簡訊送達失敗（sms_error）的內容寫在 detail，
+                                 沒讀它的話 ① 只印「(無訊息)」，看不出是電信商退件 */
                               left(coalesce(props->>'message', props->>'msg',
                                             props->>'error', props->>'fn',
-                                            props->>'url', '(無訊息)'), 80) as msg,
+                                            props->>'url', props->>'detail', '(無訊息)'), 80) as msg,
                               count(*) as n, max(created_at) as mx
                          from app_events
                         /* 🔴 **用後綴比對，不要列清單**（2026-09-08 改）。
@@ -122,7 +124,7 @@ select 序, 項目, 內容 from (
                        select coalesce(props->>'kind','(無)') as knd,
                               -- ⚠ 同 ①：`url` 要讀，不然 resource 那類永遠是「(無訊息)」
                               left(coalesce(props->>'message', props->>'msg',
-                                            props->>'error', props->>'url', '(無訊息)'), 70) as msg,
+                                            props->>'error', props->>'url', props->>'detail', '(無訊息)'), 70) as msg,
                               count(*) as n,
                               min(created_at) as mn, max(created_at) as mx
                          from app_events
