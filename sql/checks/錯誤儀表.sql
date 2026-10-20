@@ -779,7 +779,7 @@ select 序, 項目, 內容 from (
               || case when not exists (select 1 from cron.job where jobname = 'line-push-sweep' and active)
                       then E'\n  🔴 排程 line-push-sweep 不見了或被停用' else '' end
             -- k × m 一定是一列，近 7 天的寄件匣用 left join 接上 ⇒ 一則都沒有時這一格照樣印（全部是 0），不會整格消失
-            from (select 200 as cap, '輕用量' as plan) k   -- 🔴 升級方案後改這裡（中用量 3000／高用量 6000）
+            from (select 3000 as cap, '中用量' as plan) k   -- 🔴 改方案時改這裡（輕用量 200／中用量 3000／高用量 6000）；2026-10-21 升中用量
             cross join (select count(*) as sent from notification_deliveries
                          where status = 'sent'
                            and sent_at >= date_trunc('month', now() at time zone 'Asia/Taipei') at time zone 'Asia/Taipei') m
