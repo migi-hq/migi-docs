@@ -24,6 +24,17 @@
         ]
       }
     ],
+    "PreToolUse": [
+      {
+        "matcher": "PowerShell|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:/Users/user/Desktop/migi github/.claude/hooks/cd_guard.py\""
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [

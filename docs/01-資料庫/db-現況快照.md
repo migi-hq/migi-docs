@@ -1,5 +1,12 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-21 增補 98（歸檔 `2026-10-21_店家開的配桌房清空後保留到開打.sql`）
+> **基準：`sql/applied/` 有 412 個檔案**。驗證 5/5，提交後另查線上（三支各 1 個版本、authenticated 仍可執行，結構沒變）。
+> · `leave_match_queue_tx`、`pos_remove_queue_member_tx`、`pos_move_queue_member_tx`（簽名不變）：
+>   最後一人離開時，**店家開的房（`source` 是 `pos` 或 `recurring`）不取消**，空著等人報名，到期由 `sweep_expired_queues_tx` 標流局；
+>   客人自己開的房（`member`）照舊取消。原本只有固定牌局保留，店家開桌會被一起關掉。
+> 前端 migi-pos 6dd74a3：移除／移動最後一人時寫「這桌先空著，開打時間前還能再加人」。
+
 > ### 🆕 2026-10-21 增補 97（歸檔 `2026-10-21_配桌黑名單擋下時回傳是誰.sql`）
 > **基準：`sql/applied/` 有 411 個檔案**。驗證 5/5，提交後另查線上（兩支各 1 個版本、authenticated 仍可執行，結構沒變）。
 > · `pos_add_queue_member_tx`、`pos_move_queue_member_tx`（簽名不變）：黑名單擋下時掃完整桌，多回 `blocked_names`（桌上每一位互為黑名單的人的暱稱，依報名先後）。原本找到第一位就停、不回名字。
