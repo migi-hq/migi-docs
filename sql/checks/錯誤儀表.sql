@@ -234,16 +234,20 @@ select 序, 項目, 內容 from (
      ⚠ 舊版寫 `<> 129` 一律警告 —— 而「收緊之後永遠紅」正是
        這個專案記過三次的病（永遠紅的檢查會訓練人忽略紅色）。 */
   /* 93 ＝ 10-05 baseline 89 ＋ 計分板 tbl_bonus_tx（10-09）＋ tbl_undo_draw_tx（10-10）＋ tbl_report_battery_tx（10-09）
-          ＋ tbl_report_tx（10-11）—— 四支都是平板用憑證叫的，刻意給 anon */
-  select 7, '⑦ 函式授權 vs baseline（2026-10-11：明確 anon 93、只靠 PUBLIC 0）',
+          ＋ tbl_report_tx（10-11）—— 四支都是平板用憑證叫的，刻意給 anon
+     99 ＝ 93 ＋ tbl_reorder_round_tx（10-11 重選位置）＋ tbl_phone_code_tx、tbl_phone_redeem_tx（10-13 手機計分）
+          ＋ tbl_swap_code_tx、tbl_swap_redeem_tx（10-15 換人上桌）＋ tbl_reset_round_tx（10-16 回到第一局）
+          —— 六支都是平板／手機用裝置憑證或配對碼叫的，刻意給 anon（⑰ 確認過都有身分檢查）
+     🔴 2026-10-20 才補上：10-11 之後這一格**一直印「變多了」**，九天沒人對 —— 同 ⑳ 那四天 */
+  select 7, '⑦ 函式授權 vs baseline（2026-10-20：明確 anon 99、只靠 PUBLIC 0）',
          (select '明確授權 anon ' || count(*) filter (where anon明確)::text
               || '　只靠 PUBLIC ' || count(*) filter (where public有 and not anon明確)::text
               || '　兩者都沒有 ' || count(*) filter (where not anon明確 and not public有)::text
               || case when count(*) filter (where public有 and not anon明確) > 0
                       then E'\n  🔴 有函式只靠 PUBLIC 進來 —— 那不是決定，是預設值。逐支確認要不要給 anon'
-                      when count(*) filter (where anon明確) > 93
+                      when count(*) filter (where anon明確) > 99
                       then E'\n  🔴 明確授權 anon 的支數**變多了** —— 有人把函式開放給前端，逐支確認'
-                      when count(*) filter (where anon明確) < 93
+                      when count(*) filter (where anon明確) < 99
                       then E'\n  ⚠ 比 baseline 少（有人收緊了，方向是對的）—— 重跑匯出把基準對上'
                       else E'\n  ✅ 與 baseline 相同' end
             from (select
@@ -740,17 +744,21 @@ select 序, 項目, 內容 from (
         🔴 推播失敗**客人不會知道**，店員也不會 —— 只有這一格看得到。
         · 等待中卡超過 5 分鐘 ＝ Edge Function line-push 沒在跑，或 LINE_MESSAGING_TOKEN 沒設／錯了
         · 免費則數（輕用量每月 200）用完，LINE 回 429，之後全部送不出去
-        · 「沒加好友」多 ＝ 門市 QR 那條「先加好友」的路沒走好（推播只送得到好友） */
+        · 「沒加好友」多 ＝ 門市 QR 那條「先加好友」的路沒走好（推播只送得到好友）
+        🔴 2026-10-20：10-16 下午額度用完，這一格當下就會紅，**但四天沒有人跑儀表**（118 則成桌／結束卡沒送出）。
+          ⇒ 補兩件：① 用到 80% 先亮 ⚠（用完才紅＝已經在掉通知了）② 方案則數只寫在下面 k.cap 一個地方
+          ⚠ 升級方案之後**改 k.cap**（輕用量 200／中用量 3000／高用量 6000），不然比例會是錯的
+          ⚠ LINE 的則數是「一則訊息 × 收件人數」，而且按日本時間月初歸零；這裡用台北月初算，月初那一小時會差一點 */
   select 20, '⑳ LINE 推播寄件匣（近 7 天）',
-         (select '送出 ' || count(*) filter (where status = 'sent')
-              || '　不送 ' || count(*) filter (where status = 'skipped')
-              || '（沒加好友 ' || count(*) filter (where reason = 'not_friend') || '）'
-              || '　失敗 ' || count(*) filter (where status = 'failed')
-              || '　等待中 ' || count(*) filter (where status in ('pending', 'sending'))
-              || '　本月已送 ' || (select count(*) from notification_deliveries
-                                   where status = 'sent'
-                                     and sent_at >= date_trunc('month', now() at time zone 'Asia/Taipei') at time zone 'Asia/Taipei')
-              || ' 則（輕用量免費 200）'
+         (select '送出 ' || count(d.id) filter (where d.status = 'sent')
+              || '　不送 ' || count(d.id) filter (where d.status = 'skipped')
+              || '（沒加好友 ' || count(d.id) filter (where d.reason = 'not_friend') || '）'
+              || '　失敗 ' || count(d.id) filter (where d.status = 'failed')
+              || '　等待中 ' || count(d.id) filter (where d.status in ('pending', 'sending'))
+              || '　本月已送 ' || m.sent || ' / ' || k.cap || ' 則（' || k.plan || '）'
+              || case when m.sent >= k.cap * 0.8 and m.sent < k.cap
+                      then E'\n  ⚠ 本月免費則數已用 ' || round(m.sent * 100.0 / k.cap) || '%，用完就全部送不出去 —— 考慮升方案'
+                      else '' end
               || case when exists (select 1 from notification_deliveries
                                     where status in ('pending', 'sending') and created_at < now() - interval '5 minutes'
                                       and coalesce(reason, '') <> 'line_busy')
@@ -770,7 +778,13 @@ select 序, 項目, 內容 from (
                            having count(*) > 0), '')
               || case when not exists (select 1 from cron.job where jobname = 'line-push-sweep' and active)
                       then E'\n  🔴 排程 line-push-sweep 不見了或被停用' else '' end
-            from notification_deliveries where created_at > now() - interval '7 days')
+            -- k × m 一定是一列，近 7 天的寄件匣用 left join 接上 ⇒ 一則都沒有時這一格照樣印（全部是 0），不會整格消失
+            from (select 200 as cap, '輕用量' as plan) k   -- 🔴 升級方案後改這裡（中用量 3000／高用量 6000）
+            cross join (select count(*) as sent from notification_deliveries
+                         where status = 'sent'
+                           and sent_at >= date_trunc('month', now() at time zone 'Asia/Taipei') at time zone 'Asia/Taipei') m
+            left join notification_deliveries d on d.created_at > now() - interval '7 days'
+           group by k.cap, k.plan, m.sent)
 
   union all
   select 5, '⑤ 測試標記（修好前的歷史資料仍標成營運）',
