@@ -1,5 +1,9 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-21 增補 95（歸檔 `2026-10-21_報表會員檢視表補名人頭銜.sql`）
+> **基準：`sql/applied/` 有 409 個檔案**。驗證 3/3，提交後另查線上：錯誤儀表 ⑫ 回到「都沒有漏」。
+> · `v_real_members` 最後一欄補上 `legend_title`（10-17 加欄位時漏了）。權限照舊只有 postgres、service_role。
+
 > ### 🆕 2026-10-21 增補 94（歸檔 `2026-10-21_牌咖團加入通知帶加入的人.sql`）
 > **基準：`sql/applied/` 有 408 個檔案**。驗證 6/6，提交後另查線上（結構沒變）。
 > · `apply_team_tx`、`redeem_team_invite_tx`、`respond_team_request_tx`（簽名不變）：「某某加入了團」「某某用邀請連結加入了」那則 `team_ok` 的 `ref_id` 改記加入的人（其他 `team_ok` 仍是 null）。
