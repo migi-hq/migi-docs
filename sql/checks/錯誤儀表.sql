@@ -766,8 +766,12 @@ select 序, 項目, 內容 from (
                                       and coalesce(reason, '') <> 'line_busy')
                       then E'\n  🔴 有待送的超過 5 分鐘還沒送出 —— Edge Function line-push 沒在跑，或 LINE_MESSAGING_TOKEN 沒設／錯了（看 Edge Function 的 Logs）'
                       else '' end
-              || case when exists (select 1 from notification_deliveries where reason = 'quota' and updated_at > now() - interval '30 days')
-                      then E'\n  🔴 本月免費則數用完了 —— 之後的推播都送不出去，要升方案'
+              /* 🔴 2026-10-21 改：原本「近 30 天有 quota 就紅」—— 10-21 升級中用量、測試推播 03:26 送出 200 之後，
+                    這一格還會**紅滿一個月**（永遠紅的格子會訓練人忽略紅色）。
+                    ⇒ 只看「最後一次 quota 失敗」有沒有晚於「最後一次成功送出」：晚於＝現在還送不出去。 */
+              || case when (select max(updated_at) from notification_deliveries where reason = 'quota')
+                           > coalesce((select max(sent_at) from notification_deliveries where status = 'sent'), '-infinity')
+                      then E'\n  🔴 免費則數用完了 —— 最後一次額度不足晚於最後一次成功送出，之後的推播都送不出去，要升方案'
                       else '' end
               || coalesce((select E'\n  ⚠ 近 7 天失敗的原因：' || string_agg(distinct coalesce(reason, '?'), '、')
                              from notification_deliveries
