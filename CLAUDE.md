@@ -1535,6 +1535,7 @@ migi github/           ← Claude Code 的 project folder 選這層
 |---|---|---|
 | `migi_member` | **身分 ＋ 暱稱快取** | 身分 🔴 沒有正本（待辦 14）／暱稱 = `members.display_name` |
 | `migi_avatar_cache` | 頭像 URL | `members.avatar_*` |
+| `migi_line_av_sync` | 上次自動同步 LINE 大頭貼的時間（一天最多一次；只對頭像用 LINE 大頭貼的人） | — 本機（`lib/avatar.js` 的 `autoSyncLineAvatar`，2026-10-20） |
 | `migi_evt_queue` | 埋點離線佇列 | — 本來就該在本機 |
 | `migi_reload_mark` | 版本重載記號 | — 本機 |
 | `migi_pending_table_invite` | 待處理的桌邀請 | — 暫存 |
