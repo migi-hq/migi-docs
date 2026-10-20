@@ -62,7 +62,8 @@ begin
                          'app_metadata', json_build_object('line_user_id', v_m.line_user_id))::text;
     perform set_config('request.jwt.claims', v_member_claims, true);
     set local role authenticated;
-    perform public.block_member_tx(null, v_a, v_b);
+    -- 會員那條路照舊用前端送的機構（App 一律送 MIGI_ORG_ID）；第一版這裡傳 null ⇒ 撞 org_id 非空，是測試寫錯
+    perform public.block_member_tx(v_staff.org_id, v_a, v_b);
     reset role;
     select * into v_row from member_blocks where blocked_id = v_b and blocker_id in (v_m.id, v_a) limit 1;
     v_msg := v_msg || E'\n' || case when v_row.blocker_id = v_m.id and v_row.created_by_staff_id is null
