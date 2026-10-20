@@ -1,5 +1,12 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-21 增補 94（歸檔 `2026-10-21_牌咖團加入通知帶加入的人.sql`）
+> **基準：`sql/applied/` 有 408 個檔案**。驗證 6/6，提交後另查線上（結構沒變）。
+> · `apply_team_tx`、`redeem_team_invite_tx`、`respond_team_request_tx`（簽名不變）：「某某加入了團」「某某用邀請連結加入了」那則 `team_ok` 的 `ref_id` 改記加入的人（其他 `team_ok` 仍是 null）。
+> · `list_notifications_tx`：`actor` 多認 `team_ok` 的 `ref_id`、`table_req` 的 `payload.from_id`（邀請人）。
+> · 舊的 4 筆「加入了」通知補上 `ref_id`（團裡同名團員剛好一位才補）。
+> 前端（migi-web）：有 `actor` 就畫那個人的頭像；牌咖團沒有 `actor` 的才畫加入牌咖團徽章。
+
 > ### 🆕 2026-10-21 增補 93（歸檔 `2026-10-21_通知接受牌咖邀請帶對方頭像.sql`）
 > **基準：`sql/applied/` 有 407 個檔案**。驗證 4/4，提交後另查線上（結構沒變）。
 > · `list_notifications_tx`（簽名不變）：`actor` 多查 `buddy_ok`（`ref_id` ＝ 接受的人）⇒ 「已接受你的牌咖邀請」畫對方頭像，不再是預設小熊。
