@@ -1,5 +1,11 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-20 增補 91（歸檔 `2026-10-20_同團與牌咖個人卡分層.sql`）
+> **基準：`sql/applied/` 有 405 個檔案**。驗證 5/5，提交後另查線上（public 函式 370、表 71，結構沒變）。
+> · `get_member_card_tx(p_target)`（簽名不變）：多回 `partial`（同團但不是牌咖才是 true）。
+>   同團只回 `style`／`sched`／`together` 與 `can_invite = true`（同團不必先同桌過）；**`stats`／`baby_tile`／`highlight` 不在回傳裡**。
+>   牌咖、本人照舊全開；陌生人照舊只有公開那一半 ＋ `can_invite`。`locked` 不變（同團 false ⇒ 頭像不模糊）。
+
 > ### 🆕 2026-10-20 增補 90（歸檔 `2026-10-20_副團長也能審核入團申請.sql`）
 > **基準：`sql/applied/` 有 404 個檔案**。驗證 5/5，提交後另查線上（public 函式 370、表 71，結構沒變）。四支簽名不變：
 > · `list_team_requests_tx`、`respond_team_request_tx`（`kind='apply'`）：`role in ('leader','co_leader')`，副團長也能看、也能審核
