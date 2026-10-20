@@ -1,5 +1,12 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-20 增補 90（歸檔 `2026-10-20_副團長也能審核入團申請.sql`）
+> **基準：`sql/applied/` 有 404 個檔案**。驗證 5/5，提交後另查線上（public 函式 370、表 71，結構沒變）。四支簽名不變：
+> · `list_team_requests_tx`、`respond_team_request_tx`（`kind='apply'`）：`role in ('leader','co_leader')`，副團長也能看、也能審核
+> · `apply_team_tx`：申請時團長 ＋ 每一位副團長各收一則 `team_req`（`ref_id` 同一筆申請）
+> · `get_team_tx`：`pending_count` 副團長也數；`members[].member_id` **每位團員都回**（原本只給團長；團員列表點了看個人卡要用）
+> 移除團員、改團名團徽、轉讓團長仍然只有團長。
+
 > ### 🆕 2026-10-20 增補 89（歸檔 `2026-10-20_牌咖團成員申請與邀請通知回傳頭像.sql`）
 > **基準：`sql/applied/` 有 403 個檔案**。驗證 4/4，提交後另查線上（public 函式 370、表 71，結構沒變）。
 > 三支簽名不變，只多回頭像欄位（`avatar_url／avatar_bear／avatar_source／avatar_photo_path`，同 `list_recent_players_tx`）：
