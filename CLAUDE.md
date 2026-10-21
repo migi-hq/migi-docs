@@ -1542,6 +1542,7 @@ migi github/           ← Claude Code 的 project folder 選這層
 | `migi_pending_tab` | 打開 App 要直接到哪一頁（LINE 推播帶 `?tab=match`，10 分鐘內有效、讀一次就清） | — 暫存（`lib/deeplink.js`） |
 | `migi_pending_go` | 打開 App 要直接蓋上哪一個切頁（官方 LINE 圖文選單帶 `?go=scoreboard` ＝ 手機計分板；只認白名單、10 分鐘、讀一次就清） | — 暫存（`lib/deeplink.js`，2026-10-18） |
 | `migi_noti_*` | 通知開關 | ⚠ 只在本機，換裝置會回預設（可接受，但要知道） |
+| `migi_login_via` | 這台是用手機簡訊登入的（`phone`）⇒ 開機問 LINE 問不到時**不導去 LINE 登入** | — 本機（`lib/line.js`，2026-10-21；LINE 登入成功或登出就清掉） |
 
 ✅ **已搬進後端**：小熊名字 → `member_app_state.bear.name`（2026-08-30，零 SQL）。
 🧹 **已刪除**：`migi_bear_name` 的寫入端、`migi_def_store`（沒有任何地方讀它）。

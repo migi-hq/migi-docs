@@ -450,6 +450,79 @@ Deno.serve(async (req) => {
     return json({ ok: false, reason: 'bad_json', message: '請求格式錯誤' }, 400)
   }
 
+  /* ── 會員手機簡訊登入（2026-10-21 使用者：「會員也要做，預設關」）──────────
+     🔴 為什麼要有：整個 LINE 商用帳號被停權時，會員 App 只有 LINE 登入 ——
+       新客人、換手機、被登出的人都進不來。這條路不需要 LINE 授權（所以放在驗 id_token 之前）。
+     🔴 **預設關**：後台「系統設定 → 會員登入方式」打開才放行；讀不到開關就擋。
+     · 只認**已驗證的會員手機**；不是會員、帳號被隱藏、或沒綁 LINE 的，寄碼那一步都回同一句話、不寄簡訊
+       （不然這就是一顆「幫任何人付錢發簡訊」的按鈕，也能拿來試哪些號碼是會員）
+     · 發出來的 session 跟 LINE 登入的是**同一個人**：issueMemberSession(會員的 line_user_id)
+       ⇒ current_member_id() 一樣解析得到他，所有功能照常
+     · 限流沿用 otp_request_tx（60 秒一則、一小時 5 則）；驗證碼最多試 5 次（otp_verify_tx） */
+  if (body.mode === 'phone_login_send' || body.mode === 'phone_login_verify') {
+    let f: { member_phone?: boolean } | null = null
+    try {
+      const r = await db('rpc/get_login_methods_tx', { method: 'POST', body: JSON.stringify({ p_org_id: MIGI_ORG_ID }) })
+      f = r.ok ? await r.json().catch(() => null) : null
+    } catch (e) { console.warn('[line-login] 讀不到登入開關', e) }
+    if (f?.member_phone !== true) {
+      return json({ ok: false, reason: 'method_disabled', message: '手機登入沒有開放，請用 LINE 登入' }, 403)
+    }
+
+    const findMember = async (phone: string) => {
+      try {
+        const r = await db('rpc/get_member_by_phone_tx', { method: 'POST', body: JSON.stringify({ p_org_id: MIGI_ORG_ID, p_phone: phone }) })
+        return r.ok ? await r.json().catch(() => null) : null
+      } catch { return null }
+    }
+
+    if (body.mode === 'phone_login_send') {
+      const generic = { ok: true, sent: true, message: '如果這是已驗證的會員手機，驗證碼已經送出' }
+      const mb = await findMember(body.phone ?? '')
+      if (mb?.reason === 'phone_invalid') return json({ ok: false, reason: 'phone_invalid', message: '手機號碼格式不對（09 開頭 10 碼）' })
+      if (!mb?.ok || mb.hidden || !mb.line_user_id) return json(generic)
+
+      const rr = await db('rpc/otp_request_tx', {
+        method: 'POST',
+        body: JSON.stringify({ p_org_id: MIGI_ORG_ID, p_phone: body.phone ?? '', p_purpose: 'member_login', p_line_user_id: null }),
+      }).catch(() => null)
+      const out = rr && rr.ok ? await rr.json().catch(() => null) : null
+      if (!out) return json({ ok: false, reason: 'otp_failed', message: '系統忙碌中，請稍後再試' }, 502)
+      if (!out.ok) return json({ ok: false, reason: out.reason, retry_after: out.retry_after ?? null,
+        message: out.reason === 'too_soon' || out.reason === 'rate_limited_phone' ? '剛剛才送過，請稍等再試' : '暫時無法發送，請稍後再試' })
+      // 簽檔【MIGI咪吉麻將】剛好 8 字、中間不可以有空格（NCC 規定，見 otp_send 那段）
+      const sent = await sendSms(out.phone, `【MIGI咪吉麻將】你的登入驗證碼是 ${out.code}，5 分鐘內有效。`)
+      if (!sent) return json({ ok: false, reason: 'sms_failed', message: '簡訊送不出去，請稍後再試' })
+      return json(generic)
+    }
+
+    // phone_login_verify
+    const vr = await db('rpc/otp_verify_tx', {
+      method: 'POST',
+      body: JSON.stringify({ p_org_id: MIGI_ORG_ID, p_phone: body.phone ?? '', p_code: body.code ?? '', p_purpose: 'member_login' }),
+    }).catch(() => null)
+    const v = vr && vr.ok ? await vr.json().catch(() => null) : null
+    if (!v) return json({ ok: false, reason: 'otp_failed', message: '系統忙碌中，請稍後再試' }, 502)
+    if (v.ok !== true) {
+      const msg = v.reason === 'wrong_code' ? `驗證碼不對，還可以試 ${v.left ?? 0} 次`
+        : v.reason === 'expired' ? '驗證碼過期了，請重新寄一次'
+        : v.reason === 'too_many_attempts' ? '試太多次了，請重新寄一次'
+        : '請先寄驗證碼'
+      return json({ ok: false, reason: v.reason, left: v.left ?? null, message: msg })
+    }
+    // 驗過就用掉這一組，同一組碼不能登入第二次
+    await db(`phone_otps?org_id=eq.${MIGI_ORG_ID}&phone=eq.${encodeURIComponent(v.phone)}&purpose=eq.member_login&consumed_at=is.null`,
+      { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ consumed_at: new Date().toISOString() }) }).catch(() => null)
+
+    const mb = await findMember(v.phone)
+    if (!mb?.ok) return json({ ok: false, reason: 'not_found', message: '找不到這支手機的會員帳號，請洽門市' }, 404)
+    if (mb.hidden) return json({ ok: false, reason: 'hidden', message: '這個帳號已經隱藏，請洽門市' }, 403)
+    if (!mb.line_user_id) return json({ ok: false, reason: 'no_line', message: '這個帳號還沒綁 LINE，請洽門市' }, 409)
+    const session = await issueMemberSession(mb.line_user_id).catch(() => null)
+    if (!session) return json({ ok: false, reason: 'session_failed', message: '登入失敗，請稍後再試' }, 502)
+    return json({ ok: true, member_id: mb.member_id, display_name: mb.display_name ?? '', ...session })
+  }
+
   const idToken = (body.id_token ?? '').trim()
   if (!idToken) {
     return json({ ok: false, reason: 'id_token_required', message: '缺少 LINE 授權資訊' }, 400)

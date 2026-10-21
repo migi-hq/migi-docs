@@ -1,5 +1,17 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-21 增補 101（歸檔 `2026-10-21_手機簡訊登入備援.sql`）
+> **基準：`sql/applied/` 有 415 個檔案**。驗證 7/7，提交後另查線上（3 個開關欄位、4 支新函式、用途 CHECK 都在）。
+> 起因：使用者問「整個 LINE 商用帳號被停權怎麼辦」⇒ 店員 POS 與會員 App 各加一條手機簡訊登入的備用路，**兩條都預設關**。
+> · `phone_otps.purpose` 多 `staff_login`、`member_login`；`otp_request_tx` 認得這兩種（其餘逐字照舊）。
+> · `orgs` 新欄位：`staff_login_line_enabled`（預設 true）、`staff_login_phone_enabled`、`member_login_phone_enabled`（預設 false）。
+> · 新函式：`get_staff_by_phone_tx`／`get_member_by_phone_tx`（只認 `phone_verified_at` 有值的手機，只給 service_role）、
+>   `get_login_methods_tx(p_org_id)`（anon 可讀，回 line／phone／member_phone）、
+>   `admin_set_login_methods_tx(p_line, p_phone, p_member_phone)`（`can('settings.write')`，擋店員兩個都關）。
+> · 真正擋登入的是 Edge Function：`staff-login` 加 `sms_send`／`sms_verify`，`line-login` 加 `phone_login_send`／`phone_login_verify`；
+>   手機簡訊要讀到「開」才放行，讀不到開關就擋。發出的 session 跟 LINE 登入是同一個身分。
+> 前端：後台「系統設定」頁（migi-admin 997a66c）、POS 登入頁（migi-pos ee420b0）、會員 App 登入畫面（migi-web f3706f9）。
+
 > ### 🆕 2026-10-21 增補 100（歸檔 `2026-10-21_店員取消配桌房.sql`）
 > **基準：`sql/applied/` 有 414 個檔案**。驗證 4/4，提交後另查線上（1 個版本、authenticated 可執行、anon 不可）。
 > · 新函式 `pos_cancel_queue_tx(p_org_id, p_queue, p_reason)`：店員取消**有人在**的配桌房（waiting／matched）。
