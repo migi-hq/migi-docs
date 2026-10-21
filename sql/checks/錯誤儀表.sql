@@ -240,16 +240,17 @@ select 序, 項目, 內容 from (
      99 ＝ 93 ＋ tbl_reorder_round_tx（10-11 重選位置）＋ tbl_phone_code_tx、tbl_phone_redeem_tx（10-13 手機計分）
           ＋ tbl_swap_code_tx、tbl_swap_redeem_tx（10-15 換人上桌）＋ tbl_reset_round_tx（10-16 回到第一局）
           —— 六支都是平板／手機用裝置憑證或配對碼叫的，刻意給 anon（⑰ 確認過都有身分檢查）
-     🔴 2026-10-20 才補上：10-11 之後這一格**一直印「變多了」**，九天沒人對 —— 同 ⑳ 那四天 */
-  select 7, '⑦ 函式授權 vs baseline（2026-10-20：明確 anon 99、只靠 PUBLIC 0）',
+     🔴 2026-10-20 才補上：10-11 之後這一格**一直印「變多了」**，九天沒人對 —— 同 ⑳ 那四天
+     100 ＝ 99 ＋ get_login_methods_tx（10-21 手機簡訊登入備援：登入頁還沒登入就要知道顯示哪幾種登入方式，只回三個開關） */
+  select 7, '⑦ 函式授權 vs baseline（2026-10-21：明確 anon 100、只靠 PUBLIC 0）',
          (select '明確授權 anon ' || count(*) filter (where anon明確)::text
               || '　只靠 PUBLIC ' || count(*) filter (where public有 and not anon明確)::text
               || '　兩者都沒有 ' || count(*) filter (where not anon明確 and not public有)::text
               || case when count(*) filter (where public有 and not anon明確) > 0
                       then E'\n  🔴 有函式只靠 PUBLIC 進來 —— 那不是決定，是預設值。逐支確認要不要給 anon'
-                      when count(*) filter (where anon明確) > 99
+                      when count(*) filter (where anon明確) > 100
                       then E'\n  🔴 明確授權 anon 的支數**變多了** —— 有人把函式開放給前端，逐支確認'
-                      when count(*) filter (where anon明確) < 99
+                      when count(*) filter (where anon明確) < 100
                       then E'\n  ⚠ 比 baseline 少（有人收緊了，方向是對的）—— 重跑匯出把基準對上'
                       else E'\n  ✅ 與 baseline 相同' end
             from (select
