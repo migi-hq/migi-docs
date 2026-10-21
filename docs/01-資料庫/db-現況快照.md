@@ -1,5 +1,14 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-21 增補 100（歸檔 `2026-10-21_店員取消配桌房.sql`）
+> **基準：`sql/applied/` 有 414 個檔案**。驗證 4/4，提交後另查線上（1 個版本、authenticated 可執行、anon 不可）。
+> · 新函式 `pos_cancel_queue_tx(p_org_id, p_queue, p_reason)`：店員取消**有人在**的配桌房（waiting／matched）。
+>   房裡每一位收到一則 `table_expired` App 通知（內文「店家取消了 MM/DD HH:MM 的牌局（門市）：原因」，`payload.cancelled_by_store = true`；不推 LINE）、
+>   標離開 `leave_reason = 'cancelled'` ＋ `left_by_staff_id`，房改 `cancelled`。已帶到桌（seated）回 `seated`；已取消／流局冪等回 `already`。
+>   身分：`_api_staff_only()` ＋ `current_staff()`，不收前端送的店員 id。
+> · 沒人報名的房照舊用 `pos_close_queue_tx`（關閉這桌）。
+> 行為測試 4/4（回滾後查過沒留樣本）：`sql/checks/2026-10-21_驗店員取消配桌房.sql`。前端 migi-pos 89c26d9：卡片「取消牌局」＋確認彈窗（選填原因）。
+
 > ### 🆕 2026-10-21 增補 99（歸檔 `2026-10-21_成桌卡片按鈕與警語拉開間距.sql`）
 > **基準：`sql/applied/` 有 413 個檔案**。驗證 4/4（拿最近一則成桌通知實際組卡），提交後另查線上（`_push_flex` 1 個版本，結構沒變）。
 > · `_push_flex`（簽名不變）：成桌卡片「查看牌局詳情」按鈕上方間距 `md`（8px）→ `xl`（16px），跟警語拉開。其餘逐字照舊。
