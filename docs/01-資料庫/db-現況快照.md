@@ -1,5 +1,18 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-22 增補 105（歸檔 `2026-10-22_錢包流水記贈點部分.sql`）
+> **基準：`sql/applied/` 有 419 個檔案**。驗證 7/7 ＋ 行為 13/13（`sql/checks/2026-10-22_驗錢包流水記贈點部分.sql`，回滾後流水仍 284 筆），
+> 提交後另查線上（欄位、兩個觸發器都啟用、43 筆帶贈點部分、3 支新函式）。
+> 本金與贈點分帳的第一步（📄 `docs/07-營運商業/電子發票與儲值點數.md` 第三、六節）：
+> · `wallet_txns.bonus_amount bigint not null default 0` ＝ 這一筆裡屬於贈點的部分（正負號同 `amount`；本金 ＝ `amount − bonus_amount`），
+>   約束 `chk_bonus_amount_within`（不可超過整筆、不可反號）。
+> · 觸發器 `trg_wallet_txn_fill_bonus`（BEFORE INSERT，`_wallet_txn_fill_bonus`）**一律覆寫**呼叫端送的值；規則只有一份 `_wallet_bonus_part`：
+>   儲值贈點（`promo_expense` 正數）整筆算贈點、其餘進帳算本金；扣點贈點先扣；沖正照原單退回或扣回；本金不夠的差額由贈點補，兩格都不為負。
+>   ⇒ 7 支寫入函式**一行都沒改**，以後新寫的也自動照規則記。
+> · **不存贈點餘額欄位**：`wallet_pools(member)` 從流水加總回 `{balance, bonus, principal}`（只給 service_role）。
+> · 既有 284 筆（全部測試帳號）照時間重播回填；回填時在同一交易裡暫停過 `trg_txn_no_update`，已打開。
+> · 錯誤儀表加 ㉑ 盯「每個錢包贈點在 0 與總餘額之間、流水加總等於 `wallets.balance`」。
+
 > ### 🆕 2026-10-22 增補 104（歸檔 `2026-10-22_牌風型法家改成型玩家.sql`）
 > **基準：`sql/applied/` 有 418 個檔案**。只改資料、沒動結構。驗證 ✅，提交後另查線上（6 位 14:20 改成型玩家、已沒有任何「法家」）。
 > · 牌風問卷結果 `members.style->>'type'` 的「◯◯型法家」是錯字，改成「◯◯型玩家」（使用者 10-22）；前端 `migi-web` 15db6c1。

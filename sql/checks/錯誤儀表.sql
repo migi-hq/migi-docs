@@ -794,6 +794,23 @@ select 序, 項目, 內容 from (
            group by k.cap, k.plan, m.sent)
 
   union all
+  /* ㉑ 錢包兩格對不對得上（2026-10-22 加）。
+        `wallet_txns.bonus_amount` 由觸發器填（贈點先扣），贈點餘額不存欄位、從流水加總。
+        🔴 對不上的症狀是零：結帳照常、餘額照常，只有日後開發票（只開本金部分）與退款（扣回已用贈點）會算錯。
+        ⇒ 盯三件事：贈點不為負、贈點不超過總餘額、流水加總等於 wallets.balance 快取。 */
+  select 21, '㉑ 錢包本金與贈點兩格（贈點 0～總餘額、流水加總＝餘額快取）',
+         (with s as (
+            select w.member_id, w.balance,
+                   coalesce(sum(t.amount), 0) as tot, coalesce(sum(t.bonus_amount), 0) as bon
+              from wallets w left join wallet_txns t on t.member_id = w.member_id and t.status = 'completed'
+             group by w.member_id, w.balance)
+          select case when count(*) filter (where bon < 0 or bon > tot or tot <> balance) = 0
+                      then '✅ ' || count(*) || ' 個錢包都對得上（贈點合計 ' || sum(bon) || ' 點）'
+                      else '🔴 ' || count(*) filter (where bon < 0 or bon > tot or tot <> balance)
+                           || ' 個錢包對不上 —— 查 trg_wallet_txn_fill_bonus 有沒有被停用，或有人繞過帳本直接改了 wallets.balance' end
+            from s)
+
+  union all
   select 5, '⑤ 測試標記（修好前的歷史資料仍標成營運）',
          (select 'is_test=true ' || count(*) filter (where is_test)::text ||
                  '　is_test=false ' || count(*) filter (where not is_test)::text ||
