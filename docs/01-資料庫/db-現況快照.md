@@ -1,5 +1,16 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-27 增補 108（歸檔 `2026-10-27_最近亮點_近30天最大台.sql`）
+> **基準：`sql/applied/` 有 422 個檔案**。驗證 5/5，提交後另查線上（3 支新函式、`get_member_card_tx` 與 `_member_hand_counts` 都已改叫新的、各 1 個版本）。
+> 使用者：「個人設定頁有一個近期最大的一手，沒實裝嗎」→「照妳建議」。
+> · `_hand_tai_total(result, tai_pattern, patterns, winner, deal_in, dealer, renzhuang)`：「這一局幾台」**唯一一份**
+>   ＝ 牌型台（已乘豹子）＋ 莊家台 ×（1 ＋ 豹子次數）。🔴 修正：原本莊家台沒乘豹子倍數，跟平板不一致（7 局變大，沒有豹子的 0 局變）。
+> · `_member_hand_counts` 改叫它（成績頁「單局最大台」、排行榜「單局最大台數」跟著修正）。
+> · `_member_highlight(org, member)`：近 30 天（那一局入帳時間）自己胡的局裡台數最大、同台數取最近；
+>   回 tai／result／renzhuang／is_dealer／manual／at／store／table／patterns（中文，不含自摸，豹子寫 ×N 倍）。**不回放槍的人**。當天 120 位有亮點。
+> · `get_my_highlight_tx()`（authenticated，身分 `current_member_id()`）；`get_member_card_tx` 的 `highlight` 由 null 改成它（對方「只有自己」看成績時仍 null）。
+> · 前端 `migi-web` 67fa1db：`lib/highlight.jsx` 的 `HighlightCard`，個人頁與他人個人卡共用。
+
 > ### 🆕 2026-10-27 增補 107（歸檔 `2026-10-26_管理後台刪除門市.sql`）
 > **基準：`sql/applied/` 有 421 個檔案**。驗證 5/5 ＋ 行為 8/8（`sql/checks/2026-10-26_驗管理後台刪除門市.sql`，回滾後門市仍 7 間），提交後另查線上。
 > 使用者：「可以刪除門市嗎」→「目前都是測試資料，也不能刪除嗎」⇒ 能不能刪看**有沒有真客人的紀錄**，不是有沒有紀錄。
