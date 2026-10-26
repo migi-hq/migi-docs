@@ -1,5 +1,15 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-26 增補 106（歸檔 `2026-10-23_管理後台門市與桌位.sql`）
+> **基準：`sql/applied/` 有 420 個檔案**。驗證 5/5 ＋ 行為 19/19（`sql/checks/2026-10-23_驗管理後台門市與桌位.sql`，回滾後門市仍 7 間），
+> 提交後另查線上（6 支都在）。管理後台「門市」頁的後端（`migi-admin` 5acc064），權限一律 `can('store.write')`、只給 authenticated：
+> · `admin_list_stores_tx()`：含停用的門市＋桌數、近 14 天場次、啟用中的固定牌局數；另回法人選單。
+> · `admin_upsert_store_tx(p_id …12 參數)`：p_id null ＝ 新增，代號自動 S08、S09…（交易鎖）；`orgs.live_from` 未到 ⇒ 標成測試。擋同名、類型、營業時間格式。
+> · `admin_set_store_active_tx(p_id, p_active)`：停用擋 ① 沒收桌的牌局 ② 有人的配桌房 ③ 未來的包桌預約 ④ 最後一間；
+>   通過時關掉那間店的 `recurring_tables`、把沒人的等待中 `match_queues` 改成 cancelled。重新啟用不會打開固定牌局。
+> · `admin_list_tables_tx`／`admin_upsert_table_tx`（桌號同店不可重複）／`admin_set_table_active_tx`（權限檢查後交給 POS 的 `set_table_active_tx`）。
+> · 起因：S02～S07 是範例（使用者 10-23 確認），封測客人在 App 看得到，S02 還有固定牌局每天開空房。
+
 > ### 🆕 2026-10-22 增補 105（歸檔 `2026-10-22_錢包流水記贈點部分.sql`）
 > **基準：`sql/applied/` 有 419 個檔案**。驗證 7/7 ＋ 行為 13/13（`sql/checks/2026-10-22_驗錢包流水記贈點部分.sql`，回滾後流水仍 284 筆），
 > 提交後另查線上（欄位、兩個觸發器都啟用、43 筆帶贈點部分、3 支新函式）。
