@@ -1,5 +1,11 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-28 增補 110（歸檔 `2026-10-27_計分板標記全國第一.sql`）
+> **基準：`sql/applied/` 有 424 個檔案**。驗證 4/4（實際叫一次：4 位玩家都有 no1、1 位是第一），提交後另查線上（1 個版本、有 no1、anon／authenticated 仍叫不到；public 函式數 389 不變）。
+> · `_tbl_state_for_device` 的 players 每一列多 `no1`（布林，不是會員 id）：本季 `season_rank_rows_display_tx` 的 rank_no = 1 ——
+>   跟會員 App 排行榜同一支，第 1 名只有一個人；沒有進行中的賽季 ⇒ 沒有人是 no1。只改三處（DO 區塊 replace、每處檢查有換到）。
+> · 前端 `migi-table` 4d5ee29：第 1 將第 1 局播「強者登場」、名字下面「目前全國 #1」（CLAUDE.md 13.9b-2）。
+
 > ### 🆕 2026-10-27 增補 109（歸檔 `2026-10-27_報表檢視表補贈點欄位.sql`）
 > **基準：`sql/applied/` 有 423 個檔案**。驗證 4/4，提交後另查線上（19 欄、anon 讀不到、全部 `v_real_*` 漏欄數 0）。
 > · 錯誤儀表 ⑫ 抓到：`v_real_wallet_txns` 漏了 10-22 加的 `wallet_txns.bonus_amount`（增補 105）。

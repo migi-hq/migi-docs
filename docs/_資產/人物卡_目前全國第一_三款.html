@@ -1,0 +1,121 @@
+<title>目前全國 #1 人物卡</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* 版面：智慧計分板對家卡片原尺寸（360 × 226），三種「目前全國 #1」的放法各畫兩張：平常／他剛好當莊家（莊家標籤也在右上角）。
+   卡片右邊有牌咖團徽 —— 最擠的情況。顏色只用平板的粉色系；團徽金框是既有例外。 */
+:root {
+  --bar: #191718; --bg: #221F20; --raised: #2B2829; --tile: #343132; --line: #524D4E;
+  --text: #FFFFFF; --text2: #C9C4C1; --text3: #A39E9B;
+  --brand: #FAD6DC; --ink: #2E2B2C; --gold: #E8B89B;
+  --f: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bar); color: var(--text); font-family: var(--f); line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 32px 64px; }
+.wrap { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 48px; }
+header h1 { margin: 0; font-size: clamp(26px, 4vw, 36px); line-height: 1.25; text-wrap: balance; }
+header p { margin: 10px 0 0; color: var(--text2); font-size: 15px; max-width: 70ch; }
+section { display: flex; flex-direction: column; gap: 14px; }
+.sh { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.sh .k { flex: none; width: 40px; height: 40px; border-radius: 12px; background: var(--brand); color: var(--ink); display: inline-flex; align-items: center; justify-content: center; font-weight: 900; font-size: 20px; align-self: center; }
+.sh h2 { margin: 0; font-size: 22px; }
+.sh .ref { color: var(--text3); font-size: 14px; }
+.pair { display: flex; flex-wrap: wrap; gap: 28px 32px; padding: 36px 28px 28px; background: var(--bg); border-radius: 18px;
+  background-image: radial-gradient(1.5px 1.5px at 12% 20%, rgba(250,214,220,.4), transparent), radial-gradient(1px 1px at 80% 30%, rgba(250,214,220,.35), transparent),
+    radial-gradient(1.5px 1.5px at 40% 85%, rgba(250,214,220,.3), transparent); }
+.cell { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.cell small { color: var(--text3); font-size: 13px; }
+.note { color: var(--text3); font-size: 13px; }
+
+/* ═══ 對家卡片（照 migi-table/src/index.css 的 .ec） ═══ */
+.ec { position: relative; width: 360px; max-width: 100%; padding: 48px 16px 14px; background: var(--raised); border: 2px solid var(--line); border-radius: 12px; }
+.ec.dl { border-color: var(--brand); box-shadow: 0 0 22px rgba(250,214,220,.35); }
+.pos { position: absolute; top: 10px; left: 12px; background: var(--tile); color: var(--text); font-size: 20px; font-weight: 800; line-height: 1.3; padding: 4px 18px; border-radius: 999px; }
+.ztag { position: absolute; top: -14px; right: 22px; background: var(--brand); color: var(--ink); font-size: 16px; font-weight: 800; padding: 6px 16px; line-height: 1; border-radius: 999px; }
+.id { display: flex; align-items: center; gap: 12px; }
+.av { position: relative; flex: none; width: 92px; height: 92px; border-radius: 50%; background: var(--brand); color: var(--ink); display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: 900; }
+.who { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.nm { font-size: 23px; line-height: 1.2; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; word-break: break-all; }
+.rk { align-self: flex-start; font-size: 14px; padding: 2px 10px; border-radius: 999px; background: var(--brand); color: var(--ink); font-weight: 700; }
+.tteam { flex: 0 0 76px; margin-left: auto; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.crest { width: 60px; height: 60px; border-radius: 30%; background: var(--gold); padding: 2px; display: flex; }
+.crest i { flex: 1; border-radius: 28%; background: var(--ink); padding: 2px; display: flex; }
+.crest i b { flex: 1; border-radius: 26%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 28px; font-style: normal; }
+.tname { font-size: 13px; font-weight: 700; color: var(--gold); line-height: 1.25; }
+.fang { margin-top: 12px; height: 56px; border-radius: 12px; background: var(--brand); color: var(--ink); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; }
+.cr { width: 20px; height: 20px; flex: none; }
+
+/* A 膠囊：在「對家」右邊，同高同一條線 */
+.nA { position: absolute; top: 10px; left: 98px; height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px 0 10px;
+  background: var(--brand); color: var(--ink); border-radius: 999px; font-size: 17px; font-weight: 900; line-height: 1; white-space: nowrap; }
+.nA em { font-style: normal; font-size: 20px; }
+
+/* B 頂部橫條：卡片最上面一整條粉色，「對家」照樣在左，右邊寫目前全國 #1 */
+.ec.b { padding-top: 56px; overflow: visible; }
+.barB { position: absolute; left: 0; right: 0; top: 0; height: 46px; border-radius: 10px 10px 0 0; background: linear-gradient(90deg, rgba(250,214,220,.18), var(--brand) 55%);
+  display: flex; align-items: center; justify-content: flex-end; gap: 6px; padding-right: 14px; color: var(--ink); font-size: 17px; font-weight: 900; }
+.barB em { font-style: normal; font-size: 22px; }
+.ec.b .pos { top: 6px; }
+.ec.b .ztag { right: auto; left: 50%; transform: translateX(-50%); }
+
+/* C 名字下面一行：粉色字＋小皇冠，沒有底色，夾在名字與段位中間 */
+.lineC { display: inline-flex; align-items: center; gap: 5px; color: var(--brand); font-size: 16px; font-weight: 900; letter-spacing: .04em; line-height: 1;
+  text-shadow: 0 0 12px rgba(250,214,220,.45); }
+.lineC em { font-style: normal; font-size: 19px; }
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="crown" viewBox="0 0 64 64">
+      <path d="M8 22 L20 34 L32 12 L44 34 L56 22 L51 50 H13 Z" fill="currentColor" stroke="#2E2B2C" stroke-width="4" stroke-linejoin="round"/>
+      <rect x="13" y="50" width="38" height="7" rx="2" fill="currentColor" stroke="#2E2B2C" stroke-width="4"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <header>
+    <h1>人物卡上的「目前全國 #1」</h1>
+    <p>特效播完之後，全國第一那張卡整場留著的標記。三種放法，每種兩張：平常、他剛好當莊家（卡片右上角會多一顆「莊家」，外框變粉）。卡片右邊那格是牌咖團徽，已經在的東西。名字是範例。</p>
+  </header>
+
+  <section>
+    <div class="sh"><span class="k">A</span><h2>膠囊</h2><span class="ref">「對家」右邊一顆粉色膠囊，同高、同一條線</span></div>
+    <div class="pair" id="A"></div>
+    <p class="note">最省地方：上面那排本來就空著；跟莊家標籤一左一右不打架。</p>
+  </section>
+
+  <section>
+    <div class="sh"><span class="k">B</span><h2>頂部橫條</h2><span class="ref">卡片最上面一整條，從左邊淡淡的漸到右邊粉色，右邊寫目前全國 #1</span></div>
+    <div class="pair" id="B"></div>
+    <p class="note">最搶眼，整張卡一眼就跟另外兩家不一樣。他當莊家時「莊家」改到上緣正中間，避開右邊的字。橫條會讓卡片多高約 8，平板那一格（固定 226 高）要一起調。</p>
+  </section>
+
+  <section>
+    <div class="sh"><span class="k">C</span><h2>名字下面一行</h2><span class="ref">粉色字＋小皇冠，沒有底色，夾在名字和段位中間</span></div>
+    <div class="pair" id="C"></div>
+    <p class="note">最安靜，像頭銜。名字長到兩行時，卡片會多高約 10，平板那一格（固定 226 高）要一起調。</p>
+  </section>
+</div>
+
+<script>
+const CR = '<svg class="cr" viewBox="0 0 64 64" style="color:var(--brand)"><use href="#crown"/></svg>';
+const CRI = '<svg class="cr" viewBox="0 0 64 64" style="color:#fff"><use href="#crown"/></svg>';
+function card(form, dealer, name) {
+  const team = '<div class="tteam"><div class="crest"><i><b>🀄</b></i></div><span class="tname">夜貓雀團</span></div>';
+  const z = dealer ? '<span class="ztag">莊家</span>' : '';
+  const A = form === 'A' ? `<span class="nA">${CRI}目前全國 <em>#1</em></span>` : '';
+  const B = form === 'B' ? `<div class="barB">${CRI}目前全國 <em>#1</em></div>` : '';
+  const C = form === 'C' ? `<span class="lineC">${CR}目前全國 <em>#1</em></span>` : '';
+  return `<div class="ec ${dealer ? 'dl' : ''} ${form === 'B' ? 'b' : ''}">${B}<span class="pos">對家</span>${A}${z}
+    <div class="id"><div class="av">凱</div><div class="who"><span class="nm">${name}</span>${C}<span class="rk">段位: 鑽石熊 I</span></div>${team}</div>
+    <div class="fang">放槍</div></div>`;
+}
+['A', 'B', 'C'].forEach(k => {
+  document.getElementById(k).innerHTML =
+    `<div class="cell"><small>平常</small>${card(k, false, '阿凱')}</div>` +
+    `<div class="cell"><small>他當莊家</small>${card(k, true, '阿凱')}</div>` +
+    `<div class="cell"><small>名字很長（12 個字）</small>${card(k, false, '雀神小凱今天也要來胡大牌')}</div>`;
+});
+</script>

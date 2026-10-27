@@ -1,0 +1,395 @@
+<title>強者登場</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* 版面：同一段特效排在三種畫面上（平板 1280×800、手機橫拿 844×390、手機直拿 390×844），各自等比例縮小。
+   光點用 canvas，位置由時間算出來；爆點座標開播前從畫面實際量（頭像中心、那一句的左中右）。
+   ⚠ 刻意不理「減少動態效果」—— 使用者的電腦開著它，預覽要能動。 */
+:root {
+  --bar: #191718; --bg: #221F20; --raised: #2B2829; --tile: #343132; --line: #524D4E;
+  --text: #FFFFFF; --text2: #C9C4C1; --text3: #A39E9B;
+  --brand: #FAD6DC; --ink: #2E2B2C;
+  --f: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bar); color: var(--text); font-family: var(--f); line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 32px 64px; }
+.wrap { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 48px; }
+header h1 { margin: 0; font-size: clamp(26px, 4vw, 38px); line-height: 1.25; text-wrap: balance; }
+header p { margin: 10px 0 0; color: var(--text2); font-size: 15px; max-width: 70ch; }
+.tl { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; }
+.tl span { background: var(--raised); border: 1px solid var(--line); border-radius: 999px; padding: 4px 14px; font-size: 13px; color: var(--text2); font-variant-numeric: tabular-nums; }
+.tl b { color: var(--brand); }
+section { display: flex; flex-direction: column; gap: 12px; }
+.sh { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.sh h2 { margin: 0; font-size: 22px; }
+.sh .ref { color: var(--text3); font-size: 14px; }
+.ctl { display: flex; gap: 10px; align-items: center; }
+.ctl button { background: var(--raised); color: var(--text); border: 1px solid var(--line); border-radius: 10px; height: 36px; padding: 0 16px; font: 700 14px var(--f); cursor: pointer; }
+.ctl button:focus-visible, .frame:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.ctl small { color: var(--text3); font-size: 12px; }
+.phones { display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start; }
+.phones section { min-width: 0; }
+.phones .sec-l { flex: 1 1 520px; }
+.phones .sec-p { flex: 0 1 300px; }
+.note { color: var(--text3); font-size: 13px; }
+
+/* ═══ 外框 ═══ */
+.frame { position: relative; width: 100%; max-width: 100%; overflow: hidden; background: var(--bg); box-shadow: 0 20px 50px rgba(0,0,0,.45); border: 6px solid #0f0e0e; }
+.frame.t { aspect-ratio: 1280 / 800; border-radius: 18px; }
+.frame.l { aspect-ratio: 844 / 390; border-radius: 28px; border-width: 8px; }
+.frame.p { aspect-ratio: 390 / 844; border-radius: 34px; border-width: 8px; }
+.scr { position: absolute; left: 0; top: 0; transform-origin: 0 0; transform: scale(var(--s, .5)); background: var(--bg); overflow: hidden; display: flex; flex-direction: column; }
+.av { flex: none; border-radius: 50%; background: var(--brand); color: var(--ink); display: flex; align-items: center; justify-content: center; font-weight: 900; }
+.rk { align-self: flex-start; border-radius: 999px; background: var(--brand); color: var(--ink); font-weight: 700; }
+.ec { position: relative; z-index: 1; background: var(--raised); border: 2px solid var(--line); border-radius: 12px; }
+.ec .id { display: flex; align-items: center; }
+.ec .who { display: flex; flex-direction: column; min-width: 0; }
+.pos { position: absolute; background: var(--tile); font-weight: 800; border-radius: 999px; line-height: 1.3; }
+.fang { border-radius: 10px; background: var(--brand); color: var(--ink); display: flex; align-items: center; justify-content: center; font-weight: 800; }
+.mid { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.mid .hn { color: var(--brand); font-weight: 800; }
+.mid .dl { color: var(--text2); }
+.me { position: relative; z-index: 1; background: var(--raised); border: 2px solid var(--brand); border-radius: 12px; display: flex; align-items: center; }
+.me .who { display: flex; flex-direction: column; }
+.me .sc { display: flex; flex-direction: column; border-left: 1px solid var(--line); }
+.me .sc em { font-style: normal; color: var(--text3); }
+.me .sc b { line-height: 1; font-weight: 800; }
+.me .bt { margin-left: auto; display: flex; }
+.me .bt span { border-radius: 12px; background: var(--brand); color: var(--ink); display: flex; align-items: center; justify-content: center; font-weight: 900; }
+.me .bt span.g2 { background: var(--tile); color: var(--text); }
+.ztag { position: absolute; background: var(--brand); color: var(--ink); font-weight: 800; border-radius: 999px; line-height: 1; }
+/* 「全國第一」膠囊：在「對家」標籤右邊、同一條水平線、同高（2026-10-27 使用者）。位置由 JS 照「對家」標籤量出來 */
+/* 「目前全國 #1」：名字下面一行，粉色字＋小皇冠、沒有底色（2026-10-27 使用者選 C；膠囊放「對家」旁邊會太多膠囊）。
+   特效最後縮回對家時，就是這一行冒出來，之後整場留著 */
+.no1 { display: inline-flex; align-items: center; color: var(--brand); font-weight: 900; line-height: 1; white-space: nowrap; letter-spacing: .04em;
+  text-shadow: 0 0 12px rgba(250,214,220,.45); }
+.no1 svg { flex: none; color: var(--brand); }
+.no1 em { font-style: normal; }
+.t .ec .who:has(.no1) { gap: 5px; }   /* 多那一行時行距 6→5，卡片才不會比 226 那一格高（量過：不收是 228） */
+.t .no1 { font-size: 16px; gap: 5px; } .t .no1 svg { width: 19px; height: 19px; } .t .no1 em { font-size: 19px; }
+.l .no1, .p .no1 { font-size: 12px; gap: 3px; } .l .no1 svg, .p .no1 svg { width: 14px; height: 14px; } .l .no1 em, .p .no1 em { font-size: 14px; }
+
+/* 平板 1280×800（正式版主畫面） */
+.t .scr { width: 1280px; height: 800px; }
+.t .top { height: 72px; flex: none; background: var(--bar); display: flex; align-items: center; gap: 40px; padding: 0 28px; font-size: 18px; }
+.t .top em { font-style: normal; color: var(--text3); font-size: 14px; margin-right: 8px; }
+.t .top .sp { flex: 1; }
+.t .board { position: relative; flex: 1; padding: 16px 24px 20px; display: grid; gap: 12px 20px; grid-template-columns: 360px minmax(0, 1fr) 360px;
+  grid-template-rows: 226px minmax(0, 1fr) 184px; grid-template-areas: "tl top tr" "left mid right" "me me me"; }
+.t .ec { padding: 54px 16px 14px; align-self: center; }   /* 位置標籤放大（2026-10-27 使用者）：上方 48→54、放槍上距 12→6，卡片總高不變 226 */
+.t .ec.c-top { grid-area: top; width: 360px; justify-self: center; align-self: start; } .t .ec.c-left { grid-area: left; } .t .ec.c-right { grid-area: right; }
+.t .pos { top: 8px; left: 12px; font-size: 26px; padding: 3px 20px; }   /* 對家／上家／下家 20→26 */
+.t .ec .id { gap: 12px; } .t .ec .av { width: 92px; height: 92px; font-size: 40px; } .t .ec .who { gap: 6px; } .t .ec .nm { font-size: 23px; }
+.t .rk { font-size: 14px; padding: 2px 10px; } .t .fang { margin-top: 6px; height: 56px; font-size: 24px; }
+.t .mid { grid-area: mid; gap: 6px; } .t .mid .hn { font-size: 40px; } .t .mid .dl { font-size: 22px; }
+.t .tr { grid-area: tr; justify-self: end; align-self: start; display: grid; grid-template-columns: max-content max-content; gap: 10px; z-index: 1; }
+.t .tr span { height: 48px; padding: 0 18px; display: flex; align-items: center; background: var(--raised); border: 1px solid var(--line); border-radius: 12px; font-size: 20px; font-weight: 800; }
+.t .me { grid-area: me; gap: 22px; padding: 0 26px; } .t .me .av { width: 120px; height: 120px; font-size: 52px; } .t .me .nm { font-size: 34px; }
+.t .me .sc { margin-left: 26px; padding-left: 26px; } .t .me .sc em { font-size: 16px; } .t .me .sc b { font-size: 76px; }
+.t .me .bt { gap: 12px; } .t .me .bt span { height: 120px; width: 150px; font-size: 30px; }
+.t .ztag { top: -14px; right: 22px; font-size: 16px; padding: 5px 14px; }
+
+/* 手機橫拿 844×390（示意：沒有頂條、三家卡一樣大） */
+.l .scr { width: 844px; height: 390px; }
+.l .board { position: relative; flex: 1; padding: 8px 10px; display: grid; gap: 6px 8px; grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: 132px minmax(0, 1fr) 112px; grid-template-areas: "left top right" "mid mid mid" "me me me"; }
+.l .ec { padding: 34px 10px 8px; } .l .ec.c-top { grid-area: top; } .l .ec.c-left { grid-area: left; } .l .ec.c-right { grid-area: right; }
+.l .pos { top: 6px; left: 8px; font-size: 14px; padding: 2px 12px; }
+.l .ec .id { gap: 8px; } .l .ec .av { width: 50px; height: 50px; font-size: 22px; } .l .ec .who { gap: 3px; } .l .ec .nm { font-size: 16px; }
+.l .rk { font-size: 11px; padding: 1px 8px; } .l .fang { margin-top: 6px; height: 30px; font-size: 15px; }
+.l .mid { grid-area: mid; flex-direction: row; gap: 18px; } .l .mid .hn { font-size: 24px; } .l .mid .dl { font-size: 15px; }
+.l .me { grid-area: me; gap: 14px; padding: 0 16px; } .l .me .av { width: 76px; height: 76px; font-size: 34px; } .l .me .nm { font-size: 22px; }
+.l .me .sc { margin-left: 12px; padding-left: 14px; } .l .me .sc em { font-size: 12px; } .l .me .sc b { font-size: 46px; }
+.l .me .bt { gap: 8px; } .l .me .bt span { height: 82px; width: 100px; font-size: 20px; }
+.l .ztag { top: -10px; right: 14px; font-size: 12px; padding: 4px 10px; }
+
+/* 手機直拿 390×844（示意：十字座位，對家在上、上家下家在兩側、我在下面） */
+.p .scr { width: 390px; height: 844px; }
+.p .board { position: relative; flex: 1; padding: 14px 12px 16px; display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: 150px 150px minmax(0, 1fr) 236px; grid-template-areas: "top top" "left right" "mid mid" "me me"; }
+.p .ec { padding: 34px 10px 8px; } .p .ec.c-top { grid-area: top; width: 220px; justify-self: center; } .p .ec.c-left { grid-area: left; } .p .ec.c-right { grid-area: right; }
+.p .pos { top: 6px; left: 8px; font-size: 14px; padding: 2px 12px; }
+.p .ec .id { gap: 8px; } .p .ec .av { width: 50px; height: 50px; font-size: 22px; } .p .ec .who { gap: 3px; } .p .ec .nm { font-size: 16px; }
+.p .rk { font-size: 11px; padding: 1px 8px; } .p .fang { margin-top: 8px; height: 34px; font-size: 16px; }
+.p .mid { grid-area: mid; gap: 4px; } .p .mid .hn { font-size: 28px; } .p .mid .dl { font-size: 16px; }
+.p .me { grid-area: me; flex-wrap: wrap; align-content: center; gap: 12px 14px; padding: 14px 16px; }
+.p .me .av { width: 70px; height: 70px; font-size: 32px; } .p .me .nm { font-size: 22px; }
+.p .me .sc { margin-left: auto; padding-left: 14px; } .p .me .sc em { font-size: 12px; } .p .me .sc b { font-size: 44px; }
+.p .me .bt { flex-basis: 100%; gap: 10px; } .p .me .bt span { flex: 1; height: 70px; font-size: 22px; }
+.p .ztag { top: -10px; right: 14px; font-size: 12px; padding: 4px 10px; }
+
+/* ═══ 特效層（整段 7.8 秒）═══
+   0.15–1.1 秒 光點從四周吸進畫面正中間、光球脹大
+   → 1.1 秒 炸開＋閃白＋震動，「強者登場」四個大字同時砸在畫面正中間，停約 1 秒
+   → 2.2–2.6 秒 四個字縮小、飛到最上面當標題（2026-10-27 使用者：「強者登場這四個字先出現效果，然後字縮小」）
+   → 2.6 秒 頭像彈出 → 2.75 秒 名字 → 3.0 秒「你即將跟全國第一名對戰」一個字一個字亮、再震一下
+   → 停在全國第一名這個畫面，4.0 秒起底下出現「點螢幕任一處繼續」；有人點了才縮回對家卡片（0.7 秒），對家卡片名字下面冒出「目前全國 #1」（2026-10-27 使用者）
+   （試過聚集拉長 2 秒，使用者要改回原本；試過「王者降臨」放在頭像下面，像玩家名字，改成標題放最上面） */
+.ov { position: absolute; inset: 0; z-index: 20; pointer-events: none; }
+.frame:not(.play) .ov, .frame:not(.play) .keep { visibility: hidden; }
+.ov .scrim { position: absolute; inset: 0; background: rgba(16,14,15,.92); }
+.ov canvas { position: absolute; left: 0; top: 0; }
+.ov .flash { position: absolute; inset: 0; background: #fff; opacity: 0; }
+.ov .glow { position: absolute; width: 10px; height: 10px; margin: -5px; border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, rgba(250,214,220,.9) 20%, rgba(250,214,220,.25) 45%, transparent 70%); opacity: 0; }
+.stage { position: absolute; inset: 0; }
+.col { position: absolute; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.hav { border-radius: 50%; background: var(--brand); color: var(--ink); display: flex; align-items: center; justify-content: center; font-weight: 900; }
+.t1 { font-weight: 900; line-height: 1.05; letter-spacing: .08em; color: #fff; text-shadow: 0 0 18px rgba(250,214,220,.9), 0 0 50px rgba(250,214,220,.6); white-space: nowrap; }
+.nm2 { font-weight: 800; color: var(--brand); }
+.seat { display: flex; }
+.seat span { display: inline-block; font-weight: 900; line-height: 1.1; letter-spacing: .06em; color: #fff; text-shadow: 0 0 14px rgba(250,214,220,.7); }
+.seat span.hi { color: var(--brand); text-shadow: 0 0 16px rgba(250,214,220,.95), 0 0 40px rgba(250,214,220,.7); }
+/* 停住時底下那一行：慢慢一明一暗，告訴大家點一下就繼續 */
+.hint { position: absolute; left: 0; right: 0; text-align: center; color: var(--text2); font-weight: 700; letter-spacing: .16em; }
+.t .hint { bottom: 44px; font-size: 26px; } .l .hint { bottom: 14px; font-size: 16px; } .p .hint { bottom: 70px; font-size: 18px; }
+/* 停住的時候這一層要接住點擊：點螢幕任一處都只會「繼續」，不會誤按到底下的自摸、放槍（實作時同樣要擋） */
+.play:not(.out) .ov { pointer-events: auto; cursor: pointer; }
+/* 三種畫面的尺寸。順序：「強者登場」標題 → 頭像 → 名字緊貼頭像（像名牌）→ 那一句。
+   --big ＝ 四個字剛出現在正中間時放大幾倍（量過寬度放得下）；--cy 由 JS 算（標題到畫面正中間的距離）
+   2026-10-27 使用者：開頭在正中間的、縮完在標題的，兩個都再小一點 ⇒ 標題 112→84（手機 56→42／44），正中間約 200→143 */
+.t .col { top: 56px; } .t .t1 { font-size: 84px; --big: 1.7; } .t .hav { margin-top: 28px; width: 210px; height: 210px; font-size: 92px; box-shadow: 0 0 0 6px var(--bg), 0 0 0 10px var(--brand), 0 0 90px rgba(250,214,220,.75); }
+.t .nm2 { margin-top: 18px; font-size: 32px; } .t .seat { margin-top: 30px; } .t .seat span { font-size: 52px; }
+.l .col { top: 14px; } .l .t1 { font-size: 42px; --big: 2.2; } .l .hav { margin-top: 12px; width: 96px; height: 96px; font-size: 42px; box-shadow: 0 0 0 4px var(--bg), 0 0 0 6px var(--brand), 0 0 50px rgba(250,214,220,.75); }
+.l .nm2 { margin-top: 9px; font-size: 18px; } .l .seat { margin-top: 12px; } .l .seat span { font-size: 30px; }
+.p .col { top: 160px; } .p .t1 { font-size: 44px; --big: 1.45; } .p .hav { margin-top: 26px; width: 150px; height: 150px; font-size: 66px; box-shadow: 0 0 0 5px var(--bg), 0 0 0 8px var(--brand), 0 0 70px rgba(250,214,220,.75); }
+.p .nm2 { margin-top: 14px; font-size: 22px; } .p .seat { margin-top: 28px; } .p .seat span { font-size: 26px; }
+
+@keyframes scrimIO { 0% { opacity: 0 } 3.5%, 100% { opacity: 1 } }
+@keyframes scrimOut { 0% { opacity: 1 } 100% { opacity: 0 } }
+@keyframes hintIn { 0%, 51% { opacity: 0; transform: translateY(10px) } 56%, 100% { opacity: 1; transform: none } }
+@keyframes hintPulse { 0%, 100% { opacity: 1 } 50% { opacity: .45 } }
+@keyframes fadeAway { to { opacity: 0 } }
+@keyframes glowUp { 0%, 2% { opacity: 0; transform: scale(1) } 13.3% { opacity: 1; transform: scale(30) } 14.1% { opacity: 1; transform: scale(60) } 17.5% { opacity: 0; transform: scale(90) } 100% { opacity: 0 } }
+@keyframes flash2 { 0%, 14.1% { opacity: 0 } 14.5% { opacity: 1 } 19.5% { opacity: 0 } 38.5% { opacity: 0 } 38.9% { opacity: .35 } 41% { opacity: 0 } 100% { opacity: 0 } }
+@keyframes shake { 0%, 14.1% { translate: 0 0 } 14.8% { translate: -14px 8px } 15.5% { translate: 12px -10px } 16.2% { translate: -9px -6px } 16.9% { translate: 7px 6px }
+  17.6% { translate: -4px 3px } 18.3% { translate: 0 0 } 38.5% { translate: 0 0 } 39% { translate: 6px -4px } 39.5% { translate: -4px 3px } 40%, 100% { translate: 0 0 } }
+@keyframes shakeS { 0%, 14.1% { translate: 0 0 } 14.8% { translate: -7px 4px } 15.5% { translate: 6px -5px } 16.2% { translate: -5px -3px } 16.9% { translate: 4px 3px }
+  17.6% { translate: -2px 2px } 18.3% { translate: 0 0 } 38.5% { translate: 0 0 } 39% { translate: 3px -2px } 39.5% { translate: -2px 2px } 40%, 100% { translate: 0 0 } }
+/* 四個字：在正中間砸下來（大）→ 停住 → 縮小飛到標題位置 */
+@keyframes titleIn { 0%, 14.1% { opacity: 0; transform: translateY(var(--cy)) scale(calc(var(--big) * 2.6)) }
+  16.5% { opacity: 1; transform: translateY(var(--cy)) scale(calc(var(--big) * .94)) } 17.9%, 28.2% { opacity: 1; transform: translateY(var(--cy)) scale(var(--big)) }
+  33.3%, 100% { opacity: 1; transform: none } }
+@keyframes avIn { 0%, 33.3% { opacity: 0; transform: scale(.2) } 36% { opacity: 1; transform: scale(1.1) } 37.5%, 100% { opacity: 1; transform: scale(1) } }
+@keyframes fadeIn { 0%, 35.3% { opacity: 0; transform: translateY(12px) } 39%, 100% { opacity: 1; transform: none } }
+@keyframes charIn { 0%, 38.5% { opacity: 0; transform: scale(2.4); filter: blur(6px) } 40.5% { opacity: 1; transform: scale(.9); filter: blur(0) } 42%, 100% { opacity: 1; transform: scale(1) } }
+@keyframes allOut { 0% { opacity: 1; transform: none } 100% { opacity: 0; transform: translateY(var(--outY)) scale(.3) } }
+@keyframes popIn { 0% { opacity: 0; transform: scale(.3) } 60% { opacity: 1; transform: scale(1.25) } 100% { opacity: 1; transform: scale(1) } }
+.t { --outY: -170px; } .l { --outY: -110px; } .p { --outY: -260px; }
+.stage { transform-origin: 50% 20%; }
+.play .ov .scrim { animation: scrimIO 7.8s both; }
+.play .ov .glow { animation: glowUp 7.8s both; }
+.play .ov .flash { animation: flash2 7.8s both; }
+.play .scr { animation: shake 7.8s both; }
+.l.play .scr, .p.play .scr { animation-name: shakeS; }   /* 手機的震動幅度減半（畫面小，同樣的位移看起來大一倍） */
+.play .ov .t1 { animation: titleIn 7.8s both; }
+.play .ov .hav { animation: avIn 7.8s both; }
+.play .ov .nm2 { animation: fadeIn 7.8s both; }
+.play .ov .seat span { animation: charIn 7.8s both; animation-delay: var(--d); }
+.play.out .ov .stage { animation: allOut .7s both; }
+.play.out .ov .scrim { animation: scrimOut .8s .1s both; }
+.play.out .ov canvas, .play.out .ov .hint { animation: fadeAway .4s both; }
+.play .keep { opacity: 0; }
+.play.out .keep { animation: popIn .5s .65s both; }
+.play .ov .hint { animation: hintIn 7.8s both, hintPulse 1.6s 4.4s ease-in-out infinite; }
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="cr" viewBox="0 0 64 64">
+      <path d="M8 22 L20 34 L32 12 L44 34 L56 22 L51 50 H13 Z" fill="#FAD6DC" stroke="#2E2B2C" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="13" y="50" width="38" height="7" rx="2" fill="#FAD6DC" stroke="#2E2B2C" stroke-width="3"/>
+      <circle cx="32" cy="12" r="4" fill="#fff" stroke="#2E2B2C" stroke-width="2.5"/>
+      <circle cx="8" cy="22" r="3.5" fill="#fff" stroke="#2E2B2C" stroke-width="2.5"/>
+      <circle cx="56" cy="22" r="3.5" fill="#fff" stroke="#2E2B2C" stroke-width="2.5"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <header>
+    <h1>全國第一登場：強者登場</h1>
+    <p>定案版的智慧計分板特效：本季全國第一同桌時，第 1 將第 1 局開始播一次，從「對家是全國第一」的那台看出去。下面是同一段動畫在平板、手機橫拿、手機直拿上的樣子；手機版的座位排法是示意，實際照計分板現有的手機版面。名字是範例。</p>
+    <div class="tl">
+      <span>0–1.1 秒 <b>光點吸進中心、光球脹大</b></span>
+      <span>1.1 秒 <b>炸開＋閃白＋震動</b>，「強者登場」大字砸在正中間</span>
+      <span>2.2 秒 <b>四個字縮小</b>、飛到最上面</span>
+      <span>2.6 秒 <b>頭像、名字</b></span>
+      <span>3.0 秒 <b>你即將跟全國第一名對戰</b>逐字亮、再震一下</span>
+      <span>停在這個畫面，<b>點螢幕任一處</b>才縮回對家，名字下面留「目前全國 #1」</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="sh"><h2>平板</h2><span class="ref">1280 × 800，正式版主畫面</span></div>
+    <div class="ctl"><button type="button" data-replay="ft">重播</button><small>播完會停住，點畫面任一處繼續；繼續之後 3 秒自動重播</small></div>
+    <div class="frame t" id="ft"></div>
+  </section>
+
+  <div class="phones">
+    <section class="sec-l">
+      <div class="sh"><h2>手機橫拿</h2><span class="ref">844 × 390（iPhone 14）</span></div>
+      <div class="ctl"><button type="button" data-replay="fl">重播</button></div>
+      <div class="frame l" id="fl"></div>
+    </section>
+    <section class="sec-p">
+      <div class="sh"><h2>手機直拿</h2><span class="ref">390 × 844</span></div>
+      <div class="ctl"><button type="button" data-replay="fp">重播</button></div>
+      <div class="frame p" id="fp"></div>
+    </section>
+  </div>
+
+  <p class="note">手機上的爆炸範圍、光點速度與震動幅度都照螢幕大小縮小；手機橫拿高度只有 390，所以大字與那一句縮一號，四行剛好放得下。</p>
+</div>
+
+<script>
+const CR = '<svg viewBox="0 0 64 64"><use href="#cr"/></svg>';
+const PINK = ['#FAD6DC', '#FFFFFF', '#FFECF1', '#F6C2CC', '#FFFFFF'];
+const DEV = { t: { W: 1280, H: 800 }, l: { W: 844, H: 390 }, p: { W: 390, H: 844 } };
+const LINE = '你即將跟全國第一名對戰';
+function card(cls, pos, ini, nm, rk, line = '') {
+  return `<div class="ec ${cls}"><span class="pos">${pos}</span><div class="id"><div class="av">${ini}</div><div class="who"><span class="nm">${nm}</span>${line}<span class="rk">段位: ${rk}</span></div></div><div class="fang">放槍</div></div>`;
+}
+function screen(d) {
+  const top = d === 't' ? `<div class="top"><span><em>桌號</em>A1</span><span><em>玩法</em>台麻 · 有花</span><span><em>積分</em>50/20</span><span><em>約定</em>2 將</span><span class="sp"></span><span><em>使用時間</em>00:03</span></div>` : '';
+  const tr = d === 't' ? `<div class="tr"><span>教學模式</span><span>查看紀錄</span><span>改手機計分</span><span>重新整理</span></div>` : '';
+  const seat = [...LINE].map((c, i) => `<span class="${i >= 4 && i <= 8 ? 'hi' : ''}" style="--d:${(i * .06).toFixed(2)}s">${c}</span>`).join('');
+  return `<div class="scr" style="width:${DEV[d].W}px;height:${DEV[d].H}px">${top}
+    <div class="board">${tr}
+      ${card('c-top', '對家', '凱', '阿凱', '鑽石熊 I', `<span class="no1 keep">${CR}目前全國 <em>#1</em></span>`)}
+      ${card('c-left', '上家', '美', '小美', '金牌熊 II')}
+      ${card('c-right', '下家', '頭', '大頭', '銀牌熊 I')}
+      <div class="mid"><span class="hn">第 1 將　第 1 局</span><span class="dl">目前莊家　阿明</span></div>
+      <div class="me"><span class="ztag">莊家</span><div class="av">明</div><div class="who"><span class="nm">阿明</span><span class="rk">段位: 金牌熊 III</span></div>
+        <div class="sc"><em>我的積分</em><b>0</b></div><div class="bt"><span>自摸</span><span class="g2">我包牌</span></div></div>
+    </div>
+    <div class="ov"><div class="scrim"></div><canvas width="${DEV[d].W}" height="${DEV[d].H}" style="width:${DEV[d].W}px;height:${DEV[d].H}px"></canvas><div class="glow"></div>
+      <div class="stage"><div class="col"><div class="t1">強者登場</div><div class="hav">凱</div><div class="nm2">阿凱　鑽石熊 I</div><div class="seat">${seat}</div></div></div>
+      <div class="hint">點螢幕任一處繼續</div><div class="flash"></div></div>
+  </div>`;
+}
+
+/* ── 光點：每顆的位置都由「這顆的參數 ＋ 經過時間」算出來，不累積狀態 ⇒ 暫停在哪一格都畫得出來 ── */
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function burst(r, at, x, y, n, vmin, vmax, opt = {}) {
+  const ps = [];
+  for (let i = 0; i < n; i++) ps.push({ kind: 'b', at, x, y, a: r() * Math.PI * 2, v: vmin + (vmax - vmin) * Math.pow(r(), .7), k: opt.drag ?? 2.4, g: opt.g ?? 140,
+    life: (opt.life ?? 1.6) * (.55 + r() * .6), sz: (opt.size ?? 3.2) * (.5 + r()), c: PINK[(r() * PINK.length) | 0], tw: r() * 50 });
+  return ps;
+}
+const ring = (at, x, y, R, w, life = .7) => ({ kind: 'r', at, x, y, R, w, life });
+/* 聚集：from～until（毫秒）之間陸續從四周旋進中心，愈接近爆炸愈密；每顆都在 until 之前到達 */
+function implode(r, from, x, y, n, until, R0) {
+  const ps = [];
+  for (let i = 0; i < n; i++) {
+    const at = from + r() * 430;   // 原本的節奏：0.15～0.58 秒之間陸續出發
+    ps.push({ kind: 'i', at, x, y, a: r() * Math.PI * 2, R: R0 * (.47 + r() * .53), dur: Math.min(.52 + r() * .38, (until - at) / 1000),
+      sw: 0, sz: 2 + r() * 3, c: PINK[(r() * PINK.length) | 0] });
+  }
+  return ps;
+}
+function embers(r, at, until, n, rise, area) {
+  const ps = [];
+  for (let i = 0; i < n; i++) ps.push({ kind: 'e', at: at + r() * (until - at), x: area.x + r() * area.w, y: area.y + r() * area.h, v: rise * (.5 + r()),
+    life: 1.4 + r() * 1.6, sz: 1.5 + r() * 2.5, w: r() * 6, c: PINK[(r() * PINK.length) | 0] });
+  return ps;
+}
+/* 爆點從畫面量：頭像中心＝吸入與爆炸點；那一句的左、中、右＝第二下的三個小爆點。k＝跟平板比的縮放（短邊 ÷ 800） */
+function layoutXY(el, root) { let x = 0, y = 0; while (el && el !== root) { x += el.offsetLeft; y += el.offsetTop; el = el.offsetParent; } return [x, y]; }
+function buildFx(f, d) {
+  const scr = f.querySelector('.scr'), { W, H } = DEV[d], k = Math.min(W, H) / 800, r = rng(d.charCodeAt(0) * 977);
+  const hav = f.querySelector('.ov .hav'), seat = f.querySelector('.ov .seat');
+  const [hx, hy] = layoutXY(hav, scr), cx = hx + hav.offsetWidth / 2, cy = hy + hav.offsetHeight / 2;
+  const [sx, sy] = layoutXY(seat, scr), sy2 = sy + seat.offsetHeight / 2, sz = Math.max(k, .55);
+  // 「強者登場」先出現在畫面正中間：--cy ＝ 從標題位置移到正中間的距離；吸入與第一下爆炸也在正中間
+  const t1 = f.querySelector('.ov .t1'), [, ty] = layoutXY(t1, scr), mx = W / 2, my = H / 2;
+  t1.style.setProperty('--cy', (my - (ty + t1.offsetHeight / 2)) + 'px');
+  const g = f.querySelector('.ov .glow'); g.style.left = mx + 'px'; g.style.top = my + 'px';
+  return [ ...implode(r, 150, mx, my, Math.round(220 * Math.max(k, .6)), 1100, 800 * Math.max(k, .6)),
+    ...burst(r, 1100, mx, my, 360, 450 * k, 1800 * k, { life: 2.0, size: 3.6 * sz, g: 140 * k }),
+    ...burst(r, 1150, mx, my, 120, 150 * k, 600 * k, { life: 2.6, size: 5 * sz, g: 50 * k }),
+    ring(1100, mx, my, 680 * k, 22 * sz), ring(1220, mx, my, 900 * k, 10 * sz, 1),
+    // 2.6 秒 頭像彈出：小一號的爆點
+    ...burst(r, 2600, cx, cy, 90, 150 * k, 700 * k, { life: 1.1, size: 3 * sz }), ring(2600, cx, cy, 420 * k, 10 * sz, .6),
+    // 3.0 秒起 那一句逐字亮：左、中、右
+    ...burst(r, 3000, sx + 20 * k, sy2, 40, 150 * k, 500 * k, { life: .9, size: 2.6 * sz }),
+    ...burst(r, 3240, sx + seat.offsetWidth / 2, sy2, 90, 200 * k, 800 * k, { life: 1.1, size: 3 * sz }),
+    ring(3240, sx + seat.offsetWidth / 2, sy2, 360 * k, 10 * sz, .6),
+    ...burst(r, 3600, sx + seat.offsetWidth - 20 * k, sy2, 40, 150 * k, 500 * k, { life: .9, size: 2.6 * sz }),
+    ...embers(r, 1500, 6000, Math.round(130 * Math.max(k, .6)), -60 * k, { x: W * .12, y: H * .4, w: W * .76, h: H * .58 }) ];
+}
+function draw(ctx, ps, t, W, H) {
+  ctx.clearRect(0, 0, W, H);
+  ctx.globalCompositeOperation = 'lighter';
+  for (const p of ps) {
+    const s = (t - p.at) / 1000; if (s < 0) continue;
+    if (p.kind === 'b') {
+      if (s > p.life) continue;
+      const pos = (q) => { const d = p.v * (1 - Math.exp(-p.k * q)) / p.k; return [p.x + Math.cos(p.a) * d, p.y + Math.sin(p.a) * d + .5 * p.g * q * q]; };
+      const [x, y] = pos(s), [x0, y0] = pos(Math.max(0, s - .045));
+      ctx.strokeStyle = p.c; ctx.globalAlpha = Math.max(0, (1 - s / p.life) * (.75 + .25 * Math.sin(p.tw + s * 40)));
+      ctx.lineWidth = p.sz * (1 - s / p.life * .6); ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x, y); ctx.stroke();
+    } else if (p.kind === 'r') {
+      if (s > p.life) continue;
+      const u = s / p.life, rad = p.R * (1 - Math.exp(-5 * s));
+      ctx.globalAlpha = (1 - u) * .9; ctx.strokeStyle = '#FAD6DC'; ctx.lineWidth = p.w * (1 - u) + .5;
+      ctx.beginPath(); ctx.arc(p.x, p.y, rad, 0, Math.PI * 2); ctx.stroke();
+    } else if (p.kind === 'i') {
+      if (s > p.dur) continue;
+      const q = (v) => Math.pow(Math.max(0, v) / p.dur, 2.2), u = q(s), u0 = q(s - .06);
+      const an = p.a + p.sw * u, a0 = p.a + p.sw * u0;   // 一邊飛一邊稍微旋進去
+      ctx.globalAlpha = Math.min(1, s / p.dur * 3); ctx.strokeStyle = p.c; ctx.lineWidth = p.sz; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(p.x + Math.cos(a0) * p.R * (1 - u0), p.y + Math.sin(a0) * p.R * (1 - u0)); ctx.lineTo(p.x + Math.cos(an) * p.R * (1 - u), p.y + Math.sin(an) * p.R * (1 - u)); ctx.stroke();
+    } else if (p.kind === 'e') {
+      if (s > p.life) continue;
+      ctx.globalAlpha = Math.sin(Math.PI * s / p.life) * .85; ctx.fillStyle = p.c;
+      ctx.beginPath(); ctx.arc(p.x + Math.sin(p.w + s * 3) * 14, p.y + p.v * s, p.sz, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+}
+
+const frames = [...document.querySelectorAll('.frame')];
+const state = new Map();
+frames.forEach(f => {
+  const d = f.id.slice(1); f.innerHTML = screen(d);
+  state.set(f, { d, ps: [], ctx: f.querySelector('canvas').getContext('2d'), start: 0, hold: null });
+});
+function fit() { frames.forEach(f => { const d = f.id.slice(1); f.querySelector('.scr').style.setProperty('--s', f.clientWidth / DEV[d].W); }); }
+new ResizeObserver(fit).observe(document.body); fit();
+/* 爆點位置在「開始播的那一刻」才量（2026-10-27 使用者：左上角為何會有爆炸）——
+   原本在頁面一載入就量，那時頁面可能還沒排版（例如還沒顯示出來），頭像與那一句量到 0，爆點全跑到左上角。
+   量不到（寬度是 0）就先不播，稍後再試 */
+function play(f) {
+  const st = state.get(f); clearTimeout(st.again); clearTimeout(st.retry);
+  if (!f.querySelector('.ov .hav').offsetWidth) { st.retry = setTimeout(() => play(f), 300); return; }
+  st.ps = buildFx(f, st.d);
+  f.classList.remove('play', 'out'); void f.offsetWidth; f.classList.add('play'); st.start = performance.now(); st.hold = null;
+}
+/* 停在全國第一名這個畫面，直到點螢幕任一處（4.0 秒「點螢幕任一處繼續」出現之後才接受，之前點不會中斷）。
+   預覽頁：繼續之後 3 秒自動重播；正式版播一次就結束 */
+const READY = 4000;
+function proceed(f) {
+  const st = state.get(f);
+  if (!f.classList.contains('play') || f.classList.contains('out') || performance.now() - st.start < READY) return;
+  f.classList.add('out'); st.again = setTimeout(() => play(f), 3000);
+}
+frames.forEach(f => {
+  f.querySelector('.ov').addEventListener('click', () => proceed(f));
+  f.tabIndex = 0; f.setAttribute('aria-label', '特效預覽，播完按 Enter 繼續');
+  f.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); proceed(f); } });
+});
+function tick(now) {
+  frames.forEach(f => { const st = state.get(f); if (!f.classList.contains('play')) return; const t = st.hold ?? now - st.start;
+    if (t < 9000 || st.hold != null) draw(st.ctx, st.ps, t, DEV[st.d].W, DEV[st.d].H); });
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+frames.forEach((f, i) => setTimeout(() => play(f), 400 + i * 300));
+document.querySelectorAll('[data-replay]').forEach(b => b.addEventListener('click', () => play(document.getElementById(b.dataset.replay))));
+// 檢查用：停在某一毫秒（CSS 動畫與光點一起停）
+window.freezeAt = (id, t) => { const f = document.getElementById(id); play(f); void f.offsetWidth; f.getAnimations({ subtree: true }).forEach(a => { a.pause(); a.currentTime = t; });
+  const st = state.get(f); st.hold = t; draw(st.ctx, st.ps, t, DEV[st.d].W, DEV[st.d].H); };
+</script>

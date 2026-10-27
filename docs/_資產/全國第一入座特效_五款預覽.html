@@ -1,0 +1,409 @@
+<title>全國第一入座特效</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* 版面：深色單一主題（跟智慧計分板同一套 --dk-* 與 --brand），一款一段：說明在上、1280×800 平板外框在下（JS 等比例縮小）。
+   ⚠ 刻意不理「減少動態效果」—— 使用者的電腦開著它，預覽要能動（2026-10-17 記過）。 */
+:root {
+  --bar: #191718; --bg: #221F20; --raised: #2B2829; --tile: #343132; --line: #524D4E;
+  --text: #FFFFFF; --text2: #C9C4C1; --text3: #A39E9B;
+  --brand: #FAD6DC; --brand-tint: #FFECF1; --ink: #2E2B2C; --gold: #E8B89B;
+  --f: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bar); color: var(--text); font-family: var(--f); line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 32px 64px; }
+.wrap { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 56px; }
+header h1 { margin: 0; font-size: clamp(26px, 4vw, 38px); line-height: 1.25; text-wrap: balance; }
+header p { margin: 10px 0 0; color: var(--text2); font-size: 15px; max-width: 70ch; }
+.trig { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 8px; }
+.trig span { background: var(--raised); border: 1px solid var(--line); border-radius: 999px; padding: 4px 14px; font-size: 13px; color: var(--text2); }
+.trig b { color: var(--brand); font-weight: 700; }
+
+section { display: flex; flex-direction: column; gap: 14px; }
+.sh { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.sh .k { flex: none; width: 40px; height: 40px; border-radius: 12px; background: var(--brand); color: var(--ink);
+  display: inline-flex; align-items: center; justify-content: center; font-weight: 900; font-size: 20px; align-self: center; }
+.sh h2 { margin: 0; font-size: 24px; }
+.sh .ref { color: var(--text3); font-size: 14px; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px 20px; font-size: 14px; color: var(--text2); }
+.facts div { min-width: 0; }
+.facts em { display: block; font-style: normal; font-size: 12px; color: var(--text3); letter-spacing: .04em; }
+.ctl { display: flex; gap: 10px; align-items: center; }
+.ctl button { background: var(--raised); color: var(--text); border: 1px solid var(--line); border-radius: 10px; height: 36px; padding: 0 16px;
+  font: 700 14px var(--f); cursor: pointer; }
+.ctl button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.ctl small { color: var(--text3); font-size: 12px; }
+
+/* ═══ 平板外框 ═══ */
+.frame { position: relative; width: 100%; aspect-ratio: 1280 / 800; max-width: 100%; border-radius: 18px; overflow: hidden;
+  border: 6px solid #0f0e0e; background: var(--bg); box-shadow: 0 20px 50px rgba(0,0,0,.45); }
+.scr { position: absolute; left: 0; top: 0; width: 1280px; height: 800px; transform-origin: 0 0; transform: scale(var(--s, .7));
+  background: var(--bg); overflow: hidden; display: flex; flex-direction: column; }
+.top { height: 72px; flex: none; background: var(--bar); display: flex; align-items: center; gap: 40px; padding: 0 28px; font-size: 18px; }
+.top .g em { font-style: normal; color: var(--text3); font-size: 14px; margin-right: 8px; }
+.top .sp { flex: 1; }
+.board { position: relative; flex: 1; padding: 16px 24px 20px; display: grid; gap: 12px 20px;
+  grid-template-columns: 360px minmax(0, 1fr) 360px; grid-template-rows: 226px minmax(0, 1fr) 184px;
+  grid-template-areas: "tl top tr" "left mid right" "me me me";
+  background: radial-gradient(circle at 50% 45%, rgba(250,214,220,.07), transparent 60%); }
+.stars { position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(1.5px 1.5px at 12% 20%, rgba(250,214,220,.5), transparent),
+    radial-gradient(1px 1px at 80% 30%, rgba(250,214,220,.45), transparent), radial-gradient(1.5px 1.5px at 30% 70%, rgba(250,214,220,.4), transparent),
+    radial-gradient(1px 1px at 65% 80%, rgba(250,214,220,.5), transparent), radial-gradient(1px 1px at 45% 15%, rgba(250,214,220,.4), transparent),
+    radial-gradient(1.5px 1.5px at 90% 65%, rgba(250,214,220,.35), transparent), radial-gradient(1px 1px at 8% 55%, rgba(250,214,220,.45), transparent); }
+.ec { position: relative; z-index: 1; padding: 48px 16px 14px; background: var(--raised); border: 2px solid var(--line); border-radius: 12px; align-self: center; }
+.ec.top-c { grid-area: top; width: 360px; justify-self: center; align-self: start; }
+.ec.left-c { grid-area: left; } .ec.right-c { grid-area: right; }
+.pos { position: absolute; top: 10px; left: 12px; background: var(--tile); font-size: 20px; font-weight: 800; padding: 4px 18px; border-radius: 999px; line-height: 1.3; }
+.id { display: flex; align-items: center; gap: 12px; }
+.av { flex: none; width: 92px; height: 92px; border-radius: 50%; background: var(--brand); color: var(--ink); display: flex; align-items: center; justify-content: center;
+  font-size: 40px; font-weight: 900; }
+.who { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.who .nm { font-size: 23px; line-height: 1.2; }
+.rk { align-self: flex-start; font-size: 14px; padding: 2px 10px; border-radius: 999px; background: var(--brand); color: var(--ink); font-weight: 700; }
+.fang { margin-top: 12px; height: 56px; border-radius: 12px; background: var(--brand); color: var(--ink); display: flex; align-items: center; justify-content: center;
+  font-size: 24px; font-weight: 800; }
+.mid { grid-area: mid; position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+.mid .hn { color: var(--brand); font-size: 40px; font-weight: 800; }
+.mid .dl { color: var(--text2); font-size: 22px; }
+.mid .lj { margin-top: 10px; height: 52px; padding: 0 30px; border-radius: 12px; border: 1px solid var(--line); background: var(--raised); display: flex; align-items: center; font-size: 22px; font-weight: 800; }
+.tr { grid-area: tr; justify-self: end; align-self: start; display: grid; grid-template-columns: max-content max-content; gap: 10px; z-index: 1; }
+.tr span { height: 48px; padding: 0 18px; display: flex; align-items: center; background: var(--raised); border: 1px solid var(--line); border-radius: 12px; font-size: 20px; font-weight: 800; }
+.me { grid-area: me; position: relative; z-index: 1; background: var(--raised); border: 2px solid var(--brand); border-radius: 12px; display: flex; align-items: center; gap: 22px; padding: 0 26px; }
+.me .av { width: 120px; height: 120px; font-size: 52px; }
+.me .who .nm { font-size: 34px; }
+.me .sc { margin-left: 26px; padding-left: 26px; border-left: 1px solid var(--line); display: flex; flex-direction: column; }
+.me .sc em { font-style: normal; color: var(--text3); font-size: 16px; }
+.me .sc b { font-size: 76px; line-height: 1; font-weight: 800; }
+.me .bt { margin-left: auto; display: flex; gap: 12px; }
+.me .bt span { height: 120px; width: 150px; border-radius: 12px; background: var(--brand); color: var(--ink); display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: 900; }
+.me .bt span.g2 { background: var(--tile); color: var(--text); }
+.ztag { position: absolute; top: -14px; right: 22px; background: var(--brand); color: var(--ink); font-size: 16px; font-weight: 800; padding: 5px 14px; border-radius: 999px; line-height: 1; }
+
+/* 特效共用 */
+.ov { position: absolute; inset: 0; z-index: 20; pointer-events: none; }
+.ov * { animation-fill-mode: both; animation-timing-function: cubic-bezier(.2,.8,.2,1); }
+.frame:not(.play) .ov, .frame:not(.play) .keep { visibility: hidden; }
+.crown { width: 100%; height: 100%; display: block; }
+.no1 { position: absolute; z-index: 5; top: -16px; right: 18px; display: inline-flex; align-items: center; gap: 6px; background: var(--brand); color: var(--ink);
+  font-size: 17px; font-weight: 900; padding: 6px 14px 6px 10px; border-radius: 999px; line-height: 1; box-shadow: 0 0 0 3px var(--bg); }
+.no1 svg { width: 22px; height: 22px; }
+
+/* ── A 王座登場 ── */
+.ovA .scrim { position: absolute; inset: 0; background: rgba(20,18,19,.9); }
+.play .ovA .scrim { animation: aScrim 6.4s both; }
+@keyframes aScrim { 0% { opacity: 0 } 6% { opacity: 1 } 62% { opacity: 1 } 74% { opacity: 0 } 100% { opacity: 0 } }
+.ovA .band { position: absolute; left: -40%; top: 290px; width: 180%; height: 220px; transform: skewY(-8deg);
+  background: linear-gradient(90deg, transparent, rgba(250,214,220,.0) 20%, rgba(250,214,220,.55) 48%, #fff 50%, rgba(250,214,220,.55) 52%, transparent 80%);
+  background-size: 50% 100%; background-repeat: no-repeat; }
+.play .ovA .band { animation: aBand 6.4s both; }
+@keyframes aBand { 0% { background-position: -60% 0; opacity: 0 } 6% { opacity: 1 } 26% { background-position: 160% 0; opacity: 1 } 30% { opacity: 0 } 100% { opacity: 0 } }
+.ovA .stripe { position: absolute; left: 0; right: 0; top: 300px; height: 200px; transform: skewY(-8deg); background: linear-gradient(90deg, transparent, rgba(250,214,220,.16), transparent); }
+.play .ovA .stripe { animation: aStripe 6.4s both; }
+@keyframes aStripe { 0%, 14% { transform: skewY(-8deg) scaleX(0) } 26% { transform: skewY(-8deg) scaleX(1) } 62% { opacity: 1 } 72%, 100% { opacity: 0 } }
+.ovA .hero { position: absolute; left: 0; right: 0; top: 168px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.play .ovA .hero { animation: aHero 6.4s both; }
+@keyframes aHero { 0%, 12% { opacity: 0; transform: scale(1.4) } 22% { opacity: 1; transform: scale(1) } 60% { opacity: 1; transform: translateY(0) scale(1) }
+  74% { opacity: 0; transform: translateY(-150px) scale(.35) } 100% { opacity: 0 } }
+.ovA .hav { width: 190px; height: 190px; border-radius: 50%; background: var(--brand); color: var(--ink); display: flex; align-items: center; justify-content: center;
+  font-size: 84px; font-weight: 900; box-shadow: 0 0 0 6px var(--bg), 0 0 0 10px var(--brand), 0 0 80px rgba(250,214,220,.6); }
+.ovA .kick { margin-top: 26px; color: var(--text2); font-size: 22px; letter-spacing: .2em; }
+.ovA .t1 { font-size: 104px; font-weight: 900; line-height: 1.05; letter-spacing: .08em; color: #fff; text-shadow: 0 0 30px rgba(250,214,220,.8); }
+.ovA .nm2 { margin-top: 10px; font-size: 30px; font-weight: 800; color: var(--brand); }
+.play .keepA { animation: popIn 6.4s both; }
+@keyframes popIn { 0%, 70% { opacity: 0; transform: scale(.3) } 76% { opacity: 1; transform: scale(1.25) } 80%, 100% { opacity: 1; transform: scale(1) } }
+
+/* ── B 四家對決 ── */
+.ovB .scrim { position: absolute; inset: 0; background: rgba(20,18,19,.92); }
+.play .ovB .scrim { animation: bScrim 6.6s both; }
+@keyframes bScrim { 0% { opacity: 0 } 5% { opacity: 1 } 70% { opacity: 1 } 82%, 100% { opacity: 0 } }
+.ovB .row { position: absolute; left: 0; right: 0; top: 90px; display: flex; justify-content: center; align-items: center; gap: 22px; }
+.pt { position: relative; width: 230px; height: 440px; transform: skewX(-6deg); background: linear-gradient(180deg, var(--tile), var(--raised)); border: 2px solid var(--line);
+  border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 34px; overflow: hidden; }
+.pt > * { transform: skewX(6deg); }
+.pt .av { width: 130px; height: 130px; font-size: 58px; margin-bottom: 26px; }
+.pt .nm { font-size: 30px; font-weight: 800; }
+.pt .rk { margin-top: 10px; align-self: center; font-size: 16px; }
+.pt .seat { position: absolute; top: 18px; left: 22px; font-size: 18px; color: var(--text3); font-weight: 800; }
+.pt.big { width: 290px; height: 520px; border: 0; background: linear-gradient(180deg, #4a3a3d, var(--raised)); }
+.pt.big::before { content: ''; position: absolute; inset: -2px; border-radius: 14px; padding: 4px;
+  background: conic-gradient(from var(--a, 0deg), var(--brand), #fff, var(--brand), rgba(250,214,220,.2), var(--brand));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; transform: none; }
+.play .pt.big::before { animation: spinA 2.4s linear infinite; }
+@property --a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@keyframes spinA { to { --a: 360deg; } }
+.pt.big .av { width: 160px; height: 160px; font-size: 70px; box-shadow: 0 0 60px rgba(250,214,220,.55); }
+.pt.big .nm { font-size: 38px; }
+.pt .crest { position: absolute; top: 22px; left: 50%; transform: translateX(-50%) skewX(6deg); text-align: center; }
+.pt .crest b { display: block; font-size: 64px; font-weight: 900; line-height: 1; color: var(--brand); text-shadow: 0 0 24px rgba(250,214,220,.7); }
+.pt .crest span { font-size: 18px; font-weight: 800; letter-spacing: .2em; color: #fff; }
+.play .ovB .p1 { animation: bIn1 6.6s both; } .play .ovB .p2 { animation: bIn2 6.6s both; }
+.play .ovB .p3 { animation: bIn1 6.6s both; animation-delay: .12s; } .play .ovB .p4 { animation: bIn2 6.6s both; animation-delay: .12s; }
+@keyframes bIn1 { 0%, 4% { opacity: 0; translate: 0 -700px } 16% { opacity: 1; translate: 0 0 } 70% { opacity: 1; translate: 0 0 } 82%, 100% { opacity: 0; translate: 0 -700px } }
+@keyframes bIn2 { 0%, 4% { opacity: 0; translate: 0 700px } 16% { opacity: 1; translate: 0 0 } 70% { opacity: 1; translate: 0 0 } 82%, 100% { opacity: 0; translate: 0 700px } }
+.play .ovB .pt.big { animation: bBig 6.6s both; }
+@keyframes bBig { 0%, 18% { opacity: 0; scale: 1.6 } 28% { opacity: 1; scale: 1 } 31% { scale: 1.05 } 34%, 70% { opacity: 1; scale: 1 } 82%, 100% { opacity: 0; scale: .8 } }
+.ovB .vs { position: absolute; left: 0; right: 0; bottom: 70px; text-align: center; font-size: 36px; font-weight: 900; letter-spacing: .3em; color: #fff; }
+.ovB .vs small { display: block; font-size: 18px; letter-spacing: .1em; color: var(--text3); font-weight: 700; }
+.play .ovB .vs { animation: bVs 6.6s both; }
+@keyframes bVs { 0%, 30% { opacity: 0; transform: translateY(20px) } 38%, 70% { opacity: 1; transform: none } 80%, 100% { opacity: 0 } }
+
+/* ── C 王冠落座 ── */
+.ovC .flash { position: absolute; inset: 0; background: rgba(20,18,19,.55); }
+.play .ovC .flash { animation: cDim 6s both; }
+@keyframes cDim { 0% { opacity: 0 } 6% { opacity: 1 } 40% { opacity: 1 } 52%, 100% { opacity: 0 } }
+/* 落點＝卡片上緣正中（對家卡上緣在畫面 y 88，王冠 52 寬、往上突出 26） */
+.ovC .drop { position: absolute; left: 614px; top: 62px; width: 52px; height: 52px; }
+.play .ovC .drop { animation: cDrop 6s both; }
+@keyframes cDrop { 0%, 6% { transform: translateY(-300px) scale(3.2) rotate(-25deg); opacity: 0 } 8% { opacity: 1 } 20% { transform: translateY(0) scale(1.6) rotate(0) }
+  24% { transform: translateY(-24px) scale(1.4) } 28% { transform: translateY(0) scale(1.2) } 31% { transform: translateY(-6px) scale(1.05) } 34%, 100% { transform: translateY(0) scale(1); opacity: 1 } }
+.ovC .ring { position: absolute; left: 640px; top: 100px; width: 10px; height: 10px; margin: -5px; border-radius: 50%; border: 6px solid var(--brand); }
+.play .ovC .ring { animation: cRing 6s both; } .play .ovC .ring.r2 { animation-delay: .18s; }
+@keyframes cRing { 0%, 20% { opacity: 0; transform: scale(1) } 21% { opacity: 1 } 40% { opacity: 0; transform: scale(90) ; border-width: .3px } 100% { opacity: 0 } }
+.ovC .ban { position: absolute; left: 0; right: 0; top: 330px; height: 120px; display: flex; align-items: center; justify-content: center; gap: 22px;
+  background: linear-gradient(90deg, transparent, rgba(250,214,220,.96) 18%, rgba(250,214,220,.96) 82%, transparent); color: var(--ink); }
+.ovC .ban svg { width: 52px; height: 52px; }
+.ovC .ban b { font-size: 46px; font-weight: 900; letter-spacing: .1em; }
+.ovC .ban span { font-size: 26px; font-weight: 800; }
+.play .ovC .ban { animation: cBan 6s both; }
+@keyframes cBan { 0%, 26% { transform: scaleX(0); opacity: 0 } 32% { transform: scaleX(1); opacity: 1 } 66% { transform: scaleX(1); opacity: 1 } 74%, 100% { transform: scaleX(1.1); opacity: 0 } }
+/* 落定之後王冠變成卡上的常駐標記（同一顆，貼在卡片上緣正中） */
+.keepC { position: absolute; z-index: 6; left: 50%; top: -28px; width: 52px; height: 52px; margin-left: -26px; filter: drop-shadow(0 4px 10px rgba(0,0,0,.5)); }
+.play .keepC { animation: cKeep 6s both; }
+@keyframes cKeep { 0%, 33% { opacity: 0 } 34%, 100% { opacity: 1 } }
+.play .ovC .drop { animation-name: cDrop, cHide; animation-duration: 6s, 6s; }
+@keyframes cHide { 0%, 33% { visibility: visible } 34%, 100% { visibility: hidden } }
+
+/* ── D 傳說光柱 ── */
+.ovD .dim { position: absolute; inset: 0; background: rgba(20,18,19,.6); }
+.play .ovD .dim { animation: dDim 6.4s both; }
+@keyframes dDim { 0% { opacity: 0 } 6% { opacity: 1 } 58% { opacity: 1 } 70%, 100% { opacity: 0 } }
+.ovD .pillar { position: absolute; left: 520px; width: 240px; top: 0; height: 330px; transform-origin: 50% 100%;
+  background: linear-gradient(90deg, transparent, rgba(250,214,220,.35) 30%, #fff 50%, rgba(250,214,220,.35) 70%, transparent);
+  -webkit-mask: linear-gradient(0deg, #000 30%, transparent); mask: linear-gradient(0deg, #000 30%, transparent); }
+.play .ovD .pillar { animation: dPillar 6.4s both; }
+@keyframes dPillar { 0%, 4% { transform: scaleY(0) scaleX(.3); opacity: 0 } 16% { transform: scaleY(1) scaleX(1); opacity: 1 } 50% { opacity: .9 } 62%, 100% { opacity: 0; transform: scaleY(1) scaleX(1.4) } }
+.ovD .rays { position: absolute; left: 640px; top: 201px; width: 1100px; height: 1100px; margin: -550px; border-radius: 50%;
+  background: repeating-conic-gradient(rgba(250,214,220,.28) 0 6deg, transparent 6deg 18deg);
+  -webkit-mask: radial-gradient(circle, #000 15%, transparent 60%); mask: radial-gradient(circle, #000 15%, transparent 60%); }
+.play .ovD .rays { animation: dRays 6.4s both; }
+@keyframes dRays { 0%, 10% { opacity: 0; transform: rotate(0) scale(.4) } 22% { opacity: 1; transform: rotate(20deg) scale(1) } 58% { opacity: 1; transform: rotate(70deg) } 70%, 100% { opacity: 0; transform: rotate(90deg) } }
+/* 翻牌：卡片本身翻面露出 #1，再翻回 */
+.flip { perspective: 1400px; }
+.flipin { position: relative; transform-style: preserve-3d; }
+.play .flipD .flipin { animation: dFlip 6.4s both; }
+@keyframes dFlip { 0%, 20% { transform: rotateY(0) } 28% { transform: rotateY(180deg) } 52% { transform: rotateY(180deg) } 60%, 100% { transform: rotateY(360deg) } }
+.flipin > .face { backface-visibility: hidden; }
+.flipin > .back { position: absolute; inset: 0; transform: rotateY(180deg); backface-visibility: hidden; border-radius: 12px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; background: linear-gradient(160deg, #fff, var(--brand) 55%, #f3b9c4); color: var(--ink); }
+.back b { font-size: 120px; font-weight: 900; line-height: .9; letter-spacing: -4px; }
+.back span { font-size: 26px; font-weight: 900; letter-spacing: .2em; }
+.back small { font-size: 16px; font-weight: 700; margin-top: 4px; }
+/* 整場常駐：外框流光（同會員 App 名人玩家閃卡的粉白箔面那一族） */
+.holo::after { content: ''; position: absolute; inset: -4px; border-radius: 15px; padding: 4px; pointer-events: none;
+  background: conic-gradient(from var(--a, 0deg), var(--brand), #fff 12%, var(--brand) 25%, rgba(250,214,220,.25) 50%, var(--brand) 75%, #fff 88%, var(--brand));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; opacity: 0; }
+.play .holo::after { animation: holoIn 6.4s both, spinA 3s linear infinite; }
+@keyframes holoIn { 0%, 60% { opacity: 0 } 70%, 100% { opacity: 1 } }
+
+/* ── E 全場挑戰 ── */
+.ovE .ban { position: absolute; left: 24px; right: 24px; top: 14px; height: 150px; border-radius: 16px; overflow: hidden; display: flex; align-items: center; gap: 26px; padding: 0 34px;
+  background: var(--ink); border: 3px solid var(--brand); box-shadow: 0 18px 50px rgba(0,0,0,.6); }
+.ovE .ban::before { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(250,214,220,.28) 45%, transparent 60%); background-size: 220% 100%; }
+.play .ovE .ban::before { animation: eShine 2.2s linear infinite; }
+@keyframes eShine { from { background-position: 120% 0 } to { background-position: -120% 0 } }
+.ovE .ban .av { width: 104px; height: 104px; font-size: 46px; box-shadow: 0 0 0 4px var(--ink), 0 0 0 7px var(--brand); }
+.ovE .ban .tx { position: relative; display: flex; flex-direction: column; gap: 2px; }
+.ovE .ban .tx em { font-style: normal; font-size: 20px; font-weight: 800; color: var(--brand); letter-spacing: .14em; }
+.ovE .ban .tx b { font-size: 46px; font-weight: 900; line-height: 1.15; }
+.ovE .ban .tx span { font-size: 20px; color: var(--text2); }
+.ovE .ban .goal { position: relative; margin-left: auto; text-align: right; }
+.ovE .ban .goal em { display: block; font-style: normal; font-size: 18px; color: var(--text3); }
+.ovE .ban .goal b { font-size: 34px; font-weight: 900; color: var(--brand); }
+.play .ovE .ban { animation: eBan 6.4s both; }
+@keyframes eBan { 0%, 4% { transform: translateY(-200px) } 12% { transform: translateY(0) } 64% { transform: translateY(0); opacity: 1 } 74%, 100% { transform: translateY(-40px) scale(.4); opacity: 0 } }
+.keepE { display: inline-flex; align-items: center; gap: 8px; background: var(--brand); color: var(--ink); font-weight: 900; font-size: 17px; padding: 6px 14px 6px 10px; border-radius: 999px; }
+.keepE svg { width: 22px; height: 22px; }
+.play .keepE { animation: popIn 6.4s both; }
+
+/* 比較表與待決定 */
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 640px; }
+th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--text3); font-weight: 700; font-size: 12px; letter-spacing: .04em; background: var(--raised); }
+tr:last-child td { border-bottom: 0; }
+td b { color: var(--brand); }
+.open { background: var(--raised); border: 1px solid var(--line); border-radius: 14px; padding: 18px 22px; }
+.open h3 { margin: 0 0 8px; font-size: 18px; }
+.open ol { margin: 0; padding-left: 20px; color: var(--text2); font-size: 14px; display: flex; flex-direction: column; gap: 6px; }
+.open ol b { color: var(--text); }
+.note { color: var(--text3); font-size: 13px; }
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="cr" viewBox="0 0 64 64">
+      <path d="M8 22 L20 34 L32 12 L44 34 L56 22 L51 50 H13 Z" fill="#FAD6DC" stroke="#2E2B2C" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="13" y="50" width="38" height="7" rx="2" fill="#FAD6DC" stroke="#2E2B2C" stroke-width="3"/>
+      <circle cx="32" cy="12" r="4" fill="#fff" stroke="#2E2B2C" stroke-width="2.5"/>
+      <circle cx="8" cy="22" r="3.5" fill="#fff" stroke="#2E2B2C" stroke-width="2.5"/>
+      <circle cx="56" cy="22" r="3.5" fill="#fff" stroke="#2E2B2C" stroke-width="2.5"/>
+      <path d="M22 41 h20" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".8"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <header>
+    <h1>全國第一入座：五種開局特效</h1>
+    <p>智慧計分板上，這一場有<b style="color:var(--brand)">本季段位排行榜第 1 名</b>的人時，第一將第一局一開始，四台平板一起播一次。下面每一款都是平板實際尺寸等比例縮小，從「對家是全國第一」的那台平板看出去；名字是範例。</p>
+    <div class="trig">
+      <span>什麼時候播：<b>定好座位、第 1 將第 1 局剛開始</b></span>
+      <span>播幾次：<b>一場一次</b>（重新整理不再播）</span>
+      <span>誰看得到：<b>同桌四台</b></span>
+    </div>
+  </header>
+
+  <section>
+    <div class="sh"><span class="k">A</span><h2>王座登場</h2><span class="ref">參考：王者榮耀「國服第一」載入卡、Apex 英雄「冠軍小隊」開場</span></div>
+    <div class="facts">
+      <div><em>怎麼演</em>畫面暗下、一道粉光斜掃過，全國第一的大頭像與「全國第一」四個大字壓在中間，最後縮回他的座位卡</div>
+      <div><em>擋住畫面</em>約 4 秒（開局那一刻本來就沒人要按）</div>
+      <div><em>播完留下</em>他的卡片右上角一顆「全國第一」膠囊，整場都在</div>
+    </div>
+    <div class="ctl"><button type="button" data-replay="fA">重播</button><small>每 9 秒自動重播</small></div>
+    <div class="frame" id="fA"></div>
+  </section>
+
+  <section>
+    <div class="sh"><span class="k">B</span><h2>四家對決</h2><span class="ref">參考：雀魂開局四家立繪、快打旋風對戰前的 VS 畫面</span></div>
+    <div class="facts">
+      <div><em>怎麼演</em>四家直式卡片從上下交錯滑進來排成一排，全國第一那張最大、外框流光、頭上一個「No.1」，下面寫第 1 將開局</div>
+      <div><em>擋住畫面</em>約 4.5 秒</div>
+      <div><em>播完留下</em>什麼都不留（只在開局那一刻有儀式感）</div>
+    </div>
+    <div class="ctl"><button type="button" data-replay="fB">重播</button><small>每 9 秒自動重播</small></div>
+    <div class="frame" id="fB"></div>
+  </section>
+
+  <section>
+    <div class="sh"><span class="k">C</span><h2>王冠落座</h2><span class="ref">參考：皇室戰爭的王冠、傳說對決的段位冠冕</span></div>
+    <div class="facts">
+      <div><em>怎麼演</em>畫面只稍微暗一下，一頂王冠從天而降、彈兩下落在他的卡片上，震出一圈波紋，畫面中間展開一條「全國第一 已入座」</div>
+      <div><em>擋住畫面</em>不擋（半透明，約 2 秒就亮回來）</div>
+      <div><em>播完留下</em>王冠一直戴在他的卡片上緣</div>
+    </div>
+    <div class="ctl"><button type="button" data-replay="fC">重播</button><small>每 9 秒自動重播</small></div>
+    <div class="frame" id="fC"></div>
+  </section>
+
+  <section>
+    <div class="sh"><span class="k">D</span><h2>傳說光柱</h2><span class="ref">參考：爐石戰記升上傳說的光柱、英雄聯盟「菁英」段位邊框</span></div>
+    <div class="facts">
+      <div><em>怎麼演</em>他的卡片背後升起一道光柱、放射光束轉起來，卡片整張翻面露出大大的「#1」，再翻回正面</div>
+      <div><em>擋住畫面</em>半透明約 3 秒，其他卡片照樣看得到</div>
+      <div><em>播完留下</em>他的卡片外框一直有粉白流光在轉（跟會員 App 名人玩家閃卡同一族）</div>
+    </div>
+    <div class="ctl"><button type="button" data-replay="fD">重播</button><small>每 9 秒自動重播</small></div>
+    <div class="frame" id="fD"></div>
+  </section>
+
+  <section>
+    <div class="sh"><span class="k">E</span><h2>全場挑戰</h2><span class="ref">參考：Apex 英雄「擊殺王」廣播、決勝時刻的「懸賞目標」</span></div>
+    <div class="facts">
+      <div><em>怎麼演</em>上方滑下一張黑底粉框的廣播卡：「這一場有全國第一同桌」，右邊寫「本場目標：挑戰全國第一」</div>
+      <div><em>擋住畫面</em>只蓋上面那一排，約 4 秒</div>
+      <div><em>播完留下</em>廣播縮成頂條上一顆「全國第一同桌」膠囊；全國第一自己那台改寫「你是全國第一 · 守住王座」</div>
+    </div>
+    <div class="ctl"><button type="button" data-replay="fE">重播</button><small>每 9 秒自動重播</small></div>
+    <div class="frame" id="fE"></div>
+  </section>
+
+  <section>
+    <div class="sh"><h2>五款怎麼選</h2></div>
+    <div class="tbl"><table>
+      <thead><tr><th>款式</th><th>氣勢</th><th>擋住畫面</th><th>整場留下的標記</th><th>做工</th></tr></thead>
+      <tbody>
+        <tr><td><b>A 王座登場</b></td><td>最強，像頒獎</td><td>約 4 秒全擋</td><td>卡片上的「全國第一」膠囊</td><td>小（一層全螢幕＋膠囊）</td></tr>
+        <tr><td><b>B 四家對決</b></td><td>強，四個人都有出場</td><td>約 4.5 秒全擋</td><td>沒有</td><td>中（要四家頭像與段位）</td></tr>
+        <tr><td><b>C 王冠落座</b></td><td>輕巧有趣</td><td>不擋</td><td>王冠</td><td>小</td></tr>
+        <tr><td><b>D 傳說光柱</b></td><td>強，焦點在他那張卡</td><td>半透明約 3 秒</td><td>外框流光</td><td>中（翻牌＋光柱）</td></tr>
+        <tr><td><b>E 全場挑戰</b></td><td>中，帶一點對抗感</td><td>只蓋上方</td><td>頂條膠囊</td><td>小（兩種文案：對手版、本人版）</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">我的建議：<b style="color:var(--brand)">A 的開場＋C 的王冠常駐</b>。開局那一刻四個人都還沒要按東西，擋 4 秒沒有代價；整場戴著王冠，路過的客人也看得出這桌有第一名。</p>
+  </section>
+
+  <div class="open">
+    <h3>動工前要你決定的</h3>
+    <ol>
+      <li><b>「全國第一」看哪一份排名</b>：建議用會員 App 排行榜同一份（本季段位分第 1 名，測試帳號不算），在第 1 局開始那一刻判斷。</li>
+      <li><b>全國第一自己那台要不要播</b>：建議也播，但文案改成「你是全國第一」，不寫他自己的名字給自己看。</li>
+      <li><b>要不要擴大</b>：只有第 1 名，還是前三名也有（小一號），或者「名人玩家」（遊戲BOY 那種頭銜）也一起。</li>
+      <li><b>手機計分要不要播</b>：手機畫面小，A、B 那種全螢幕放得下，D 的光柱會擠。</li>
+      <li><b>顏色</b>：照平板規則全部用粉色系；王冠要做成金色的話，那是平板金色的第三個例外（目前只有 MIGI 牌型格與團徽）。</li>
+    </ol>
+  </div>
+</div>
+
+<script>
+const CR = '<svg viewBox="0 0 64 64"><use href="#cr"/></svg>';
+function card(cls, pos, ini, nm, rk, extra = '', inner = null) {
+  const face = `<span class="pos">${pos}</span><div class="id"><div class="av">${ini}</div><div class="who"><span class="nm">${nm}</span><span class="rk">段位: ${rk}</span></div></div><div class="fang">放槍</div>`;
+  return `<div class="ec ${cls}">${inner ? inner(face) : face}${extra}</div>`;
+}
+function board(v) {
+  const top = { A: `<span class="no1 keep keepA">${CR}全國第一</span>`, C: `<svg class="keep keepC" viewBox="0 0 64 64"><use href="#cr"/></svg>` }[v] || '';
+  const topCard = v === 'D'
+    ? `<div class="ec top-c flip flipD holo" style="padding:0;border:0;background:none"><div class="flipin"><div class="face ec" style="align-self:auto;margin:0">${'<span class="pos">對家</span><div class="id"><div class="av">凱</div><div class="who"><span class="nm">阿凱</span><span class="rk">段位: 鑽石熊 I</span></div></div><div class="fang">放槍</div>'}</div><div class="back"><span>全國第一</span><b>#1</b><small>2026 段位秋季賽</small></div></div></div>`
+    : card('top-c', '對家', '凱', '阿凱', '鑽石熊 I', top);
+  const pill = v === 'E' ? `<span class="keep keepE">${CR}全國第一同桌</span>` : '';
+  return `<div class="scr">
+    <div class="top"><span class="g"><em>桌號</em>A1</span><span class="g"><em>玩法</em>台麻 · 有花</span><span class="g"><em>積分</em>50/20</span><span class="g"><em>約定</em>2 將</span>${pill}<span class="sp"></span><span class="g"><em>使用時間</em>00:03</span></div>
+    <div class="board"><div class="stars"></div>
+      <div class="tr"><span>教學模式</span><span>查看紀錄</span><span>改手機計分</span><span>重新整理</span></div>
+      ${topCard}
+      ${card('left-c', '上家', '美', '小美', '金牌熊 II')}
+      ${card('right-c', '下家', '頭', '大頭', '銀牌熊 I')}
+      <div class="mid"><span class="hn">第 1 將　第 1 局</span><span class="dl">目前莊家　阿明</span><span class="lj">本局流局</span></div>
+      <div class="me"><span class="ztag">莊家</span><div class="av">明</div><div class="who"><span class="nm">阿明</span><span class="rk">段位: 金牌熊 III</span></div>
+        <div class="sc"><em>我的積分</em><b>0</b></div><div class="bt"><span>自摸</span><span class="g2">我包牌</span></div></div>
+    </div>
+    ${overlay(v)}
+  </div>`;
+}
+function overlay(v) {
+  if (v === 'A') return `<div class="ov ovA"><div class="scrim"></div><div class="stripe"></div><div class="band"></div>
+    <div class="hero"><div class="hav">凱</div><div class="kick">2026 段位秋季賽 · 全國排名</div><div class="t1">全國第一</div><div class="nm2">阿凱　鑽石熊 I</div></div></div>`;
+  if (v === 'B') {
+    const p = (c, seat, ini, nm, rk) => `<div class="pt ${c}"><span class="seat">${seat}</span><div class="av">${ini}</div><span class="nm">${nm}</span><span class="rk">${rk}</span></div>`;
+    return `<div class="ov ovB"><div class="scrim"></div><div class="row">
+      ${p('p1', '上家', '美', '小美', '金牌熊 II')}
+      <div class="pt big p2"><div class="crest"><b>No.1</b><span>全國第一</span></div><div class="av">凱</div><span class="nm">阿凱</span><span class="rk">鑽石熊 I</span></div>
+      ${p('p3', '下家', '頭', '大頭', '銀牌熊 I')}
+      ${p('p4', '你', '明', '阿明', '金牌熊 III')}
+    </div><div class="vs">第 1 將　開局<small>這一場有全國第一同桌</small></div></div>`;
+  }
+  if (v === 'C') return `<div class="ov ovC"><div class="flash"></div><div class="ring"></div><div class="ring r2"></div>
+    <svg class="drop" viewBox="0 0 64 64"><use href="#cr"/></svg>
+    <div class="ban">${CR}<b>全國第一</b><span>阿凱 已入座</span></div></div>`;
+  if (v === 'D') return `<div class="ov ovD"><div class="dim"></div><div class="rays"></div><div class="pillar"></div></div>`;
+  if (v === 'E') return `<div class="ov ovE"><div class="ban"><div class="av">凱</div>
+    <div class="tx"><em>全場廣播</em><b>這一場有全國第一同桌</b><span>阿凱 · 鑽石熊 I · 2026 段位秋季賽第 1 名</span></div>
+    <div class="goal"><em>本場目標</em><b>挑戰全國第一</b></div></div></div>`;
+  return '';
+}
+
+const frames = [...document.querySelectorAll('.frame')];
+frames.forEach(f => { f.innerHTML = board(f.id.slice(1)); });
+// D 的翻牌要讓卡片自己上 z-index，光柱與光束才在卡片後面
+document.querySelector('#fD .top-c').style.zIndex = 30;
+
+function fit() { frames.forEach(f => { const w = f.clientWidth; f.querySelector('.scr').style.setProperty('--s', w / 1280); }); }
+new ResizeObserver(fit).observe(document.body); fit();
+
+function play(f) { f.classList.remove('play'); void f.offsetWidth; f.classList.add('play'); }
+frames.forEach((f, i) => { setTimeout(() => { play(f); setInterval(() => play(f), 9000); }, 400 + i * 250); });
+document.querySelectorAll('[data-replay]').forEach(b => b.addEventListener('click', () => play(document.getElementById(b.dataset.replay))));
+</script>

@@ -1,0 +1,355 @@
+<title>全國第一登場三款</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* 版面：同上一份（五款預覽）的平板外框，只換特效層。光點用 canvas 畫（粒子位置由時間算出來，暫停在任一時間點都畫得出同一格）。
+   ⚠ 刻意不理「減少動態效果」—— 使用者的電腦開著它，預覽要能動。 */
+:root {
+  --bar: #191718; --bg: #221F20; --raised: #2B2829; --tile: #343132; --line: #524D4E;
+  --text: #FFFFFF; --text2: #C9C4C1; --text3: #A39E9B;
+  --brand: #FAD6DC; --brand-tint: #FFECF1; --ink: #2E2B2C;
+  --f: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bar); color: var(--text); font-family: var(--f); line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 32px 64px; }
+.wrap { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 56px; }
+header h1 { margin: 0; font-size: clamp(26px, 4vw, 38px); line-height: 1.25; text-wrap: balance; }
+header p { margin: 10px 0 0; color: var(--text2); font-size: 15px; max-width: 70ch; }
+section { display: flex; flex-direction: column; gap: 14px; }
+.sh { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.sh .k { flex: none; width: 40px; height: 40px; border-radius: 12px; background: var(--brand); color: var(--ink);
+  display: inline-flex; align-items: center; justify-content: center; font-weight: 900; font-size: 20px; align-self: center; }
+.sh h2 { margin: 0; font-size: 24px; }
+.sh .ref { color: var(--text3); font-size: 14px; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px 20px; font-size: 14px; color: var(--text2); }
+.facts div { min-width: 0; }
+.facts em { display: block; font-style: normal; font-size: 12px; color: var(--text3); letter-spacing: .04em; }
+.facts b { color: var(--brand); }
+.ctl { display: flex; gap: 10px; align-items: center; }
+.ctl button { background: var(--raised); color: var(--text); border: 1px solid var(--line); border-radius: 10px; height: 36px; padding: 0 16px; font: 700 14px var(--f); cursor: pointer; }
+.ctl button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.ctl small { color: var(--text3); font-size: 12px; }
+
+/* ═══ 平板外框（同五款預覽） ═══ */
+.frame { position: relative; width: 100%; aspect-ratio: 1280 / 800; max-width: 100%; border-radius: 18px; overflow: hidden;
+  border: 6px solid #0f0e0e; background: var(--bg); box-shadow: 0 20px 50px rgba(0,0,0,.45); }
+.scr { position: absolute; left: 0; top: 0; width: 1280px; height: 800px; transform-origin: 0 0; transform: scale(var(--s, .7));
+  background: var(--bg); overflow: hidden; display: flex; flex-direction: column; }
+.top { height: 72px; flex: none; background: var(--bar); display: flex; align-items: center; gap: 40px; padding: 0 28px; font-size: 18px; }
+.top .g em { font-style: normal; color: var(--text3); font-size: 14px; margin-right: 8px; }
+.top .sp { flex: 1; }
+.board { position: relative; flex: 1; padding: 16px 24px 20px; display: grid; gap: 12px 20px;
+  grid-template-columns: 360px minmax(0, 1fr) 360px; grid-template-rows: 226px minmax(0, 1fr) 184px;
+  grid-template-areas: "tl top tr" "left mid right" "me me me";
+  background: radial-gradient(circle at 50% 45%, rgba(250,214,220,.07), transparent 60%); }
+.stars { position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(1.5px 1.5px at 12% 20%, rgba(250,214,220,.5), transparent),
+    radial-gradient(1px 1px at 80% 30%, rgba(250,214,220,.45), transparent), radial-gradient(1.5px 1.5px at 30% 70%, rgba(250,214,220,.4), transparent),
+    radial-gradient(1px 1px at 65% 80%, rgba(250,214,220,.5), transparent), radial-gradient(1px 1px at 45% 15%, rgba(250,214,220,.4), transparent),
+    radial-gradient(1.5px 1.5px at 90% 65%, rgba(250,214,220,.35), transparent), radial-gradient(1px 1px at 8% 55%, rgba(250,214,220,.45), transparent); }
+.ec { position: relative; z-index: 1; padding: 48px 16px 14px; background: var(--raised); border: 2px solid var(--line); border-radius: 12px; align-self: center; }
+.ec.top-c { grid-area: top; width: 360px; justify-self: center; align-self: start; }
+.ec.left-c { grid-area: left; } .ec.right-c { grid-area: right; }
+.pos { position: absolute; top: 10px; left: 12px; background: var(--tile); font-size: 20px; font-weight: 800; padding: 4px 18px; border-radius: 999px; line-height: 1.3; }
+.id { display: flex; align-items: center; gap: 12px; }
+.av { flex: none; width: 92px; height: 92px; border-radius: 50%; background: var(--brand); color: var(--ink); display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: 900; }
+.who { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.who .nm { font-size: 23px; line-height: 1.2; }
+.rk { align-self: flex-start; font-size: 14px; padding: 2px 10px; border-radius: 999px; background: var(--brand); color: var(--ink); font-weight: 700; }
+.fang { margin-top: 12px; height: 56px; border-radius: 12px; background: var(--brand); color: var(--ink); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; }
+.mid { grid-area: mid; position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+.mid .hn { color: var(--brand); font-size: 40px; font-weight: 800; }
+.mid .dl { color: var(--text2); font-size: 22px; }
+.mid .lj { margin-top: 10px; height: 52px; padding: 0 30px; border-radius: 12px; border: 1px solid var(--line); background: var(--raised); display: flex; align-items: center; font-size: 22px; font-weight: 800; }
+.tr { grid-area: tr; justify-self: end; align-self: start; display: grid; grid-template-columns: max-content max-content; gap: 10px; z-index: 1; }
+.tr span { height: 48px; padding: 0 18px; display: flex; align-items: center; background: var(--raised); border: 1px solid var(--line); border-radius: 12px; font-size: 20px; font-weight: 800; }
+.me { grid-area: me; position: relative; z-index: 1; background: var(--raised); border: 2px solid var(--brand); border-radius: 12px; display: flex; align-items: center; gap: 22px; padding: 0 26px; }
+.me .av { width: 120px; height: 120px; font-size: 52px; }
+.me .who .nm { font-size: 34px; }
+.me .sc { margin-left: 26px; padding-left: 26px; border-left: 1px solid var(--line); display: flex; flex-direction: column; }
+.me .sc em { font-style: normal; color: var(--text3); font-size: 16px; }
+.me .sc b { font-size: 76px; line-height: 1; font-weight: 800; }
+.me .bt { margin-left: auto; display: flex; gap: 12px; }
+.me .bt span { height: 120px; width: 150px; border-radius: 12px; background: var(--brand); color: var(--ink); display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: 900; }
+.me .bt span.g2 { background: var(--tile); color: var(--text); }
+.ztag { position: absolute; top: -14px; right: 22px; background: var(--brand); color: var(--ink); font-size: 16px; font-weight: 800; padding: 5px 14px; border-radius: 999px; line-height: 1; }
+.no1 { position: absolute; z-index: 5; top: -16px; right: 18px; display: inline-flex; align-items: center; gap: 6px; background: var(--brand); color: var(--ink);
+  font-size: 17px; font-weight: 900; padding: 6px 14px 6px 10px; border-radius: 999px; line-height: 1; box-shadow: 0 0 0 3px var(--bg); }
+.no1 svg { width: 22px; height: 22px; }
+
+/* ═══ 特效層 ═══ */
+.ov { position: absolute; inset: 0; z-index: 20; pointer-events: none; }
+.frame:not(.play) .ov, .frame:not(.play) .keep { visibility: hidden; }
+.ov .scrim { position: absolute; inset: 0; background: rgba(16,14,15,.92); }
+.ov canvas { position: absolute; inset: 0; width: 1280px; height: 800px; }
+.ov .flash { position: absolute; inset: 0; background: #fff; opacity: 0; }
+.ov .glow { position: absolute; left: 640px; top: 210px; width: 10px; height: 10px; margin: -5px; border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, rgba(250,214,220,.9) 20%, rgba(250,214,220,.25) 45%, transparent 70%); opacity: 0; }
+.ov .hero { position: absolute; left: 0; right: 0; top: 140px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.ov .hav { width: 180px; height: 180px; border-radius: 50%; background: var(--brand); color: var(--ink); display: flex; align-items: center; justify-content: center;
+  font-size: 80px; font-weight: 900; box-shadow: 0 0 0 6px var(--bg), 0 0 0 10px var(--brand), 0 0 90px rgba(250,214,220,.75); }
+.ov .t1 { margin-top: 18px; font-size: 112px; font-weight: 900; line-height: 1.05; letter-spacing: .08em; color: #fff;
+  text-shadow: 0 0 18px rgba(250,214,220,.9), 0 0 50px rgba(250,214,220,.6); }
+.ov .nm2 { margin-top: 6px; font-size: 30px; font-weight: 800; color: var(--brand); }
+.play .ov * { animation-fill-mode: both; }
+/* 共用：播完縮回對家卡片，卡片角落留膠囊 */
+@keyframes heroOut { 0% { opacity: 1; transform: none } 100% { opacity: 0; transform: translateY(-170px) scale(.3) } }
+@keyframes scrimIO { 0% { opacity: 0 } 4% { opacity: 1 } 80% { opacity: 1 } 92%, 100% { opacity: 0 } }
+@keyframes popIn { 0%, 92% { opacity: 0; transform: scale(.3) } 95% { opacity: 1; transform: scale(1.25) } 97%, 100% { opacity: 1; transform: scale(1) } }
+.play .keep { animation: popIn 6.8s both; }
+.play .ov .scrim { animation: scrimIO 6.8s both; }
+
+/* ── 1 強者登場：中心一次大爆炸 ── */
+.play .v1 .flash { animation: flash 6.8s both; }
+@keyframes flash { 0%, 6.4% { opacity: 0 } 6.8% { opacity: .9 } 12% { opacity: 0 } 100% { opacity: 0 } }
+.play .v1 .hav { animation: avPop 6.8s both; }
+@keyframes avPop { 0%, 6.6% { transform: scale(0) } 9.5% { transform: scale(1.18) } 12% { transform: scale(1) } 100% { transform: scale(1) } }
+.play .v1 .t1 { animation: t1In 6.8s both; }
+@keyframes t1In { 0%, 11% { opacity: 0; letter-spacing: .6em; filter: blur(8px) } 16% { opacity: 1; letter-spacing: .08em; filter: blur(0) } 100% { opacity: 1 } }
+.play .v1 .nm2 { animation: fadeUp 6.8s both; }
+@keyframes fadeUp { 0%, 15% { opacity: 0; transform: translateY(16px) } 19%, 100% { opacity: 1; transform: none } }
+.play .v1 .hero { animation: v1Out 6.8s both; }
+@keyframes v1Out { 0%, 76% { opacity: 1; transform: none } 86%, 100% { opacity: 0; transform: translateY(-170px) scale(.3) } }
+
+/* 強調條（C 那條的放大版）：粉底黑字，左邊一顆墨底的小標 */
+.strip { position: absolute; left: 0; right: 0; top: 590px; height: 110px; display: flex; align-items: center; justify-content: center; gap: 24px;
+  background: linear-gradient(90deg, transparent, var(--brand) 14%, var(--brand) 86%, transparent); color: var(--ink); }
+.strip .tag { background: var(--ink); color: var(--brand); font-size: 24px; font-weight: 900; padding: 8px 18px; border-radius: 10px; letter-spacing: .1em; }
+.strip b { font-size: 44px; font-weight: 900; letter-spacing: .06em; }
+.strip b i { font-style: normal; font-size: 52px; }
+.play .v1 .strip { animation: stripIn 6.8s both; }
+@keyframes stripIn { 0%, 21% { transform: scaleX(0); opacity: 0 } 25% { transform: scaleX(1.04); opacity: 1 } 27% { transform: scaleX(1) } 76% { opacity: 1; transform: scaleX(1) } 84%, 100% { opacity: 0; transform: scaleX(1.1) } }
+
+/* ── 2 已入座：光點先吸進中心再炸開，畫面震動，「已入座」章蓋下去 ── */
+.play .v2 .glow { animation: v2Glow 6.8s both; }
+@keyframes v2Glow { 0%, 3% { opacity: 0; transform: scale(1) } 15% { opacity: 1; transform: scale(30) } 16% { opacity: 1; transform: scale(60) } 20% { opacity: 0; transform: scale(90) } 100% { opacity: 0 } }
+.play .v2 .flash { animation: flash2 6.8s both; }
+@keyframes flash2 { 0%, 15.8% { opacity: 0 } 16.3% { opacity: 1 } 22% { opacity: 0 } 29.4% { opacity: 0 } 29.8% { opacity: .35 } 32% { opacity: 0 } 100% { opacity: 0 } }
+.play.f2 .scr { animation: shake 6.8s both; }
+@keyframes shake { 0%, 16% { translate: 0 0 } 16.8% { translate: -14px 8px } 17.6% { translate: 12px -10px } 18.4% { translate: -9px -6px } 19.2% { translate: 7px 6px }
+  20% { translate: -4px 3px } 20.8% { translate: 0 0 } 29.6% { translate: 0 0 } 30.2% { translate: 6px -4px } 30.8% { translate: -4px 3px } 31.4%, 100% { translate: 0 0 } }
+.v2 .hero { top: 120px; }
+.play .v2 .hav { animation: v2Av 6.8s both; }
+@keyframes v2Av { 0%, 16% { opacity: 0; transform: scale(.2) } 19% { opacity: 1; transform: scale(1.1) } 21%, 100% { opacity: 1; transform: scale(1) } }
+.play .v2 .t1 { animation: slam 6.8s both; }
+@keyframes slam { 0%, 16% { opacity: 0; transform: scale(2.8) } 19% { opacity: 1; transform: scale(.94) } 21%, 100% { opacity: 1; transform: scale(1) } }
+.v2 .row2 { display: flex; align-items: center; gap: 28px; }
+.stamp { border: 6px solid var(--brand); color: var(--brand); font-size: 58px; font-weight: 900; padding: 4px 22px; border-radius: 14px; letter-spacing: .12em;
+  transform: rotate(-8deg); background: rgba(250,214,220,.08); box-shadow: 0 0 30px rgba(250,214,220,.45); }
+.play .v2 .stamp { animation: stampIn 6.8s both; }
+@keyframes stampIn { 0%, 28% { opacity: 0; transform: rotate(-8deg) scale(3.2) } 30% { opacity: 1; transform: rotate(-8deg) scale(.92) } 32%, 100% { opacity: 1; transform: rotate(-8deg) scale(1) } }
+.vs2 { margin-top: 30px; font-size: 40px; font-weight: 900; letter-spacing: .08em; color: #fff; }
+.vs2 i { font-style: normal; color: var(--brand); }
+.play .v2 .vs2 { animation: v2vs 6.8s both; }
+@keyframes v2vs { 0%, 34% { opacity: 0; transform: translateY(20px); letter-spacing: .4em } 40%, 100% { opacity: 1; transform: none; letter-spacing: .08em } }
+.play .v2 .hero { animation: v2Out 6.8s both; }
+@keyframes v2Out { 0%, 76% { opacity: 1; transform: none } 86%, 100% { opacity: 0; transform: translateY(-150px) scale(.3) } }
+
+/* ── 3 連環爆：左、右、中間依序炸開，金粉落下 ── */
+.play .v3 .flash { animation: flash3 6.8s both; }
+@keyframes flash3 { 0%, 4.3% { opacity: 0 } 4.6% { opacity: .4 } 6.5% { opacity: 0 } 8% { opacity: 0 } 8.3% { opacity: .4 } 10% { opacity: 0 } 11.6% { opacity: 0 } 12% { opacity: .9 } 17% { opacity: 0 } 100% { opacity: 0 } }
+.v3 .hero { top: 110px; }
+.v3 .kick { font-size: 26px; font-weight: 900; letter-spacing: .3em; color: var(--brand); margin-top: 18px; }
+.play .v3 .hav { animation: v3Av 6.8s both; }
+@keyframes v3Av { 0%, 11.8% { transform: scale(0) rotate(-30deg) } 15% { transform: scale(1.15) rotate(6deg) } 17%, 100% { transform: scale(1) rotate(0) } }
+.play .v3 .kick { animation: fadeUp3 6.8s both; }
+@keyframes fadeUp3 { 0%, 14% { opacity: 0; transform: translateY(14px) } 18%, 100% { opacity: 1; transform: none } }
+.v3 .t1 { margin-top: 0; }
+.play .v3 .t1 { animation: t1In3 6.8s both; }
+@keyframes t1In3 { 0%, 15% { opacity: 0; transform: scale(.6) } 19% { opacity: 1; transform: scale(1.06) } 21%, 100% { opacity: 1; transform: scale(1) } }
+.play .v3 .hero { animation: v3Out 6.8s both; }
+@keyframes v3Out { 0%, 76% { opacity: 1; transform: none } 86%, 100% { opacity: 0; transform: translateY(-160px) scale(.3) } }
+.v3 .strip { top: 600px; height: 120px; }
+.v3 .strip b { font-size: 46px; }
+.play .v3 .strip { animation: stripIn3 6.8s both; }
+@keyframes stripIn3 { 0%, 24% { transform: translateX(-110%) } 28% { transform: translateX(2%) } 30% { transform: none } 76% { opacity: 1; transform: none } 84%, 100% { opacity: 0; transform: translateX(110%) } }
+
+.note { color: var(--text3); font-size: 13px; }
+.open { background: var(--raised); border: 1px solid var(--line); border-radius: 14px; padding: 18px 22px; }
+.open h3 { margin: 0 0 8px; font-size: 18px; }
+.open ul { margin: 0; padding-left: 20px; color: var(--text2); font-size: 14px; display: flex; flex-direction: column; gap: 6px; }
+.open b { color: var(--text); }
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="cr" viewBox="0 0 64 64">
+      <path d="M8 22 L20 34 L32 12 L44 34 L56 22 L51 50 H13 Z" fill="#FAD6DC" stroke="#2E2B2C" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="13" y="50" width="38" height="7" rx="2" fill="#FAD6DC" stroke="#2E2B2C" stroke-width="3"/>
+      <circle cx="32" cy="12" r="4" fill="#fff" stroke="#2E2B2C" stroke-width="2.5"/>
+      <circle cx="8" cy="22" r="3.5" fill="#fff" stroke="#2E2B2C" stroke-width="2.5"/>
+      <circle cx="56" cy="22" r="3.5" fill="#fff" stroke="#2E2B2C" stroke-width="2.5"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <header>
+    <h1>全國第一登場：爆炸光點三款</h1>
+    <p>都從 A「王座登場」出發：斜光拿掉，換成從頭像炸開的光點、衝擊波與閃白，再加上一句強調。三款的爆法與那一句各不同，句子可以互換。播完一樣縮回對家卡片，卡片角落留一顆「全國第一」。名字是範例，平板實際尺寸等比例縮小。</p>
+  </header>
+
+  <section>
+    <div class="sh"><span class="k">1</span><h2>強者登場</h2><span class="ref">一次大爆炸：閃白 → 頭像彈出 → 光點與兩圈衝擊波 → 餘燼往上飄</span></div>
+    <div class="facts">
+      <div><em>強調那一句</em>「強者登場」小標＋<b>你即將面對的是全國第一名</b></div>
+      <div><em>手感</em>乾淨、像頒獎，爆一次就收</div>
+      <div><em>第一名自己那台</em>「強者登場」＋「全場都在看你」</div>
+    </div>
+    <div class="ctl"><button type="button" data-replay="f1">重播</button><small>每 9.5 秒自動重播</small></div>
+    <div class="frame" id="f1"></div>
+  </section>
+
+  <section>
+    <div class="sh"><span class="k">2</span><h2>已入座</h2><span class="ref">先吸後炸：光點從四周吸進中心、光球脹大 → 炸開＋畫面震動 → 「已入座」章蓋下去再震一下</span></div>
+    <div class="facts">
+      <div><em>強調那一句</em>大字旁邊蓋一個<b>已入座</b>章，下面<b>你即將跟第一名對戰</b></div>
+      <div><em>手感</em>最震撼，有「降臨」的蓄力感</div>
+      <div><em>第一名自己那台</em>章改成「就位」，下面「三位挑戰者已入座」</div>
+    </div>
+    <div class="ctl"><button type="button" data-replay="f2">重播</button><small>每 9.5 秒自動重播</small></div>
+    <div class="frame f2box" id="f2"></div>
+  </section>
+
+  <section>
+    <div class="sh"><span class="k">3</span><h2>連環爆</h2><span class="ref">左、右、中間依序炸開像煙火，中間最大；之後光點像金粉一樣往下灑</span></div>
+    <div class="facts">
+      <div><em>強調那一句</em>從左邊衝進來一條：「全國第一 已入座」小標＋<b>這一場，你的對手是全國第一</b></div>
+      <div><em>手感</em>最熱鬧，像慶典</div>
+      <div><em>第一名自己那台</em>「全國第一 已入座」＋「這一場，三位都是來挑戰你的」</div>
+    </div>
+    <div class="ctl"><button type="button" data-replay="f3">重播</button><small>每 9.5 秒自動重播</small></div>
+    <div class="frame" id="f3"></div>
+  </section>
+
+  <div class="open">
+    <h3>強調句可以換成這些（三款都通用）</h3>
+    <ul>
+      <li><b>你即將面對的是全國第一名</b></li>
+      <li><b>你即將跟第一名對戰</b></li>
+      <li><b>這一場，你的對手是全國第一</b></li>
+      <li><b>全國第一 已入座</b></li>
+      <li><b>強者登場</b>／<b>王者降臨</b>（適合當小標）</li>
+    </ul>
+    <p class="note" style="margin:10px 0 0">都只講「對戰、對手、挑戰」，不碰輸贏與積分的錢味（賭博紅線用詞）。</p>
+  </div>
+</div>
+
+<script>
+const CR = '<svg viewBox="0 0 64 64"><use href="#cr"/></svg>';
+const PINK = ['#FAD6DC', '#FFFFFF', '#FFECF1', '#F6C2CC', '#FFFFFF'];
+function card(cls, pos, ini, nm, rk, extra = '') {
+  return `<div class="ec ${cls}"><span class="pos">${pos}</span><div class="id"><div class="av">${ini}</div><div class="who"><span class="nm">${nm}</span><span class="rk">段位: ${rk}</span></div></div><div class="fang">放槍</div>${extra}</div>`;
+}
+const HERO = {
+  1: `<div class="hero"><div class="hav">凱</div><div class="t1">全國第一</div><div class="nm2">阿凱　鑽石熊 I</div></div>
+      <div class="strip"><span class="tag">強者登場</span><b>你即將面對的是<i>全國第一名</i></b></div>`,
+  2: `<div class="glow"></div><div class="hero"><div class="hav">凱</div><div class="row2"><div class="t1">全國第一</div><div class="stamp">已入座</div></div>
+      <div class="nm2">阿凱　鑽石熊 I</div><div class="vs2">你即將跟<i>第一名</i>對戰</div></div>`,
+  3: `<div class="hero"><div class="hav">凱</div><div class="kick">2026 段位秋季賽 · 本季第 1 名</div><div class="t1">全國第一</div><div class="nm2">阿凱　鑽石熊 I</div></div>
+      <div class="strip"><span class="tag">全國第一 已入座</span><b>這一場，你的對手是<i>全國第一</i></b></div>`,
+};
+function board(v) {
+  return `<div class="scr">
+    <div class="top"><span class="g"><em>桌號</em>A1</span><span class="g"><em>玩法</em>台麻 · 有花</span><span class="g"><em>積分</em>50/20</span><span class="g"><em>約定</em>2 將</span><span class="sp"></span><span class="g"><em>使用時間</em>00:03</span></div>
+    <div class="board"><div class="stars"></div>
+      <div class="tr"><span>教學模式</span><span>查看紀錄</span><span>改手機計分</span><span>重新整理</span></div>
+      ${card('top-c', '對家', '凱', '阿凱', '鑽石熊 I', `<span class="no1 keep">${CR}全國第一</span>`)}
+      ${card('left-c', '上家', '美', '小美', '金牌熊 II')}
+      ${card('right-c', '下家', '頭', '大頭', '銀牌熊 I')}
+      <div class="mid"><span class="hn">第 1 將　第 1 局</span><span class="dl">目前莊家　阿明</span><span class="lj">本局流局</span></div>
+      <div class="me"><span class="ztag">莊家</span><div class="av">明</div><div class="who"><span class="nm">阿明</span><span class="rk">段位: 金牌熊 III</span></div>
+        <div class="sc"><em>我的積分</em><b>0</b></div><div class="bt"><span>自摸</span><span class="g2">我包牌</span></div></div>
+    </div>
+    <div class="ov v${v}"><div class="scrim"></div><canvas width="1280" height="800"></canvas>${HERO[v]}<div class="flash"></div></div>
+  </div>`;
+}
+
+/* ── 光點：每顆的位置都由「這顆的參數 ＋ 經過時間」算出來，不累積狀態 ⇒ 暫停在哪一格都畫得出來 ── */
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function burst(r, at, x, y, n, vmin, vmax, opt = {}) {
+  const ps = [];
+  for (let i = 0; i < n; i++) {
+    ps.push({ kind: 'b', at, x, y, a: r() * Math.PI * 2, v: vmin + (vmax - vmin) * Math.pow(r(), .7), k: opt.drag ?? 2.4, g: opt.g ?? 140,
+      life: (opt.life ?? 1.6) * (.55 + r() * .6), sz: (opt.size ?? 3.2) * (.5 + r()), c: PINK[(r() * PINK.length) | 0], tw: r() * 50 });
+  }
+  return ps;
+}
+const ring = (at, x, y, R, w, life = .7) => ({ kind: 'r', at, x, y, R, w, life });
+function implode(r, at, x, y, n, dur) {
+  const ps = [];
+  for (let i = 0; i < n; i++) ps.push({ kind: 'i', at: at + r() * dur * 450, x, y, a: r() * Math.PI * 2, R: 380 + r() * 420, dur: dur * (.55 + r() * .4), sz: 2 + r() * 3, c: PINK[(r() * PINK.length) | 0] });
+  return ps;
+}
+function embers(r, at, until, n, rise, area) {
+  const ps = [];
+  for (let i = 0; i < n; i++) ps.push({ kind: 'e', at: at + r() * (until - at), x: area.x + r() * area.w, y: area.y + r() * area.h, v: rise * (.5 + r()),
+    life: 1.4 + r() * 1.6, sz: 1.5 + r() * 2.5, w: r() * 6, c: PINK[(r() * PINK.length) | 0] });
+  return ps;
+}
+const FX = {
+  1: (r) => [ ...burst(r, 460, 640, 230, 280, 350, 1500, { life: 1.9, size: 3.4 }), ...burst(r, 520, 640, 230, 90, 120, 520, { life: 2.4, size: 4.5, g: 60 }),
+    ring(460, 640, 230, 520, 16), ring(600, 640, 230, 760, 8, .9),
+    ...embers(r, 1200, 5000, 120, -70, { x: 180, y: 300, w: 920, h: 480 }) ],
+  2: (r) => [ ...implode(r, 150, 640, 210, 220, 0.95), ...burst(r, 1100, 640, 210, 360, 450, 1800, { life: 2.0, size: 3.6 }),
+    ...burst(r, 1150, 640, 210, 120, 150, 600, { life: 2.6, size: 5, g: 50 }), ring(1100, 640, 210, 680, 22), ring(1220, 640, 210, 900, 10, 1),
+    ...burst(r, 2000, 905, 375, 90, 200, 800, { life: 1.1, size: 2.8 }), ring(2000, 905, 375, 260, 8, .5),
+    ...embers(r, 1500, 5000, 110, -60, { x: 160, y: 320, w: 960, h: 460 }) ],
+  3: (r) => [ ...burst(r, 300, 300, 230, 150, 250, 1000, { life: 1.6, g: 420, drag: 2 }), ring(300, 300, 230, 330, 10),
+    ...burst(r, 560, 980, 210, 150, 250, 1000, { life: 1.6, g: 420, drag: 2 }), ring(560, 980, 210, 330, 10),
+    ...burst(r, 820, 640, 200, 300, 400, 1600, { life: 2.2, g: 360, size: 3.6 }), ring(820, 640, 200, 620, 18), ring(950, 640, 200, 820, 8, .9),
+    ...embers(r, 1100, 5000, 160, 90, { x: 40, y: -40, w: 1200, h: 120 }) ],
+};
+function draw(ctx, ps, t) {
+  ctx.clearRect(0, 0, 1280, 800);
+  ctx.globalCompositeOperation = 'lighter';
+  for (const p of ps) {
+    const s = (t - p.at) / 1000; if (s < 0) continue;
+    if (p.kind === 'b') {
+      if (s > p.life) continue;
+      const pos = (q) => { const d = p.v * (1 - Math.exp(-p.k * q)) / p.k; return [p.x + Math.cos(p.a) * d, p.y + Math.sin(p.a) * d + .5 * p.g * q * q]; };
+      const [x, y] = pos(s), [x0, y0] = pos(Math.max(0, s - .045));
+      const al = (1 - s / p.life) * (.75 + .25 * Math.sin(p.tw + s * 40));
+      ctx.strokeStyle = p.c; ctx.globalAlpha = Math.max(0, al); ctx.lineWidth = p.sz * (1 - s / p.life * .6); ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x, y); ctx.stroke();
+    } else if (p.kind === 'r') {
+      if (s > p.life) continue;
+      const u = s / p.life, rad = p.R * (1 - Math.exp(-5 * s));
+      ctx.globalAlpha = (1 - u) * .9; ctx.strokeStyle = '#FAD6DC'; ctx.lineWidth = p.w * (1 - u) + .5;
+      ctx.beginPath(); ctx.arc(p.x, p.y, rad, 0, Math.PI * 2); ctx.stroke();
+    } else if (p.kind === 'i') {
+      if (s > p.dur) continue;
+      const u = Math.pow(s / p.dur, 2.2), d = p.R * (1 - u), d0 = p.R * (1 - Math.pow(Math.max(0, s - .06) / p.dur, 2.2));
+      ctx.globalAlpha = Math.min(1, s / p.dur * 3); ctx.strokeStyle = p.c; ctx.lineWidth = p.sz; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(p.x + Math.cos(p.a) * d0, p.y + Math.sin(p.a) * d0); ctx.lineTo(p.x + Math.cos(p.a) * d, p.y + Math.sin(p.a) * d); ctx.stroke();
+    } else if (p.kind === 'e') {
+      if (s > p.life) continue;
+      const x = p.x + Math.sin(p.w + s * 3) * 14, y = p.y + p.v * s;
+      ctx.globalAlpha = Math.sin(Math.PI * s / p.life) * .85; ctx.fillStyle = p.c;
+      ctx.beginPath(); ctx.arc(x, y, p.sz, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+}
+
+const frames = [...document.querySelectorAll('.frame')];
+const state = new Map();
+frames.forEach(f => {
+  const v = f.id.slice(1); f.innerHTML = board(v);
+  if (v === '2') f.classList.add('f2');
+  state.set(f, { ps: FX[v](rng(+v * 977)), ctx: f.querySelector('canvas').getContext('2d'), start: 0, hold: null });
+});
+function fit() { frames.forEach(f => f.querySelector('.scr').style.setProperty('--s', f.clientWidth / 1280)); }
+new ResizeObserver(fit).observe(document.body); fit();
+function play(f) { f.classList.remove('play'); void f.offsetWidth; f.classList.add('play'); const st = state.get(f); st.start = performance.now(); st.hold = null; }
+function tick(now) {
+  frames.forEach(f => { const st = state.get(f); if (!f.classList.contains('play')) return; const t = st.hold ?? now - st.start; if (t < 7000 || st.hold != null) draw(st.ctx, st.ps, t); });
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+frames.forEach((f, i) => setTimeout(() => { play(f); setInterval(() => play(f), 9500); }, 400 + i * 300));
+document.querySelectorAll('[data-replay]').forEach(b => b.addEventListener('click', () => play(document.getElementById(b.dataset.replay))));
+// 檢查用：停在某一毫秒（CSS 動畫與光點一起停）
+window.freezeAt = (id, t) => { const f = document.getElementById(id); play(f); void f.offsetWidth; f.getAnimations({ subtree: true }).forEach(a => { a.pause(); a.currentTime = t; }); const st = state.get(f); st.hold = t; draw(st.ctx, st.ps, t); };
+</script>
