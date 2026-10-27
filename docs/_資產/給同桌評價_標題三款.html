@@ -1,0 +1,107 @@
+<title>給同桌評價標題整理</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* 版面：會員 App「給同桌評價」置中彈窗（buddies.jsx SettleSheet），現在的樣子＋三種整理，並排四張。
+   顏色照 @migi/assets 的淺色 token；名字是範例。 */
+:root {
+  --ink: #2E2B2C; --brand: #FAD6DC; --brand-tint: #FFECF1; --brand-light: #FFE7EE; --white: #FFFFFF;
+  --gray-1: #5C5754; --gray-2: #726D69; --gray-3: #ECEAE9; --gray-4: #F2F0EE; --field-bg: #F8F7F6; --divider: #DED9D5;
+  --page: #EDEAE7;
+  --f: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--f); line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 32px 64px; }
+.wrap { max-width: 1480px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+header h1 { margin: 0; font-size: clamp(24px, 3.4vw, 32px); line-height: 1.25; }
+header p { margin: 8px 0 0; color: var(--gray-1); font-size: 15px; max-width: 72ch; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 28px; align-items: start; }
+.col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.col h2 { margin: 0; font-size: 19px; display: flex; align-items: center; gap: 8px; }
+.col h2 .k { width: 30px; height: 30px; border-radius: 9px; background: var(--ink); color: var(--white); display: inline-flex; align-items: center; justify-content: center; font-size: 15px; }
+.col.now h2 .k { background: var(--gray-2); }
+.col .why { margin: 0; font-size: 14px; color: var(--gray-1); min-height: 63px; }
+.rec { display: inline-block; margin-left: 6px; font-size: 12px; font-weight: 800; background: var(--brand); padding: 1px 8px; border-radius: 999px; vertical-align: 2px; }
+
+/* 彈窗（照 SettleSheet：白卡、圓角 16、內距 20） */
+.sheet { background: var(--white); border-radius: 16px; box-shadow: 0 10px 30px rgba(46,43,44,.18); overflow: hidden; width: 100%; max-width: 360px; }
+.hd { padding: 20px 20px 6px; text-align: center; }
+.ttl { margin: 0; font-size: 18px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
+.sub { margin: 4px 0 0; font-size: 12px; color: var(--gray-1); }
+.bd { padding: 4px 20px 6px; }
+.hero { text-align: center; padding: 6px 0 4px; }
+.hero b { display: block; font-size: 18px; font-weight: 800; }
+.hero small { font-size: 12px; color: var(--gray-1); }
+.hero.big { padding: 22px 20px 14px; background: linear-gradient(180deg, var(--brand-tint), var(--white)); }
+.hero.big b { font-size: 22px; }
+.hero.big .nums { margin-top: 8px; display: flex; justify-content: center; gap: 10px; }
+.hero.big .nums span { background: var(--white); border: 1px solid var(--brand); border-radius: 999px; padding: 3px 12px; font-size: 13px; font-weight: 700; }
+.sec { margin: 12px 0 2px; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.sec-sub { margin: 0 0 4px; font-size: 12px; color: var(--gray-1); }
+.row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--divider); }
+.row:last-child { border-bottom: 0; }
+.no { flex: none; width: 28px; height: 34px; border-radius: 6px; background: var(--gray-4); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; }
+.no.n1 { background: var(--brand); }
+.av { flex: none; width: 38px; height: 38px; border-radius: 50%; background: var(--brand-light); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; }
+.row.me .av { width: 44px; height: 44px; }
+.who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.who .nm { font-size: 14px; font-weight: 700; }
+.who .nm em { font-style: normal; font-weight: 400; font-size: 11px; color: var(--gray-2); margin-left: 4px; }
+.who .rk { align-self: flex-start; font-size: 10px; font-weight: 700; background: var(--brand); border-radius: 999px; padding: 1px 7px; }
+.who .cg { font-size: 12px; font-weight: 800; color: var(--accent-deep, #974B5F); }
+.sc { text-align: right; font-size: 13px; font-weight: 700; }
+.sc small { display: block; font-size: 11px; font-weight: 400; color: var(--gray-2); }
+.thumb { flex: none; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
+.thumb svg { width: 20px; height: 20px; }
+.add { flex: none; background: var(--brand); border-radius: 999px; font-size: 11px; font-weight: 700; padding: 5px 10px; }
+.row.me.tint { background: var(--brand-tint); border-radius: 12px; padding: 10px 10px; margin: 6px -10px 4px; border-bottom: 0; }
+.info { margin-top: 12px; }
+.info div { display: flex; justify-content: space-between; font-size: 12px; padding: 5px 0; border-bottom: 1px solid var(--gray-3); }
+.info span { color: var(--gray-2); }
+.ft { padding: 12px 20px 18px; border-top: 1px solid var(--divider); }
+.ft div { background: var(--ink); color: var(--white); text-align: center; border-radius: 999px; padding: 12px 0; font-size: 14px; font-weight: 700; }
+.mark { outline: 2px dashed #974B5F; outline-offset: 3px; border-radius: 8px; }
+.legend { font-size: 13px; color: var(--gray-1); }
+.legend i { display: inline-block; width: 18px; height: 12px; outline: 2px dashed #974B5F; border-radius: 3px; vertical-align: -1px; margin-right: 6px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>「給同桌評價」標題整理</h1>
+    <p>現在最上面兩個標題在搶：「給同桌評價」與「恭喜你拿下第 1 名！」，而成績那兩個數字在下面自己那一列又寫了一次。下面是現在的樣子和三種整理方式，內容一樣、只換排法。名字是範例。</p>
+    <p class="legend"><i></i>虛線框＝在搶的地方</p>
+  </header>
+  <div class="grid" id="g"></div>
+</div>
+
+<script>
+const THUMB = '<svg viewBox="0 0 24 24" fill="none" stroke="#726D69" stroke-width="2" stroke-linejoin="round"><path d="M7 11v9H4v-9h3zm0 0l4-8c1.6 0 2.5 1 2.2 2.6L12.6 10H19a2 2 0 0 1 2 2.3l-1.2 6A2 2 0 0 1 17.8 20H7"/></svg>';
+const THUMB_F = '<svg viewBox="0 0 24 24" fill="#FAD6DC" stroke="#2E2B2C" stroke-width="2" stroke-linejoin="round"><path d="M7 11v9H4v-9h3zm0 0l4-8c1.6 0 2.5 1 2.2 2.6L12.6 10H19a2 2 0 0 1 2 2.3l-1.2 6A2 2 0 0 1 17.8 20H7"/></svg>';
+const others = [['2', '美', '小美', '銀牌熊 I'], ['3', '德', '阿德', '銅牌熊 III'], ['4', '婷', '婉婷', '銅牌熊 III']];
+const otherRows = others.map(([n, a, nm, rk]) => `<div class="row"><span class="no">${n}</span><span class="av">${a}</span>
+  <span class="who"><span class="nm">${nm}</span><span class="rk">${rk}</span></span><span class="thumb">${THUMB}</span><span class="add">＋ 加牌咖</span></div>`).join('');
+const meRow = (extra = '', cls = '', rkLine = '<span class="rk">金牌熊 II</span>') => `<div class="row me ${cls}"><span class="no n1">1</span><span class="av">明</span>
+  <span class="who"><span class="nm">阿明<em>你</em></span>${extra}${rkLine}</span><span class="sc">積分 +1240<small>段位分 +18</small></span></div>`;
+const info = `<div class="info"><div><span>類型</span>配桌 · 即將開局</div><div><span>門市</span>MIGI 高雄自由店</div><div><span>玩法</span>台麻 · 無花 · 2 將</div><div><span>積分</span>50/20</div></div>`;
+const ft = '<div class="ft"><div>完成評價</div></div>';
+const title = (mark = '') => `<div class="hd"><p class="ttl ${mark}">給同桌評價${THUMB_F.replace('<svg', '<svg width="20" height="20"')}</p><p class="sub">覺得誰牌品好，就給他一個讚</p></div>`;
+
+const V = [
+  { k: '現', cls: 'now', name: '現在', why: '兩個標題疊在一起；「本局 +1240 分 · 段位 +18」跟下面自己那一列重複。',
+    html: `${title('mark')}<div class="bd"><div class="hero mark"><b>恭喜你拿下第 1 名！</b><small>本局 +1240 分 · 段位 +18</small></div>
+      <p class="sec">本局戰績</p>${meRow()}${otherRows}${info}</div>${ft}` },
+  { k: '1', name: '成績在上，評價當區塊標題', rec: true,
+    why: '最上面只有一件事：你這一局的名次（粉色淡底、數字做成兩顆小膠囊）。「給同桌評價」往下移，變成名單的標題，直接接到最下面的「完成評價」。',
+    html: `<div class="hero big"><b>恭喜你拿下第 1 名！</b><div class="nums"><span>本局 +1240</span><span>段位 +18</span></div></div>
+      <div class="bd"><p class="sec">給同桌評價${THUMB_F.replace('<svg', '<svg width="18" height="18"')}</p><p class="sec-sub">覺得誰牌品好，就給他一個讚</p>
+      ${meRow()}${otherRows}${info}</div>${ft}` },
+  { k: '2', name: '只留評價標題',
+    why: '恭喜那一段整個拿掉，名次和分數本來就在自己那一列。最乾淨，但第 1 名少了一句恭喜。',
+    html: `${title()}<div class="bd">${meRow()}${otherRows}${info}</div>${ft}` },
+  { k: '3', name: '恭喜放進自己那一列',
+    why: '最上面只留「給同桌評價」；自己那一列鋪粉色淡底，名字下面寫「恭喜拿下第 1 名！」（不是第 1 名就寫「第 N 名」）。恭喜還在，但不再當第二個標題。',
+    html: `${title()}<div class="bd">${meRow('<span class="cg">恭喜拿下第 1 名！</span>', 'tint')}${otherRows}${info}</div>${ft}` },
+];
+document.getElementById('g').innerHTML = V.map(v => `<div class="col ${v.cls || ''}"><h2><span class="k">${v.k}</span>${v.name}${v.rec ? '<span class="rec">建議</span>' : ''}</h2>
+  <p class="why">${v.why}</p><div class="sheet">${v.html}</div></div>`).join('');
+</script>

@@ -1,5 +1,13 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-28 增補 111（歸檔 `2026-10-28_給同桌評價倒讚.sql`）
+> **基準：`sql/applied/` 有 425 個檔案**。驗證 5/5 ＋ 行為 9/9（`sql/checks/2026-10-28_驗給同桌評價倒讚.sql`，回滾後查過 `member_dislikes` 0 列），
+> 提交後另查線上（表與函式都在、按讚撤倒讚、`_game_row` 回 `disliked_by_me`、只有 authenticated 叫得動）。public 函式 389 → **390**、表 → **72**。
+> · 🆕 表 `member_dislikes`（org、rater、target、session 必填、created_at）：開 RLS、**0 條 policy**、前端角色全收回 ⇒ 只有 DEFINER 與後台讀得到。
+>   唯一 (rater, target, session)；check rater ≠ target。**只有總部後台看得到，先只記錄**（使用者拍板，用途日後再定）。
+> · 🆕 `dislike_player_tx(p_target, p_on, p_session)`：身分只認 `current_member_id()`；兩人都要坐過那一場；按倒讚會撤掉同一場對他的讚並扣回讚數。
+> · `like_player_tx`：按讚時撤掉同一場的倒讚（讚與倒讚二選一）。`_game_row` 每位玩家多 `disliked_by_me`。
+
 > ### 🆕 2026-10-28 增補 110（歸檔 `2026-10-27_計分板標記全國第一.sql`）
 > **基準：`sql/applied/` 有 424 個檔案**。驗證 4/4（實際叫一次：4 位玩家都有 no1、1 位是第一），提交後另查線上（1 個版本、有 no1、anon／authenticated 仍叫不到；public 函式數 389 不變）。
 > · `_tbl_state_for_device` 的 players 每一列多 `no1`（布林，不是會員 id）：本季 `season_rank_rows_display_tx` 的 rank_no = 1 ——
