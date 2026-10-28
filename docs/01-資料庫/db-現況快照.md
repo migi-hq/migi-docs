@@ -1,5 +1,19 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-28 增補 114（歸檔 `2026-10-28_好友練習賽_地基.sql`）
+> **基準：`sql/applied/` 有 428 個檔案**。驗證 10/10，提交後另查線上。public 函式 393 → **405**（＋12）、表 72 → **74**（＋2）、policy 不變 33。
+> 📄 規格 `docs/03-會員App與社交/好友練習賽.md`
+> · `stores.is_virtual`（預設 false）＋ 每個機構一間虛擬門市「好友練習賽」（代碼 `FRIENDLY`、不營業）。底下的虛擬桌由 `_friendly_start` 自己建（`F0001`…），打完重用
+> · `table_sessions.mode` 收 `matched`／`private`／**`friendly`**（約束改名 `table_sessions_mode_check`）
+> · `app_notifications.type` 多 `friendly_ok`／`friendly_invite`／`friendly_out`（約束改名 `app_notifications_type_check`）；三種都**不在** `_push_enqueue` 的推播白名單
+> · 🆕 表 `friendly_games`（waiting → playing → finished／cancelled，`invite_token` 唯一、`session_id` 指 `table_sessions`）、
+>   `friendly_game_players`（`uq_friendly_player_active (game_id, member_id) where left_at is null`）。兩張 RLS 開、0 policy
+> · 🆕 前端（authenticated）：`create_friendly_game_tx`、`join_friendly_game_tx`（加入不了回 reason，不 raise）、`leave_friendly_game_tx`、
+>   `cancel_friendly_game_tx`、`send_friendly_invite_tx`、`get_my_friendly_tx`
+> · 🆕 內部（前端叫不到）：`_friendly_active_game`、`_friendly_in_match`、`_friendly_view`、`_friendly_invite`、`_friendly_start`、`sweep_friendly_tx`（pg_cron `friendly-sweep` 每 5 分鐘）
+> · `_check_join_conflict` 開頭多一道「在好友練習賽裡就擋」（簽名不變）
+> · ⚠ 結算還沒分開（第 ② 批）：在那之前打完會照正式段位賽結算 ⇒ 前端入口不要先開
+
 > ### 🆕 2026-10-28 增補 113（歸檔 `2026-10-28_成績頁比率改看規定局數.sql`）
 > **基準：`sql/applied/` 有 427 個檔案**。驗證 5/5，提交後另查線上（四支各 1 個版本、授權不變）。public 函式 392 → **393**、表不變。
 > · 🆕 `_hand_min_count()`：規定局數**唯一一份**（30），前端叫不到。排行榜「數據排行」上榜與成績頁三個比率都看它。
