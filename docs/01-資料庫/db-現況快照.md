@@ -1,5 +1,11 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-28 增補 112（歸檔 `2026-10-28_牌局回放讀逐局紀錄.sql`）
+> **基準：`sql/applied/` 有 426 個檔案**。驗證 5/5，提交後另查線上（兩支都是 DEFINER、讀的那支只有 authenticated、身分看 `current_member_id()`）。public 函式 390 → **392**、表不變。
+> · 🆕 `_session_hands(p_session_id)`：這一場 `status = 'confirmed'` 且沒撤銷的每一局，由舊到新；牌型帶 `scoring_patterns.label`、
+>   `tai_total` 用 `_hand_tai_total`。前端角色全收回。
+> · 🆕 `get_my_game_hands_tx(p_session_id)`：會員 App「牌局回放」讀（`migi-web` lib/replay.jsx）；不在 `session_players` 裡回 `not_in_session`，回 `my_seat` ＋ `hands`。
+
 > ### 🆕 2026-10-28 增補 111（歸檔 `2026-10-28_給同桌評價倒讚.sql`）
 > **基準：`sql/applied/` 有 425 個檔案**。驗證 5/5 ＋ 行為 9/9（`sql/checks/2026-10-28_驗給同桌評價倒讚.sql`，回滾後查過 `member_dislikes` 0 列），
 > 提交後另查線上（表與函式都在、按讚撤倒讚、`_game_row` 回 `disliked_by_me`、只有 authenticated 叫得動）。public 函式 389 → **390**、表 → **72**。
