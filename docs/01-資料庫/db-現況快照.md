@@ -1,5 +1,12 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-28 增補 113（歸檔 `2026-10-28_成績頁比率改看規定局數.sql`）
+> **基準：`sql/applied/` 有 427 個檔案**。驗證 5/5，提交後另查線上（四支各 1 個版本、授權不變）。public 函式 392 → **393**、表不變。
+> · 🆕 `_hand_min_count()`：規定局數**唯一一份**（30），前端叫不到。排行榜「數據排行」上榜與成績頁三個比率都看它。
+> · `get_season_leaderboard_tx`：原本函式裡的常數 30 改叫 `_hand_min_count()`（數字不變）。
+> · `_member_stats_core` 多回 `'min_hands'`；`get_my_stats_range_tx` 一起帶出去。成績頁胡牌率／放槍率／自摸率改看局數（`migi-web` bf8107e），
+>   平均勝率、名次分布仍看 `min_games`（5 場）。
+
 > ### 🆕 2026-10-28 增補 112（歸檔 `2026-10-28_牌局回放讀逐局紀錄.sql`）
 > **基準：`sql/applied/` 有 426 個檔案**。驗證 5/5，提交後另查線上（兩支都是 DEFINER、讀的那支只有 authenticated、身分看 `current_member_id()`）。public 函式 390 → **392**、表不變。
 > · 🆕 `_session_hands(p_session_id)`：這一場 `status = 'confirmed'` 且沒撤銷的每一局，由舊到新；牌型帶 `scoring_patterns.label`、
