@@ -1,5 +1,10 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-29 增補 115（歸檔 `2026-10-29_手機計分板回傳本人頭像.sql`）
+> **基準：`sql/applied/` 有 429 個檔案**。驗證 2/2，提交後另查線上（兩處都在、1 個版本）。函式數、表數不變。
+> · `_tbl_state_for_device` 的 `device` 兩處（有場次、沒場次）都多 `owner_avatar`：`{avatar_source, avatar_url, avatar_bear, avatar_photo_path}`，
+>   跟 players[] 的頭像欄位同名；平板沒有 member ⇒ null。前端手機「目前沒有牌局」名字上面畫本人頭像（migi-table）。
+
 > ### 🆕 2026-10-28 增補 114（歸檔 `2026-10-28_好友練習賽_地基.sql`）
 > **基準：`sql/applied/` 有 428 個檔案**。驗證 10/10，提交後另查線上。public 函式 393 → **405**（＋12）、表 72 → **74**（＋2）、policy 不變 33。
 > 📄 規格 `docs/03-會員App與社交/好友練習賽.md`
