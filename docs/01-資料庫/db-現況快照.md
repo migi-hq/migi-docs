@@ -1,5 +1,43 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-31 增補 119（歸檔 `2026-10-31_牌咖與牌咖團邀請卡片資料.sql`）
+> **基準：`sql/applied/` 有 434 個檔案**。驗證 4/4，提交後查過線上（兩支各一個版本、新欄位在、authenticated 叫得動）。
+> 簽名都沒變（CREATE OR REPLACE），只是回傳多了欄位，給 LINE 邀請卡片用：
+> · `create_buddy_invite_link_tx()` 多回 `rank`（members.rank）、`season_rank`（`season_rank_rows_display_tx` 本季名次）、
+>   `win_pct`（`_member_stats_core` 本季 wins ÷ scored，scored 滿 min_games 才給）；邀請人 `see_score = '只有自己'` 時 `win_pct` 一律 null
+> · `create_team_invite_link_tx(p_team_id)` 多回 `leader_name`（團長暱稱）、`member_count`（沒離團的人數）、`my_name`（發邀請的人）
+> · 行為測試 3/3：`sql/checks/2026-10-31_驗牌咖與牌咖團邀請卡片資料.sql`（勝率跟成績頁一致、「只有自己」不給勝率有正對照 63%、團長與人數對得上；全部退回）
+
+> ### 🆕 2026-10-30 增補 118（歸檔 `2026-10-30_配桌揪桌與邀請連結.sql`）
+> **基準：`sql/applied/` 有 433 個檔案**。驗證 9/9 ＋ 行為 14/14（`sql/checks/2026-10-30_驗配桌揪桌與邀請連結.sql`，回滾後查過沒有留下連結、房、invited_by），
+> 提交後另查線上。public 函式 406 → **408**、表 74 → **75**、policy 不變 33。
+> · `match_queue_players.invited_by`（fk members，可空）：誰把這個人帶進這一房 —— 揪桌（`join_source = 'invite'`）是發邀請的人、連結（`'link'`）是連結的主人
+> · 🆕 表 `queue_invite_links`（org、queue、token 唯一、created_by、created_at；唯一 `uq_queue_invite_links_owner (queue_id, created_by)`）：RLS 開、0 policy。
+>   一房一個邀請人一條、可以重複用，房還在等人就有效（沒有自己的到期欄位）
+> · `send_table_invite_tx`（簽名不變）：補擋 房不在等人／發的人不在房裡／不是牌咖（兩個方向都算）／對方隱藏／對方已在房裡；
+>   同一個人同一房只發一則（不管誰邀、回覆過沒）；互黑仍然靜默不發
+> · `respond_table_invite_tx`（簽名不變）：要有那一房的 table_req 才行（「找不到這則邀請」）；回覆就寫 `done_at`；接受 ⇒ `join_match_queue_tx(…, 'invite')` ＋ 記 invited_by
+> · `list_notifications_tx`：table_req 回 `invite_status`（這則之後進過那一房 ⇒ accepted、done_at ⇒ rejected、房不在等人 ⇒ expired、其餘 pending）
+> · 🆕 `create_queue_invite_link_tx(p_queue)` → `{ok, token, my_name, store_name, stake_label, play_at, game_type, flower, rounds}`（同一人同一房回同一條）
+> · 🆕 `redeem_queue_invite_tx(p_token)` → `{ok, joined, already, status, queue_id, message}`；報名擋牆的 raise 接住回 `reason = 'cannot_join'` ＋ 原話；房不在等人回 `closed`
+> · 授權：上面四支只有 authenticated（anon、PUBLIC 都收回；send／respond 原本 anon ＋ PUBLIC 都有）
+
+> ### 🆕 2026-10-30 增補 117（歸檔 `2026-10-30_換機代碼平板接手與本人換裝置.sql`）
+> **基準：`sql/applied/` 有 432 個檔案**。驗證 3/3，提交後另查線上（兩支各 1 個版本）。函式數、表數、授權都不變。
+> · `_tbl_device`：平板的 `bound_session_id` 有值、那一場還開著、而且它還坐在那個位置上 ⇒ 回傳的 `table_id` 換成那一場的桌（只改回傳值）；
+>   否則清掉綁定、回到它原本那一桌。`table_devices.table_id` 永遠是平板原本那一桌
+> · `tbl_swap_redeem_tx`：平板、或本人自己的手機輸入換機代碼 ＝ 同一個人換裝置（回 `move`，紀錄 to_member ＝ from_member）；
+>   平板接手時寫 `bound_session_id`。擋：位置已在這台（self）、別間店的平板（other_store）、好友練習賽（phone_only）、
+>   平板正坐在別的牌局（tablet_busy）。換人上桌那條照舊，預覽多回 `from_avatar`
+
+> ### 🆕 2026-10-30 增補 116（歸檔 `2026-10-30_練習賽房間與記住送出方式.sql`）
+> **基準：`sql/applied/` 有 431 個檔案**（同日另有 `2026-10-30_A1第15局拿掉MIGI.sql`，只改一局的資料、不動結構）。
+> 驗證 3/3，提交後另查線上。public 函式 405 → **406**（＋`tbl_my_send_mode_tx`），表與 policy 不變；明確授權 anon 100 → **101**。
+> · `_friendly_start`：新建的練習賽房間桌名改成「練習賽房間 N」（原本 `F0001`；同一列 stores 底下不能重名所以帶編號）
+> · `tbl_my_send_mode_tx(p_token)` → `{ ok, mode: 'pat' | 'num' }`：這台裝置的人**在這一場**最後一次送出胡牌／自摸是不是數字鍵（`hands.manual_tai`），
+>   沒場次、沒座位、這一場還沒送過一律 `pat`。不另存設定。
+> · `v_real_stores` 補上 `is_virtual`（權限不變，前端讀不到）
+
 > ### 🆕 2026-10-29 增補 115（歸檔 `2026-10-29_手機計分板回傳本人頭像.sql`）
 > **基準：`sql/applied/` 有 429 個檔案**。驗證 2/2，提交後另查線上（兩處都在、1 個版本）。函式數、表數不變。
 > · `_tbl_state_for_device` 的 `device` 兩處（有場次、沒場次）都多 `owner_avatar`：`{avatar_source, avatar_url, avatar_bear, avatar_photo_path}`，
