@@ -1,5 +1,11 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-31 增補 120（歸檔 `2026-10-31_排行榜第一名回傳勝率.sql`）
+> **基準：`sql/applied/` 有 435 個檔案**。驗證 5/5，提交後查過線上（1 個版本、anon 與 authenticated 授權照舊）。函式數、表數不變。
+> · `get_season_leaderboard_tx`（簽名不變）：`rows[0]`（第一名）多 `scored`／`wins`／`min_games`，問的是 `_member_stats_core` 的本季那一份
+>   （跟他成績頁的平均勝率同一個算法）；第一名 `see_score = '只有自己'` 且看的人不是他自己 ⇒ 改回 `stats_private: true`、不給數字。
+>   其他列不變。前端第一名卡片「打了幾場」換成「勝率」（migi-web stats.jsx）
+
 > ### 🆕 2026-10-31 增補 119（歸檔 `2026-10-31_牌咖與牌咖團邀請卡片資料.sql`）
 > **基準：`sql/applied/` 有 434 個檔案**。驗證 4/4，提交後查過線上（兩支各一個版本、新欄位在、authenticated 叫得動）。
 > 簽名都沒變（CREATE OR REPLACE），只是回傳多了欄位，給 LINE 邀請卡片用：
