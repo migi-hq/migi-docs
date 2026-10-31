@@ -814,6 +814,22 @@ select 序, 項目, 內容 from (
             from s)
 
   union all
+  /* ㉒ 好友練習賽有沒有被算進段位（2026-10-31 加）。
+        好友練習賽不算段位分、不發成就；排除寫在十幾支函式裡，漏一支不會報錯，只會被灌分。
+        ⇒ 這一格看結果不看函式：mode = friendly 的玩家只要有 rating_after 或 score_points 就紅，不管是哪一支漏改。
+        另外盯收尾排程 friendly-sweep（沒有它，沒湊滿的局會一直掛著把人卡住）。 */
+  select 22, '㉒ 好友練習賽不算段位（玩家沒有段位分、收尾排程在跑）',
+         (select case when count(*) filter (where sp.rating_after is not null or sp.score_points is not null) = 0
+                      then '✅ ' || count(distinct ts.id) || ' 場好友練習賽、' || count(*) || ' 位玩家都沒有段位分'
+                      else '🔴 ' || count(*) filter (where sp.rating_after is not null or sp.score_points is not null)
+                           || ' 位好友練習賽的玩家有段位分 —— 有一支結算或段位函式沒排除 mode = friendly' end
+                 || case when not exists (select 1 from cron.job where jobname = 'friendly-sweep' and active)
+                         then E'\n  🔴 排程 friendly-sweep 不見了或被停用' else '' end
+            from table_sessions ts
+            join session_players sp on sp.session_id = ts.id
+           where ts.mode = 'friendly')
+
+  union all
   select 5, '⑤ 測試標記（修好前的歷史資料仍標成營運）',
          (select 'is_test=true ' || count(*) filter (where is_test)::text ||
                  '　is_test=false ' || count(*) filter (where not is_test)::text ||

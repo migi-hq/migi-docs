@@ -1,5 +1,18 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-10-31 增補 121（歸檔 `2026-10-28_好友練習賽_結算與排除.sql`）
+> **基準：`sql/applied/` 有 436 個檔案**。驗證 10/10，提交後查過線上（改過的 20 支各一個版本）。沒有新表。
+> · 結算：`_score_settle_tx` 遇到 `mode = 'friendly'` 不算段位分、不發成就，`friendly_games` 標成打完；結算通知與 LINE 結算卡片
+>   （`_settle_notify_on_rank` 與推播三支）有好友練習賽的版本（不寫段位分）
+> · 排除好友練習賽：`_member_stats_core`、`get_my_games_tx`、`get_member_card_tx`、`_pair_history`、`_member_home_store`、
+>   `_team_session_ids`、`list_recent_players_tx`；`like_player_tx`／`dislike_player_tx` 對好友練習賽回擋
+> · `_game_row` 的 kind 多 `friendly`；`_tbl_state_for_device` 的 session 回 `mode`，好友練習賽不標全國第一（no1）
+> · 後台：`admin_list_stores_tx` 不列虛擬門市（`stores.is_virtual`）、`admin_pair_table_device_tx` 不准把平板配到練習賽房間
+> · 新的五支（整支建立）：`_friendly_close`、`sweep_friendly_tx`、`_friendly_sync_member`（觸發器 `trg_session_players_friendly_sync`：
+>   換人上桌時 `friendly_game_players` 跟著換）、`_friendly_stats`、`get_my_friendly_tx`（多回 stats／trend／records）；內部四支前端叫不到
+> · 行為測試 11/11：`sql/checks/2026-10-28_驗好友練習賽結算與排除.sql`（結算不碰段位分、通知與 LINE 卡片、成績頁不多一場、
+>   常去門市不變、不能按讚、打完 15 分鐘收掉並重用練習賽房間、換人上桌、開打 6 小時沒記分作廢；全部退回，事後查過沒留資料）
+
 > ### 🆕 2026-10-31 增補 120（歸檔 `2026-10-31_排行榜第一名回傳勝率.sql`）
 > **基準：`sql/applied/` 有 435 個檔案**。驗證 5/5，提交後查過線上（1 個版本、anon 與 authenticated 授權照舊）。函式數、表數不變。
 > · `get_season_leaderboard_tx`（簽名不變）：`rows[0]`（第一名）多 `scored`／`wins`／`min_games`，問的是 `_member_stats_core` 的本季那一份
