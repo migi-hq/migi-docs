@@ -1,5 +1,17 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-01 增補 124（歸檔 `2026-11-01_牌咖團顧問_商人熊檯費折50.sql` ＋ `2026-11-01_商人熊改成全有或全無_用券就不折.sql`）
+> **基準：`sql/applied/` 有 440 個檔案**。驗證 9/9 ＋ 4/4，兩份都提交後查過線上；行為測試 `sql/checks/2026-11-01_驗商人熊檯費折50.sql`。
+> · 新表 `advisor_perk_uses`（誰、哪天、哪一團、哪四位、哪一筆訂單；唯一索引 `uq_advisor_perk_once_a_day (member_id, kind, use_date)`；RLS 開、0 policy）
+> · `orders` 加 `advisor_discount`（not null default 0）、`advisor_team_id`；約束 `orders_amount_balance` 改成 payable = subtotal − coupon − tier − advisor
+> · `v_real_orders` 最後補那兩欄
+> · 新函式 `_advisor_table_team(p_org, p_members uuid[])`：四人的共同團（只看有顧問的；多個時挑最早湊齊四人的）
+> · 改簽名（DROP 重建、補回原授權）：`_join_plan`／`_cart_pricing`／`checkout_tx`（內部，只有 postgres／service_role）、
+>   `join_session_tx`／`pos_checkout_with_topup_tx`／`pos_quote_tx`（多 `p_table_members uuid[]`，authenticated）
+> · 規則：以「這一桌」為單位 —— 四位同一個商人熊團、直營、四位今天都沒在別桌用過 ⇒ 這次付檯費的每一位折 50；少一位全部沒有；
+>   有選券就不算（`_cart_pricing`）；有折就沒有等級折扣（等級折扣率也記 0）
+> · `_member_orders_core`／`get_session_member_orders_tx`／`get_order_tx` 多回 `advisor_discount`
+
 > ### 🆕 2026-11-01 增補 123（歸檔 `2026-11-01_牌咖團顧問.sql`）
 > **基準：`sql/applied/` 有 438 個檔案**。驗證 8/8，提交後查過線上。
 > · `teams` 加三欄：`advisor`（`chef`／`merchant`／null，CHECK `teams_advisor_check`）、`advisor_set_at`、`advisor_set_by`（→ members）
