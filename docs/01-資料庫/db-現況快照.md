@@ -1,5 +1,20 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-01 增補 123（歸檔 `2026-11-01_牌咖團顧問.sql`）
+> **基準：`sql/applied/` 有 438 個檔案**。驗證 8/8，提交後查過線上。
+> · `teams` 加三欄：`advisor`（`chef`／`merchant`／null，CHECK `teams_advisor_check`）、`advisor_set_at`、`advisor_set_by`（→ members）
+> · `create_team_tx` 改簽名，最後多 `p_advisor text default null`（DROP 重建，授權 authenticated，anon 收掉）
+> · 新函式 `set_team_advisor_tx(p_team_id uuid, p_advisor text)`：只有團長、只能在 advisor 是 null 時選一次（`where advisor is null` 擋）
+> · `_team_card` 多回 `advisor` ⇒ `get_team_tx`／`list_my_teams_tx`／`list_hot_teams_tx`／`search_teams_tx` 都帶得出來
+> · ⚠ 加成還沒接：商人熊（檯費每人少 50 元）要改 `_cart_pricing`；廚師熊（每人 +1 小熊餅乾）要先把餅乾從 `member_app_state.bear.snacks`（前端整包覆寫）改成後端記帳
+
+> ### 🆕 2026-10-31 增補 122（歸檔 `2026-10-31_創辦人帳號改成非測試.sql`）
+> **基準：`sql/applied/` 有 437 個檔案**。只改資料、不動結構（表、函式、索引數不變）。驗證 2/2，提交後查過線上。
+> · 創辦人的會員帳號（本狩 岡五郎，`69016205-…`）`is_test` 改成 false；測試帳號剩測試01～04 四個
+> · 連動：名人堂不再排除他、賽季結算照常重置段位分、`placeholder_ranks_tx` 不再塞隨機名次、
+>   `dev_reset_test_data_tx`／`dev_set_test_balance_tx` 碰不到他、之後的埋點不標測試
+> · 段位分不歸零（算段位的只有 10-14～10-16 三場封測牌局，每場同桌 3 位真客人）
+
 > ### 🆕 2026-10-31 增補 121（歸檔 `2026-10-28_好友練習賽_結算與排除.sql`）
 > **基準：`sql/applied/` 有 436 個檔案**。驗證 10/10，提交後查過線上（改過的 20 支各一個版本）。沒有新表。
 > · 結算：`_score_settle_tx` 遇到 `mode = 'friendly'` 不算段位分、不發成就，`friendly_games` 標成打完；結算通知與 LINE 結算卡片

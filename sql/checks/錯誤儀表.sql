@@ -324,7 +324,9 @@ select 序, 項目, 內容 from (
                    then '🟡 ② 自己人的 is_test 還是 true（' ||
                         (select count(*)::text from members where is_test and deleted_at is null) ||
                         ' 個）—— 🔴 跟 ① 是同一個動作的兩半'
-                   else '✅ ② 沒有 is_test 的帳號了' end
+                   else '✅ ② 綁了 LINE 的帳號都不是測試了（剩下 ' ||
+                        (select count(*)::text from members where is_test and deleted_at is null) ||
+                        ' 個測試帳號是測試01～04，維持測試）' end
             union all
             select 3, case when exists (select 1 from rank_seasons where now() >= starts_at and now() < ends_at)
                    then '✅ ③ 賽季涵蓋今天' else '🔴 ③ 今天不在任何賽季裡 —— 段位分不會結算' end
