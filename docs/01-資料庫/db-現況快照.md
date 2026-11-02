@@ -1,5 +1,20 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-02 增補 125（歸檔 `2026-11-02_會員來源記錄.sql`）
+> **基準：`sql/applied/` 有 441 個檔案**。驗證 8/8，提交後查過線上。只記錄、不發獎勵。
+> · `members.acquisition_source`（原本就有、全空）加 CHECK `members_acquisition_source_chk`：
+>   `staff` 店員 QR／`member` 會員邀請連結／`ad` 廣告／`other` 官網等自有管道／`none` 沒標記／**null ＝ 2026-11-02 開始記錄之前**
+> · `members` 加 `acquisition_channel`、`acquisition_campaign`、`referred_by_staff_id`（→ staff）、`referred_by_member_id`（→ members）、
+>   `acquisition_at`、`acquisition_backfilled`（not null default false）；指向 members 的外鍵 54 → 55
+> · `staff` 加 `referral_code`（唯一索引 `uq_staff_referral_code`）
+> · 新表 `acquisition_channels`（code、kind ∈ ad/other、label、sort；RLS 開、0 policy）：google、meta（ad）、site、line_oa（other）
+> · 觸發器：`trg_members_acquisition_init`（新會員一律從 none 開始，前端指定不了）；
+>   `trg_acq_buddy_link`／`trg_acq_team_link`（used_by 寫入）、`trg_acq_queue_link`（invited_by）、`trg_acq_friendly_link`（join_source = link，推薦人＝開局的人）
+> · 唯一寫入點 `_set_acquisition`（只寫還是 none、註冊不到 1 小時、不是自己帶自己）；前端叫不動
+> · 新 RPC（authenticated）：`pos_my_referral_code_tx()`（店員拿自己的推薦碼，沒有就建）、
+>   `redeem_staff_referral_tx(p_code)`、`set_my_acquisition_channel_tx(p_channel, p_campaign)`
+> · 舊會員補記 12 位（牌咖團連結 10、牌咖連結 2，`acquisition_backfilled = true`）；其餘 146 位維持 null
+
 > ### 🆕 2026-11-01 增補 124（歸檔 `2026-11-01_牌咖團顧問_商人熊檯費折50.sql` ＋ `2026-11-01_商人熊改成全有或全無_用券就不折.sql`）
 > **基準：`sql/applied/` 有 440 個檔案**。驗證 9/9 ＋ 4/4，兩份都提交後查過線上；行為測試 `sql/checks/2026-11-01_驗商人熊檯費折50.sql`。
 > · 新表 `advisor_perk_uses`（誰、哪天、哪一團、哪四位、哪一筆訂單；唯一索引 `uq_advisor_perk_once_a_day (member_id, kind, use_date)`；RLS 開、0 policy）
