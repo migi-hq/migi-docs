@@ -1,5 +1,31 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-03 增補 129（歸檔 `2026-11-02_營運報表.sql`）
+> **基準：`sql/applied/` 有 445 個檔案**。驗證 7/7，提交後查過線上（兩支各一個版本）。
+> · 新函式 `_biz_date(timestamptz)`：營業日，台北時間凌晨 6 點換日（只有 postgres／service_role）
+> · 新 RPC `admin_ops_report_tx(p_from date, p_to date, p_store uuid)`（DEFINER、authenticated，`can('ops.read')`；**不宣告 stable**，裡面建暫存表）
+>   回 `table`（場數、營收、上座率、客單價、檯費／餐飲／周邊）、`profit`、`retention`、`acquisition`（各來源註冊 → 打 1 場 → 打 2 場）、`ops`（白跑率、店員）、`heat`（24 小時／7 天／每天）
+> · 資料讀原始表、只排除 `members.is_test`（不讀 `v_real_*`：上線日沒設、門市還標測試，那些檢視表全是 0）；會員來源那一區不受門市篩選影響
+> · 三個指標回 null ＋ 原因：餐飲毛利率（成本全 0）、庫存警示（沒有進銷存）、流失預警（生命週期沒人更新）
+
+> ### 🆕 2026-11-03 增補 128（歸檔 `2026-11-03_創辦人測試按讚的餅乾扣回.sql`）
+> **基準：`sql/applied/` 有 444 個檔案**。驗證 5/5，提交後查過線上。
+> · `trg_snack_achievements()`：扣除只有 `reason = 'feed'` 才發 `snack_consumed`（成就「餵一次小熊」）；總部調整（admin）等其他扣除不發
+> · 資料：創辦人 snack_grants 補一筆 admin −8（冪等鍵 `admin:2026-11-03:founder-test-likes`），10-07 測試按讚的 8 個扣回，剩 6 個
+
+> ### 🆕 2026-11-03 增補 127（歸檔 `2026-11-03_我的小熊餅乾數.sql`）
+> **基準：`sql/applied/` 有 443 個檔案**。驗證 4/4，提交後查過線上。
+> · 新 RPC `get_my_snacks_tx()`（DEFINER、authenticated；身分 current_member_id）：回 cookie／milktea／pudding／tiramisu 各幾個，**從帳本 snack_grants 加總**
+> · ⚠ `member_app_state.bear.snacks` 是顯示用副本、不可靠：grant／consume 用 `jsonb_set` 寫 `{snacks,<kind>}`，bear 裡沒有 snacks 這一層時寫不進去（11-03 查 22 位有 4 位是空的）——要數字一律讀帳本
+
+> ### 🆕 2026-11-02 增補 126（歸檔 `2026-11-02_牌咖團顧問_廚師熊多發小熊餅乾.sql`）
+> **基準：`sql/applied/` 有 442 個檔案**。驗證 6/6，提交後查過線上；行為測試 `sql/checks/2026-11-02_驗廚師熊多發小熊餅乾.sql` 5/5（回滾後查過沒留樣本）。
+> · `snack_grants_reason_check` 多一個值 `chef`（like／daily／task／draw／admin／feed／chef）
+> · 新函式 `_chef_perk_on_rank()`（觸發器函式，只有 postgres／service_role）＋ 觸發器 `trg_session_players_chef_perk`
+>   （session_players AFTER UPDATE，statement 級、transition tables，同 `trg_session_players_settle_notify` 的寫法）
+> · 規則：名次從空變成有值那一刻、不是好友練習賽、`_advisor_table_team` 挑到的團顧問是 chef ⇒ 四人各 `grant_snack_tx` 1 個 cookie，
+>   冪等鍵 `chef:<場次>:<會員>`；發放失敗不擋成績，記 `app_events` 的 `advisor_error`
+
 > ### 🆕 2026-11-02 增補 125（歸檔 `2026-11-02_會員來源記錄.sql`）
 > **基準：`sql/applied/` 有 441 個檔案**。驗證 8/8，提交後查過線上。只記錄、不發獎勵。
 > · `members.acquisition_source`（原本就有、全空）加 CHECK `members_acquisition_source_chk`：
