@@ -1,5 +1,18 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-03 增補 132（歸檔 `2026-11-03_營運報表第二批.sql`）
+> **基準：`sql/applied/` 有 448 個檔案**。驗證 11/11，提交後查過線上。
+> · `table_sessions`／`orders`／`topup_orders` 各加 `voided_at`、`voided_by_staff_id`（→ staff）、`void_source`（staff／system）；
+>   觸發器 `trg_*_audit_void` → `_audit_void()`，狀態變成作廢那一刻蓋章（身分取 `current_staff()`，沒有就是 system）
+> · 新表 `report_targets`（PK store_id ＋ month；revenue_target、breakeven_occupancy 0～1；RLS 開、0 policy）
+>   ＋ `admin_set_report_target_tx(store, month, revenue, breakeven)`（`can('target.write')`）
+> · 報表拆兩層：`_ops_report_core(org, from, to, store)`（唯一一份算法，誰都叫不到）＋ `admin_ops_report_tx`（權限檢查後叫它）；
+>   新回 `targets`／`segments`（by_tier、by_rank）／`lifetime`／`exceptions.void_by`
+> · `admin_ops_detail_tx(from, to, store, kind)`：sessions／orders／new_customers／rooms／voids，最多 500 筆
+> · LINE 日報：通知種類 `daily_report`；`_push_daily_flex`、`_daily_report_payload`、`_daily_report_send`、
+>   `admin_send_daily_report_tx`（傳到自己的 LINE）；`_push_messages`、`_push_enqueue`（白名單加 daily_report）、
+>   `list_notifications_tx`（排除 daily_report）改過；pg_cron `daily-report` `30 22 * * *`（台北 06:30）
+
 > ### 🆕 2026-11-03 增補 131（歸檔 `2026-11-03_開始記錄之前的會員算老闆帶來.sql`）
 > **基準：`sql/applied/` 有 447 個檔案**。驗證 5/5，提交後查過線上。
 > · 只動資料：11-02 開始記錄之前註冊、來源是空的非測試會員 145 位 → `acquisition_source = 'staff'`、
