@@ -1,0 +1,477 @@
+<title>MIGI 黑科技地圖</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* 版面：一欄閱讀流。開頭是家底數字與讀法，接著「先做哪些」，再依八大類分段，每項是一張牌；編號畫成麻將牌 */
+:root{
+  --bg:#FFFFFF; --surface:#FFF6F8; --raised:#FFFFFF; --line:#DED9D5; --soft:#F2F0EE;
+  --ink:#2E2B2C; --ink-2:#5C5754; --ink-3:#726D69;
+  --brand:#FAD6DC; --brand-tint:#FFECF1; --accent:#974B5F; --gold:#E8B89B;
+  --tile:#FBF7F0; --tile-edge:#E3D9C9; --tile-ink:#2E2B2C;
+  --f-display:"Noto Serif TC","Songti TC","PMingLiU",serif;
+  --f-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#221F20; --surface:#2B2829; --raised:#2B2829; --line:#524D4E; --soft:#332F30;
+  --ink:#FFFFFF; --ink-2:#C9C4C1; --ink-3:#A39D99;
+  --brand:#FAD6DC; --brand-tint:#3A2E31; --accent:#FAD6DC; --gold:#E8B89B;
+  --tile:#EDE6DA; --tile-edge:#B9AE9C; --tile-ink:#2E2B2C; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#221F20; --surface:#2B2829; --raised:#2B2829; --line:#524D4E; --soft:#332F30;
+  --ink:#FFFFFF; --ink-2:#C9C4C1; --ink-3:#A39D99;
+  --brand:#FAD6DC; --brand-tint:#3A2E31; --accent:#FAD6DC; --gold:#E8B89B;
+  --tile:#EDE6DA; --tile-edge:#B9AE9C; --tile-ink:#2E2B2C; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.65;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1080px;margin:0 auto;padding-block:40px 72px;display:flex;flex-direction:column;gap:48px}
+h1,h2,h3{text-wrap:balance;margin:0}
+.eyebrow{font-size:12px;letter-spacing:.12em;color:var(--accent);font-weight:700}
+
+/* 開頭 */
+.hero{display:grid;gap:20px}
+.hero h1{font-family:var(--f-display);font-weight:900;font-size:clamp(34px,6vw,56px);line-height:1.15;letter-spacing:.02em}
+.hero h1 .tiles{display:inline-flex;gap:6px;vertical-align:middle;margin-left:10px}
+.hero p{margin:0;max-width:62ch;color:var(--ink-2)}
+.stats{display:flex;flex-wrap:wrap;gap:10px 28px;padding:16px 20px;background:var(--surface);border-radius:14px}
+.stat{display:flex;flex-direction:column}
+.stat b{font-size:24px;font-variant-numeric:tabular-nums;font-weight:700}
+.stat span{font-size:12px;color:var(--ink-3);letter-spacing:.04em}
+.stats .note{flex-basis:100%;font-size:12px;color:var(--ink-3)}
+
+/* 麻將牌編號 */
+.tile{flex:none;display:inline-grid;place-items:center;width:34px;height:44px;border-radius:6px;
+  background:var(--tile);color:var(--tile-ink);border:1px solid var(--tile-edge);
+  box-shadow:0 3px 0 var(--tile-edge);font-weight:700;font-size:15px;font-variant-numeric:tabular-nums;font-family:var(--f-display)}
+.tile.sm{width:22px;height:30px;font-size:12px;border-radius:4px;box-shadow:0 2px 0 var(--tile-edge)}
+.tile.app{font-size:13px}
+
+/* 成熟度記號：實心＝現在、半月＝研發、空心＝前沿 */
+.m{display:inline-block;width:11px;height:11px;border-radius:50%;border:2px solid var(--accent);flex:none}
+.m1{background:var(--accent)}
+.m2{background:linear-gradient(90deg,var(--accent) 50%,transparent 50%)}
+.m3{background:transparent}
+
+.legend{display:flex;flex-wrap:wrap;gap:8px 22px;font-size:13px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+
+/* 篩選 */
+.filters{display:flex;flex-direction:column;gap:10px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;
+  background:var(--bg);padding-block:12px;border-bottom:1px solid var(--line)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.frow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.frow .lab{font-size:12px;color:var(--ink-3);margin-right:4px;min-width:56px}
+.chip{font:inherit;font-size:13px;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--raised);color:var(--ink-2);cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.chip[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:#2E2B2C}
+.chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.count{font-size:12px;color:var(--ink-3)}
+
+/* 先做哪些 */
+.plan{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px}
+.phase{background:var(--surface);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.phase h3{font-size:17px}
+.phase .why{font-size:13px;color:var(--ink-2);margin:0}
+.phase ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.phase li{display:flex;gap:10px;align-items:flex-start;font-size:14px}
+.phase li small{display:block;color:var(--ink-3);font-size:12px;line-height:1.5}
+
+/* 類別與牌卡 */
+.group{display:flex;flex-direction:column;gap:14px;scroll-margin-top:140px}
+.ghead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;border-bottom:2px solid var(--brand);padding-bottom:8px}
+.ghead h2{font-family:var(--f-display);font-size:24px}
+.ghead p{margin:0;font-size:13px;color:var(--ink-3)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:12px}
+.card{display:flex;gap:14px;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--raised);min-width:0}
+.card .body{display:flex;flex-direction:column;gap:6px;min-width:0}
+.card h3{font-size:16px;line-height:1.4}
+.card .en{font-size:12px;color:var(--ink-3);letter-spacing:.02em}
+.card .use{margin:0;font-size:14px;color:var(--ink-2)}
+.meta{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12px;color:var(--ink-3);align-items:center;margin-top:2px}
+.meta .proto{color:var(--ink-3)}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:999px;background:var(--soft);color:var(--ink-2)}
+.empty{font-size:13px;color:var(--ink-3)}
+.pill.store{background:var(--brand);color:#2E2B2C}
+.pill.online{background:transparent;border:1px dashed var(--line)}
+
+/* 實體店的優勢 */
+.edge-intro{display:grid;gap:10px;max-width:68ch}
+.edge-intro blockquote{margin:0;padding:12px 16px;border-left:3px solid var(--brand);background:var(--surface);border-radius:0 10px 10px 0;color:var(--ink-2);font-size:14px}
+.edge-intro p{margin:0;color:var(--ink-2)}
+.edges{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px}
+.edge{padding:18px;border-radius:14px;background:var(--surface);display:flex;flex-direction:column;gap:8px;min-width:0}
+.edge h3{font-size:17px;display:flex;gap:10px;align-items:center}
+.edge p{margin:0;font-size:14px;color:var(--ink-2)}
+.edge .refs{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.edge.hl{background:var(--brand-tint);border:1px solid var(--brand)}
+.bets{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:16px 18px;border-radius:14px;border:2px solid var(--brand)}
+.bets b{font-family:var(--f-display);font-size:18px}
+.bets span{padding:6px 14px;border-radius:999px;background:var(--brand);color:#2E2B2C;font-weight:700;font-size:14px}
+.jump{flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px}
+.jump a{flex:none;font-size:12px;color:var(--ink-2);text-decoration:none;padding:3px 10px;border-radius:999px;background:var(--soft)}
+.jump a:hover,.jump a:focus-visible{background:var(--brand);color:#2E2B2C}
+.star{color:var(--accent);font-size:13px;margin-left:4px}
+.core{margin:0;font-size:14px;font-weight:500;color:var(--ink)}
+.sup{display:inline-flex;gap:4px;align-items:center;flex-wrap:wrap}
+.ghead.theory{border-bottom-style:dashed}
+@media (max-width:640px){.filters{position:static}}
+.warn{font-size:13px;color:var(--ink-2);margin:0;padding:10px 14px;border-radius:10px;border:1px dashed var(--line)}
+
+/* 不碰 */
+.never{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px}
+.never div{padding:16px;border-radius:12px;border:1px dashed var(--line)}
+.never b{display:block;margin-bottom:4px}
+.never span{font-size:13px;color:var(--ink-2)}
+footer{font-size:12px;color:var(--ink-3)}
+@media (prefers-reduced-motion:no-preference){.card{transition:border-color .15s}.card:hover{border-color:var(--brand)}}
+</style>
+
+<div class="wrap">
+  <header class="hero">
+    <div class="eyebrow">MIGI 咪吉麻將 · 研發地圖 · 2026-11</div>
+    <h1>MIGI 黑科技地圖<span class="tiles" aria-hidden="true"><span class="tile">實</span><span class="tile">體</span></span></h1>
+    <p>151 項：1–51 是演算法與新技術，52–101 是實體店才做得到的 AI 時代技術，102–151 是理論，另外加上 5 項牌譜擷取方案。每一項都有真實的原型出處，並寫明它放進 MIGI 會變成什麼。這是一份地圖，不代表已經決定要做。</p>
+    <div class="stats" aria-label="盤點當下的資料量">
+      <div class="stat"><b>4,582</b><span>已入帳的局</span></div>
+      <div class="stat"><b>69</b><span>場牌局</span></div>
+      <div class="stat"><b>156</b><span>位真會員</span></div>
+      <div class="stat"><b>303</b><span>個配桌房</span></div>
+      <div class="stat"><b>38</b><span>組牌咖</span></div>
+      <div class="note">2026-11-01 線上盤點。標示「現有資料」的項目，第一版用這個量就做得出來。</div>
+    </div>
+    <div class="legend">
+      <span><i class="m m1"></i>現在做得到</span>
+      <span><i class="m m2"></i>有工具，要研發</span>
+      <span><i class="m m3"></i>研究前沿</span>
+    </div>
+  </header>
+
+  <section class="group" aria-labelledby="edge-h">
+    <div class="ghead"><h2 id="edge-h">實體店的優勢在哪裡</h2><p>先讀這一段</p></div>
+    <div class="edge-intro">
+      <blockquote>「這些很多線上麻將 App 都做得到，資料更齊全。實體店有什麼優勢能用這些黑科技？」</blockquote>
+      <p>只比牌局資料，實體店贏不了。線上平台有上億局牌譜，台灣的線上麻將 App 一天的局數比 MIGI 一年還多。AI 教練、CFR、自我對弈比的是牌譜數量，這個賽道不硬拚，日後可以跟線上平台合作或授權。</p>
+      <p>要問的是：哪些資料線上永遠拿不到？答案都在牌局之外。</p>
+    </div>
+    <div class="edges" id="edges"></div>
+    <div class="bets"><b>主打三個</b><span>實體認證段位</span><span>牌咖關係網</span><span>銀髮認知健康</span></div>
+  </section>
+
+  <section class="group" aria-labelledby="plan-h">
+    <div class="ghead"><h2 id="plan-h">先做哪些</h2><p>依「客人有沒有感」與「資料夠不夠」排</p></div>
+    <div class="plan" id="plan"></div>
+  </section>
+
+  <div class="filters" role="group" aria-label="篩選">
+    <div class="frow" id="f-m"><span class="lab">成熟度</span></div>
+    <div class="frow" id="f-d"><span class="lab">資料</span></div>
+    <div class="frow" id="f-s"><span class="lab">誰有優勢</span></div>
+    <div class="frow" id="f-t"><span class="lab">類型</span></div>
+    <nav class="frow jump" id="nav" aria-label="跳到分類"><span class="lab">跳到</span></nav>
+    <div class="frow"><span class="count" id="count"></span></div>
+  </div>
+
+  <main id="groups" style="display:flex;flex-direction:column;gap:44px"></main>
+
+  <section class="group" aria-labelledby="never-h">
+    <div class="ghead"><h2 id="never-h">刻意不碰的</h2><p>做得到，但不該做</p></div>
+    <div class="never">
+      <div><b>臉部情緒、心率、腦波</b><span>健康麻將的品牌承受不起被監控的感覺。</span></div>
+      <div><b>區塊鏈、NFT、可驗證公平抽獎</b><span>在台灣會直接讓人聯想到線上賭場，碰到嚴禁賭博那條紅線。</span></div>
+      <div><b>量子運算</b><span>現階段對 MIGI 沒有用，講了只是行銷話術。</span></div>
+    </div>
+  </section>
+
+  <footer>正本：docs/06-架構藍圖/MIGI黑科技地圖.md　·　2026-11-02 整理</footer>
+</div>
+
+<script>
+const GROUPS = [
+  {k:'player', n:'讀懂玩家', d:'從牌局紀錄看出一個人怎麼打、打得好不好'},
+  {k:'ai', n:'牌局 AI', d:'台灣 16 張麻將還沒有人做出來的那一塊'},
+  {k:'show', n:'讓牌局好看', d:'每一場都有故事，客人會想分享'},
+  {k:'net', n:'社交網路', d:'牌桌是一張網，網就是護城河'},
+  {k:'behav', n:'行為科學', d:'讓人想再來的理論根據'},
+  {k:'ops', n:'營運決策', d:'開幾桌、推給誰、發不發券'},
+  {k:'sense', n:'感測與連接', d:'加速影像辨識，也讓配對不再出錯'},
+  {k:'trust', n:'信任與隱私', d:'排行榜可信、加盟資料不外流'},
+  {k:'health', n:'長期健康', d:'只有實體店做得到的那一張牌'},
+  {k:'scene', n:'看懂現場', d:'多模態 AI 直接看懂店裡發生什麼'},
+  {k:'space', n:'空間智慧', d:'店本身變成會思考的空間'},
+  {k:'social', n:'實體社交 AI', d:'讓陌生人變牌咖、讓常客被記得'},
+  {k:'staff', n:'AI 員工', d:'重複的事交給 AI，店員留給需要人的時刻'},
+  {k:'studio', n:'實體店就是攝影棚', d:'真實的牌局就是內容'},
+  {k:'real', n:'實體真實性', d:'AI 合成越多，「真的」越值錢'},
+  {k:'community', n:'社區與擴張', d:'從一間店到一個社區'},
+  {k:'t-mind', n:'理論：玩家心理', d:'為什麼人會想再來', th:1},
+  {k:'t-id', n:'理論：身分與歸屬', d:'我是誰、我是哪一隊的', th:1},
+  {k:'t-table', n:'理論：桌上的人際動態', d:'四個人坐在一起會發生什麼', th:1},
+  {k:'t-service', n:'理論：服務與場地', d:'人與空間怎麼影響體驗', th:1},
+  {k:'t-platform', n:'理論：平台與擴張', d:'什麼時候開下一間店', th:1},
+  {k:'t-health', n:'理論：健康與老化', d:'銀髮認知健康的學術依據', th:1},
+  {k:'app', n:'附錄：牌譜擷取', d:'影像辨識那條線的感測方案'}
+];
+const DATA = {now:'現有資料', none:'不需資料', paipu:'等牌譜', hw:'新硬體', scale:'要規模', rec:'要開始記錄'};
+const M = {1:'現在做得到', 2:'要研發', 3:'研究前沿'};
+const I = [
+ [1,'player','牌風基因圖譜','Playstyle Genome','Pandora Music Genome Project','把每位玩家拆成十來個維度（進攻、防守、做大牌、當莊表現），個人卡放雷達圖，寫「你的牌風最像某某」。',1,'now'],
+ [2,'player','實力與運氣分離','AIVAT','撲克 AI DeepStack','結算卡多一行「第 4 名，但實力表現是全桌第 1」。牌山資料到手後，可以精確量出起手牌好壞。',1,'now'],
+ [12,'player','隱藏實力分','TrueSkill 2','微軟 Halo 配對系統','段位分照舊，背後另算一個看不到的實力分只拿來配桌，新手不會被老手剃光頭。',1,'now'],
+ [13,'player','上頭偵測','Tilt Detection','撲克的 tilt 研究','連續大額失分後放槍率異常升高時，溫和提醒休息一下。直接強化健康麻將的品牌。',1,'now'],
+ [25,'player','打法指紋','Playstyle Stylometry','文體計量學','只看打牌決策就認出是誰在打，抓借高手帳號代打衝段位。',2,'paipu'],
+ [26,'player','行為生物辨識','Behavioral Biometrics','銀行防詐 BioCatch','從按「確認」的力道與節奏判斷是不是本人在按。只用來發現異常，要寫進隱私權政策。',2,'rec'],
+ [11,'ai','向聽數引擎','Shanten Engine','日麻牌效率計算器','台麻 16 張版的「差幾張聽牌、聽什麼、剩幾張」，是覆盤與攤牌算台的核心。',1,'none'],
+ [10,'ai','百萬局模擬器','Rules Digital Twin','遊戲數值平衡','算出每種牌型真正的出現機率，成就稀有度有根據；跟店內實際比對可抓出計分板亂按。',1,'none'],
+ [6,'ai','AI 覆盤','Engine Review','Lichess 棋步損失、圍棋 AI 覆盤','每一手算期望值損失：「本場關鍵失誤 3 手，損失 0.8 台」。',2,'paipu'],
+ [50,'ai','知識蒸餾','Knowledge Distillation','大模型教小模型','雲端大模型蒸餾成小模型放進計分板，教學模式的 AI 不用網路。',1,'paipu'],
+ [8,'ai','名人 AI 分身','Behavior Cloning','行為複製','教學模式跟名人玩家或上一季的自己對打。要本人授權，不進正式段位賽。',3,'paipu'],
+ [7,'ai','台麻 AI 自我對弈','Self-play RL','AlphaGo、微軟 Suphx','台灣 16 張還沒有任何模型。誰握有最多牌譜，誰先訓練出來。',3,'paipu'],
+ [27,'ai','反事實遺憾最小化','CFR','撲克 AI Libratus、Pluribus','算出台麻的「不可剝削打法」，對照每位客人哪裡會被剝削。',3,'paipu'],
+ [28,'ai','麻將基礎模型','Large Behavior Model','GPT 預訓練、豐田研究院','先讀完所有牌譜再微調，一個模型撐起教練、牌風、名人分身與代打偵測。',3,'paipu'],
+ [9,'show','奪冠機率曲線','Win Probability','ESPN、NBA 勝率曲線','回放頁畫四色曲線，自動抓「本場最大逆轉」做成分享卡與成就。',1,'now'],
+ [43,'show','年度回顧','Wrapped','Spotify Wrapped','「你的 2026 麻將年度回顧」：場數、最常同桌的牌咖、年度最大一手、牌風，一鍵分享。',1,'now'],
+ [14,'show','教練熊問答','Text-to-SQL','語言模型查資料庫','「我當莊是不是特別容易放槍？」教練熊查自己的資料回答，身分仍由後端認定。',1,'now'],
+ [32,'show','生成式個人化徽章','Generative Collectibles','擴散模型','第一次胡大四喜，生成全世界只有你有的紀念徽章。綁帳號、不能交易。',1,'now'],
+ [24,'show','子彈時間重播','3D Gaussian Splatting','2023 年的 3D 重建技術','大牌那一局，鏡頭繞牌桌一圈，停在攤牌那一刻。',2,'hw'],
+ [3,'net','牌咖關係圖學習','Graph ML','LinkedIn、電信流失預測','流失傳染預測、推薦牌咖、找出帶最多人成桌的超級連結者。',1,'now'],
+ [34,'net','遊戲BOY 數','Kevin Bacon Number','六度分隔、艾狄胥數','你跟名人玩家之間隔了幾張牌桌，放在個人卡上。',1,'now'],
+ [35,'net','弱連結的力量','Strength of Weak Ties','Granovetter','推薦牌咖時優先推「你牌咖的牌咖」，門檻低又能走出小圈圈。',1,'now'],
+ [36,'net','結構洞','Structural Holes','Burt','找出同時跟兩群常客打過牌的人。他流失，網路會斷成兩塊。',1,'now'],
+ [37,'net','謝林隔離模型','Schelling Segregation','諾貝爾經濟學獎得主謝林','配桌太精準會讓新手永遠遇不到老手，演算法要刻意留混合比例。',1,'now'],
+ [38,'net','鄧巴數','Dunbar’s Number','演化人類學','牌咖團的人數上限與分層照 5、15、50、150 設計。',1,'none'],
+ [39,'behav','峰終定律','Peak–End Rule','Kahneman','輸的人的結算卡最上面，放他這場最漂亮的一手。',1,'now'],
+ [40,'behav','目標梯度效應','Goal-Gradient Effect','Kivetz 咖啡集點卡實驗','升段與會員等級的進度條不從 0% 開始。',1,'now'],
+ [41,'behav','社會比較','Social Comparison','Festinger','全國排行之外，加上「你前後 5 名」的相對排行。',1,'now'],
+ [42,'behav','古德哈特定律','Goodhart’s Law','經濟學','店員獎金照配桌算，就會有人開假房。每個會發獎的數字都要有異常偵測。',1,'now'],
+ [5,'ops','成桌預測與配桌市場設計','Survival Analysis · Matching','Uber 供需、Gale–Shapley','「這房 85% 會成桌」；快要流掉的房自動推給對的人。',1,'now'],
+ [46,'ops','排隊理論','Erlang C · Little’s Law','電信客服中心','算出一間店要幾張桌，客人等待才不會超過 15 分鐘。',1,'now'],
+ [45,'ops','共形預測','Conformal Prediction','近年的統計方法','成桌機率寫成「70–85%（九成把握）」，是有數學保證的區間。',2,'now'],
+ [31,'ops','代理人 AI 店長','Agentic AI','2025–26 年的 AI 主流方向','盯錯誤儀表、預測湊桌、通知平板沒電，是自助館無人化的那塊拼圖。',2,'now'],
+ [44,'ops','多臂吃角子老虎','Multi-armed Bandit','湯普森抽樣','LINE 文案與推播時間，自動導向效果最好的版本。',1,'scale'],
+ [18,'ops','增益模型','Uplift Modeling','Uber、Booking 發券','找出「收到券才會回來」的人。現在就要開始記錄每次發券與推播。',2,'scale'],
+ [47,'ops','因果發現','Causal Discovery','因果推論','客人會回來，到底是因為牌咖、段位還是成就。',2,'scale'],
+ [17,'ops','需求預測與離峰定價','Revenue Management','航空與飯店','預測每小時桌位需求，用來排班與推出離峰檯費。',2,'scale'],
+ [33,'ops','店的世界模型','World Model','DeepMind Genie、MuZero','模擬「多開兩桌、檯費降 20 元」會發生什麼，不用真的實驗。',3,'scale'],
+ [15,'sense','合成資料','Synthetic Data','特斯拉、NVIDIA','用 Blender 渲染幾十萬張已標註的麻將牌，省掉拍照與手動標註。',1,'none'],
+ [16,'sense','弱監督','Weak Supervision','Snorkel','計分板的逐局紀錄自動替錄影產生標籤，模型沒把握的才交給人看。',1,'now'],
+ [48,'sense','超音波配對','Ultrasonic Data','Google Nearby','平板播放聽不到的聲音，手機靠近桌子就自動配好。',1,'none'],
+ [21,'sense','事件相機','Event Camera','Sony、Prophesee','只記錄出牌、摸牌那一瞬間，資料少上百倍，天生保護隱私。',2,'hw'],
+ [22,'sense','毫米波雷達','mmWave Radar','Google Soli','桌框藏雷達，偵測誰先伸手，不拍任何影像。',2,'hw'],
+ [49,'sense','超寬頻定位','UWB','iPhone、AirTag','客人坐下就知道是東南西北哪一家，選錯位置不再發生。',2,'hw'],
+ [23,'sense','Wi-Fi 感知','IEEE 802.11bf','新的 Wi-Fi 標準','只靠店裡的基地台，就知道每張桌坐了幾個人。',3,'hw'],
+ [19,'trust','規則交叉模糊測試','Differential Fuzzing','瀏覽器廠商比對兩套實作','後端與教學模式兩份計分規則，丟幾萬局隨機牌局比對，有一局不同就報警。',1,'none'],
+ [4,'trust','串通偵測','Collusion Detection','線上撲克平台','找出「總是把牌放給同一個人」的組合，保護排行榜與名人堂。',1,'now'],
+ [30,'trust','差分隱私','Differential Privacy','Apple、美國人口普查局','公開「全台麻將大數據」，不洩漏任何一個人。',1,'scale'],
+ [20,'trust','不可竄改戰績','Merkle Tree · Verifiable Credentials','W3C 可驗證憑證','戰績串成雜湊鏈，段位證書可被加盟店與賽事驗證。不做 NFT。',2,'now'],
+ [29,'trust','安全多方計算＋聯邦學習','MPC · Federated Learning','Google 手機輸入法','加盟店是不同法人，資料不離店也能算全國排名、一起訓練模型。',3,'scale'],
+ [51,'health','數位生物標記','Digital Biomarkers','醫學研究用打字速度、步態偵測認知退化','銀髮客人連續幾年的思考時間、失誤率、計算錯誤的趨勢，就是一條認知健康曲線。可以跟醫院、長照、保險合作，讓健康麻將變成有數據的健康服務。',2,'now'],
+ [72,'health','久坐提醒','Pose-Based Wellness','骨架偵測','連續坐兩小時，計分板在局與局之間提醒起來伸展一下。',1,'hw'],
+ [73,'health','認知訓練處方','Cognitive Training Prescription','復健處方','搭配第 51 項，替長輩設計難度遞增的牌局練習，真人同桌、不是對著螢幕。',2,'now'],
+ [74,'health','社交處方','Social Prescribing','英國國民健康署','醫師可以開「參加社區活動」當處方；MIGI 成為獨居長者的社交處方據點。',1,'none'],
+ [75,'health','家屬週報','Family Digest','生成式摘要','經長輩同意，子女每週收到一則摘要：「爸爸這週來了兩次，精神不錯。」',1,'now'],
+ [76,'health','健康保險聯動','Vitality 模式','南非 Discovery 保險','社交與認知活動換保費折扣，跟保險公司談合作。',3,'scale'],
+ [77,'health','具身認知','認知科學','摸實體牌、真人面對面，認知刺激比看螢幕好','學術合作與申請補助的論述基礎。',0,'theory',[73,51]],
+ [52,'scene','店況語言摘要','Vision-Language Model','多模態大模型','鏡頭畫面轉成一句話通知店員：「A3 桌等飲料 6 分鐘了」，不用寫任何規則。',2,'hw'],
+ [53,'scene','錄影問答','Video Question Answering','影片理解模型','店長直接問「昨晚 9 點 A2 是誰在打」，從錄影回答。只給店長，保存天數要定死。',2,'hw'],
+ [54,'scene','開放詞彙遺失物偵測','Open-Vocabulary Detection','Grounding DINO 這類模型','不用訓練就認得耳機、鑰匙、外套；收桌後發現遺落物，LINE 通知剛離開的客人。',2,'hw'],
+ [55,'scene','牌桌氣氛預警','Audio Event Detection','音訊事件偵測','只偵測音量與語氣突變、不辨識內容，在爭執擴大之前通知店員過去。',2,'hw'],
+ [56,'scene','動作理解自動記分','Action Recognition','影片動作辨識','看懂「推牌胡了」的動作，計分板自動跳出那一家的確認畫面。',3,'hw'],
+ [57,'space','即時店況孿生','Live Digital Twin','工廠數位孿生','店員手機上的活地圖：每桌第幾將、誰快打完、哪桌要清潔。',2,'now'],
+ [58,'space','匿名骨架人流','Pose Estimation','人體姿態估計','只取骨架點、不存影像，畫出動線熱點決定吧台、廁所、置物櫃放哪裡。',1,'hw'],
+ [59,'space','生成式店面配置','Generative Design','建築生成式設計','輸入坪數、柱位、消防法規，AI 生成幾十種桌位配置，再挑等待最短的那一種。',2,'none'],
+ [60,'space','自適應氛圍','Adaptive Ambience','智慧照明與音場','燈光色溫、音樂節奏跟著牌局張力變，深夜自動轉暖色。',1,'hw'],
+ [61,'space','主動聲學遮罩','Active Sound Masking','主動降噪','降低洗牌噪音，直接服務女性友善的定位。',2,'hw'],
+ [62,'space','預測性維護','Predictive Maintenance','工業設備監測','從洗牌馬達的聲音與電流，預測哪台電動桌快壞，客人上桌前先修。',2,'hw'],
+ [63,'space','收桌清潔稽核','Visual Inspection','視覺檢測','收桌後鏡頭確認桌面清乾淨，才把狀態改成可開桌。',2,'hw'],
+ [64,'space','視覺盤點','Shelf Monitoring','零售貨架監測','冰箱與貨架的鏡頭自動數庫存，解決進銷存「誰來盤點」。',2,'hw'],
+ [65,'social','牌桌化學反應預測','Group Chemistry Model','群組推薦','用讚、倒讚、一起回訪的紀錄，預測哪四個人坐在一起最開心。',2,'now'],
+ [66,'social','AI 破冰','Generative Icebreaker','生成式文案','成桌時平板給四個人一句共同點：「你們四位都胡過清一色」。',1,'now'],
+ [67,'social','孤單新客偵測','Churn-Risk Newcomer','流失預測','自己一個人來、打完沒加牌咖的新客，提醒店員主動招呼、介紹牌友。',1,'now'],
+ [68,'social','揪團代理人','Agentic Scheduler','AI 代理人','「這週找三個人打一場」交給 AI，透過 LINE 喬時間、開好房。',2,'now'],
+ [69,'social','關係記憶店員','Hospitality Copilot','麗思卡爾頓的客人偏好系統','常客出現時 POS 顯示三行：稱呼與偏好、注意事項、一句開場白。備註欄上線至今只寫過 1 則，所以先讓「記下」變容易。',1,'rec'],
+ [70,'social','師徒配對','Mentorship Matching','導師制度','願意教的老手配想學的新手，老手拿成就與點數。',1,'now'],
+ [71,'social','爭議調解助理','Dispute Assistant','證據整理','調出計分板紀錄與錄影片段整理成時間軸。AI 不裁決，只整理證據。',2,'hw'],
+ [78,'staff','AI 語音櫃檯','Voice Agent','即時語音模型','24 小時接電話訂桌、回答營業時間與價錢。',1,'none'],
+ [79,'staff','店員耳機副駕','Earpiece Copilot','即時提示','「A2 包桌還剩 20 分鐘」「門口那位是第三次來的新客」。',2,'now'],
+ [80,'staff','多語即時翻譯桌','Live Translation','即時翻譯模型','日韓觀光客想體驗台灣麻將，平板即時翻譯規則與對話。',1,'none'],
+ [81,'staff','SOP 影片自動生成','Generative Training','生成式影片剪輯','店長示範一次，AI 剪成教學影片、配字幕、出測驗；加盟訓練不用總部派人。',1,'none'],
+ [82,'staff','加盟店遠端稽核','Remote Audit','視覺比對','AI 比對加盟店照片與標準店容，自動列出差異。',2,'rec'],
+ [83,'staff','店規問答','House Rules RAG','檢索增強生成','「這算詐胡嗎？」依 MIGI 自己的店規文件回答並附出處。',1,'none'],
+ [84,'studio','AI 自動導播','Auto-Directing','體育賽事自動轉播','比賽直播自動切到最精彩的一桌；牌面一律延遲播出。',2,'hw'],
+ [85,'studio','AI 賽事解說','Generative Commentary','生成式語音','直播配 AI 解說，名人授權後可以用他的聲音。',2,'hw'],
+ [86,'studio','個人紀錄片','Personal Documentary','自動剪輯','年底自動剪成 1 分鐘的「我的麻將年」。',2,'hw'],
+ [87,'studio','擴增實境觀賽','AR Spectating','擴增實境','旁觀者用手機看延遲公開的牌面與奪冠機率，只用在比賽。',2,'hw'],
+ [88,'studio','角色語音播報','Character TTS','語音合成','平板用教練熊的聲音播報「東風東局，莊家連三！」。',1,'none'],
+ [89,'studio','有記憶的吉祥物','AI Mascot','有記憶的 AI 角色','教練熊在 LINE、計分板、店內螢幕都是同一個會記得你的角色。',2,'now'],
+ [90,'real','實體在場證明','Proof of Presence','裝置簽章','店內平板、門市位置與裝置簽章共同證明這一局真的在店裡打；實體認證段位的地基。',2,'now'],
+ [91,'real','內容憑證','C2PA Content Credentials','Adobe、微軟、Google 推動的標準','精華影片帶簽章，證明是真實牌局、不是 AI 合成。',2,'none'],
+ [92,'real','實體段位證','NFC Rank Card','防偽晶片卡','升段時發一張可以驗證真偽的實體卡。',1,'hw'],
+ [93,'real','實體賽事認證制度','Over-the-Board Rating','國際棋聯','只有實體比賽算正式等級分，MIGI 成為台灣麻將的認證單位。',3,'scale'],
+ [94,'community','AI 選址','Geospatial ML','零售選址分析','用去識別化的會員分布、人流與競爭店位置，預測下一間店開哪裡。',2,'scale'],
+ [95,'community','社群活動生成','Event Generation','生成式企劃','AI 依客群設計每週主題夜，連文案與 LINE 卡片一起產出。',1,'now'],
+ [96,'community','世代交流','Intergenerational Programs','社會創新','大學生教長輩用 App，長輩教大學生打麻將；容易拿到社會責任預算。',1,'none'],
+ [97,'community','第三空間','Oldenburg','家與公司之外，人需要第三個地方','常客比例當核心指標；星巴克靠的就是這個論述。',0,'theory',[]],
+ [98,'community','接觸理論','Allport','不同群體平等地一起做事，偏見會減少','跨世代、跨族群同桌的社會價值。',0,'theory',[70,96]],
+ [99,'community','社會資本','Putnam','社區連結正在瓦解','把「促成幾段新關係」做成數字，寫進 ESG 報告與補助申請。',0,'theory',[3,36]],
+ [100,'community','體驗經濟','Pine、Gilmore','客人為體驗付的錢遠高於為場地','檯費與包桌方案的定價角度。',0,'theory',[]],
+ [101,'community','儀式設計','Ritual Design','儀式讓人記得、想回來','開局擲骰、入座燈光、全國第一入座都是儀式，線上複製不了。',0,'theory',[32]],
+ [102,'t-mind','心流理論','Csikszentmihalyi','挑戰略高於能力時最投入','配桌實力差距落在「有點難但贏得了」的範圍。',0,'theory',[12,37]],
+ [103,'t-mind','IKEA 效應','Norton','自己做的東西會被高估','讓客人自己設計團徽、取團名與房名。',0,'theory',[]],
+ [104,'t-mind','蔡加尼克效應','Zeigarnik','沒完成的事記得更清楚','結算卡寫「本季再打 2 場就解鎖某成就」。',0,'theory',[43]],
+ [105,'t-mind','單純曝光效應','Zajonc','見得越多次越有好感','配桌適度讓同一批人重複遇到，陌生人才會變成牌咖。',0,'theory',[65,35]],
+ [106,'t-mind','互惠原則','Cialdini','收到好處會想回報','店員偶爾主動招待一杯，比任何折扣更能換到回訪。',0,'theory',[69]],
+ [107,'t-mind','承諾與一致','Cialdini','說過的話會想做到','結算卡放一顆「約下次同一群人」。',0,'theory',[68]],
+ [108,'t-mind','社會認同','Cialdini','不確定時跟著多數人','配桌頁寫「本週 132 人在這間店打過」，新客比較敢報名。',0,'theory',[5]],
+ [109,'t-mind','錨定效應','Kahneman、Tversky','第一個數字影響後面的判斷','方案表先列 5 小時包桌，2 小時的價格就顯得合理。',0,'theory',[100]],
+ [110,'t-mind','誘餌效應','Ariely','多一個不划算的選項，讓目標選項更吸引人','有意識地安排包桌、儲值三個選項的相對位置。',0,'theory',[100]],
+ [111,'t-mind','心理帳戶','Thaler','不同帳戶的錢花起來感覺不同','贈點要設計成「額外的禮物」，客人才會覺得賺到。',0,'theory',[]],
+ [112,'t-mind','選擇過載','Iyengar 果醬實驗','選擇太多反而不做決定','配桌頁先推薦最適合他的三個房。',0,'theory',[5]],
+ [113,'t-mind','預設效應','Default Effect','多數人不會更改預設值','預設勾選「成桌時通知我」「下次同一群人優先」。',0,'theory',[]],
+ [114,'t-mind','執行意圖','Gollwitzer','「每週四晚上 8 點」比「有空就去」有效兩三倍','大力推固定牌局；系統已經會每週自動產生。',0,'theory',[68]],
+ [115,'t-mind','驚喜與期望違背','Burgoon','超出預期的小驚喜最難忘','名人同桌、全國第一入座這類不定時的時刻要多設計。',0,'theory',[32,101]],
+ [116,'t-id','歸屬需求','Baumeister、Leary','歸屬是基本需求，不是加分項目','牌咖團是核心產品，不是附加功能。',0,'theory',[3]],
+ [117,'t-id','社會認同理論','Tajfel','人從所屬群體得到自我價值','團徽、門市認同、店際對抗賽。',0,'theory',[92,93]],
+ [118,'t-id','最佳差異理論','Brewer','想歸屬，又想與眾不同','團內再給個人稱號，例如「本團最會自摸」。',0,'theory',[1]],
+ [119,'t-id','自我呈現','Goffman','每個人都在經營自己的前台','個人卡就是前台，讓客人自己選擇展示什麼。',0,'theory',[1,32]],
+ [120,'t-id','自我效能','Bandura','相信做得到才會繼續做','新手前幾場設計一定會有小勝利，例如第一次胡牌的專屬成就。',0,'theory',[67]],
+ [121,'t-id','習得無助','Seligman','一直失敗的人會放棄嘗試','新手保護：段位不掉、配到友善的桌。',0,'theory',[12,67]],
+ [122,'t-id','歸因理論','Weiner','歸因運氣會再試，歸因能力不足會放棄','輸的人的結算卡強調運氣成分。',0,'theory',[2]],
+ [123,'t-id','鄰近性原則','Festinger','住得近的人最容易成為朋友','座位、吧台、等候區設計成讓不同桌的人自然碰面。',0,'theory',[58,59]],
+ [124,'t-table','情緒感染','Hatfield','情緒會在人與人之間傳染','一人上頭會拖垮整桌，上頭偵測對整桌都有價值。',0,'theory',[13,55]],
+ [125,'t-table','公平理論','Adams','人在意的是跟別人比公不公平','檯費、代付、續時規則要讓同桌四人都看得懂。',0,'theory',[]],
+ [126,'t-table','程序正義','Thibaut、Walker','流程公平比結果有利更影響滿意度','爭議處理先調出紀錄、再說明依據。',0,'theory',[71]],
+ [127,'t-table','弱勢者效應','Underdog Effect','人天生支持落後的一方','奪冠機率曲線要特別標出逆轉。',0,'theory',[9]],
+ [128,'t-table','熱手謬誤與賭徒謬誤','Gilovich、Tversky','誤以為手氣正旺，或輸久了該贏了','教練熊教「看機率與判斷，不是手氣」；這是健康麻將與賭博心態的分界。',0,'theory',[2,14]],
+ [129,'t-table','公共資源治理','Ostrom','社群自訂規則比外部管理更持久','團規讓團員自己決定，總部只定底線。',0,'theory',[]],
+ [130,'t-service','服務利潤鏈','Heskett','員工滿意帶來顧客滿意，再帶來獲利','店員的工作體驗跟會員體驗一樣重要。',0,'theory',[79]],
+ [131,'t-service','服務補救悖論','Service Recovery Paradox','出錯後處理得好，反而更忠誠','計分板出錯、簡訊收不到時，要有明確的補償流程。',0,'theory',[69]],
+ [132,'t-service','等待心理學','Maister','沒事做、不知道要等多久最難熬','等桌時給預估時間，並提供教學或小活動。',0,'theory',[46,57]],
+ [133,'t-service','服務場景','Bitner','環境的燈光、聲音、氣味會改變顧客行為','自適應氛圍與聲學遮罩的理論基礎。',0,'theory',[60,61]],
+ [134,'t-service','情緒勞動','Hochschild','服務業壓抑情緒會耗損人','重複的問題交給 AI，店員留給需要人的時刻。',0,'theory',[78,79]],
+ [135,'t-service','破窗理論','Wilson、Kelling','小的髒亂會引來更多失序','桌面、地板、廁所的小細節要即時維持。',0,'theory',[63]],
+ [136,'t-platform','原子網路','Andrew Chen《冷啟動》','先找到能自己運轉的最小網路','一間店、一個時段、大約 8 個常客，配桌就能自己動起來。',0,'theory',[5,94]],
+ [137,'t-platform','密度優先','Uber 城市擴張','一個城市做密再開下一個','先填滿一間店再開下一間；三間半滿的店，配桌都湊不起來。',0,'theory',[94]],
+ [138,'t-platform','雙邊市場','Rochet、Tirole','平台價值來自兩邊互相吸引','冷門時段補貼其中一邊。',0,'theory',[5,17]],
+ [139,'t-platform','長尾理論','Anderson','冷門需求加總起來不小','美麻、特定級距、深夜時段集中到同一個入口。',0,'theory',[5]],
+ [140,'t-platform','創新擴散','Rogers','新事物從早期採用者往大眾擴散','新功能先給牌咖網路裡的關鍵人物。',0,'theory',[36]],
+ [141,'t-platform','跨越鴻溝','Moore','早期愛好者到主流市場之間有鴻溝','年輕女性、上班族要的是完整的入門體驗，不是更多功能。',0,'theory',[]],
+ [142,'t-platform','待辦任務理論','Christensen','客人「雇用」產品完成一件事','社交、打發時間、證明實力、陪伴長輩，各自設計。',0,'theory',[47]],
+ [143,'t-platform','藍海策略','金偉燦、莫伯尼','刪掉理所當然的，創造新組合','刪掉賭博、菸味、昏暗，增加社交、數據、女性友善；簡報第一頁。',0,'theory',[]],
+ [144,'t-platform','林迪效應','Taleb','存在越久，預期還能存在越久','麻將流傳百年，實體空間是長期投資。',0,'theory',[]],
+ [145,'t-health','認知存量','Stern','持續動腦能延緩失智症狀','「健康麻將」最有力的學術依據。',0,'theory',[51,73]],
+ [146,'t-health','社會情緒選擇理論','Carstensen','年紀越大越重視少數有意義的關係','長輩的配桌優先湊熟人，不是陌生配桌。',0,'theory',[65]],
+ [147,'t-health','孤獨的健康代價','Holt-Lunstad','長期孤獨的傷害約等於每天 15 根菸','跟政府、保險合作的核心論述。',0,'theory',[74,75]],
+ [148,'t-health','藍區與模合','Buettner','沖繩長壽者一輩子固定聚會、互相照應','牌咖團就是現代的模合。',0,'theory',[3,51]],
+ [149,'t-health','成功老化','Rowe、Kahn','低疾病、高身心功能、持續參與社會','對長照機構的提案主軸。',0,'theory',[51,74]],
+ [150,'t-health','社會決定健康因素','Social Determinants of Health','健康大半取決於社會連結','社交處方的理論基礎，申請衛生計畫用得到。',0,'theory',[74]],
+ [151,'t-health','代間共生','Erikson','中老年需要傳承，才覺得人生有意義','師徒配對對長輩是被需要的感覺。',0,'theory',[70,96]],
+ ['A1','app','洗牌機內讀牌山','Shuffler Vision','電動麻將桌','在輸送軌道下裝鏡頭讀每張牌，加骰子點數反推每家手牌，省掉最難的側面鏡頭。牌山資料要跟網路物理隔離。',3,'hw'],
+ ['A2','app','聲音關鍵詞與聲源定位','Keyword Spotting','語音助理喚醒詞','聽懂「碰、槓、胡、自摸」並判斷是哪一家喊的。在本機比對，不錄音、不上傳。',2,'hw'],
+ ['A3','app','自動精華影片','Auto Highlights','體育轉播精華剪輯','計分板記下大牌的時間，自動從俯視鏡頭剪 15 秒影片給本人分享。',1,'hw'],
+ ['A4','app','桌面感測墊','Capacitive Mat','觸控面板','記下每家出牌的時間點，換算每一手想了幾秒，給 AI 教練用。',2,'hw'],
+ ['A5','app','攤牌自動算台','Hand Recognition','路線圖的攤牌拍照','胡牌時拍一張攤牌照，自動辨識牌型與台數，客人只要按確認。',2,'hw']
+];
+const PLAN = [
+  {h:'現在就做', why:'資料已經夠，或是在保護現有系統', ids:[19,9,2,43,34,42,69,114,67], note:{19:'計分規則兩份不一致已經出過好幾次事',9:'與 2 一起做，客人最有感',2:'輸的人也覺得被理解',43:'今年 12 月就能上線',34:'一次查詢就做得出來',42:'店員獎金已經照配桌算',69:'先讓「記下」變容易',114:'固定牌局已經存在，大力推',67:'對準新客流失'}},
+  {h:'下一步', why:'玩家模型的地基，以及讓影像辨識快好幾倍', ids:[15,16,1,3,12,48], note:{15:'省掉拍照與標註',16:'計分板替影片標註',1:'個人卡的雷達圖',3:'流失與推薦',12:'配桌公平',48:'配對最常出事'}},
+  {h:'長期壁壘', why:'實體店獨有的長期資料，加上全世界第一個台麻 AI', ids:[51,10,7,28,27,29], note:{51:'長期資料事後補不回來，現在就要開始累積',10:'自我對弈的訓練場',7:'台灣 16 張沒有人做過',28:'一個模型撐起全部',27:'投資人簡報的故事',29:'加盟招商的故事'}}
+];
+/* 誰有優勢：store＝只有實體店做得到，online＝線上 App 資料量佔優，其餘兩邊都能做 */
+const STORE = new Set(['12','13','25','26','3','34','35','36','37','38','17','18','31','33','46','21','22','23','48','49','A1','A2','A3','A4','A5','51']);
+for (let n = 52; n <= 101; n++) STORE.add(String(n));
+const ONLINE = new Set(['1','6','7','27','28']);
+/* ★ AI 時代才做得到（2023 年以後的生成式、多模態、代理人） */
+const AI = new Set([14,24,28,31,32,52,53,54,55,56,59,63,64,65,66,68,69,71,73,75,78,79,80,81,82,83,84,85,86,88,89,91,94,95].map(String));
+const isTheory = r => r[7] === 'theory' || ['35','36','37','38','39','40','41','42'].includes(String(r[0]));
+const TYPE = {tech:'技術', theory:'理論'};
+const SIDE = {store:'實體店才做得到', online:'線上 App 佔優', both:'兩邊都能做'};
+const sideOf = id => STORE.has(String(id)) ? 'store' : ONLINE.has(String(id)) ? 'online' : 'both';
+const EDGES = [
+  {h:'真人身分', p:'每一局都是真人坐在桌前、手機驗證過、店員看得到臉。線上排名被分身、外掛、代打與機器人污染；西洋棋界也只認實體比賽的等級分。', ids:[12,25,4], k:'實體認證段位'},
+  {h:'真實人際關係', p:'線上配到陌生人，打完就散。MIGI 的同桌是真的人、一再見面、住在附近，每段關係都記得時間、地點、誰帶誰來。', ids:[3,34,35,36,37,38]},
+  {h:'身體與時間', p:'伸手速度、真實的思考時間、坐了幾小時、何時開始疲勞、大輸之後的變化。線上只量得到點擊。', ids:[13,21,22,49,'A4']},
+  {h:'真實消費與空間', p:'點什麼、待多久、帶誰來、在哪間店花錢。實體空間還能實驗燈光、音樂、座位與餐點怎麼改變行為。', ids:[17,18,31,33,46]},
+  {h:'長期健康', p:'長輩多半在實體店打牌；線上帳號不保證是同一個真人，也不會連續好幾年追蹤同一個人。這是整張地圖裡份量最重的一項。', ids:[51], hl:true}
+];
+
+const byId = Object.fromEntries(I.map(r=>[String(r[0]),r]));
+const state = {m:new Set(), d:new Set(), s:new Set(), t:new Set(), ai:false};
+const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const tile = (id,cls='') => `<span class="tile ${String(id).startsWith('A')?'app':''} ${cls}" aria-label="第 ${id} 項">${esc(id)}</span>`;
+
+document.getElementById('plan').innerHTML = PLAN.map(p=>`
+  <div class="phase"><h3>${p.h}</h3><p class="why">${p.why}</p><ul>
+  ${p.ids.map(id=>{const r=byId[id];return `<li>${tile(id,'sm')}<div>${esc(r[2])}<small>${esc(p.note[id]||'')}</small></div></li>`}).join('')}
+  </ul></div>`).join('');
+
+function chips(el, map, key, mark){
+  el.insertAdjacentHTML('beforeend', Object.entries(map).map(([k,v])=>
+    `<button type="button" class="chip" id="f-${key}-${k}" aria-pressed="false" data-k="${k}">${mark?`<i class="m m${k}"></i>`:''}${v}</button>`).join(''));
+  el.addEventListener('click', e=>{
+    const b = e.target.closest('.chip'); if(!b) return;
+    const set = state[key], k = b.dataset.k;
+    set.has(k) ? set.delete(k) : set.add(k);
+    b.setAttribute('aria-pressed', set.has(k));
+    render();
+  });
+}
+chips(document.getElementById('f-m'), M, 'm', true);
+chips(document.getElementById('f-d'), DATA, 'd', false);
+chips(document.getElementById('f-s'), SIDE, 's', false);
+chips(document.getElementById('f-t'), TYPE, 't', false);
+(() => {
+  const row = document.getElementById('f-t');
+  row.insertAdjacentHTML('beforeend', `<button type="button" class="chip" id="f-ai" aria-pressed="false">★ AI 時代才做得到</button>`);
+  document.getElementById('f-ai').addEventListener('click', e => {
+    e.stopPropagation();
+    state.ai = !state.ai; e.currentTarget.setAttribute('aria-pressed', state.ai); render();
+  });
+})();
+document.getElementById('nav').insertAdjacentHTML('beforeend',
+  `<a href="#edge-h">實體優勢</a><a href="#plan-h">先做哪些</a>` + GROUPS.map(g=>`<a href="#g-${g.k}">${g.n.replace('理論：','')}</a>`).join(''));
+
+document.getElementById('edges').innerHTML = EDGES.map((e,i)=>`
+  <div class="edge${e.hl?' hl':''}"><h3>${tile(['①','②','③','④','⑤'][i],'sm')}${e.h}</h3><p>${e.p}</p>
+  <div class="refs">${e.ids.map(id=>`<span class="pill">${esc(id)} ${esc(byId[String(id)][2])}</span>`).join('')}</div></div>`).join('')
+  + `<p class="warn" style="grid-column:1/-1">⚠ 第 51 項是健康資料：要本人另外同意、可隨時退出；只做趨勢提醒，不做診斷；合作單位只拿得到去識別化資料；上線前請醫療法規與個資法顧問看過。</p>`;
+
+/* 理論卡：提出者、核心一句、MIGI 用法、支撐哪幾項；技術卡：英文名、用法、成熟度、資料、原型 */
+function card(r){
+  const star = AI.has(String(r[0])) ? `<span class="star" title="AI 時代才做得到">★</span>` : '';
+  const side = sideOf(r[0]) !== 'both' ? `<span class="pill ${sideOf(r[0])}">${SIDE[sideOf(r[0])]}</span>` : '';
+  if (r[7] === 'theory') {
+    const sup = (r[8] || []).filter(id => byId[String(id)]);
+    return `<article class="card">${tile(r[0])}<div class="body">
+      <h3>${esc(r[2])}</h3><div class="en">${esc(r[3])}</div>
+      <p class="core">${esc(r[4])}</p><p class="use">${esc(r[5])}</p>
+      <div class="meta"><span class="pill">理論</span>${side}${sup.length ? `<span class="sup">支撐 ${sup.map(id=>tile(id,'sm')).join('')}</span>` : ''}</div>
+    </div></article>`;
+  }
+  return `<article class="card">${tile(r[0])}<div class="body">
+    <h3>${esc(r[2])}${star}</h3><div class="en">${esc(r[3])}</div>
+    <p class="use">${esc(r[5])}</p>
+    <div class="meta"><span class="pill"><i class="m m${r[6]}"></i>${M[r[6]]}</span><span class="pill">${DATA[r[7]]}</span>${isTheory(r)?'<span class="pill">理論</span>':''}${side}<span class="proto">原型：${esc(r[4])}</span></div>
+  </div></article>`;
+}
+
+function render(){
+  let shown = 0;
+  document.getElementById('groups').innerHTML = GROUPS.map(g=>{
+    const rows = I.filter(r=>r[1]===g.k)
+      .filter(r=>!state.m.size || state.m.has(String(r[6])))
+      .filter(r=>!state.d.size || state.d.has(r[7]))
+      .filter(r=>!state.s.size || state.s.has(sideOf(r[0])))
+      .filter(r=>!state.t.size || state.t.has(isTheory(r) ? 'theory' : 'tech'))
+      .filter(r=>!state.ai || AI.has(String(r[0])));
+    shown += rows.length;
+    const total = I.filter(r=>r[1]===g.k).length;
+    return `<section class="group" id="g-${g.k}"><div class="ghead${g.th?' theory':''}"><h2>${g.n}</h2><p>${g.d}　·　${rows.length}／${total}</p></div>
+      ${rows.length ? `<div class="cards">${rows.map(card).join('')}</div>` : `<div class="empty">這一類沒有符合篩選的項目。</div>`}
+    </section>`;
+  }).join('');
+  document.getElementById('count').textContent = (state.m.size||state.d.size||state.s.size||state.t.size||state.ai) ? `符合篩選 ${shown} 項（共 ${I.length} 項）` : `共 ${I.length} 項，點上面的條件可以篩選`;
+}
+render();
+</script>
