@@ -6276,6 +6276,9 @@ settled_at 09-03 15:18   ← 8 場全部同一個時間點
       ⚠ 通知種類 `daily_report` 只走 LINE：寫進去就標已讀已完成，`list_notifications_tx` 也排除它
       🔴 **新增通知種類要同時改 `app_notifications_type_check`**（11-03 漏了，測試按鈕回「資料有誤」，
         `sql/applied/2026-11-03_通知種類加日報.sql` 補上）。驗證段要真的寫一筆再回滾，只組內容驗不到這種錯
+    🆕 **11-03 改成報表庫**（使用者：「世界級的報表應該不是一頁滑到底」）—— 分法 📄 `docs/05-埋點分析/報表架構_世界級分法.md`
+      （研究 Square／Toast／Lightspeed／Shopify／Clover ＋ ROLLER／高爾夫／飯店／健身房的官方文件）：
+      總覽 8 格 → 左側 11 類 22 份 → 每份同一個版型；篩選與目前的報表寫進網址（`r=` 的 key 不要改名）。`migi-admin` 6cf849d
     🆕 **11-03 使用者選 B：會員等級的累積消費從上線日開始算**（封測的消費紀錄不準）——
       `_tier_spend(member)` 是累積消費唯一一份算法（升等與 App／POS 的「還差多少」都叫它），
       只算 `paid_at ≥ orgs.live_from`，**上線日沒設 ⇒ 0** ⇒ 封測期間沒有人會升等、POS 顯示累積 $0 是對的。
