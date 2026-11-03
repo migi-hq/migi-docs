@@ -1,5 +1,14 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-03 增補 137（歸檔 `2026-11-03_碎片改成帳本.sql`）
+> **基準：`sql/applied/` 有 453 個檔案**。驗證 5/5，提交後查過線上（559 筆、總數 590）。
+> · 🆕 表 `shard_grants`（碎片帳本，比照 `snack_grants`）：`member_id`／`qty`（≠ 0）／`reason ∈ hand, hand_undo, admin`／`ref_id`（hands.id）／`idem_key` 唯一。
+>   RLS 開、0 policy；觸發器 `trg_shard_grants_no_mutate` 擋 UPDATE 與 DELETE（只加不改）
+> · 🆕 `hands` 觸發器 `trg_hands_shards`（AFTER INSERT OR UPDATE OF status）：變成 confirmed 時發給**當下**坐胡牌位置的人；從 confirmed 變走時補一筆負的收回
+> · 🆕 `_hand_shards(patterns)` —— 一局給幾個碎片的唯一一份算法（主檔台數 ≥ 2 的牌型，按幾次算幾個）
+> · `get_my_shards_tx()` 改讀帳本加總；🗑 `_member_shards_earned` 已刪（增補 136 那一支）
+> · ⚠ 換人上桌：碎片留給當時胡牌的人，不跟著位置走（分數照舊跟著位置）
+
 > ### 🆕 2026-11-03 增補 136（歸檔 `2026-11-03_頂條碎片數.sql`）
 > **基準：`sql/applied/` 有 452 個檔案**。驗證 4/4（會員加總 590 ＝ 每一局直接算 590，134 人有碎片），提交後查過線上。
 > · `_member_shards_earned(member)` —— 碎片「拿到幾個」唯一一份算法（每胡一個主檔台數 ≥ 2 的牌型 1 個、按幾次算幾個；只算已入帳的局；好友練習賽不算）。從 `hands` 即時算，不存帳本；**前端叫不到**
