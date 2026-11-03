@@ -1,5 +1,9 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-03 增補 139（歸檔 `2026-11-03_櫻花改名熊熊賞櫻.sql`）
+> **基準：`sql/applied/` 有 455 個檔案**。驗證 1/1，提交後查過線上。
+> · `shop_items` 的 `sakura` 改名「熊熊賞櫻」（只改 name，代碼沒變）
+
 > ### 🆕 2026-11-03 增補 138（歸檔 `2026-11-03_牌桌商城.sql`）
 > **基準：`sql/applied/` 有 454 個檔案**。驗證 6/6，提交後查過線上。
 > · 🆕 表 `shop_items`（code PK、kind ∈ table_bg、name、tier ∈ default／basic／normal／rare、price、sort、is_active；預設款 ⇔ 價格 0）
