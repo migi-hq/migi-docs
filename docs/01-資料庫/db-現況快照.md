@@ -1,5 +1,21 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-03 增補 131（歸檔 `2026-11-03_開始記錄之前的會員算老闆帶來.sql`）
+> **基準：`sql/applied/` 有 447 個檔案**。驗證 5/5，提交後查過線上。
+> · 只動資料：11-02 開始記錄之前註冊、來源是空的非測試會員 145 位 → `acquisition_source = 'staff'`、
+>   `referred_by_staff_id` ＝ 老闆那一列 staff、`acquisition_at` ＝ 註冊時間、`acquisition_backfilled = true`（使用者：開始記錄之前全算老闆的）
+> · 老闆自己維持 null；邀請連結補記的 12 位不動；`acquisition_backfilled` 的欄位說明改成兩種補記都寫
+> · 現況：staff 145（補記）／member 12（補記）／null 1（老闆）
+
+> ### 🆕 2026-11-03 增補 130（歸檔 `2026-11-03_營運報表第一批優化.sql`）
+> **基準：`sql/applied/` 有 446 個檔案**。驗證 11/11，提交後查過線上（一個版本、DEFINER）。
+> · `admin_ops_report_tx` 簽名不變，原有的鍵都在，新增：`table` 的產能欄位（active_tables／avg_session_minutes／play_minutes／
+>   scoreboard_sessions／close_gap／by_mode／by_stake／by_table）、`sales`、`liability`、`customers`、`fnb`、`funnel`、`exceptions`、
+>   `heat.grid`（星期 × 小時 佔桌分鐘）、`generated_at`
+> · 🔴 **來店改成「入座過 ＋ 有付款訂單」**（暫存表 `_va`）：近 30 天 260 人次，舊算法只算付款人 79；
+>   新客、7 日回流、30 日活躍、客單價、綁定客人來店都改用它
+> · 錢包負債看全機構（`wallet_txns` 加總，本金／贈點分開），不受日期與門市篩選
+
 > ### 🆕 2026-11-03 增補 129（歸檔 `2026-11-02_營運報表.sql`）
 > **基準：`sql/applied/` 有 445 個檔案**。驗證 7/7，提交後查過線上（兩支各一個版本）。
 > · 新函式 `_biz_date(timestamptz)`：營業日，台北時間凌晨 6 點換日（只有 postgres／service_role）
