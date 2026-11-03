@@ -1,5 +1,11 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-03 增補 133（歸檔 `2026-11-03_上線日起才累積消費與報表.sql`）
+> **基準：`sql/applied/` 有 449 個檔案**。驗證 7/7（含子交易正對照，已回滾），提交後查過線上。
+> · 新函式 `_tier_spend(member, org default null)`：會員等級累積消費的唯一一份算法，只算 `paid_at ≥ orgs.live_from`，沒設 ⇒ 0（前端叫不到）
+> · `recalc_member_tier_tx`、`member_tier_progress_tx` 改叫它；後者多回 `counting_from`（上線日，`get_wallet_tx`／`pos_member_detail_tx` 還沒往外傳）
+> · `_ops_report_core`：新客分群與客人終身價值加上線日條件（`v_live`／`v_live_d`，沒設看全部）
+
 > ### 🆕 2026-11-03 增補 132（歸檔 `2026-11-03_營運報表第二批.sql`）
 > **基準：`sql/applied/` 有 448 個檔案**。驗證 11/11，提交後查過線上。
 > · `table_sessions`／`orders`／`topup_orders` 各加 `voided_at`、`voided_by_staff_id`（→ staff）、`void_source`（staff／system）；
