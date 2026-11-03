@@ -1,5 +1,9 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-03 增補 135（歸檔 `2026-11-03_報表每天走勢補上座率與來客.sql`）
+> **基準：`sql/applied/` 有 451 個檔案**。驗證 4/4，提交後查過線上。
+> · `_ops_report_core` 多回 `heat.by_day[].minutes`、`heat.by_day[].visits`、`table.cap_day`（一天的可用桌分鐘）——報表庫每一份的趨勢圖用
+
 > ### 🆕 2026-11-03 增補 134（歸檔 `2026-11-03_通知種類加日報.sql`）
 > **基準：`sql/applied/` 有 450 個檔案**。驗證 3/3（真的寫一筆再回滾），提交後查過線上。
 > · `app_notifications_type_check` 加 `daily_report`（共 14 種）。
