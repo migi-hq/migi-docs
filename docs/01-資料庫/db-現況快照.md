@@ -1,5 +1,16 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-03 增補 138（歸檔 `2026-11-03_牌桌商城.sql`）
+> **基準：`sql/applied/` 有 454 個檔案**。驗證 6/6，提交後查過線上。
+> · 🆕 表 `shop_items`（code PK、kind ∈ table_bg、name、tier ∈ default／basic／normal／rare、price、sort、is_active；預設款 ⇔ 價格 0）
+>   目前兩列：`starry` 熊熊星空（預設、0）、`sakura` 櫻花（稀有、40）。**code 也是計分板認背景的代碼，不要改**
+> · 🆕 表 `member_items`（member_id ＋ item_code PK、source ∈ shop／grant）；🆕 表 `member_equips`（member_id ＋ slot PK、slot ∈ table_bg）
+>   三張都 RLS 開、0 policy
+> · `shard_grants.reason` 多 `shop`（兌換記負的，冪等鍵 `shop:<會員>:<款式>`）
+> · 🆕 `get_my_shop_tx()`／`buy_shop_item_tx(code)`／`equip_shop_item_tx(code)` 給 authenticated，身分 `current_member_id()`；兌換用 advisory lock 鎖這個人的碎片帳
+> · 🆕 `_member_table_bg(member)` 某人計分板該畫哪款（選了、還擁有、還上架 ⇒ 那一款；否則預設）—— 前端叫不到
+> · `_tbl_state_for_device`：players[] 多 `table_bg`、device 多 `owner_bg`
+
 > ### 🆕 2026-11-03 增補 137（歸檔 `2026-11-03_碎片改成帳本.sql`）
 > **基準：`sql/applied/` 有 453 個檔案**。驗證 5/5，提交後查過線上（559 筆、總數 590）。
 > · 🆕 表 `shard_grants`（碎片帳本，比照 `snack_grants`）：`member_id`／`qty`（≠ 0）／`reason ∈ hand, hand_undo, admin`／`ref_id`（hands.id）／`idem_key` 唯一。
