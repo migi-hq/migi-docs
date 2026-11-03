@@ -1,5 +1,10 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-04 增補 141（歸檔 `2026-11-04_歐拉小鎮的星空上架_預設改名宇宙.sql`）
+> **基準：`sql/applied/` 有 457 個檔案**。驗證 4/4，提交後查過線上。
+> · `shop_items`：`starry` 改名「宇宙」；🆕 `town`「歐拉小鎮的星空」（table_bg、basic、5、sort 20）；`storm` 下架（is_active = false、sort 40，資料保留）
+> · 上架中只剩兩列：`starry` 宇宙（0）、`town` 歐拉小鎮的星空（5）
+
 > ### 🆕 2026-11-03 增補 140（歸檔 `2026-11-03_暴風雨上架與改名.sql`）
 > **基準：`sql/applied/` 有 456 個檔案**。驗證 4/4，提交後查過線上。
 > · `shop_items`：`starry` 改名「歐拉小鎮的星空」；🆕 `storm`「燈塔島的暴風雨」（basic、5、sort 20）；`sakura` 下架（is_active = false、sort 30，資料保留）
