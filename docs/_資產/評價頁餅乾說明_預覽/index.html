@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>評價頁小熊餅乾說明</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;800;900&display=swap">
+<style>
+/* 會員 App 的色票（@migi/assets）；這一頁只做淺色，跟 App 一樣 */
+:root{
+  color-scheme: light;
+  --brand:#FAD6DC; --brand-light:#FFE7EE; --brand-tint:#FFECF1; --ink:#2E2B2C; --white:#FFFFFF;
+  --gray-1:#5C5754; --gray-2:#726D69; --gray-3:#ECEAE9; --gray-4:#F2F0EE; --divider:#DED9D5;
+  --page:#F6F3F1;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font-family:"Noto Sans TC",system-ui,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:32px 16px 64px}
+h1{font-size:24px;margin:0 0 8px;font-weight:800;text-wrap:balance}
+.lede{color:var(--gray-1);font-size:15px;line-height:1.75;max-width:66ch;margin:0}
+.lede b{color:var(--ink)}
+.pair{display:flex;flex-wrap:wrap;gap:28px;justify-content:center;margin-top:28px}
+figure{margin:0;width:375px;max-width:100%}
+figcaption{margin-top:10px;font-size:14px;color:var(--gray-1);text-align:center}
+figcaption b{color:var(--ink)}
+
+/* 手機外框 375 寬：遮罩 ＋ 置中白卡（照 buddies.jsx 的評價彈窗） */
+.phone{position:relative;width:100%;aspect-ratio:375/760;border-radius:30px;overflow:hidden;background:rgba(0,0,0,.45);
+  box-shadow:0 0 0 8px #1d1b1c,0 10px 30px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;padding:16px}
+.dlg{background:var(--white);border-radius:16px;width:100%;display:flex;flex-direction:column;box-shadow:0 6px 24px rgba(0,0,0,.25);overflow:hidden}
+.hd{padding:20px 20px 6px;text-align:center}
+.hd .t{font-size:18px;font-weight:800}
+.hd .s{font-size:12px;color:var(--gray-1);margin-top:3px}
+.bd{padding:4px 20px 4px}
+.sub{margin:10px 0 0;font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px}
+.desc{margin:2px 0 2px;font-size:13px;color:var(--gray-1)}
+/* 🆕 補上的那一行：餅乾圖跟字一樣高、往下對齊字的中線 */
+.desc.cookie{display:flex;align-items:center;flex-wrap:wrap}
+.desc.cookie img{width:18px;height:18px;display:block;margin-left:3px}
+.rows{margin-top:8px}
+.row{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--divider)}
+.row:first-child{border-top:0}
+.rk{width:26px;height:32px;border-radius:6px;background:var(--gray-4);display:grid;place-items:center;font-weight:800;font-size:15px;flex:none}
+.rk.one{background:var(--brand)}
+.av{width:36px;height:36px;border-radius:50%;background:var(--brand-light);display:grid;place-items:center;font-weight:900;font-size:13px;flex:none}
+.nm{font-size:14px;font-weight:700;min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nm small{display:block;font-size:11px;color:var(--gray-2);font-weight:500}
+.sc{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums}
+.tb{width:34px;height:34px;display:grid;place-items:center;flex:none}
+.tb.down svg{transform:rotate(180deg)}
+.info{margin:14px 0 2px;font-size:15px;font-weight:700}
+.kv{display:grid;grid-template-columns:72px 1fr;gap:4px 8px;font-size:13px;padding-bottom:10px}
+.kv span:nth-child(odd){color:var(--gray-2)}
+.ft{padding:12px 20px 18px;border-top:1px solid var(--divider)}
+.ft div{background:var(--ink);color:var(--white);text-align:center;border-radius:12px;padding:13px 0;font-size:14px;font-weight:700}
+.notes{margin:32px auto 0;max-width:66ch;display:grid;gap:8px}
+.notes p{margin:0;color:var(--gray-1);font-size:14.5px;line-height:1.8}
+.notes b{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>評價頁補上「按讚可以拿到小熊餅乾」</h1>
+  <p class="lede">會員 App 打完牌跳出的「給同桌評價」彈窗，<b>原本那一句後面直接接「，可獲得 1 個」和小熊餅乾圖</b>（不另起一行）。按讚本來就會發小熊餅乾（每讚一個人 1 個，同一場同一人只算一次），只是畫面上沒寫。其他地方都不動。</p>
+
+  <div class="pair">
+    <figure>
+      <div class="phone"><div class="dlg" data-dlg></div></div>
+      <figcaption><b>現在</b></figcaption>
+    </figure>
+    <figure>
+      <div class="phone"><div class="dlg" data-dlg data-new></div></div>
+      <figcaption><b>補上說明</b>（藍色虛線框起來的是改過的那一句，正式版沒有框）</figcaption>
+    </figure>
+  </div>
+
+  <div class="notes">
+    <p><b>規則</b>：餅乾是給讚的人拿，每讚一個人拿 1 個；同一場對同一個人取消再按不會重複拿。倒讚沒有餅乾。</p>
+    <p><b>樣子</b>：同一句灰字，「1 個」後面放頂條那顆去背餅乾（18 像素，跟字差不多高）。已經做進會員 App（本機提交 48263f4，還沒推）。</p>
+    <p><b>按完「完成評價」</b>：照舊，這一場拿到的餅乾從按鈕上方飛到頂條。</p>
+  </div>
+</div>
+
+<template id="tpl">
+  <div class="hd"><div class="t">恭喜你拿下第 1 名！</div><div class="s">本局 +560 分 · 段位 +45</div></div>
+  <div class="bd">
+    <p class="sub">給同桌評價 <svg width="26" height="26" viewBox="0 0 24 24" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="fill:var(--brand);stroke:var(--ink)"><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/><path d="M7 10v12"/></svg></p>
+    <p class="desc" data-old>覺得誰牌品好，就給他一個讚</p>
+    <p class="desc cookie" data-cookie>覺得誰牌品好，就給他一個讚，可獲得 1 個<img src="data:image/webp;base64,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" alt="小熊餅乾"></p>
+    <div class="rows">
+      <div class="row"><div class="rk one">1</div><div class="av">凱</div><div class="nm">咖勁凱的麻將人生<small>你</small></div><div class="sc">+560</div></div>
+      <div class="row"><div class="rk">2</div><div class="av">美</div><div class="nm">小美今天要清一色</div>__THUMBS__</div>
+      <div class="row"><div class="rk">3</div><div class="av">雄</div><div class="nm">大雄只想打一將</div>__THUMBS__</div>
+      <div class="row"><div class="rk">4</div><div class="av">哲</div><div class="nm">阿哲永遠都在連莊</div>__THUMBS__</div>
+    </div>
+    <p class="info">本局資訊</p>
+    <div class="kv"><span>類型</span><span>配桌</span><span>門市</span><span>MIGI 高雄自由店</span><span>玩法</span><span>台麻 · 3 將</span><span>積分</span><span>100/20</span></div>
+  </div>
+  <div class="ft"><div>完成評價</div></div>
+</template>
+
+<script>
+const hand = '<path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/>'
+const thumb = (down) => `<span class="tb${down ? ' down' : ''}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#726D69" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/>${hand}</svg></span>`
+const html = document.getElementById('tpl').innerHTML.replaceAll('__THUMBS__', thumb(false) + thumb(true))
+document.querySelectorAll('[data-dlg]').forEach((d) => {
+  d.innerHTML = html
+  const c = d.querySelector('[data-cookie]')
+  if (d.hasAttribute('data-new')) { d.querySelector('[data-old]').remove(); c.style.outline = '2px dashed #8fb6ff'; c.style.outlineOffset = '3px'; c.style.borderRadius = '4px' }
+  else c.remove()
+})
+</script>
+</body>
+</html>
