@@ -1,0 +1,282 @@
+<title>大熊星座的啟示</title>
+<style>
+:root{
+  color-scheme: dark;
+  /* 計分板的深色色票（@migi/assets） */
+  --brand:#FAD6DC; --brand-light:#FFE7EE; --ink:#2E2B2C;
+  --dk-bar:#191718; --dk-bg:#221F20; --dk-raised:#2B2829; --dk-tile:#343132; --dk-line:#524D4E;
+  --dk-text:#FFFFFF; --dk-text-2:#C9C4C1; --dk-text-3:#A39E9B;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#151314;color:var(--dk-text);font-family:"Noto Sans TC",system-ui,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 16px 64px}
+h1{font-size:24px;margin:0 0 6px;font-weight:800}
+.lede{color:var(--dk-text-2);font-size:15px;line-height:1.75;max-width:70ch;margin:0}
+.lede b{color:var(--brand)}
+.bar{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 14px}
+.bar button{font:inherit;font-size:14px;font-weight:700;border:1px solid var(--dk-line);background:var(--dk-raised);color:var(--dk-text);border-radius:999px;padding:7px 14px;cursor:pointer}
+.bar button:hover{border-color:var(--brand)}
+.bar button[aria-pressed="true"]{background:var(--brand);color:var(--ink);border-color:var(--brand)}
+.row{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start}
+figure{margin:0}
+figcaption{margin-top:8px;font-size:13.5px;color:var(--dk-text-2)}
+figcaption b{color:var(--dk-text)}
+.tab{flex:1 1 640px;min-width:0}
+.dev{position:relative;width:100%;aspect-ratio:1280/800;border-radius:18px;overflow:hidden;box-shadow:0 0 0 6px #0c0b0b}
+.ph{width:300px;max-width:100%}
+.ph .dev{aspect-ratio:390/844;border-radius:28px}
+.stage{position:absolute;left:0;top:0;transform-origin:0 0;background:var(--dk-bg)}
+.top{position:absolute;left:0;right:0;top:0;height:64px;background:var(--dk-bar);display:flex;align-items:center;gap:28px;padding:0 24px;font-size:20px;color:var(--dk-text-2);z-index:2}
+.top b{color:var(--dk-text)} .logo{font-weight:900;letter-spacing:.06em;color:var(--brand)}
+.te{position:absolute;left:0;right:0;top:64px;bottom:0}
+.te canvas{position:absolute;inset:0;width:100%;height:100%;color:var(--brand);z-index:0}
+.card{position:absolute;z-index:1;background:color-mix(in srgb,var(--dk-tile) 92%,transparent);border:2px solid var(--dk-line);border-radius:18px;display:grid;place-items:center;font-size:22px;color:var(--dk-text-3)}
+.mid{position:absolute;z-index:1;left:50%;top:44%;transform:translate(-50%,-50%);text-align:center;color:var(--dk-text-2);font-size:24px;font-weight:700}
+.mid small{display:block;font-size:18px;color:var(--dk-text-3);margin-top:6px}
+.ph .top{height:0;padding:0;overflow:hidden}
+.ph .te{top:0}
+.notes{margin-top:26px;display:grid;gap:10px;max-width:74ch}
+.notes p{margin:0;color:var(--dk-text-2);font-size:14.5px;line-height:1.8}
+.notes b{color:var(--dk-text)}
+</style>
+
+<div class="wrap">
+  <h1>大熊星座的啟示</h1>
+  <p class="lede">預設背景改名，左上角加一個星座。兩款可以切換比較：<b>小熊頭像</b>（照 App 預設頭像那隻熊的輪廓排星星）、<b>真實大熊座</b>（19 顆星照天空的真實位置）。原本從中間往外飛的粉色光點照舊。</p>
+  <div class="bar">
+    <button id="s-bear" aria-pressed="true">小熊頭像</button>
+    <button id="s-uma" aria-pressed="false">真實大熊座</button>
+    <span style="width:12px"></span>
+    <button id="replay">重播開場</button>
+    <button id="glint">播一次那道光</button>
+  </div>
+  <div class="row">
+    <figure class="tab">
+      <div class="dev" data-w="1280" data-h="800"><div class="stage">
+        <div class="top"><span class="logo">MIGI</span><span>桌號 <b>A3-1</b></span><span>玩法 <b>台麻・無花・3 將</b></span><span>積分 <b>100/20</b></span></div>
+        <div class="te"><canvas></canvas>
+          <div class="card" style="left:460px;top:16px;width:360px;height:239px">對家</div>
+          <div class="card" style="left:24px;top:268px;width:360px;height:239px">上家</div>
+          <div class="card" style="left:896px;top:268px;width:360px;height:239px">下家</div>
+          <div class="card" style="left:934px;top:16px;width:322px;height:106px;border-style:dashed;font-size:18px">右上按鈕</div>
+          <div class="mid" style="top:52%">第 1 將 · 第 3 局<small>東風圈</small></div>
+          <div class="card" style="left:24px;top:532px;width:1232px;height:184px">我的卡</div>
+        </div>
+      </div></div>
+      <figcaption><b>平板</b>（1280×800）：卡片位置照計分板實際量的。星座在左上角那塊空位（對家左邊、上家上面），不擋任何按鈕。</figcaption>
+    </figure>
+    <figure class="ph">
+      <div class="dev" data-w="390" data-h="844"><div class="stage">
+        <div class="top"></div>
+        <div class="te"><canvas></canvas>
+          <div class="card" style="left:12px;top:4px;width:117px;height:105px;font-size:15px;border-style:dashed">MIGI 字標</div>
+          <div class="card" style="left:137px;top:4px;width:117px;height:301px;font-size:15px">對家</div>
+          <div class="card" style="left:261px;top:4px;width:117px;height:170px;font-size:15px;border-style:dashed">按鈕</div>
+          <div class="card" style="left:12px;top:313px;width:117px;height:301px;font-size:15px">上家</div>
+          <div class="card" style="left:137px;top:313px;width:117px;height:301px;font-size:15px">桌面中間</div>
+          <div class="card" style="left:261px;top:313px;width:117px;height:301px;font-size:15px">下家</div>
+          <div class="card" style="left:12px;top:623px;width:366px;height:211px;font-size:15px">我的卡</div>
+        </div>
+      </div></div>
+      <figcaption><b>手機直拿</b>：唯一的空位是 MIGI 字標下面、上家上面那一小塊，星座縮小放那裡。<b>手機橫拿沒有空位，不畫。</b></figcaption>
+    </figure>
+  </div>
+  <div class="notes">
+    <p><b>小熊頭像</b>：27 顆星。耳朵、頭頂、臉頰、下巴、肩膀連成外框；眼睛和鼻子是最亮的三顆星，嘴巴是一個小小的笑線。開場時星星一顆顆亮、外框從左肩一路畫到右肩，最後點上眼睛和鼻子。平常每 15 秒有一道光沿著外框走一圈（左肩 → 耳朵 → 頭頂 → 耳朵 → 右肩），走完小熊<b>眨一下右眼</b>。</p>
+    <p><b>真實大熊座</b>：19 顆星照天空的真實位置排（北斗七星是熊的背和尾巴）。平常每 15 秒有一道光沿著北斗七星走一遍，走到斗口那兩顆「指極星」時一起亮兩下（古人沿著它們找北極星）。</p>
+    <p><b>位置</b>（照計分板實際版面量的，都畫在卡片後面，不擋按鈕）：平板在左上那塊空位；手機直拿在 MIGI 字標下面、上家上面；手機橫拿沒有空位，不畫。小熊頭像比較高、比較窄，在手機上可以放得比大熊座大。</p>
+    <p><b>顏色</b>：只用粉色系（--brand、--brand-light），不寫色碼。正式版開了「減少動態效果」的裝置只畫靜止的星座（這一頁刻意不理這個設定，不然你的電腦上不會動）。</p>
+  </div>
+</div>
+
+<script>
+/* ══ 兩款星座，共用同一套畫法與動畫 ══
+   每一款：pts { 名字: [x, y, 亮度(視星等，越小越亮)] }、lines（開場依序畫）、glint（那道光走的路）、
+           finale(進度 0～1) ⇒ 光走完之後哪幾顆星要變亮／變暗 */
+
+/* ① 小熊頭像：照 App 預設頭像（default-avatar.svg）的輪廓，座標用 512×512 那張圖量的 */
+const BEAR = {
+  size: 1.35,
+  pts: {
+    lsb:[140,448,3.4], lsh:[158,392,3.0], lnk:[184,335,3.3], lch:[140,300,2.9], lhd:[126,252,3.2],
+    /* 耳朵：外側往上繞一圈、頂端兩顆，再往下凹進頭頂（凹口那顆最暗）⇒ 耳朵才會凸出來 */
+    lea0:[130,214,3.3], lea1:[126,178,3.1], lea2:[146,150,2.7], lea3:[178,146,2.9], lnt:[204,172,3.7],
+    top:[256,158,2.8],
+    rnt:[308,172,3.7], rea3:[334,146,2.9], rea2:[366,150,2.7], rea1:[386,178,3.1], rea0:[382,214,3.3],
+    rhd:[386,252,3.2], rch:[372,300,2.9],
+    rnk:[328,335,3.3], rsh:[354,392,3.0], rsb:[372,448,3.4],
+    eyeL:[210,251,1.6], eyeR:[300,251,1.6], nose:[256,271,1.4],
+    m0:[256,284,3.9], mL:[241,292,4.0], mR:[271,292,4.0],
+  },
+  lines: [
+    ['lsb','lsh'],['lsh','lnk'],['lnk','lch'],['lch','lhd'],['lhd','lea0'],['lea0','lea1'],['lea1','lea2'],['lea2','lea3'],['lea3','lnt'],['lnt','top'],
+    ['top','rnt'],['rnt','rea3'],['rea3','rea2'],['rea2','rea1'],['rea1','rea0'],['rea0','rhd'],['rhd','rch'],['rch','rnk'],['rnk','rsh'],['rsh','rsb'],
+    ['nose','m0'],['m0','mL'],['m0','mR'],
+  ],
+  /* 臉最後才亮：外框的星先、眼睛鼻子嘴巴後 */
+  order: ['lsb','lsh','lnk','lch','lhd','lea0','lea1','lea2','lea3','lnt','top','rnt','rea3','rea2','rea1','rea0','rhd','rch','rnk','rsh','rsb','eyeL','eyeR','nose','m0','mL','mR'],
+  glint: ['lsb','lsh','lnk','lch','lhd','lea0','lea1','lea2','lea3','lnt','top','rnt','rea3','rea2','rea1','rea0','rhd','rch','rnk','rsh','rsb'],
+  /* 光走完：右眼眨一下（暗下去再亮回來），鼻子跟著亮一下 */
+  finale: (u) => {
+    const blink = u < 0.5 ? 1 - Math.sin(u / 0.5 * Math.PI) * 0.92 : 1
+    return { dim: { eyeR: blink }, boost: { nose: Math.sin(Math.min(1, u * 1.2) * Math.PI) * 0.6 } }
+  },
+}
+
+/* ② 真實大熊座：19 顆星（赤經 小時、赤緯 度、視星等），投影成東在左、北在上（一般星圖的方向） */
+const UMA_RAW = {
+  dubhe:[11.062,61.75,1.8], merak:[11.031,56.38,2.4], phecda:[11.897,53.69,2.4], megrez:[12.257,57.03,3.3],
+  alioth:[12.900,55.96,1.8], mizar:[13.399,54.93,2.2], alkaid:[13.792,49.31,1.9],
+  h23:[9.525,63.06,3.7], omicron:[8.504,60.72,3.4], upsilon:[9.849,59.04,3.8], theta:[9.548,51.68,3.2],
+  kappa:[9.060,47.16,3.6], iota:[8.987,48.04,3.1], chi:[11.768,47.78,3.7], psi:[11.161,44.50,3.0],
+  nu:[11.308,33.09,3.5], xi:[11.303,31.53,3.8], mu:[10.372,41.50,3.1], lambda:[10.285,42.91,3.5],
+}
+const UMA = {
+  size: 1,
+  pts: Object.fromEntries(Object.entries(UMA_RAW).map(([n, [ra, de, m]]) =>
+    [n, [-(ra - 11.15) * 15 * Math.cos(47.3 * Math.PI / 180), -(de - 47.3), m]])),
+  lines: [
+    ['alkaid','mizar'],['mizar','alioth'],['alioth','megrez'],['megrez','dubhe'],['dubhe','merak'],['merak','phecda'],['phecda','megrez'],
+    ['dubhe','h23'],['h23','omicron'],['h23','upsilon'],['merak','upsilon'],['upsilon','theta'],['theta','kappa'],['kappa','iota'],
+    ['phecda','chi'],['chi','nu'],['nu','xi'],['chi','psi'],['psi','mu'],['mu','lambda'],
+  ],
+  glint: ['alkaid','mizar','alioth','megrez','phecda','merak','dubhe'],
+  /* 光走完：斗口兩顆指極星（天璇、天樞）一起亮兩下，中間那條線也亮 */
+  finale: (u) => { const p = Math.pow(Math.sin(u * Math.PI * 2), 2) * (1 - u * 0.4); return { boost: { dubhe: p, merak: p }, line: [['merak','dubhe', p]] } },
+}
+
+/* 正規化成寬度 1 的方框 */
+for (const S of [BEAR, UMA]) {
+  const v = Object.values(S.pts), x0 = Math.min(...v.map((p) => p[0])), x1 = Math.max(...v.map((p) => p[0]))
+  const y0 = Math.min(...v.map((p) => p[1])), y1 = Math.max(...v.map((p) => p[1])), w = x1 - x0
+  S.unit = Object.fromEntries(Object.entries(S.pts).map(([n, p]) => [n, [(p[0] - x0) / w, (p[1] - y0) / w, p[2]]]))
+  S.aspect = (y1 - y0) / w
+  if (!S.order) { S.order = []; S.lines.flat().forEach((n) => { if (!S.order.includes(n)) S.order.push(n) }) }
+}
+
+const rgbOf = (s) => { s = (s || '').trim(); if (s[0] === '#') { const h = s.slice(1); return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)) } const m = s.match(/[\d.]+/g); return m ? m.slice(0, 3).map(Number) : [255, 255, 255] }
+const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`
+const ease = (x) => 1 - Math.pow(1 - Math.min(1, Math.max(0, x)), 3)
+let SHAPE = BEAR
+
+function Board(cv) {
+  const ctx = cv.getContext('2d')
+  const pink = rgbOf(getComputedStyle(cv).color)
+  const light = rgbOf(getComputedStyle(document.documentElement).getPropertyValue('--brand-light'))
+  /* ⚠ 預覽頁刻意不理「減少動態效果」（使用者的電腦開著它，照規矩就完全不會動）；正式的計分板會尊重這個設定 */
+  const reduce = false
+  let W, H, cx, cy, far, P = {}, k = 1, show = true, S = null, t0 = performance.now(), glintAt = 0, nextG = 0
+  const ph = {}
+  const STAR_MS = 70, LINE_MS = 150
+  const timing = () => { const line0 = S.order.length * STAR_MS + 200; return { line0, done: line0 + S.lines.length * LINE_MS + 600 } }
+  const measure = () => {
+    W = cv.width = cv.offsetWidth; H = cv.height = cv.offsetHeight
+    cx = W / 2; cy = H * 0.46; far = Math.hypot(W, H) * 0.55
+    /* 左上角的空位（照計分板實際版面量的）：
+       平板（.te 1280×736）  對家左邊、上家上面 ⇒ x 40 起、最寬 390、最高 238（靠上）
+       手機直拿（390×844）   MIGI 字標下面、上家上面 ⇒ x 14 起、最寬 113、在 y 112～308 之間置中
+       手機橫拿              沒有空位 ⇒ 不畫星座 */
+    const portrait = H > W
+    show = portrait || W >= 1000
+    const r = portrait ? { x: W * 0.036, y: H * 0.133, w: W * 0.29, h: H * 0.232 } : { x: W * 0.031, y: H * 0.019, w: W * 0.305, h: H * 0.323 }
+    const bw = Math.min(r.w, r.h / S.aspect), bh = bw * S.aspect
+    const oy = portrait ? r.y + (r.h - bh) / 2 : r.y
+    k = Math.max(bw, bh) / 380 * S.size
+    P = {}; for (const n in S.unit) P[n] = [r.x + S.unit[n][0] * bw, oy + S.unit[n][1] * bw]
+  }
+  const use = (shape) => { S = shape; for (const n in S.unit) ph[n] = Math.random() * 6.3; measure(); t0 = performance.now(); glintAt = 0; nextG = timing().done + 900 }
+  use(SHAPE)
+  const born = () => ({ a: Math.random() * Math.PI * 2, d: Math.random() * 20, v: 0.35 + Math.random() * 0.9, s: 1 + Math.random() * 2 })
+  const ps = Array.from({ length: 140 }, () => { const p = born(); p.d = Math.random() * far; return p })
+
+  /* 那道光走的路 */
+  let segs = [], total = 0
+  const pathLen = () => { segs = []; total = 0
+    for (let i = 0; i < S.glint.length - 1; i++) { const a = P[S.glint[i]], b = P[S.glint[i + 1]], l = Math.hypot(b[0] - a[0], b[1] - a[1]); segs.push([a, b, l]); total += l } }
+  const at = (d) => { for (const [a, b, l] of segs) { if (d <= l) { const u = d / l; return [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u] } d -= l } return P[S.glint[S.glint.length - 1]] }
+  const GL_MS = 2400, FIN_MS = 1400, GL_EVERY = 15000
+
+  const star = (x, y, mag, a, boost) => {
+    const r = Math.max(1.1, (4.3 - mag) * 1.25) * k * (1 + boost * 0.6)
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r * 4.5)
+    g.addColorStop(0, rgba(light, 0.55 * a)); g.addColorStop(1, rgba(pink, 0))
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 4.5, 0, 7); ctx.fill()
+    ctx.fillStyle = rgba(light, a); ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill()
+    if (mag < 2.5) {   // 亮星加一個四芒光
+      const s = r * (3.2 + boost * 2.5)
+      ctx.strokeStyle = rgba(light, 0.5 * a); ctx.lineWidth = Math.max(0.6, 0.9 * k)
+      ctx.beginPath(); ctx.moveTo(x - s, y); ctx.lineTo(x + s, y); ctx.moveTo(x, y - s); ctx.lineTo(x, y + s); ctx.stroke()
+    }
+  }
+
+  const frame = (now) => {
+    if (cv.offsetWidth !== W || cv.offsetHeight !== H) measure()
+    const t = reduce ? 1e9 : now - t0, { line0 } = timing()
+    ctx.clearRect(0, 0, W, H)
+    if (show) {
+      pathLen()
+      /* 連線：開場一條一條畫出來 */
+      ctx.lineCap = 'round'; ctx.lineWidth = 1.3 * k
+      S.lines.forEach(([a, b], i) => {
+        const u = ease((t - line0 - i * LINE_MS) / (LINE_MS * 2.2)); if (u <= 0) return
+        const A = P[a], B = P[b]
+        ctx.strokeStyle = rgba(pink, 0.34)
+        ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.lineTo(A[0] + (B[0] - A[0]) * u, A[1] + (B[1] - A[1]) * u); ctx.stroke()
+      })
+      /* 那道光；走完之後的收尾（眨眼／指極星） */
+      let gpos = -1, fin = null
+      if (glintAt) {
+        const g = now - glintAt
+        if (g < GL_MS) gpos = ease(g / GL_MS) * total
+        else if (g < GL_MS + FIN_MS) fin = S.finale((g - GL_MS) / FIN_MS)
+        else glintAt = 0
+      }
+      if (gpos >= 0) {
+        const head = at(gpos), tail = at(Math.max(0, gpos - 70 * k))
+        const gr = ctx.createLinearGradient(tail[0], tail[1], head[0], head[1])
+        gr.addColorStop(0, rgba(light, 0)); gr.addColorStop(1, rgba(light, 0.95))
+        ctx.strokeStyle = gr; ctx.lineWidth = 2.4 * k
+        ctx.beginPath(); ctx.moveTo(tail[0], tail[1]); ctx.lineTo(head[0], head[1]); ctx.stroke()
+      }
+      if (fin && fin.line) for (const [a, b, p] of fin.line) {
+        ctx.strokeStyle = rgba(light, 0.85 * p); ctx.lineWidth = 2.2 * k
+        ctx.beginPath(); ctx.moveTo(P[a][0], P[a][1]); ctx.lineTo(P[b][0], P[b][1]); ctx.stroke()
+      }
+      /* 星星：開場依序亮起、平常輕輕閃；光經過時亮一下 */
+      const passed = {}
+      if (gpos >= 0) { let acc = 0; passed[S.glint[0]] = gpos; S.glint.slice(1).forEach((n, i) => { acc += segs[i][2]; passed[n] = gpos - acc }) }
+      S.order.forEach((n, i) => {
+        const a0 = ease((t - i * STAR_MS) / 420); if (a0 <= 0) return
+        const tw = 0.78 + 0.22 * Math.sin(now / 900 + ph[n])
+        let boost = passed[n] != null && passed[n] >= 0 ? Math.max(0, 1 - passed[n] / (90 * k)) : 0
+        if (fin && fin.boost && fin.boost[n]) boost = Math.max(boost, fin.boost[n])
+        const dim = fin && fin.dim && fin.dim[n] != null ? fin.dim[n] : 1
+        star(P[n][0], P[n][1], S.unit[n][2], a0 * tw * dim, boost)
+      })
+      if (!glintAt && t >= nextG) { glintAt = now; nextG = t + GL_EVERY }
+    }
+    /* 原本的星點：從中間往外飛 */
+    ctx.fillStyle = rgba(pink, 1)
+    for (const p of ps) {
+      p.d += p.v * (1 + p.d / 160); if (p.d > far) Object.assign(p, born())
+      const q = p.d / far
+      ctx.globalAlpha = Math.min(1, q * 3) * (1 - q) * 0.9
+      ctx.beginPath(); ctx.arc(cx + Math.cos(p.a) * p.d, cy + Math.sin(p.a) * p.d, p.s * (0.5 + q * 1.6), 0, 7); ctx.fill()
+    }
+    ctx.globalAlpha = 1
+  }
+  return { frame, use, replay: () => use(S), glint: () => { glintAt = performance.now() } }
+}
+
+/* 外框等比縮放 */
+const fit = () => document.querySelectorAll('.dev').forEach((d) => { const s = d.firstElementChild; s.style.width = d.dataset.w + 'px'; s.style.height = d.dataset.h + 'px'; s.style.transform = `scale(${d.clientWidth / d.dataset.w})` })
+addEventListener('resize', fit); fit()
+const boards = [...document.querySelectorAll('.te canvas')].map(Board)
+const loop = (now) => { boards.forEach((b) => b.frame(now)); requestAnimationFrame(loop) }
+requestAnimationFrame(loop)
+const pick = (shape, btn) => { SHAPE = shape; boards.forEach((b) => b.use(shape)); document.querySelectorAll('#s-bear,#s-uma').forEach((x) => x.setAttribute('aria-pressed', x === btn)) }
+document.getElementById('s-bear').onclick = (e) => pick(BEAR, e.currentTarget)
+document.getElementById('s-uma').onclick = (e) => pick(UMA, e.currentTarget)
+document.getElementById('replay').onclick = () => boards.forEach((b) => b.replay())
+document.getElementById('glint').onclick = () => boards.forEach((b) => b.glint())
+</script>

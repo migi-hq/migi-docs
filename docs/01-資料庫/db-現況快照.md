@@ -1,5 +1,14 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-05 增補 146（歸檔 `2026-11-05_商城背景加說明文字.sql`）
+> **基準：`sql/applied/` 有 462 個檔案**。驗證 4/4，提交後查過線上。
+> · `shop_items.description`（新欄，text）：牌桌商城抽屜標題下面那段說明，四款都填了（照《小熊宇宙》設定集）
+> · `get_my_shop_tx` 每一款多回 `description`（CREATE OR REPLACE，授權不變：authenticated 可叫、anon 不行）
+
+> ### 🆕 2026-11-05 增補 145（歸檔 `2026-11-05_預設背景改名大熊星座的啟示.sql`）
+> **基準：`sql/applied/` 有 461 個檔案**。驗證 2/2，提交後查過線上。
+> · `shop_items` 的 `starry` 改名「大熊星座的啟示」（只改 name，代碼與動畫不變）。上架中：`starry` 大熊星座的啟示（0）、`town` 歐拉小鎮的星空（5）
+
 > ### 🆕 2026-11-05 增補 144（歸檔 `2026-11-05_美麻牌局不發碎片.sql`）
 > **基準：`sql/applied/` 有 460 個檔案**。驗證 7/7，提交後查過線上（兩支都有美麻條件、收回 4 筆共 70）。
 > · `trg_hands_shards`：`game_type = '美麻'` 整場不發碎片（null 算台麻）；`_tbl_state_for_device` 的 `pending.shards` 美麻回 0
