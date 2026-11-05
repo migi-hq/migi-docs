@@ -1,5 +1,15 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-05 增補 149（歸檔 `2026-11-05_刪除A3誤按提早結算那一場.sql`）
+> **基準：`sql/applied/` 有 465 個檔案**。驗證 ✅，提交後查過線上。資料修正，schema 不變。
+> · 刪除 A3 誤按提早結算的那一場（場次 `1c3540be…`、配桌房 `c3c8cf83…`，一局都沒打）：入座、配桌名單、成桌與結算通知、2 個讚與 2 個餅乾整筆刪
+> · 4 張檯費單（MG-S01-261105-0007～0010）收款紀錄不能刪 ⇒ 改作廢、`session_id` 清空，`void_source = system`；Y、yuhsin 讚數各扣 1
+
+> ### 🆕 2026-11-05 增補 148（歸檔 `2026-11-05_報表檢視表補會員來源與作廢欄位.sql`）
+> **基準：`sql/applied/` 有 464 個檔案**。驗證 4/4，提交後查過線上（錯誤儀表 ⑫ 那四支歸零）。
+> · `v_real_members` 補會員來源 6 欄；`v_real_orders`／`v_real_table_sessions`／`v_real_topup_orders` 補作廢稽核 3 欄（`voided_at`／`voided_by_staff_id`／`void_source`）
+> · 篩選條件不變；anon／authenticated 仍然讀不到（⑯）
+
 > ### 🆕 2026-11-05 增補 147（歸檔 `2026-11-05_商城上架冰川峽灣的極光.sql`）
 > **基準：`sql/applied/` 有 463 個檔案**。驗證 2/2，提交後查過線上。
 > · `shop_items` 新增 `aurora` 冰川峽灣的極光（normal、20 碎片、sort 25、有說明）。上架中：`starry` 0、`town` 5、`aurora` 20
