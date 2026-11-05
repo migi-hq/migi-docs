@@ -86,6 +86,8 @@ figcaption b{color:var(--dk-text)}
     </figure>
   </div>
   <div class="notes">
+    <p><b>🆕 調暗</b>：整片極光淡下來，透出後面的夜空，比較像真的極光；最亮的時候也只到原圖的七成。</p>
+    <p><b>🆕 整片呼吸</b>：大約 6 秒一輪，吸氣時整片極光慢慢亮起來、光簾微微往上伸長，吐氣時暗回去、縮回原本的長度；下面海上的倒影跟著亮暗。原本那道從左掃到右的亮光還在，疊在上面。極光也照線上那一版左右縮成 85%、往上 35 點。</p>
     <p><b>極光怎麼動</b>：把原圖的極光單獨拆成一層，切成很多條細直條，每條上下錯開一點、錯開的量沿著光簾慢慢移動 ⇒ 整片像布簾在飄；再有一道亮光沿著光簾慢慢從左掃到右（像在呼吸）。不動的時候跟原圖一模一樣。</p>
     <p><b>🆕 這一輪加的</b>：天空的星星減少大約四分之三（大的四角星留著），極光更顯眼；船上的小旗子飄；船邊一圈一圈漣漪；海豹每 15～25 秒在冰山旁冒出頭、左右看一看再潛下去（原本做鯨魚，改成海豹：鯨魚是鯨魚灣的招牌，留給以後那一款）；冰川崩落（每 12～20 秒瀑布旁掉一小塊冰、濺起水花和漣漪）；雪山頂的雪煙（每 4～8 秒一座山頂被風吹起一縷白霧）。海豹和冰塊要等一陣子才會出現，可以多看幾十秒。</p>
     <p><b>其他動態</b>：星星慢慢閃（亮的幾顆會出十字光芒）、瀑布一條一條往下流、底下水霧、海面波光、倒影水波（瀑布前到船那一片水面一條一條左右晃，越往下晃越大；小冰山不跟著晃）、小帆船輕輕上下晃、船窗燈與水裡的倒影一閃一閃。整個畫面像鏡頭慢慢飄：天空、極光、雪山與海三層錯開的距離不一樣（景深）。</p>
@@ -108,7 +110,14 @@ const AURORA = {
   focus: [0.5, 0.45],
   depth: { sky: 2, aur: 4, land: 8 },
   margin: 12,
-  aur: { x: 60, y: 40 },                  // 極光那張小圖貼回原圖的位置
+  aur: { x: 60, y: 40 },                  // 極光那張小圖在原圖的位置
+  // 極光左右縮成 85%（以極光中心為準往中間縮）、整條往上 35 點（2026-11-05 使用者：「整體左右縮短一點，並往上一點」）
+  aurFit: { sx: 0.85, dy: -35 },
+  // 🆕 整片呼吸（2026-11-05 使用者：「極光可以讓她有呼吸嗎」）：period 秒一輪，
+  //   吸氣時整片從 low 亮到 high、再疊一層 glow 的光，光簾以極光圖 y = pivot 那一列為準往上下伸長 stretch；
+  //   sweep ＝ 從左掃到右那道亮光有多亮
+  //   同日使用者：「極光整體要黯淡一點，比較接近真實」⇒ 透出後面的夜空（原本 low 0.72／high 1／glow 0.3／sweep 0.32）
+  breathe: { period: 6, low: 0.5, high: 0.72, glow: 0.1, sweep: 0.18, stretch: 0.03, pivot: 450 },
   // 會閃的星星（星星減少之後留下最大的 8 顆；2026-11-05 使用者：「天空星星減少一點，讓極光比較顯眼」）
   stars: [[435,40,403],[1607,343,358],[481,161,346],[66,109,276],[838,100,261],[1434,544,94],[589,37,64],[237,644,41]],
   fall: [698, 800, 918, 842],             // 瀑布正面（x0, y0, x1, y1）
@@ -170,7 +179,10 @@ function aurora(cv, src) {
     ox = (W - (IW - 2 * M) * s) * AURORA.focus[0] - M * s
     oy = (H - (IH - 2 * M) * s) * AURORA.focus[1] - M * s
     L = { sky: scaled(img.sky), aur: scaled(img.aur), land: scaled(img.land), water: scaled(img.water), ice: scaled(img.ice) }
+    // 極光先在這張畫好再整張半透明貼上 —— 直條之間有 1 點重疊，直接半透明畫會在接縫多疊一次、變成一條條細紋
+    buf = document.createElement('canvas'); buf.width = W; buf.height = H; bctx = buf.getContext('2d')
   }
+  let buf = null, bctx = null
   let raf, last = performance.now(), t = 0
   const tick = (now = performance.now()) => {
     const dt = Math.min(0.05, (now - last) / 1000); last = now; t += dt
@@ -197,22 +209,31 @@ function aurora(cv, src) {
 
     // ② 極光（原圖）：切成 6 點寬的直條，每條上下錯開一點（布簾在飄）；再用「相加」疊一次，亮的那一段沿著光簾慢慢移動（呼吸）
     const A = AURORA.aur, aw = L.aur.width, ah = L.aur.height, step = 6
+    const fsx = AURORA.aurFit.sx, ac = A.x + aw / s / 2            // 左右縮放的比例、極光中心（原圖座標）
+    const BR = AURORA.breathe, inhale = 0.5 - 0.5 * Math.cos(t * 6.283 / BR.period)   // 0 → 1 → 0：整片的一口氣
+    const dh = ah * BR.stretch * inhale, dyo = BR.pivot * s * BR.stretch * inhale     // 伸長多少、往上推多少
     let sum = 0, cnt = 0                                          // 倒影那一帶的極光有多亮，水面跟著呼吸
+    bctx.globalCompositeOperation = 'source-over'; bctx.globalAlpha = 1; bctx.clearRect(0, 0, W, H)
     for (let i = 0; i * step * s < aw; i++) {
-      const x = A.x + i * step                                    // 這一條在原圖的 x
-      const dy = 6 * Math.sin(x * 0.008 - t * 0.55) + 2.5 * Math.sin(x * 0.021 + t * 0.8)
+      const x = A.x + i * step                                    // 這一條在極光圖裡的 x（飄動、亮光照這個算，節奏不變）
+      const dy = 6 * Math.sin(x * 0.008 - t * 0.55) + 2.5 * Math.sin(x * 0.021 + t * 0.8) + AURORA.aurFit.dy
       const breath = Math.pow(Math.max(0, Math.sin(x * 0.006 - t * 0.4)), 2)
       const sxp = i * step * s, sw = Math.min(step * s + 1, aw - sxp)
-      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1
-      ctx.drawImage(L.aur, sxp, 0, sw, ah, X(x, ax), Y(A.y + dy, ay), sw, ah)
-      if (breath > 0.02) {
-        ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.32 * breath
-        ctx.drawImage(L.aur, sxp, 0, sw, ah, X(x, ax), Y(A.y + dy, ay), sw, ah)
+      const dx = X(ac + (x - ac) * fsx, ax), dw = sw * fsx + 1     // 畫到畫面上的位置與寬度（往中心縮）
+      const dyp = Y(A.y + dy, ay) - dyo
+      bctx.globalCompositeOperation = 'source-over'; bctx.globalAlpha = 1
+      bctx.drawImage(L.aur, sxp, 0, sw, ah, dx, dyp, dw, ah + dh)
+      if (breath > 0.02) {                                        // 掃過的亮光
+        bctx.globalCompositeOperation = 'lighter'; bctx.globalAlpha = BR.sweep * breath
+        bctx.drawImage(L.aur, sxp, 0, sw, ah, dx, dyp, dw, ah + dh)
       }
       if (x > 600 && x < 1080) { sum += breath; cnt++ }
     }
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = BR.low + (BR.high - BR.low) * inhale
+    ctx.drawImage(buf, 0, 0)                                      // 整片一起半透明（呼吸）
+    if (BR.glow * inhale > 0.02) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = BR.glow * inhale; ctx.drawImage(buf, 0, 0) }
     ctx.globalAlpha = 1
-    const lum = cnt ? sum / cnt : 0.3
+    const lum = (cnt ? sum / cnt : 0.3) * 0.5 + inhale * 0.5        // 水面倒影跟著掃過的亮光與整片呼吸
 
     // ③ 地面：雪山、瀑布、海、冰山
     ctx.globalCompositeOperation = 'source-over'
