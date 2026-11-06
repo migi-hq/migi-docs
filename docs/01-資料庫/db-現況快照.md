@@ -1,5 +1,12 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-06 增補 162（歸檔 `2026-11-06_開打時間改用第一將選莊.sql`）
+> **基準：`sql/applied/` 有 478 個檔案**。驗證 6/6，提交後查過線上（五支各一個版本）。
+> · 🆕 `_session_played_from(session_id)`：第 1 將那一列的 `started_at`（＝第一將選完莊家）；沒用計分板 ⇒ null。只給內部呼叫
+> · 畫面上的「開打時間」一律 `coalesce(_session_played_from, activated_at, …)`：`_game_row`（開打、打了多久）、`_member_stats_core`（麻將足跡）、
+>   `pos_list_private_sessions_tx`（只改顯示，排序與日期判斷仍是帶桌時間）、`pos_session_record_tx`
+> · 跟增補 160 的 `_session_played_until` 是一對：**畫面上的牌局時間 ＝ 選完莊 → 最後一局打完**；`activated_at`／`ended_at` 仍是帶桌與收桌（狀態判斷、排序、走勢圖用）
+
 > ### 🆕 2026-11-06 增補 161（歸檔 `2026-11-06_POS牌局紀錄回起始積分與追加.sql`）
 > **基準：`sql/applied/` 有 477 個檔案**。驗證 3/3，提交後查過線上（第一次跑驗證段漏了欄位名稱整份回滾，修好重跑）。
 > · `pos_session_record_tx`：`session.start_points`（級距起始積分）＋ 每位 `extra`（爆卡追加合計，同 `_tbl_state_for_device` 的 extras）——
