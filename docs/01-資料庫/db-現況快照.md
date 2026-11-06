@@ -1,5 +1,11 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-06 增補 157（歸檔 `2026-11-06_POS包桌場次列表.sql`）
+> **基準：`sql/applied/` 有 473 個檔案**。驗證 3/3（11-06 凌晨 A1 那一場在清單裡、4 人 98 局），提交後查過線上。
+> · 🆕 函式 `pos_list_private_sessions_tx(p_store_id, p_day)`（authenticated，`_api_staff_only` ＋ `current_org_id()`）：
+>   某間店某一天（開打時間的台北日曆日）的包桌場次（`mode = 'private'`、不含取消開桌），每場回桌號、起訖、狀態、計分板局數、四人名次與桌上積分
+>   給 POS「包桌預約」頁下面的「這一天的包桌」
+
 > ### 🆕 2026-11-06 增補 156（歸檔 `2026-11-06_POS看牌局紀錄.sql`）
 > **基準：`sql/applied/` 有 472 個檔案**。驗證 3/3（試讀 A2 一場 4 人 69 局），提交後查過線上。
 > · 🆕 函式 `pos_session_record_tx(p_session_id)`（authenticated，函式裡 `_api_staff_only`，只看 `current_org_id()` 那個機構）：
