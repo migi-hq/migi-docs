@@ -1,5 +1,12 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-06 增補 156（歸檔 `2026-11-06_POS看牌局紀錄.sql`）
+> **基準：`sql/applied/` 有 472 個檔案**。驗證 3/3（試讀 A2 一場 4 人 69 局），提交後查過線上。
+> · 🆕 函式 `pos_session_record_tx(p_session_id)`（authenticated，函式裡 `_api_staff_only`，只看 `current_org_id()` 那個機構）：
+>   回 `session`（桌、玩法、花、將數、級距、純娛樂、起訖、狀態）、`players`（座位、名字、名次、桌上積分、`rating_delta`＝`score_points` 同平板）、
+>   `hands`（沿用 `_session_hands`）、`unfinished_rounds`（沒打完的將，那幾局不算進桌上積分）
+> · ⚠ `current_staff()` 沒有 `org_id` 欄位（staff_id／member_id／store_id／role／name），要機構用 `current_org_id()`
+
 > ### 🆕 2026-11-06 增補 155（歸檔 `2026-11-06_餵小熊接帳本.sql`）
 > **基準：`sql/applied/` 有 471 個檔案**。驗證 4/4，提交後查過線上。
 > · 🆕 函式 `feed_bear_tx(p_kind, p_qty, p_idem_key)`（authenticated）：同一個交易裡扣點心（叫 `consume_snack_tx`，帳本 `snack_grants`）→ 加成長值 → 滿 100 升一級，
