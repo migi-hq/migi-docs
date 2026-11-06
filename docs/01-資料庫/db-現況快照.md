@@ -1,5 +1,12 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-06 增補 155（歸檔 `2026-11-06_餵小熊接帳本.sql`）
+> **基準：`sql/applied/` 有 471 個檔案**。驗證 4/4，提交後查過線上。
+> · 🆕 函式 `feed_bear_tx(p_kind, p_qty, p_idem_key)`（authenticated）：同一個交易裡扣點心（叫 `consume_snack_tx`，帳本 `snack_grants`）→ 加成長值 → 滿 100 升一級，
+>   寫 `member_app_state.bear` 的 `lv`／`grow`。成長值只有這裡一份：cookie 10、milktea 15、pudding 25、tiramisu 50；一次 1～99 個；同一把冪等鍵重送不扣不加
+> · `save_app_state_tx` 改成忽略 `lv`、`grow`（同 snacks、titles）——等級只有餵食會改
+> · 101 隻小熊的示範初始值「Lv1、60%」改成「Lv1、0%」（帳本餵食 0 筆，沒有真的養出來的）
+
 > ### 🆕 2026-11-06 增補 154（歸檔 `2026-11-06_預設背景改名牌桌上的小宇宙.sql`）
 > **基準：`sql/applied/` 有 470 個檔案**。驗證 ✅，提交後查過線上。只改資料，schema 不變。
 > · `shop_items` 的 `starry` 改名「牌桌上的小宇宙」（原「大熊星座的啟示」）。
