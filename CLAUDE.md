@@ -1586,6 +1586,7 @@ migi github/           ← Claude Code 的 project folder 選這層
 | `migi_avatar_cache` | 頭像 URL | `members.avatar_*` |
 | `migi_line_av_sync` | 上次自動同步 LINE 大頭貼的時間（一天最多一次；只對頭像用 LINE 大頭貼的人） | — 本機（`lib/avatar.js` 的 `autoSyncLineAvatar`，2026-10-20） |
 | `migi_evt_queue` | 埋點離線佇列 | — 本來就該在本機 |
+| `migi_bear_seen` | 上次打開養成小熊那一頁的時間（隔 3 天以上再打開，小熊說「好久不見！」） | — 本機（`rewards.jsx`，2026-11-08；換手機會重新算，可以接受） |
 | `migi_reload_mark` | 版本重載記號 | — 本機 |
 | ~~`migi_pending_table_invite`~~ | 🗑 開房前先勾選要揪的牌咖，2026-10-31 拿掉（沒有程式再讀寫，手機上殘留的舊值無害） | — |
 | `migi_pending_tab` | 打開 App 要直接到哪一頁（LINE 推播帶 `?tab=match`，10 分鐘內有效、讀一次就清） | — 暫存（`lib/deeplink.js`） |
