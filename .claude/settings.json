@@ -35,6 +35,16 @@
         ]
       }
     ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:/Users/user/Desktop/migi github/.claude/hooks/zh_mid.py\""
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
