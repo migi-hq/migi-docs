@@ -1,5 +1,10 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-09 增補 165（歸檔 `2026-11-09_成就清單回傳配件獎勵.sql`）
+> **基準：`sql/applied/` 有 481 個檔案**。驗證 3/3，提交後查過線上（一個版本、含 grants_closet、授權沒變）。
+> · `get_my_achievements_tx()` 每枚成就多回 `grants_closet`（送哪件小熊配件的代碼）；剪影成就還沒解鎖時跟 `grants_title` 一樣遮成 null。簽名不變
+> · 會員 App 成就詳情多一行「配件獎勵」，名稱用 `lib/closet.jsx` 的 `CLOSET_ITEMS`
+
 > ### 🆕 2026-11-09 增補 164（歸檔 `2026-11-09_成就送小熊配件_第一次贏得牌局送毛線帽.sql`）
 > **基準：`sql/applied/` 有 480 個檔案**。驗證 7/7，提交後查過線上（毛線帽設定、三支函式、觸發器、授權都在）。
 > · `achievements.grants_closet text`（CHECK 只管格式 `^[a-z][a-z0-9_]{0,30}$`）：解鎖這枚成就送的小熊配件代碼，對應 `migi-web/src/lib/closet.jsx` 的 `CLOSET_ITEMS.key`。目前只有 `onboarding_12`「第一次贏得牌局」＝ `beanie`
