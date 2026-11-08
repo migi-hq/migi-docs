@@ -1,5 +1,14 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-09 增補 164（歸檔 `2026-11-09_成就送小熊配件_第一次贏得牌局送毛線帽.sql`）
+> **基準：`sql/applied/` 有 480 個檔案**。驗證 7/7，提交後查過線上（毛線帽設定、三支函式、觸發器、授權都在）。
+> · `achievements.grants_closet text`（CHECK 只管格式 `^[a-z][a-z0-9_]{0,30}$`）：解鎖這枚成就送的小熊配件代碼，對應 `migi-web/src/lib/closet.jsx` 的 `CLOSET_ITEMS.key`。目前只有 `onboarding_12`「第一次贏得牌局」＝ `beanie`
+> · `_member_closet(member)`：誰擁有哪幾件**唯一一份定義**，從解鎖紀錄算出、不另存（同 `_member_titles`）；配件永久，刻意不過濾 `deleted_at`／`is_active`。前端叫不到
+> · `get_my_closet_tx()`：會員 App 讀這支 → `{ owned:[{item,source,got_at}], how:[{item,achievement,condition}] }`（how 只列看得到的成就）。只給 authenticated
+> · 觸發器 `trg_member_achievements_closet`（member_achievements after insert／update of status）：解鎖會送配件的成就時發 `bear_item_granted` ⇒ 成就「第一個配件」（onboarding_15）。在此之前沒有任何東西發這個事件
+> · 當天補發：贏過的 96 人都有毛線帽、onboarding_15 解鎖 96 人；連帶 9 人湊滿新手成就解鎖 onboarding_29「新手畢業」（稱號「新手村制霸」）
+> · ⏳ 穿了什麼還沒存後端（離開頁面就脫掉）；抽獎、商城等其他來源要用時再加（`_member_closet` 加一段 union）
+
 > ### 🆕 2026-11-07 增補 163（歸檔 `2026-11-07_我的點心回傳已發現.sql`）
 > **基準：`sql/applied/` 有 479 個檔案**。驗證 4/4，提交後查過線上（一個版本、含 found）。
 > · `get_my_snacks_tx()` 多回傳 `found`：**曾經拿到過**的點心代號陣列（`snack_grants` 有任何一筆 `qty > 0` 的 kind）；原本四個數字的鍵不變
