@@ -1,5 +1,11 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-09 增補 168（歸檔 `2026-11-09_髮飾獨立成一個部位.sql`）
+> **基準：`sql/applied/` 有 484 個檔案**。驗證 5/5，提交後查過線上（1 個版本、白名單有 hair、authenticated 仍可叫）。
+> · `set_my_outfit_tx` 部位白名單 `head／hair／neck／hand／feet`（新增 hair 髮飾）—— 前端 `closet.jsx` 的 `NO_OUTFIT` 是同一份清單，加部位兩邊一起加
+> · 簽名不變（CREATE OR REPLACE），授權沒動；`get_my_closet_tx` 不看部位名，不用改
+> · 松果髮夾（pinecone）從前端刪掉：沒有成就送它（`achievements.grants_closet` 只有 onboarding_12 → beanie）、沒有人穿著
+
 > ### 🆕 2026-11-09 增補 167（歸檔 `2026-11-09_只打完1將也算段位分.sql`）
 > **基準：`sql/applied/` 有 483 個檔案**。驗證 9/9，提交後查過線上（兩道門檻、8 位段位分）。
 > · `apply_session_rounds_tx`：只擋「一將都沒打完」（`v_rounds < 1`）；只打完 1 將的定位賽加倍本來就看 `v_rounds = 1`，所以「約 2、3 將只打完 1 將」自動照約 1 將算
