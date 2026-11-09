@@ -1,5 +1,11 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-10 增補 173（歸檔 `2026-11-10_成績頁平均每將時間.sql`）
+> **基準：`sql/applied/` 有 489 個檔案**。驗證 6/6，提交後查過線上。
+> · 新函式 `_member_round_minutes(org, member, from, to) → (rounds, avg_min)`：**平均每將時間唯一一份算法**（每一將 started_at→finished_at，不含將與將之間的休息；只算 10～120 分的將；不算好友練習賽、作廢、刪除；範圍看 finished_at）。只給 service_role
+> · `_member_stats_core` 的 season／all 多回 `round_min`、`rounds`；`pos_member_detail_tx` 的 `pace` 改叫同一支（昨天是內嵌的一份）
+> · 🔴 改「一將怎麼算時間」只改 `_member_round_minutes`
+
 > ### 🆕 2026-11-09 增補 172（歸檔 `2026-11-09_門清自摸改名門清一摸三.sql`）
 > **基準：`sql/applied/` 有 488 個檔案**。只改資料、結構不變。驗證 5/5，提交後查過線上。
 > · `scoring_patterns.menqing_tsumo.label` 與成就 `tile_02.name`：「門清自摸」→「門清一摸三」；代碼、台數（3）、成就事件 `pattern_menqing_tsumo` 都不變
