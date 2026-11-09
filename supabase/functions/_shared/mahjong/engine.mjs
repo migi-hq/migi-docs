@@ -135,7 +135,9 @@ export function newGame({ seed, flower = false, dealer = 0, ren = 0, base = 0, u
 
   const st = {
     v: 1, seed, flower, dealer, ren, base, unit, dice,
-    cat: cat.map((p) => ({ code: p.code, tai: p.tai, max_count: p.max_count || 1, conflicts: p.conflicts || [] })),
+    /* 有花的局要多加的互斥（flower_conflicts，例：平胡 ↔ 門清）在這裡併進去，之後算台只看 conflicts */
+    cat: cat.map((p) => ({ code: p.code, tai: p.tai, max_count: p.max_count || 1,
+      conflicts: [...(p.conflicts || []), ...(flower ? p.flower_conflicts || [] : [])] })),
     wall, hands: [[], [], [], []], melds: [[], [], [], []], flowers: [[], [], [], []], discards: [[], [], [], []],
     turn: dealer, phase: 'deal', drawn: null, src: null, last: false,
     turns: [0, 0, 0, 0], called: false, migi: [false, false, false, false], yan: [false, false, false, false],
@@ -493,7 +495,8 @@ export function scoreWin(st, w, ctx) {
         if (tsumo && st.last) add('haidi')
         const twoSided = spot !== 'pair' && spot.t === 'chow' &&
           ((tk === spot.k && rankOf(spot.k) <= 5) || (tk === spot.k + 2 && rankOf(spot.k) >= 1))
-        if (!tsumo && pungs.length === 0 && !honors && !(st.flower && fl.length) && w8.length >= 2 && twoSided) add('pinghu')
+        /* 平胡：手上有花就沒有平胡；有花的局平胡跟門清只能二選一（主檔 flower_conflicts，建局時併進 conflicts） */
+        if (!tsumo && !(st.flower && fl.length) && pungs.length === 0 && !honors && w8.length >= 2 && twoSided) add('pinghu')
         if (pungs.length === SETS) add('pengpenghu')
         if (anke >= 5) add('wuanke'); else if (anke === 4) add('sianke'); else if (anke === 3) add('sananke')
         if (dragons === 3) add('dasanyuan')

@@ -14,7 +14,7 @@ const CAT = [
   ['zhenghua', 1, 2, []], ['huagang', 2, 2, []], ['qiqiangyi', 8, 1, ['zhenghua', 'huagang', 'baxian']], ['baxian', 8, 1, ['zhenghua', 'huagang']],
   ['quanhong', 1, 1, []], ['shaigui', 2, 1, []], ['baozi', 0, 2, []],
   ['tianhu', 24, 1, ['duting', 'menqing', 'menqing_tsumo', 'pinghu', 'zimo']], ['migi', 8, 1, []],
-].map(([code, tai, max_count, conflicts]) => ({ code, tai, max_count, conflicts }))
+].map(([code, tai, max_count, conflicts]) => ({ code, tai, max_count, conflicts, flower_conflicts: code === 'pinghu' ? ['menqing'] : [] }))
 
 let pass = 0, fail = 0
 const t = (name, fn) => { try { fn(); pass++ } catch (e) { fail++; console.log('🔴 ' + name + '\n   ' + e.message) } }
@@ -45,7 +45,7 @@ t('平胡：胡別人、全順子、無字、聽兩面 ⇒ 門清 1 ＋ 平胡 2
   const r = scene({ hand: '1m 2m 3m 4m 5m 6m 7m 8m 9m 2p 3p 4p 2t 3t 5t 5t', win: '4t' })
   assert.deepEqual(codes(r), { pinghu: 1, menqing: 1 }); assert.equal(r.tai, 3)
 })
-t('自摸沒有平胡：門清自摸 3（已含自摸）', () => {
+t('自摸沒有平胡：門清一摸三 3（已含自摸）', () => {
   const r = scene({ hand: '1m 2m 3m 4m 5m 6m 7m 8m 9m 2p 3p 4p 2t 3t 4t 5t 5t', win: '4t', kind: 'tsumo' })
   assert.deepEqual(codes(r), { menqing_tsumo: 1 }); assert.equal(r.tai, 3)
 })
@@ -90,7 +90,7 @@ t('全求 2：五組都吃碰出去、單吊胡別人', () => {
   const r = scene({ hand: '5p', melds: [['chi', '1m 2m 3m'], ['pong', '7t 7t 7t'], ['chi', '4p 5p 6p'], ['pong', 'E0 E0 E0'], ['chi', '7m 8m 9m']], win: '5p', called: true })
   assert.equal(codes(r).quanqiuren, 1); assert.ok(!codes(r).menqing)
 })
-t('吃過牌的自摸：自摸 1（不是門清自摸）', () => {
+t('吃過牌的自摸：自摸 1（不是門清一摸三）', () => {
   const r = scene({ hand: '1m 2m 3m 4m 5m 6m 2p 3p 4p 2t 3t 4t 5t 5t', melds: [['chi', '7m 8m 9m']], win: '4t', kind: 'tsumo', called: true })
   assert.equal(codes(r).zimo, 1); assert.ok(!codes(r).menqing_tsumo)
 })
@@ -147,13 +147,19 @@ t('豹子的錢：(底 ＋ 台 ×（牌型 ＋ 莊家台）) × 2', () => {
   // 門清 1 ＋ 平胡 2 ＝ 3 台，×2 ＝ 6；莊家台 1 ×2 ＝ 2 ⇒ 50×2 ＋ 20×(6＋2) ＝ 260
   assert.equal(st.result.payments[1], -260)
 })
-t('天胡 24，不疊門清自摸', () => {
+t('天胡 24，不疊門清一摸三', () => {
   const r = scene({ hand: '1m 2m 3m 4m 5m 6m 7m 8m 9m 2p 3p 4p 2t 3t 4t 5t 5t', win: '4t', kind: 'tsumo', winner: 0, dealer: 0, turns: [0, 0, 0, 0] })
   assert.equal(codes(r).tianhu, 1); assert.ok(!codes(r).menqing_tsumo); assert.ok(!codes(r).zimo)
 })
-t('有花：手上有花就沒有平胡；正花照風位', () => {
+t('有花：正花照風位', () => {
   const r = scene({ hand: '1m 2m 3m 4m 5m 6m 7m 8m 9m 2p 3p 4p 2t 3t 5t 5t', win: '4t', flower: true, flowers: ['H2', 'H6', 'H3'], winner: 1, dealer: 0 })
   assert.ok(!codes(r).pinghu); assert.equal(codes(r).zhenghua, 2)
+})
+t('有花的局：手上沒花照樣有平胡，但跟門清只能二選一（取平胡 2）', () => {
+  const r = scene({ hand: '1m 2m 3m 4m 5m 6m 7m 8m 9m 2p 3p 4p 2t 3t 5t 5t', win: '4t', flower: true, flowers: [] })
+  assert.deepEqual(codes(r), { pinghu: 1 }); assert.equal(r.tai, 2)
+  const n = scene({ hand: '1m 2m 3m 4m 5m 6m 7m 8m 9m 2p 3p 4p 2t 3t 5t 5t', win: '4t', flower: false })   // 無花照舊 3
+  assert.deepEqual(codes(n), { pinghu: 1, menqing: 1 }); assert.equal(n.tai, 3)
 })
 
 /* ── 一整局：發牌、截胡、眼牌、MIGI、看得到什麼 ── */
