@@ -1,5 +1,11 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-09 增補 169（歸檔 `2026-11-09_平胡照店內台數表.sql`）
+> **基準：`sql/applied/` 有 485 個檔案**。只改資料、結構不變。驗證 5/5，提交後查過線上。
+> · `scoring_patterns.pinghu`：`result_only = 'ron'`（自摸無平胡），`conflicts` 加 `duting／zhenghua／huagang／qiqiangyi／baxian`（中洞單吊無平胡、有花無平胡），共 12 個
+> · 依據：店內「詳細台數表」平胡那一行。後端 `tbl_submit_hand_tx` 與計分板畫面都讀主檔，不用改函式；`migi-table/src/preview.jsx` 的副本同批改
+> · 舊局不重算
+
 > ### 🆕 2026-11-09 增補 168（歸檔 `2026-11-09_髮飾獨立成一個部位.sql`）
 > **基準：`sql/applied/` 有 484 個檔案**。驗證 5/5，提交後查過線上（1 個版本、白名單有 hair、authenticated 仍可叫）。
 > · `set_my_outfit_tx` 部位白名單 `head／hair／neck／hand／feet`（新增 hair 髮飾）—— 前端 `closet.jsx` 的 `NO_OUTFIT` 是同一份清單，加部位兩邊一起加
