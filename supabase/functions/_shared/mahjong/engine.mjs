@@ -140,6 +140,7 @@ export function newGame({ seed, flower = false, dealer = 0, ren = 0, base = 0, u
     turn: dealer, phase: 'deal', drawn: null, src: null, last: false,
     turns: [0, 0, 0, 0], called: false, migi: [false, false, false, false], yan: [false, false, false, false],
     claim: null, result: null, log: [{ e: 'start', dealer, ren, dice }],
+    baozi: 1,   // 豹子倍數：1 ＝ 沒有或放棄、2、3（莊家開局選的）
   }
   /* 發牌：每家 16 張，莊家多一張（不用摸，第一手直接打） */
   for (let i = 0; i < 16; i++) for (let k = 0; k < 4; k++) st.hands[(dealer + k) % 4].push(st.wall.shift())
@@ -156,7 +157,11 @@ export function newGame({ seed, flower = false, dealer = 0, ren = 0, base = 0, u
       st.hands[s].push(st.wall.pop())
     }
   }
-  if (st.phase === 'deal') { st.phase = 'discard'; st.turn = dealer; st.src = 'deal' }
+  if (st.phase === 'deal') {
+    st.turn = dealer; st.src = 'deal'
+    /* 豹子（三顆骰子一樣）：開局先由莊家決定這一局 ×2、×3 或放棄，選完才開始打（2026-11-09 使用者） */
+    st.phase = dice[0] === dice[1] && dice[1] === dice[2] ? 'baozi' : 'discard'
+  }
   return st
 }
 
@@ -213,6 +218,14 @@ const fail = (st, error) => ({ ok: false, error, st })
 export function act(st0, seat, a) {
   const st = structuredClone(st0)
   if (st.phase === 'over') return fail(st0, 'game_over')
+  if (st.phase === 'baozi') {
+    if (seat !== st.dealer) return fail(st0, 'not_your_turn')
+    if (a.type !== 'baozi' || ![1, 2, 3].includes(a.mult)) return fail(st0, 'bad_action')
+    st.baozi = a.mult
+    st.log.push({ e: 'baozi', s: seat, mult: a.mult })
+    st.phase = 'discard'
+    return { ok: true, st }
+  }
   if (st.phase === 'discard') {
     if (seat !== st.turn) return fail(st0, 'not_your_turn')
     if (a.type === 'discard') {
@@ -425,14 +438,22 @@ export function scoreWin(st, w, ctx) {
     if (hg) flowerPats.push(['huagang', hg])
   }
   const diceRed = st.dice.every((d) => RED_DICE.includes(d))
+  /* 骰龜：三顆骰子是順子（1-2-3、2-3-4、3-4-5、4-5-6，順序不拘；2026-11-09 使用者） */
+  const ds = [...st.dice].sort((a, b) => a - b)
+  const diceRun = ds[1] === ds[0] + 1 && ds[2] === ds[1] + 1
+  /* 豹子：三顆骰子一樣，莊家開局選 ×2／×3／放棄（st.baozi）⇒ 整筆乘（含底與莊家台，同計分板 rules.js）。
+     主檔 baozi 的次數 ＝ 倍數 − 1（同計分板按 1 次 ×2、按 2 次 ×3）；不管誰胡都算（2026-11-09 使用者） */
+  const baoziN = (st.baozi || 1) - 1
   const common = (add) => {
     if (st.migi[w]) add('migi')
     if (diceRed) add('quanhong')
+    if (diceRun) add('shaigui')
+    if (baoziN) add('baozi', baoziN)
     for (const [c, n] of flowerPats) add(c, n)
   }
 
   if (ctx.kind === 'baxian' || ctx.kind === 'qiqiangyi') {
-    return finalize(st, (add) => { add(ctx.kind); if (st.migi[w]) add('migi'); if (diceRed) add('quanhong') })
+    return finalize(st, (add) => { add(ctx.kind); if (st.migi[w]) add('migi'); if (diceRed) add('quanhong'); if (diceRun) add('shaigui'); if (baoziN) add('baozi', baoziN) })
   }
 
   const tsumo = ctx.kind === 'tsumo'
@@ -513,6 +534,7 @@ function finalize(st, fill) {
 
 /* 輪到誰、能按什麼。出牌時附「打哪張會聽、聽什麼」當提示 */
 export function optionsFor(st, s) {
+  if (st.phase === 'baozi') return s === st.dealer ? { baozi: [2, 3, 1] } : null   // 1 ＝ 放棄
   if (st.phase === 'discard' && st.turn === s) {
     const h = st.hands[s]
     const n = SETS - st.melds[s].length
@@ -547,6 +569,7 @@ export function optionsFor(st, s) {
 
 /* 逾時時電腦替他做什麼：出牌就打剛摸的（沒有就打最後一張），搶牌就跳過 */
 export function autoAction(st, s) {
+  if (st.phase === 'baozi' && s === st.dealer) return { type: 'baozi', mult: 1 }   // 莊家沒選 ⇒ 當作放棄（不替他加重輸贏）
   if (st.phase === 'discard' && st.turn === s) return { type: 'discard', tile: st.drawn || st.hands[s][st.hands[s].length - 1] }
   if (st.phase === 'claim' && st.claim.options[s] && !st.claim.resp[s]) return { type: 'pass' }
   return null
@@ -557,7 +580,7 @@ export function autoAction(st, s) {
 export function viewFor(st, s) {
   const see = st.yan[s] || st.phase === 'over'
   return {
-    seat: s, dealer: st.dealer, ren: st.ren, turn: st.turn, phase: st.phase, flower: st.flower, dice: st.dice,
+    seat: s, dealer: st.dealer, ren: st.ren, turn: st.turn, phase: st.phase, flower: st.flower, dice: st.dice, baozi: st.baozi,
     wallLeft: Math.max(0, st.wall.length - KEEP),
     wall: st.yan[s] && st.phase !== 'over' ? st.wall.slice(0, st.wall.length - KEEP) : null,
     players: [0, 1, 2, 3].map((x) => ({

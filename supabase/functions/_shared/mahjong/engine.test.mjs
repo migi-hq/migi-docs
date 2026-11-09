@@ -21,13 +21,13 @@ const t = (name, fn) => { try { fn(); pass++ } catch (e) { fail++; console.log('
 const tiles = (s) => s.trim().split(/\s+/)
 
 /* 造一個「胡牌那一刻」的局面，直接算台（不經過發牌） */
-function scene({ hand, melds = [], flowers = [], win, kind = 'ron', winner = 1, dealer = 0, ren = 0, flower = false, dice = [2, 3, 5], src = 'wall', last = false, migi = false, called = false, turns = [1, 1, 1, 1] }) {
+function scene({ hand, melds = [], flowers = [], win, kind = 'ron', winner = 1, dealer = 0, ren = 0, flower = false, dice = [2, 3, 5], baozi = 1, src = 'wall', last = false, migi = false, called = false, turns = [1, 1, 1, 1] }) {
   const st = newGame({ seed: 1, cat: CAT, flower, dealer, ren, base: 50, unit: 20 })
   st.hands = [[], [], [], []]; st.melds = [[], [], [], []]; st.flowers = [[], [], [], []]
   st.hands[winner] = tiles(hand)
   st.melds[winner] = melds.map(([tt, ts]) => ({ t: tt, tiles: tiles(ts), from: tt === 'ckong' ? null : 2 }))
   st.flowers[winner] = flowers
-  st.dice = dice; st.src = src; st.last = last; st.migi[winner] = migi; st.called = called; st.turns = turns
+  st.dice = dice; st.baozi = baozi; st.src = src; st.last = last; st.migi[winner] = migi; st.called = called; st.turns = turns
   if (kind === 'ron' || kind === 'rob') st.hands[winner].push(win)
   return scoreWin(st, winner, { kind, tile: win, from: 2 })
 }
@@ -101,6 +101,51 @@ t('槓上開花、海底撈月', () => {
 t('MIGI 另外加 8 台、全紅 1（骰子都是一或四）', () => {
   const r = scene({ hand: '1m 2m 3m 4m 5m 6m 7m 8m 9m 2p 3p 4p 2t 3t 5t 5t', win: '4t', migi: true, dice: [1, 4, 4] })
   assert.equal(codes(r).migi, 1); assert.equal(codes(r).quanhong, 1); assert.equal(r.tai, 3 + 8 + 1)
+})
+t('骰龜 2：骰子是順子（順序不拘）；不是順子不算', () => {
+  const H = { hand: '1m 2m 3m 4m 5m 6m 7m 8m 9m 2p 3p 4p 2t 3t 5t 5t', win: '4t' }
+  for (const d of [[1, 2, 3], [4, 2, 3], [5, 3, 4], [6, 4, 5]]) assert.equal(codes(scene({ ...H, dice: d })).shaigui, 1, d.join())
+  for (const d of [[1, 2, 4], [2, 2, 3], [6, 6, 6], [1, 3, 5]]) assert.ok(!codes(scene({ ...H, dice: d })).shaigui, d.join())
+})
+t('豹子：照莊家開局選的 ×2／×3／放棄', () => {
+  const H = { hand: '1m 2m 3m 4m 5m 6m 7m 8m 9m 2p 3p 4p 2t 3t 5t 5t', win: '4t' }
+  const r2 = scene({ ...H, dice: [6, 6, 6], baozi: 2 })
+  assert.equal(codes(r2).baozi, 1); assert.equal(r2.mult, 2); assert.equal(r2.tai, 3 * 2)
+  const r3 = scene({ ...H, dice: [6, 6, 6], baozi: 3 })
+  assert.equal(codes(r3).baozi, 2); assert.equal(r3.mult, 3); assert.equal(r3.tai, 3 * 3)
+  const r0 = scene({ ...H, dice: [6, 6, 6], baozi: 1 })               // 放棄
+  assert.ok(!codes(r0).baozi); assert.equal(r0.mult, 1)
+  const r1 = scene({ ...H, dice: [1, 1, 1], baozi: 2 })               // 1-1-1 同時是全紅與豹子
+  assert.equal(codes(r1).quanhong, 1); assert.equal(r1.tai, (3 + 1) * 2)
+})
+t('擲出豹子：開局停在莊家選倍數，別人不能先打；沒擲出豹子直接開打', () => {
+  let found = null, plain = null
+  for (let s = 1; s < 3000 && (!found || !plain); s++) {
+    const g = newGame({ seed: s, cat: CAT, dealer: 1 })
+    if (g.phase === 'baozi' && !found) found = g
+    if (g.phase === 'discard' && !plain) plain = g
+  }
+  assert.ok(found, '3000 個 seed 裡應該擲得出豹子')
+  assert.equal(plain.phase, 'discard')
+  assert.deepEqual(optionsFor(found, 1), { baozi: [2, 3, 1] }); assert.equal(optionsFor(found, 0), null)
+  assert.equal(act(found, 0, { type: 'baozi', mult: 3 }).error, 'not_your_turn')
+  assert.equal(act(found, 1, { type: 'discard', tile: found.hands[1][0] }).error, 'bad_action')
+  const after = act(found, 1, { type: 'baozi', mult: 3 }).st
+  assert.equal(after.baozi, 3); assert.equal(after.phase, 'discard')
+  assert.deepEqual(autoAction(found, 1), { type: 'baozi', mult: 1 })     // 沒選 ⇒ 當作放棄
+})
+t('豹子的錢：(底 ＋ 台 ×（牌型 ＋ 莊家台）) × 2', () => {
+  let st = newGame({ seed: 9, cat: CAT, dealer: 1, base: 50, unit: 20 })
+  st.dice = [3, 3, 3]; st.baozi = 2
+  st.hands[0] = tiles('1m 2m 3m 4m 5m 6m 7m 8m 9m 2p 3p 4p 2t 3t 5t 5t')
+  st.hands[1] = tiles('4t 1p 2p 5p 6p 8p 9p 1t 7t 8t E0 S0 W0 N0 C0 F0 B0')
+  st.turn = 1; st.phase = 'discard'
+  st = act(st, 1, { type: 'discard', tile: '4t' }).st              // 莊家（1 號）放槍給 0 號
+  for (const o of Object.keys(st.claim.options || {})) if (+o !== 0 && !st.claim.resp[o]) st = act(st, +o, { type: 'pass' }).st
+  if (st.phase === 'claim') st = act(st, 0, { type: 'hu' }).st
+  assert.equal(st.result.winner, 0)
+  // 門清 1 ＋ 平胡 2 ＝ 3 台，×2 ＝ 6；莊家台 1 ×2 ＝ 2 ⇒ 50×2 ＋ 20×(6＋2) ＝ 260
+  assert.equal(st.result.payments[1], -260)
 })
 t('天胡 24，不疊門清自摸', () => {
   const r = scene({ hand: '1m 2m 3m 4m 5m 6m 7m 8m 9m 2p 3p 4p 2t 3t 4t 5t 5t', win: '4t', kind: 'tsumo', winner: 0, dealer: 0, turns: [0, 0, 0, 0] })
