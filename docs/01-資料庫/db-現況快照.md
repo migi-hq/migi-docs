@@ -1,5 +1,11 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-09 增補 171（歸檔 `2026-11-09_有花的局平胡與門清互斥.sql`）
+> **基準：`sql/applied/` 有 487 個檔案**。驗證 7/7，提交後查過線上。
+> · `scoring_patterns.flower_conflicts text[] NOT NULL DEFAULT '{}'`：**有花的局才加上的互斥**（雙向）；平胡 ＝ `{menqing}`
+> · 有花的局併進互斥的三處：`_tbl_state_for_device`（回給計分板的 conflicts）、`tbl_submit_hand_tx`（送出檢查兩處 unnest）、`_tbl_practice_cfg`（教學模式固定有花 ⇒ 直接併）
+> · 🔴 新增「看玩法才互斥」的規則時填這一欄，不要在函式裡寫死；計分板畫面只讀 conflicts，不用改
+
 > ### 🆕 2026-11-09 增補 170（歸檔 `2026-11-09_會員查詢加平均3將時間.sql`）
 > **基準：`sql/applied/` 有 486 個檔案**。驗證 5/5，提交後查過線上（1 個版本、有 pace、authenticated 仍可叫）。
 > · `pos_member_detail_tx` 多回 `pace`：`{ rounds, per_round_min, three_min }` ＝ 這位會員打完的每一將（`session_rounds.started_at → finished_at`）平均 × 3；一將都沒有是 null
