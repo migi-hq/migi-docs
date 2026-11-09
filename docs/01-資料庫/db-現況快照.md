@@ -1,5 +1,13 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-09 增補 167（歸檔 `2026-11-09_只打完1將也算段位分.sql`）
+> **基準：`sql/applied/` 有 483 個檔案**。驗證 9/9，提交後查過線上（兩道門檻、8 位段位分）。
+> · `apply_session_rounds_tx`：只擋「一將都沒打完」（`v_rounds < 1`）；只打完 1 將的定位賽加倍本來就看 `v_rounds = 1`，所以「約 2、3 將只打完 1 將」自動照約 1 將算
+> · `_score_settle_tx`：`v_nfin >= 1` 就叫 apply_session_rounds_tx（原本 `>= 2` 或約 1 將）
+> · `_push_settle_fields`：`rating`／`rating_short` 有 score_points 就印，拿掉「未滿 2 將」那句
+> · 補算 11-09 A1（aeb6e45d…）、11-06 A1（f9fdbdeb…）：名次清掉後重跑 `_score_settle_tx`；結算通知 on conflict 擋住、LINE 寄送紀錄仍各 4 筆
+> · ⚠ 補算的 rating_after 是 11-09 當下的值 ⇒ 11-06 那場在段位走勢圖上的點跟之後的場次順序對不上
+
 > ### 🆕 2026-11-09 增補 166（歸檔 `2026-11-09_小熊穿搭存後端.sql`）
 > **基準：`sql/applied/` 有 482 個檔案**。驗證 5/5，提交後查過線上；行為 6/6（`sql/checks/2026-11-09_驗小熊穿搭存後端.sql`，回滾後查過 110 列 outfit 全空）。
 > · `member_app_state.outfit jsonb NOT NULL DEFAULT '{}'`：小熊穿搭 `{ head, neck, hand, feet }` → 配件代碼。🔴 **不要併進 `bear`**（`bear` 是前端整包送的，放進去就能自己塞沒拿到的配件）
