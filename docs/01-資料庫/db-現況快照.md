@@ -1,5 +1,12 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-09 增補 166（歸檔 `2026-11-09_小熊穿搭存後端.sql`）
+> **基準：`sql/applied/` 有 482 個檔案**。驗證 5/5，提交後查過線上；行為 6/6（`sql/checks/2026-11-09_驗小熊穿搭存後端.sql`，回滾後查過 110 列 outfit 全空）。
+> · `member_app_state.outfit jsonb NOT NULL DEFAULT '{}'`：小熊穿搭 `{ head, neck, hand, feet }` → 配件代碼。🔴 **不要併進 `bear`**（`bear` 是前端整包送的，放進去就能自己塞沒拿到的配件）
+> · `set_my_outfit_tx(p_outfit jsonb)`：只收那四個部位；每一件都要在 `_member_closet` 裡，否則整筆拒絕（`not_owned`／`bad_slot`）、原本的不動。只給 authenticated
+> · `get_my_closet_tx()` 多回 `outfit`：只留目前還擁有的那幾件
+> · 部位歸屬（哪件配件屬於哪個部位）在前端 `lib/closet.jsx`，後端只管擁有
+
 > ### 🆕 2026-11-09 增補 165（歸檔 `2026-11-09_成就清單回傳配件獎勵.sql`）
 > **基準：`sql/applied/` 有 481 個檔案**。驗證 3/3，提交後查過線上（一個版本、含 grants_closet、授權沒變）。
 > · `get_my_achievements_tx()` 每枚成就多回 `grants_closet`（送哪件小熊配件的代碼）；剪影成就還沒解鎖時跟 `grants_title` 一樣遮成 null。簽名不變
