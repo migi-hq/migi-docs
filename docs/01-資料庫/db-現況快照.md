@@ -1,5 +1,9 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-09 增補 172（歸檔 `2026-11-09_門清自摸改名門清一摸三.sql`）
+> **基準：`sql/applied/` 有 488 個檔案**。只改資料、結構不變。驗證 5/5，提交後查過線上。
+> · `scoring_patterns.menqing_tsumo.label` 與成就 `tile_02.name`：「門清自摸」→「門清一摸三」；代碼、台數（3）、成就事件 `pattern_menqing_tsumo` 都不變
+
 > ### 🆕 2026-11-09 增補 171（歸檔 `2026-11-09_有花的局平胡與門清互斥.sql`）
 > **基準：`sql/applied/` 有 487 個檔案**。驗證 7/7，提交後查過線上。
 > · `scoring_patterns.flower_conflicts text[] NOT NULL DEFAULT '{}'`：**有花的局才加上的互斥**（雙向）；平胡 ＝ `{menqing}`
