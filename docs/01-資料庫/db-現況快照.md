@@ -1,5 +1,11 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-09 增補 170（歸檔 `2026-11-09_會員查詢加平均3將時間.sql`）
+> **基準：`sql/applied/` 有 486 個檔案**。驗證 5/5，提交後查過線上（1 個版本、有 pace、authenticated 仍可叫）。
+> · `pos_member_detail_tx` 多回 `pace`：`{ rounds, per_round_min, three_min }` ＝ 這位會員打完的每一將（`session_rounds.started_at → finished_at`）平均 × 3；一將都沒有是 null
+> · **不含將與將之間的休息**（只加每一將自己的時間）；只算 10～120 分的將、不算好友練習賽與作廢場次
+> · CREATE OR REPLACE、簽名不變；POS 會員查詢打完 3 將以上才顯示這一格
+
 > ### 🆕 2026-11-09 增補 169（歸檔 `2026-11-09_平胡照店內台數表.sql`）
 > **基準：`sql/applied/` 有 485 個檔案**。只改資料、結構不變。驗證 5/5，提交後查過線上。
 > · `scoring_patterns.pinghu`：`result_only = 'ron'`（自摸無平胡），`conflicts` 加 `duting／zhenghua／huagang／qiqiangyi／baxian`（中洞單吊無平胡、有花無平胡），共 12 個
