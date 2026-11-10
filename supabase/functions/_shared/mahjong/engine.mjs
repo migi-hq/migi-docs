@@ -124,14 +124,22 @@ export function decompositions(c, n) {
 /* ── 建局 ──────────────────────────────────────────────────── */
 
 /* cat：牌型主檔 [{ code, tai, max_count, conflicts }]（只放啟用中的）
-   base／unit：底與每台的積分；dealer／ren：莊家座位與連莊數（上一局的 result.next） */
-export function newGame({ seed, flower = false, dealer = 0, ren = 0, base = 0, unit = 0, cat = [] }) {
+   base／unit：底與每台的積分；dealer／ren：莊家座位與連莊數（上一局的 result.next）
+   dice：每一局都擲一次骰子（2026-11-11 使用者：「每一局都要骰」），骰子台看這一擲。
+         第一局要傳「定莊家那一擲」進來（開局擲兩次：定座位、定莊家，骰子台看定莊家那次）；
+         第二局起不傳，由 seed 自己擲 */
+export function newGame({ seed, flower = false, dealer = 0, ren = 0, base = 0, unit = 0, cat = [], dice: given = null }) {
   const r = rng(seed)
   const wall = []
   for (const c of KIND_CODES) for (let i = 0; i < 4; i++) wall.push(c)
   if (flower) wall.push(...FLOWER_CODES)
   for (let i = wall.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [wall[i], wall[j]] = [wall[j], wall[i]] }
-  const dice = [0, 0, 0].map(() => 1 + Math.floor(r() * 6))
+  /* 照樣先擲（不管有沒有傳進來）⇒ 同一個 seed 洗出來的牌永遠一樣 */
+  const rolled = [0, 0, 0].map(() => 1 + Math.floor(r() * 6))
+  if (given != null && !(Array.isArray(given) && given.length === 3 && given.every((d) => Number.isInteger(d) && d >= 1 && d <= 6))) {
+    throw new Error('dice_invalid')
+  }
+  const dice = given ? [...given] : rolled
 
   const st = {
     v: 1, seed, flower, dealer, ren, base, unit, dice,

@@ -293,5 +293,19 @@ t('亂打 600 局', () => {
   console.log('   600 局：流局 ' + ends.draw + '、自摸 ' + ends.tsumo + '、胡別人 ' + ends.ron)
 })
 
+/* ── 每一局都擲骰子（2026-11-11）：第一局傳入定莊家那一擲，第二局起由 seed 自己擲 ── */
+t('傳入骰子：照用，而且洗出來的牌跟沒傳一樣', () => {
+  const a = newGame({ seed: 77, cat: CAT }), b = newGame({ seed: 77, cat: CAT, dice: [3, 3, 3] })
+  assert.deepEqual(b.dice, [3, 3, 3]); assert.deepEqual(b.wall, a.wall); assert.deepEqual(b.hands, a.hands)
+  assert.equal(b.phase, 'baozi')   // 定莊家那一擲是豹子 ⇒ 第一局開打前先讓莊家選
+})
+t('沒傳骰子：同一個 seed 每次擲出一樣的點數', () => {
+  const a = newGame({ seed: 5, cat: CAT }), b = newGame({ seed: 5, cat: CAT })
+  assert.deepEqual(a.dice, b.dice); assert.ok(a.dice.every((d) => d >= 1 && d <= 6))
+})
+t('傳入不合法的骰子要擋', () => {
+  for (const d of [[0, 1, 2], [1, 2], [1, 2, 7], [1.5, 2, 3], '123']) assert.throws(() => newGame({ seed: 1, cat: CAT, dice: d }), /dice_invalid/, JSON.stringify(d))
+})
+
 console.log(`\n${fail ? '🔴' : '✅'} 牌局引擎 ${pass} 項通過${fail ? '、' + fail + ' 項失敗' : ''}`)
 process.exit(fail ? 1 : 0)
