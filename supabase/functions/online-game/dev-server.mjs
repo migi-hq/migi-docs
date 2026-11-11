@@ -24,11 +24,13 @@ CAT.forEach((p) => { p.label = ZH[p.code] || p.code })
 
 const PORT = Number(process.env.PORT || 8787)
 const NAMES = { m1: ['咖勁凱', '新手村制霸', '金牌熊 II'], m2: ['佳佳', '自摸達人', '鑽石熊 I'], m3: ['阿哲', '新手上路', '白金熊 III'], m4: ['小美', '海底撈月', '銀牌熊 I'] }
+/* 三家機器人的小熊各穿各的（同預覽定稿那三套），看得出牌桌上的小熊會照每個人的穿搭畫 */
+const OUTFITS = { m2: { head: 'antler', hair: 'star', feet: 'socks' }, m3: { head: 'beanie', neck: 'scarf' }, m4: { hair: 'sakura', hand: 'mug' } }
 let W, cfg
 function reset(o = {}) {
   cfg = { planned: 1, flower: true, start: 2000, bots: true, speed: 1, botBust: 0, ...o }
   W = fakeDb({ planned: cfg.planned, flower: cfg.flower, start: cfg.start, clock: () => new Date().toISOString() })
-  W.D.players.forEach((p) => { const [nickname, title, rank] = NAMES[p.member_id]; Object.assign(p, { nickname, title, rank, avatar_source: 'bear', avatar_bear: null }) })
+  W.D.players.forEach((p) => { const [nickname, title, rank] = NAMES[p.member_id]; Object.assign(p, { nickname, title, rank, avatar_source: 'bear', avatar_bear: null, outfit: OUTFITS[p.member_id] || {} }) })
   console.log('🀄 新的一場：約 ' + cfg.planned + ' 將、' + (cfg.flower ? '有花' : '無花') + '、起始 ' + cfg.start)
 }
 reset()

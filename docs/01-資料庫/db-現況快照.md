@@ -1,5 +1,14 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-11 增補 178（歸檔 `2026-11-11_線上好友房_牌桌帶小熊配件.sql`）
+> **基準：`sql/applied/` 有 494 個檔案**。驗證 7/7 ＋ 行為 7/7（`sql/checks/2026-11-11_驗牌桌帶小熊配件.sql`），提交後查過線上；行為測試回滾後沒有留下任何樣本。
+> 線上：表 85 不變、函式 458 → **459**（＋1）、policy 33 不變。
+> · 🆕 `_member_outfit(member) returns jsonb`：這個人的小熊現在穿什麼。只留目前還擁有的那幾件（對 `_member_closet`）；沒存過、沒穿 ⇒ `{}` 不是 null。
+>   **只有 service_role 叫得動**（anon、authenticated、PUBLIC 都沒有）—— 給牌桌後端與其他 DEFINER 函式從內部叫
+> · `get_my_closet_tx()`：穿搭那一段改叫 `_member_outfit`，回傳跟原本一模一樣（113 位逐人比對 0 位不同）。簽名沒變、授權沒掉
+> · `_online_ctx(session)`：`players` 每人多一個 `outfit`（物件）。Edge Function `online-game` 不用重新部署 —— 它把 players 原樣交給畫面
+> · 📌 目前只有 1 個成就會送配件（`beanie`），線上只有 1 位會員穿著配件；其餘配件的取得方式還沒有後端來源
+>
 > ### 🆕 2026-11-11 增補 177（歸檔 `2026-11-11_線上好友房_開一場選線上打.sql`）
 > **基準：`sql/applied/` 有 493 個檔案**。驗證 7/7 ＋ 行為 12/12（`sql/checks/2026-11-11_驗開一場選線上打.sql`），提交後查過線上；行為測試回滾後沒有留下任何樣本。
 > 線上：表 85、函式 458、policy 33 都不變（一支改簽名、兩支 CREATE OR REPLACE）。
