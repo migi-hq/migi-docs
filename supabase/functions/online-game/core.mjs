@@ -14,7 +14,7 @@
      next  不等了，現在就開下一局／下一將（任何一家按都可以）
      bust  爆卡的人決定：{ amount }（> 0 追加積分，0 結束整場）
    ============================================================ */
-import { newGame, act, viewFor, autoAction } from './engine.mjs'
+import { newGame, act, viewFor, autoAction, botMove } from './engine.mjs'
 
 export const TURN_MS = 15000        // 出牌 15 秒（含莊家選豹子倍數）
 export const CLAIM_MS = 5000        // 別人打牌後要不要吃碰槓胡 5 秒
@@ -48,8 +48,11 @@ const seatOf = (ctx, memberId) => { const p = (ctx.players || []).find((x) => x.
 const playing = (ctx) => (ctx.hand && ctx.hand.status === 'playing' ? ctx.hand : null)
 /* rules：這一場開了哪幾個特殊規則（骰龜／豹子／全紅）。資料庫給陣列就照它（空陣列 ＝ 都不算）；
    沒給（這一欄出現之前的資料庫）⇒ 不傳，引擎照舊三個都算 */
+/* 眼牌功能先隱藏（2026-11-11 使用者）：新開的每一局都不給喊。要打開時把這裡改成 true、重新部署就好（引擎與畫面都還在） */
+const YAN_OPEN = false
 const engineArgs = (ctx) => ({ flower: !!ctx.session.flower, base: ctx.session.base, unit: ctx.session.unit, cat: ctx.cat || [],
-  rules: Array.isArray(ctx.session.special_rules) ? ctx.session.special_rules : null })
+  rules: Array.isArray(ctx.session.special_rules) ? ctx.session.special_rules : null,
+  yan: YAN_OPEN })
 const blocked = (ctx) => ctx.scored || !!ctx.bust || ctx.session.status !== 'open'
 
 /* 現在卡在哪：playing 正在打／hand_over 這一局打完等下一局／round_over 這一將打完等下一將／
@@ -147,37 +150,39 @@ async function timeout(db, ctx, now) {
        之後輪到他就走 autoFast（1.2 秒），不用每一手都等滿倒數。只有一個概念、一顆開關：
        他回來時自己手機左下角那顆是亮的，按一下就關掉、拿回來自己打（op auto off）。
        不另外做一套「逾時的人也加快」：那樣他回來沒有東西可以按，每一手只剩 1.2 秒搶 */
-    if (!(ctx.presence && ctx.presence[ring[i]] && ctx.presence[ring[i]].auto_on)) await db.setAuto({ p_session: ctx.session.id, p_seat: ring[i], p_on: true })
+    if (!autoSeat(ctx, ring[i])) await db.setAuto({ p_session: ctx.session.id, p_seat: ring[i], p_on: true })
     if (st.phase === 'over') break
   }
   return db.ctx(ctx.session.id)
 }
 
-/* 自己開了「電腦代打」的人（座位上的 auto_on）：不等倒數，輪到他 AUTO_MS 之後後端就直接替他出手
-   （2026-11-11 使用者：開著代打的人手機關掉時，每一手都要等倒數跑完，另外三家會等很久 ⇒「對」，要做）。做的事跟逾時代打一樣。
+/* 由電腦出手的座位：自己開了「電腦代打」的人（座位上的 auto_on），以及電腦對手（players 的 is_bot）。
+   2026-11-11 使用者：兩者**同一套牌理**（engine.mjs 的 botMove：會吃碰槓、能胡就胡、MIGI 該喊就喊），爆卡都**直接結束整場**。
+   · 不等倒數：輪到他 AUTO_MS 之後就出手
    · 這一步什麼時候開始：期限 − 這一種步驟給的秒數。新的一局第一步的期限多加了發牌動畫的時間，
      所以算出來的「開始」剛好落在發完牌之後，不會牌還在發就打出去
-   · 他能胡（別人放槍、或自摸）的那一步不搶著替他做：留給他自己的手機（開著 App 又開著自動胡會自己胡）；沒人理就照舊等倒數
-   · 一次只替一步出牌：下一步要重新等 AUTO_MS，不然好幾個人都開著時牌會一瞬間打完。「過」可以幾個人一起（那一步本來就在等大家回答）
-   · 誰來觸發：任何一家的手機讀畫面（view）或報時間到（tick）時順便做 —— 後端自己不會醒來 */
+   · 一次只做一步（出牌、吃碰槓、胡）：下一步要重新等 AUTO_MS，不然桌上好幾個電腦時牌會一瞬間打完。
+     「過」可以幾個人一起（那一步本來就在等大家回答）
+   · 牌理算不出東西、或引擎不接受時，退回最保守的做法（打剛摸的、過）——寧可打得笨，不可以卡住
+   · 誰來觸發：任何一家的手機讀畫面（view）或報時間到（tick）時順便做 —— 後端自己不會醒來
+   🗑 原本能胡的那一步會跳過不做（留給本人的手機）：電腦對手沒有手機，會每次白等滿倒數；現在一律能胡就胡 */
 export const AUTO_MS = 1200
+const isBot = (ctx, seat) => (ctx.players || []).some((p) => p.seat === seat && p.is_bot)
+const autoSeat = (ctx, seat) => isBot(ctx, seat) || !!(ctx.presence && ctx.presence[seat] && ctx.presence[seat].auto_on)
 async function autoFast(db, ctx, now) {
   const h = playing(ctx)
   if (!h || !h.deadline_at || !ctx.round) return ctx
-  const pres = ctx.presence || {}, ring = ctx.round.ring
-  const on = (i) => !!(pres[ring[i]] && pres[ring[i]].auto_on)
-  if (![0, 1, 2, 3].some(on)) return ctx
+  const ring = ctx.round.ring
+  if (!ring.some((s) => autoSeat(ctx, s))) return ctx
   const span = h.state.phase === 'claim' ? CLAIM_MS : TURN_MS
   if (now < ms(h.deadline_at) - span + AUTO_MS) return ctx
   let st = h.state, ver = h.version, did = false
   for (let i = 0; i < 4; i++) {
-    if (!on(i)) continue
-    const a = autoAction(st, i)
-    if (!a) continue
-    const o = viewFor(st, i).options
-    if (o && ((o.claim && o.claim.hu) || o.tsumo)) continue
-    const r = act(st, i, a)
-    if (!r.ok) continue
+    if (!autoSeat(ctx, ring[i])) continue
+    let a = null, r = null
+    try { a = botMove(viewFor(st, i)) } catch (e) { a = null }
+    if (a) r = act(st, i, a)
+    if (!a || !r.ok) { a = autoAction(st, i); if (!a) continue; r = act(st, i, a); if (!r.ok) continue }
     const c = await db.commit({ p_hand: h.id, p_version: ver, p_state: r.st, p_phase: r.st.phase, p_deadline: deadlineFor(r.st, now), p_seat: ring[i], p_actor: 'auto', p_action: a, p_result: resultFor(r.st, ring) })
     if (!c || !c.ok) break      // 別人剛好先動了（版本對不上）⇒ 這一輪不做，重讀
     st = r.st; ver = c.version; did = true
@@ -185,6 +190,13 @@ async function autoFast(db, ctx, now) {
   }
   return did ? db.ctx(ctx.session.id) : ctx
 }
+/* 爆卡的是電腦對手、或開著電腦代打的人 ⇒ 不等他決定，直接結束整場（2026-11-11 使用者：「兩者爆卡都直接結束」） */
+async function autoBust(db, ctx) {
+  if (!ctx.bust || ctx.scored || !autoSeat(ctx, ctx.bust.seat)) return ctx
+  const r = await db.bustDecide({ p_session: ctx.session.id, p_seat: ctx.bust.seat, p_amount: 0 })
+  return r && r.ok ? db.ctx(ctx.session.id) : ctx
+}
+
 
 /* me ＝ online_me_tx 的回傳（已經用客人的登入憑證認過人）；body ＝ 手機送來的；now ＝ 毫秒；rand ＝ 0～1 的亂數 */
 export async function handle(db, me, body, now, rand) {
@@ -193,9 +205,10 @@ export async function handle(db, me, body, now, rand) {
   const op = (body && body.op) || 'view'
   const out = (extra = {}) => ({ ...buildView(ctx, me.member_id, now), ...extra })
 
-  if (op === 'view') { ctx = await autoFast(db, ctx, now); ctx = await advance(db, ctx, now, rand, false); return out() }
-  if (op === 'next') { ctx = await advance(db, ctx, now, rand, true); return out() }
-  if (op === 'tick') { ctx = await timeout(db, ctx, now); ctx = await autoFast(db, ctx, now); ctx = await advance(db, ctx, now, rand, false); return out() }
+  if (op === 'view') { ctx = await autoBust(db, ctx); ctx = await autoFast(db, ctx, now); ctx = await advance(db, ctx, now, rand, false); return out() }
+  if (op === 'next') { ctx = await autoBust(db, ctx); ctx = await advance(db, ctx, now, rand, true); return out() }
+  // 先讓電腦用牌理出手，再處理逾時：反過來的話，期限過了的電腦座位會先被「逾時代打」用最笨的打法打掉
+  if (op === 'tick') { ctx = await autoBust(db, ctx); ctx = await autoFast(db, ctx, now); ctx = await timeout(db, ctx, now); ctx = await advance(db, ctx, now, rand, false); return out() }
 
   if (op === 'bust') {
     const seat = seatOf(ctx, me.member_id)

@@ -1,7 +1,7 @@
 /* 牌局引擎測試（零相依）：node supabase/functions/online-game/engine.test.mjs
    CAT 是牌型主檔的測試副本（2026-11-09 線上 scoring_patterns 撈出來的台數與互斥；正式跑時引擎讀資料庫那一份） */
 import assert from 'node:assert/strict'
-import { newGame, act, canWin, waits, counts, scoreWin, viewFor, autoAction, optionsFor, KEEP, KIND_CODES } from './engine.mjs'
+import { newGame, act, canWin, waits, counts, scoreWin, viewFor, autoAction, optionsFor, shanten, botMove, KEEP, KIND_CODES } from './engine.mjs'
 
 const CAT = [
   ['zimo', 1, 1, []], ['triplet_wind', 1, 3, ['xiaosixi', 'dasixi']], ['triplet_dragon', 1, 2, ['xiaosanyuan', 'dasanyuan']],
@@ -334,6 +334,112 @@ t('特殊規則：這一場沒開的不算（全紅、骰龜、豹子各自獨�
   // 畫面拿到的規則清單
   assert.deepEqual(viewFor(newGame({ seed: 2, cat: CAT, rules: ['shaigui'] }), 0).rules, ['shaigui'])
   assert.deepEqual(viewFor(newGame({ seed: 2, cat: CAT }), 0).rules, ['quanhong', 'shaigui', 'baozi'])
+})
+
+/* ── 電腦的打法（牌理）── */
+t('向聽數：胡了是 -1、聽牌是 0、差一步是 1；3n＋2 張等於「打掉最沒用那張之後」', () => {
+  const S = (s, n = 5) => shanten(counts(tiles(s)), n)
+  assert.equal(S('1m 2m 3m 4m 5m 6m 7m 8m 9m 1p 1p 1p 2t 3t 4t E0 E0'), -1)          // 五組一對
+  assert.equal(S('1m 2m 3m 4m 5m 6m 7m 8m 9m 1p 1p 1p 2t 3t E0 E0'), 0)               // 聽兩面
+  assert.equal(S('1m 2m 3m 4m 5m 6m 7m 8m 9m 1p 1p 1p 2t 3t 4t E0'), 0)               // 單吊
+  assert.equal(S('1m 2m 3m 4m 5m 6m 7m 8m 9m 1p 1p 1p 2t 3t E0 S0'), 1)               // 差一步
+  assert.equal(S('1m 2m 3m 4m 5m 6m 7m 8m 9m 1p 1p 1p 2t 3t E0 E0 C0'), 0)            // 17 張：多一張廢牌，打掉就聽
+  assert.equal(S('1m 2m 3m 2t 3t E0 E0', 2), 0)                                       // 已經吃碰三組：剩兩組一對
+  // 跟「聽不聽」的既有判斷對得起來：隨機手牌，向聽數 0 ⇔ waits 有東西（3n＋1 張）
+  let seed = 7, checked = 0
+  const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff }
+  for (let g = 0; g < 300; g++) {
+    const st = newGame({ seed: 1000 + g, cat: CAT })
+    for (let s = 0; s < 4; s++) {
+      const h = st.hands[s].slice(0, 16), c = counts(h)
+      assert.equal(shanten(c, 5) === 0, waits(c, 5).length > 0, h.join(' '))
+      assert.equal(shanten(counts(st.hands[s].length === 17 ? st.hands[s] : h), 5) >= -1, true); checked++
+    }
+  }
+  assert.ok(checked > 1000 && rnd() >= 0)
+})
+t('電腦出牌：能自摸就自摸、能胡就胡；沒聽時打掉最沒用的；聽牌時留著聽', () => {
+  const view = (hand, extra = {}) => ({ seat: 0, players: [{ hand: tiles(hand), melds: [], discards: [], flowers: [] }, { melds: [], discards: [] }, { melds: [], discards: [] }, { melds: [], discards: [] }], drawn: null, ...extra })
+  assert.deepEqual(botMove(view('1m 2m 3m', { options: { discard: true, tsumo: true } })), { type: 'tsumo' })
+  assert.deepEqual(botMove(view('1m 2m 3m', { options: { claim: { hu: true, pong: true }, tile: '1m' } })), { type: 'hu' })
+  // 四組順子加一對搭子，多一張北：北是唯一沒用的
+  const a = botMove(view('1m 2m 3m 4m 5m 6m 7m 8m 9m 1p 2p 3p 5t 6t 9t 9t N0', { options: { discard: true, tsumo: false } }))
+  assert.deepEqual(a, { type: 'discard', tile: 'N0' })
+  // 莊家擲出豹子：一律放棄
+  assert.deepEqual(botMove(view('1m', { options: { baozi: [2, 3, 1] } })), { type: 'baozi', mult: 1 })
+  // 沒有事可以做
+  assert.equal(botMove(view('1m', { options: null })), null)
+})
+t('電腦吃碰：能讓手牌進步才叫，沒幫助就過；MIGI 該喊就喊', () => {
+  const view = (hand, options, melds = []) => ({ seat: 0, players: [{ hand: tiles(hand), melds, discards: [], flowers: [] }, { melds: [], discards: [] }, { melds: [], discards: [] }, { melds: [], discards: [] }], drawn: null, options })
+  // 手上一對中、其他很散：碰了會進步
+  assert.deepEqual(botMove(view('C0 C0 1m 2m 3m 5m 9m 2p 6p 9p 1t 4t 8t E0 S0 W0', { claim: { pong: true }, tile: 'C0' })), { type: 'pong' })
+  // 已經聽牌的好手牌：碰了反而要拆掉完成的組合 ⇒ 過
+  assert.deepEqual(botMove(view('1m 2m 3m 4m 5m 6m 7m 8m 9m 1p 1p 2p 3p 2t 3t 9t', { claim: { pong: true }, tile: '1p' })), { type: 'pass' })
+  // 吃：有 4m 5m，上家打 6m，原本是搭子 ⇒ 吃了進步
+  const chi = botMove(view('4m 5m 1p 5p 9p 1t 5t 9t E0 S0 W0 N0 C0 F0 B0 2m', { claim: { chi: [['4m', '5m']] }, tile: '6m' }))
+  assert.deepEqual(chi, { type: 'chi', tiles: ['4m', '5m'] })
+  // 打這張就聽，而且可以喊 MIGI ⇒ 喊
+  const m = botMove(view('1m 2m 3m 4m 5m 6m 7m 8m 9m 1p 1p 1p 2t 3t E0 E0 C0', { discard: true, tsumo: false, listen: { C0: ['1t', '4t'] }, migi: ['C0'] }))
+  assert.deepEqual(m, { type: 'discard', tile: 'C0', migi: true })
+  // 聽牌但不符合 MIGI 的條件 ⇒ 不喊
+  const m2 = botMove(view('1m 2m 3m 4m 5m 6m 7m 8m 9m 1p 1p 1p 2t 3t E0 E0 C0', { discard: true, tsumo: false, listen: { C0: ['1t', '4t'] }, migi: [] }))
+  assert.equal(m2.migi, false)
+})
+t('眼牌先隱藏：這一場沒開的話沒有人拿得到眼牌的選項，硬送也擋；有開的照舊（既有的局）', () => {
+  let offSeen = 0, onSeen = 0
+  for (let x = 1; x < 400 && (!offSeen || !onSeen); x++) {
+    for (const yan of [false, true]) {
+      let st = newGame({ seed: x, cat: CAT, yan })
+      for (let step = 0; step < 400 && st.phase !== 'over'; step++) {
+        let moved = false
+        for (let i = 0; i < 4 && !moved; i++) {
+          const v = viewFor(st, i), o = v.options
+          if (!o) continue
+          if (o.listen) {
+            if (yan) { if (o.yan) onSeen++ } else { assert.equal(o.yan, undefined, '沒開眼牌卻拿到了眼牌的選項'); offSeen++
+              const tile = Object.keys(o.listen)[0]
+              assert.equal(act(st, i, { type: 'discard', tile, yan: true }).ok, false, '沒開眼牌卻喊得成') }
+          }
+          const a = botMove(v); if (!a) continue
+          const r = act(st, i, a); assert.ok(r.ok, r.error + ' ' + JSON.stringify(a)); st = r.st; moved = true
+        }
+        if (!moved) break
+      }
+    }
+  }
+  assert.ok(offSeen > 0, '沒遇到聽牌的局面，這一格沒測到東西')
+  assert.ok(onSeen > 0, '正對照：有開眼牌的局應該拿得到眼牌的選項')
+})
+t('四個電腦自己打 300 局：每一步引擎都接受、電腦真的會胡、而且比「摸什麼打什麼」會胡得多', () => {
+  const play = (brain, games) => {
+    let wins = 0, draws = 0, steps = 0, worst = 0
+    for (let g = 0; g < games; g++) {
+      let st = newGame({ seed: 5000 + g, cat: CAT, flower: g % 2 === 0, dealer: g % 4, yan: false, rules: [] })
+      for (let step = 0; step < 600 && st.phase !== 'over'; step++) {
+        let moved = false
+        for (let i = 0; i < 4 && !moved; i++) {
+          const t0 = Date.now()
+          const a = brain(st, i)
+          worst = Math.max(worst, Date.now() - t0)
+          if (!a) continue
+          const r = act(st, i, a)
+          assert.ok(r.ok, '引擎不接受電腦的動作：' + r.error + ' ' + JSON.stringify(a))
+          st = r.st; moved = true; steps++
+        }
+        assert.ok(moved, '卡住了：沒有人有事可以做，牌局卻還沒結束（' + st.phase + '）')
+      }
+      assert.equal(st.phase, 'over')
+      if (st.result.type === 'draw') draws++; else wins++
+    }
+    return { wins, draws, steps, worst }
+  }
+  const smart = play((st, i) => botMove(viewFor(st, i)), 300)
+  const dumb = play((st, i) => autoAction(st, i), 300)
+  console.log(`   有牌理：300 局胡 ${smart.wins}、流局 ${smart.draws}；最慢的一步 ${smart.worst} 毫秒　｜　摸什麼打什麼：胡 ${dumb.wins}、流局 ${dumb.draws}`)
+  assert.ok(smart.wins > 150, '有牌理的電腦應該大多數的局都有人胡：' + smart.wins)
+  assert.ok(smart.wins > dumb.wins * 5 + 20, '有牌理應該明顯比沒牌理會胡')
+  assert.ok(smart.worst < 1500, '電腦想一步不可以太久（後端有時間限制）：' + smart.worst + ' 毫秒')
 })
 
 console.log(`\n${fail ? '🔴' : '✅'} 牌局引擎 ${pass} 項通過${fail ? '、' + fail + ' 項失敗' : ''}`)

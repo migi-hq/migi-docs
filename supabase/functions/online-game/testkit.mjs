@@ -25,11 +25,12 @@ export const sum = (a) => a.reduce((x, y) => x + y, 0)
 /* 假的資料庫：規則照 SQL（online_start_round_tx／online_next_hand_tx／online_commit_tx／_tbl_round_state／爆卡夾帳） */
 /* clock：一局結束的時間怎麼來。測試不給（固定值，結果才能重現）；本機模擬給真的時鐘（「15 秒沒人按就自動下一局」才會動） */
 /* special：這一場開了哪幾個特殊規則（同 friendly_games.special_rules）。不給 ＝ 資料庫還沒有這一欄的樣子（引擎照舊三個都算） */
-export function fakeDb({ planned = 1, base = 50, unit = 20, start = 2000, flower = false, clock = null, special = undefined } = {}) {
+export function fakeDb({ planned = 1, base = 50, unit = 20, start = 2000, flower = false, clock = null, special = undefined, bots = 0 } = {}) {
   const D = {
     session: { id: 's1', org_id: 'o1', status: 'open', flower, planned_rounds: planned, base, unit, stake_label: `${base}/${unit}`, is_hygiene: false, channel: 'ch', game_type: '台麻', started_at: new Date(Date.now() - 754000).toISOString(), ...(special ? { special_rules: special } : {}) },
     game: { id: 'g1', status: 'playing' }, scored: false, bust: null, added: { 1: 0, 2: 0, 3: 0, 4: 0 },
-    players: ['m1', 'm2', 'm3', 'm4'].map((m) => ({ member_id: m, seat: null, nickname: m })),
+    /* bots：後面幾位是電腦對手（同 members.is_bot）。bots = 3 ⇒ m1 是真人、m2～m4 是電腦 */
+    players: ['m1', 'm2', 'm3', 'm4'].map((m, i) => ({ member_id: m, seat: null, nickname: m, is_bot: i >= 4 - bots })),
     rounds: [], ohands: [], hands: [], actions: [], calls: { startOk: 0, nextOk: 0 },
     presence: {},   // 同 online_seats：座位號 → { auto_since }；電腦代打時記下來，本人自己動作就清掉（畫面的「斷線 · 代打中」看它）
   }

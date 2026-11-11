@@ -240,5 +240,83 @@ await t('開著電腦代打的人：不等倒數，輪到他一下子後端就�
   assert.equal(D.presence[seat].auto_on, true, '後端替他出手不該把他自己開的旗標清掉')
 })
 
+await t('一個真人加三個電腦對手：只有真人的手機在叫後端，牌局照樣打完一將；電腦自己會出牌、會胡，而且不用等倒數', async () => {
+  const { db, D, balances } = fakeDb({ start: 200000, bots: 3 })
+  let now = 4_000_000, guard = 0, lateSteps = 0
+  const botSeats = () => D.players.filter((p) => p.is_bot).map((p) => p.seat)
+  while (guard++ < 60000) {
+    const v = await handle(db, me('m1'), { op: 'view' }, now, rand)
+    assertNoLeak(v, 'm1')
+    if (v.stage === 'game_over' || v.stage === 'round_over') break
+    if (v.stage === 'hand_over') { await handle(db, me('m1'), { op: 'next' }, now, rand); now += 300; continue }
+    if (v.stage === 'playing') {
+      const h = D.ohands[D.ohands.length - 1]
+      if (h.deadline_at && now > new Date(h.deadline_at).getTime()) lateSteps++     // 走到期限過了才動 ＝ 有人在乾等倒數
+      const a = botAction(v)
+      if (a) await handle(db, me('m1'), { op: 'act', version: v.hand.version, action: a }, now, rand)
+    }
+    now += 700      // 真人的手機大約每 0.7～1.3 秒讀一次；沒有任何人叫 tick
+  }
+  assert.ok(guard < 60000, '打不完：卡住了')
+  assert.ok(D.hands.length >= 4, '應該打了好幾局：' + D.hands.length)
+  // 電腦座位的每一個動作都是後端替它做的；真人的動作都是自己送的
+  const seats = botSeats(), mySeat = D.players.find((p) => p.member_id === 'm1').seat
+  assert.ok(D.actions.filter((x) => seats.includes(x.seat)).every((x) => x.actor === 'auto'))
+  assert.ok(D.actions.filter((x) => x.seat === mySeat).every((x) => x.actor === 'player'), '真人沒開代打，不該被後端代打')
+  assert.ok(D.actions.filter((x) => seats.includes(x.seat)).length > 100, '電腦應該出了很多手')
+  // 電腦真的會胡（有牌理），也真的會吃碰
+  const botWins = D.hands.filter((x) => x.result !== 'draw' && seats.includes(x.winner_seat)).length
+  assert.ok(botWins > 0, '打了 ' + D.hands.length + ' 局，電腦一局都沒胡')
+  assert.ok(D.actions.some((x) => seats.includes(x.seat) && ['pong', 'chi', 'kong'].includes(x.action.type)), '電腦應該會吃碰槓')
+  // 沒有人在等滿倒數
+  assert.equal(lateSteps, 0, '有 ' + lateSteps + ' 步是等到期限過了才動的')
+  // 帳是對的：四家加起來不變
+  const b = balances(); assert.equal(b[1] + b[2] + b[3] + b[4], 800000)
+  console.log(`   一將 ${D.hands.length} 局，電腦胡了 ${botWins} 局；電腦出手 ${D.actions.filter((x) => seats.includes(x.seat)).length} 次`)
+})
+
+await t('爆卡的是電腦對手或開著電腦代打的人：不等他決定，直接結束整場；一般人爆卡照舊等他自己決定', async () => {
+  // 電腦對手爆卡
+  { const { db, D } = fakeDb({ bots: 3 })
+    await handle(db, me('m1'), { op: 'view' }, 5_000_000, rand)
+    const bot = D.players.find((p) => p.is_bot).seat
+    D.bust = { seat: bot }
+    const v = await handle(db, me('m1'), { op: 'view' }, 5_000_100, rand)
+    assert.equal(D.bust, null); assert.equal(D.scored, true); assert.equal(v.stage, 'game_over') }
+  // 開著電腦代打的真人爆卡
+  { const { db, D } = fakeDb()
+    const v0 = await handle(db, me('m1'), { op: 'view' }, 5_100_000, rand)
+    await handle(db, me('m2'), { op: 'auto', on: true }, 5_100_010, rand)
+    const seat2 = D.players.find((p) => p.member_id === 'm2').seat
+    D.bust = { seat: seat2 }
+    await handle(db, me('m1'), { op: 'view' }, 5_100_100, rand)
+    assert.equal(D.bust, null); assert.equal(D.scored, true); assert.ok(v0.ok) }
+  // 負對照：沒開代打的真人爆卡 ⇒ 別人讀畫面不會替他決定
+  { const { db, D } = fakeDb()
+    await handle(db, me('m1'), { op: 'view' }, 5_200_000, rand)
+    const seat2 = D.players.find((p) => p.member_id === 'm2').seat
+    D.bust = { seat: seat2 }
+    const v = await handle(db, me('m1'), { op: 'view' }, 5_200_100, rand)
+    assert.deepEqual(D.bust, { seat: seat2 }); assert.equal(D.scored, false); assert.equal(v.stage, 'bust') }
+})
+
+await t('眼牌先隱藏：後端開的每一局都沒有眼牌的選項', async () => {
+  const { db, D } = fakeDb({ bots: 3, start: 200000 })
+  let now = 6_000_000, listens = 0
+  for (let i = 0; i < 2500; i++) {
+    const v = await handle(db, me('m1'), { op: 'view' }, now, rand)
+    if (v.stage === 'hand_over') { await handle(db, me('m1'), { op: 'next' }, now, rand); now += 300; continue }
+    if (v.stage !== 'playing') break
+    const o = v.table.options
+    if (o && o.listen) { listens++; assert.equal(o.yan, undefined, '拿到了眼牌的選項') }
+    const a = botAction(v)
+    if (a) { delete a.yan; await handle(db, me('m1'), { op: 'act', version: v.hand.version, action: a }, now, rand) }
+    now += 700
+  }
+  assert.ok(listens > 0, '真人一次都沒聽牌，這一格沒測到東西')
+  assert.ok(D.ohands.every((h) => h.state.noYan === true), '每一局都應該標成眼牌沒開')
+  assert.ok(!D.actions.some((x) => x.action && x.action.yan), '不該有任何人喊成眼牌')
+})
+
 console.log(`\n${fail ? '🔴' : '✅'} online-game 流程 ${pass} 項通過${fail ? '、' + fail + ' 項失敗' : ''}`)
 process.exit(fail ? 1 : 0)

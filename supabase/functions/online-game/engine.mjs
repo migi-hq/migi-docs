@@ -132,7 +132,9 @@ export function decompositions(c, n) {
          給陣列 ⇒ 只算裡面有的（例 ['shaigui']；空陣列 ＝ 三個都不算）；**不給 ⇒ 三個都算**（這個選項出現之前開的局、以及既有測試的行為） */
 export const SPECIAL_RULES = ['quanhong', 'shaigui', 'baozi']
 const ruleOn = (st, code) => !st.rules || st.rules.includes(code)
-export function newGame({ seed, flower = false, dealer = 0, ren = 0, base = 0, unit = 0, cat = [], dice: given = null, rules = null }) {
+/* yan：這一場能不能喊眼牌。預設可以（既有測試與舊的局）；牌桌後端目前一律傳 false ——
+        2026-11-11 使用者：「眼牌功能先隱藏」。傳 false ⇒ 沒有人拿得到眼牌這個選項，硬送也會被擋 */
+export function newGame({ seed, flower = false, dealer = 0, ren = 0, base = 0, unit = 0, cat = [], dice: given = null, rules = null, yan = true }) {
   const r = rng(seed)
   const wall = []
   for (const c of KIND_CODES) for (let i = 0; i < 4; i++) wall.push(c)
@@ -156,6 +158,7 @@ export function newGame({ seed, flower = false, dealer = 0, ren = 0, base = 0, u
     claim: null, result: null, log: [{ e: 'start', dealer, ren, dice }],
     baozi: 1,   // 豹子倍數：1 ＝ 沒有或放棄、2、3（莊家開局選的）
     rules: Array.isArray(rules) ? SPECIAL_RULES.filter((c) => rules.includes(c)) : null,   // 開了哪幾個特殊規則；null ＝ 三個都算（舊的局）
+    noYan: yan === false,   // 這一場眼牌沒開
   }
   /* 發牌：每家 16 張，莊家多一張（不用摸，第一手直接打） */
   for (let i = 0; i < 16; i++) for (let k = 0; k < 4; k++) st.hands[(dealer + k) % 4].push(st.wall.shift())
@@ -313,6 +316,7 @@ export function migiOk(st, s, tile) {
 }
 /* 眼牌：還沒眼過，打這張之後聽牌 */
 export function yanOk(st, s, tile) {
+  if (st.noYan) return false   // 這一場眼牌沒開（2026-11-11 使用者：眼牌功能先隱藏）
   return !st.yan[s] && st.hands[s].includes(tile) && tenpaiAfter(st, s, tile)
 }
 
@@ -575,7 +579,7 @@ export function optionsFor(st, s) {
       if (Object.keys(listen).length) {
         o.listen = listen
         o.migi = Object.keys(listen).filter((t) => migiOk(st, s, t))
-        o.yan = Object.keys(listen)
+        if (!st.noYan) o.yan = Object.keys(listen)
       }
     }
     return o
@@ -589,6 +593,141 @@ export function autoAction(st, s) {
   if (st.phase === 'baozi' && s === st.dealer) return { type: 'baozi', mult: 1 }   // 莊家沒選 ⇒ 當作放棄（不替他加重輸贏）
   if (st.phase === 'discard' && st.turn === s) return { type: 'discard', tile: st.drawn || st.hands[s][st.hands[s].length - 1] }
   if (st.phase === 'claim' && st.claim.options[s] && !st.claim.resp[s]) return { type: 'pass' }
+  return null
+}
+
+/* ── 電腦的打法（牌理）────────────────────────────────────────
+   2026-11-11 使用者：電腦對手與電腦代打用**同一套**牌理；會吃碰槓；MIGI 該喊就喊；眼牌先隱藏所以不喊。
+   做法是「規則式」（市面上休閒麻將的電腦大多是這一級），不用任何資料庫、也不用牌譜：
+     · 向聽數：這手牌離聽牌還差幾步（-1 ＝ 已經胡、0 ＝ 聽牌）
+     · 進張數：摸到哪幾種牌會讓向聽數變小，那幾種牌外面還剩幾張
+   出牌：每一張試著打掉，留向聽數最小的；一樣小就留進張最多的；再一樣就先丟字牌與么九。
+   吃碰槓：能讓向聽數變小才叫（槓是不變差就槓，多摸一張）。能胡就胡。
+   🔴 只看「這一家自己看得到的東西」：吃的是 viewFor 給的那一份畫面，所以它拿不到別家的手牌與牌山 —— 電腦不偷看。
+   ⚠ 還不會的：防守（有人聽牌時改打安全牌）、算台數挑大牌、記別人打過什麼來猜牌。它只會顧自己的手牌最快聽、最快胡。
+   ⚠ 莊家擲出豹子時一律放棄（不替人加重輸贏；電腦對手也一樣） */
+
+/* 向聽數。c 是手上牌的張數（3n＋1 或 3n＋2 張都可以，後者等於「打掉最沒用的一張之後」），n 是還要湊幾組。
+   算法：萬、筒、索、字四門各自列出「可以拆出幾組完成的、幾個搭子、有沒有留一對當眼」的所有組合，再四門合起來挑最好的。
+   一門只有 9 種牌，組合很少，而且**算過的記起來**（同一門同樣的張數一定同一個答案）——
+   電腦挑牌時要算幾百次，每次只動到一門，其他三門直接拿記好的。
+   🗑 第一版是整手 34 種牌一起遞迴，最慢的一步要 820 毫秒，對後端太久 */
+const SUIT_MEMO = new Map()
+function suitCombos(a, honor) {
+  const key = (honor ? 'h' : 's') + a.join('')
+  const hit = SUIT_MEMO.get(key)
+  if (hit) return hit
+  const out = new Set(), c = a.slice(), L = c.length
+  const scan = (i, m, t, pair) => {
+    while (i < L && c[i] === 0) i++
+    if (i >= L) { out.add(m * 100 + t * 10 + pair); return }
+    if (c[i] >= 3) { c[i] -= 3; scan(i, m + 1, t, pair); c[i] += 3 }
+    if (!honor && i <= L - 3 && c[i + 1] > 0 && c[i + 2] > 0) { c[i]--; c[i + 1]--; c[i + 2]--; scan(i, m + 1, t, pair); c[i]++; c[i + 1]++; c[i + 2]++ }
+    if (c[i] >= 2) {
+      c[i] -= 2
+      if (!pair) scan(i, m, t, 1)      // 這一對當眼
+      scan(i, m, t + 1, pair)          // 這一對當搭子（等第三張）
+      c[i] += 2
+    }
+    if (!honor && i <= L - 2 && c[i + 1] > 0) { c[i]--; c[i + 1]--; scan(i, m, t + 1, pair); c[i]++; c[i + 1]++ }
+    if (!honor && i <= L - 3 && c[i + 2] > 0) { c[i]--; c[i + 2]--; scan(i, m, t + 1, pair); c[i]++; c[i + 2]++ }
+    const k = c[i]; c[i] = 0; scan(i + 1, m, t, pair); c[i] = k    // 這一種剩下的都當成用不到的孤張
+  }
+  scan(0, 0, 0, 0)
+  /* 只留不會被別的組合完全比下去的（組數、搭子數、有沒有眼都不輸它的） */
+  const all = [...out].map((x) => [Math.floor(x / 100), Math.floor(x / 10) % 10, x % 10])
+  const keep = all.filter((p) => !all.some((q) => q !== p && q[0] >= p[0] && q[1] >= p[1] && q[2] >= p[2] && (q[0] > p[0] || q[1] > p[1] || q[2] > p[2])))
+  if (SUIT_MEMO.size > 20000) SUIT_MEMO.clear()
+  SUIT_MEMO.set(key, keep)
+  return keep
+}
+export function shanten(c, n) {
+  let acc = [[0, 0, 0]]
+  for (const [from, to, honor] of [[0, 9, false], [9, 18, false], [18, 27, false], [27, 34, true]]) {
+    const part = suitCombos(c.slice(from, to), honor)
+    const next = new Map()
+    for (const [m1, t1, p1] of acc) for (const [m2, t2, p2] of part) {
+      if (p1 + p2 > 1) continue                       // 眼只有一對
+      const m = m1 + m2, t = t1 + t2, p = p1 + p2
+      next.set(m * 100 + t * 10 + p, [m, t, p])
+    }
+    acc = [...next.values()]
+  }
+  let best = 2 * n
+  for (const [m0, t, p] of acc) {
+    const m = Math.min(m0, n)
+    const v = 2 * n - 2 * m - Math.min(t, n - m) - p
+    if (v < best) best = v
+  }
+  return best
+}
+
+/* 電腦這一步要做什麼。v ＝ viewFor(st, 座位) 給的那一份畫面（跟真人手機拿到的一模一樣）。沒事可做回 null */
+export function botMove(v) {
+  const o = v && v.options
+  if (!o) return null
+  if (o.baozi) return { type: 'baozi', mult: 1 }
+  const me = v.players[v.seat], hand = me.hand || [], n = SETS - me.melds.length
+  /* 看得到的牌：四家的牌河、亮出來的吃碰槓、自己的手牌 ⇒ 每一種牌外面最多還剩幾張 */
+  const seen = new Array(34).fill(0)
+  const see = (t) => { if (t && !isFlower(t)) seen[kindOf(t)]++ }
+  v.players.forEach((p) => { p.discards.forEach(see); p.melds.forEach((m) => (m.tiles || []).forEach(see)) })
+  hand.forEach(see)
+  const left = (k) => Math.max(0, 4 - seen[k])
+  const c = counts(hand)
+
+  if (o.claim) {
+    if (o.claim.hu) return { type: 'hu' }
+    const now = shanten(c, n), k = kindOf(o.tile)
+    let best = null
+    const consider = (action, s, ok) => { if (ok && (!best || s < best.s)) best = { s, action } }
+    if (o.claim.kong && c[k] >= 3) { c[k] -= 3; const s = shanten(c, n - 1); c[k] += 3; consider({ type: 'kong' }, s, s <= now) }
+    if (o.claim.pong && c[k] >= 2) { c[k] -= 2; const s = shanten(c, n - 1); c[k] += 2; consider({ type: 'pong' }, s, s < now) }
+    for (const pair of (Array.isArray(o.claim.chi) ? o.claim.chi : [])) {
+      const [a, b] = pair.map(kindOf)
+      if (c[a] < 1 || c[b] < 1) continue
+      c[a]--; c[b]--; const s = shanten(c, n - 1); c[a]++; c[b]++
+      consider({ type: 'chi', tiles: pair }, s, s < now)
+    }
+    return best ? best.action : { type: 'pass' }
+  }
+
+  if (o.discard) {
+    if (o.tsumo) return { type: 'tsumo' }
+    if (o.locked) return { type: 'discard', tile: v.drawn || hand[hand.length - 1] }   // 喊過眼牌：只能摸什麼打什麼
+    const now = shanten(c, n)
+    for (const t of o.kongs || []) {
+      const k = kindOf(t)
+      if (c[k] === 4) { c[k] = 0; const s = shanten(c, n - 1); c[k] = 4; if (s <= now) return { type: 'kong', tile: t } }          // 暗槓
+      else if (c[k] >= 1) { c[k]--; const s = shanten(c, n); c[k]++; if (s <= now) return { type: 'kong', tile: t } }              // 加槓：那一張本來就用不到
+    }
+    /* 打完就聽牌：挑外面還剩最多張的那一種聽法；能喊 MIGI 的優先（MIGI 該喊就喊） */
+    const listen = o.listen ? Object.entries(o.listen) : []
+    if (listen.length) {
+      const score = ([t, ws]) => ws.reduce((a, w) => a + left(kindOf(w)), 0) + (o.migi && o.migi.includes(t) ? 1000 : 0)
+      const [tile] = listen.slice().sort((a, b) => score(b) - score(a))[0]
+      return { type: 'discard', tile, migi: !!(o.migi && o.migi.includes(tile)) }
+    }
+    /* 還沒聽：每一種牌試著打掉 */
+    let cand = [...new Set(hand)].map((t) => { const k = kindOf(t); c[k]--; const s = shanten(c, n); c[k]++; return { t, k, s } })
+    const min = Math.min(...cand.map((x) => x.s))
+    cand = cand.filter((x) => x.s === min)
+    if (cand.length > 1) {
+      for (const x of cand) {
+        c[x.k]--
+        let u = 0
+        for (let j = 0; j < 34; j++) {
+          if (left(j) === 0 || c[j] >= 4) continue
+          c[j]++; if (shanten(c, n) < min) u += left(j); c[j]--
+        }
+        c[x.k]++
+        x.u = u
+      }
+      const edge = (k) => (isHonor(k) ? 3 : rankOf(k) === 0 || rankOf(k) === 8 ? 2 : rankOf(k) === 1 || rankOf(k) === 7 ? 1 : 0)
+      cand.sort((a, b) => b.u - a.u || edge(b.k) - edge(a.k))
+    }
+    return { type: 'discard', tile: cand[0].t }
+  }
   return null
 }
 

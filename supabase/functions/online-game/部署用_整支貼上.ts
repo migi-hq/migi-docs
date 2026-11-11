@@ -172,7 +172,9 @@ const ENGINE = (() => {
            給陣列 ⇒ 只算裡面有的（例 ['shaigui']；空陣列 ＝ 三個都不算）；**不給 ⇒ 三個都算**（這個選項出現之前開的局、以及既有測試的行為） */
   const SPECIAL_RULES = ['quanhong', 'shaigui', 'baozi']
   const ruleOn = (st, code) => !st.rules || st.rules.includes(code)
-  function newGame({ seed, flower = false, dealer = 0, ren = 0, base = 0, unit = 0, cat = [], dice: given = null, rules = null }) {
+  /* yan：這一場能不能喊眼牌。預設可以（既有測試與舊的局）；牌桌後端目前一律傳 false ——
+          2026-11-11 使用者：「眼牌功能先隱藏」。傳 false ⇒ 沒有人拿得到眼牌這個選項，硬送也會被擋 */
+  function newGame({ seed, flower = false, dealer = 0, ren = 0, base = 0, unit = 0, cat = [], dice: given = null, rules = null, yan = true }) {
     const r = rng(seed)
     const wall = []
     for (const c of KIND_CODES) for (let i = 0; i < 4; i++) wall.push(c)
@@ -196,6 +198,7 @@ const ENGINE = (() => {
       claim: null, result: null, log: [{ e: 'start', dealer, ren, dice }],
       baozi: 1,   // 豹子倍數：1 ＝ 沒有或放棄、2、3（莊家開局選的）
       rules: Array.isArray(rules) ? SPECIAL_RULES.filter((c) => rules.includes(c)) : null,   // 開了哪幾個特殊規則；null ＝ 三個都算（舊的局）
+      noYan: yan === false,   // 這一場眼牌沒開
     }
     /* 發牌：每家 16 張，莊家多一張（不用摸，第一手直接打） */
     for (let i = 0; i < 16; i++) for (let k = 0; k < 4; k++) st.hands[(dealer + k) % 4].push(st.wall.shift())
@@ -353,6 +356,7 @@ const ENGINE = (() => {
   }
   /* 眼牌：還沒眼過，打這張之後聽牌 */
   function yanOk(st, s, tile) {
+    if (st.noYan) return false   // 這一場眼牌沒開（2026-11-11 使用者：眼牌功能先隱藏）
     return !st.yan[s] && st.hands[s].includes(tile) && tenpaiAfter(st, s, tile)
   }
 
@@ -615,7 +619,7 @@ const ENGINE = (() => {
         if (Object.keys(listen).length) {
           o.listen = listen
           o.migi = Object.keys(listen).filter((t) => migiOk(st, s, t))
-          o.yan = Object.keys(listen)
+          if (!st.noYan) o.yan = Object.keys(listen)
         }
       }
       return o
@@ -629,6 +633,141 @@ const ENGINE = (() => {
     if (st.phase === 'baozi' && s === st.dealer) return { type: 'baozi', mult: 1 }   // 莊家沒選 ⇒ 當作放棄（不替他加重輸贏）
     if (st.phase === 'discard' && st.turn === s) return { type: 'discard', tile: st.drawn || st.hands[s][st.hands[s].length - 1] }
     if (st.phase === 'claim' && st.claim.options[s] && !st.claim.resp[s]) return { type: 'pass' }
+    return null
+  }
+
+  /* ── 電腦的打法（牌理）────────────────────────────────────────
+     2026-11-11 使用者：電腦對手與電腦代打用**同一套**牌理；會吃碰槓；MIGI 該喊就喊；眼牌先隱藏所以不喊。
+     做法是「規則式」（市面上休閒麻將的電腦大多是這一級），不用任何資料庫、也不用牌譜：
+       · 向聽數：這手牌離聽牌還差幾步（-1 ＝ 已經胡、0 ＝ 聽牌）
+       · 進張數：摸到哪幾種牌會讓向聽數變小，那幾種牌外面還剩幾張
+     出牌：每一張試著打掉，留向聽數最小的；一樣小就留進張最多的；再一樣就先丟字牌與么九。
+     吃碰槓：能讓向聽數變小才叫（槓是不變差就槓，多摸一張）。能胡就胡。
+     🔴 只看「這一家自己看得到的東西」：吃的是 viewFor 給的那一份畫面，所以它拿不到別家的手牌與牌山 —— 電腦不偷看。
+     ⚠ 還不會的：防守（有人聽牌時改打安全牌）、算台數挑大牌、記別人打過什麼來猜牌。它只會顧自己的手牌最快聽、最快胡。
+     ⚠ 莊家擲出豹子時一律放棄（不替人加重輸贏；電腦對手也一樣） */
+
+  /* 向聽數。c 是手上牌的張數（3n＋1 或 3n＋2 張都可以，後者等於「打掉最沒用的一張之後」），n 是還要湊幾組。
+     算法：萬、筒、索、字四門各自列出「可以拆出幾組完成的、幾個搭子、有沒有留一對當眼」的所有組合，再四門合起來挑最好的。
+     一門只有 9 種牌，組合很少，而且**算過的記起來**（同一門同樣的張數一定同一個答案）——
+     電腦挑牌時要算幾百次，每次只動到一門，其他三門直接拿記好的。
+     🗑 第一版是整手 34 種牌一起遞迴，最慢的一步要 820 毫秒，對後端太久 */
+  const SUIT_MEMO = new Map()
+  function suitCombos(a, honor) {
+    const key = (honor ? 'h' : 's') + a.join('')
+    const hit = SUIT_MEMO.get(key)
+    if (hit) return hit
+    const out = new Set(), c = a.slice(), L = c.length
+    const scan = (i, m, t, pair) => {
+      while (i < L && c[i] === 0) i++
+      if (i >= L) { out.add(m * 100 + t * 10 + pair); return }
+      if (c[i] >= 3) { c[i] -= 3; scan(i, m + 1, t, pair); c[i] += 3 }
+      if (!honor && i <= L - 3 && c[i + 1] > 0 && c[i + 2] > 0) { c[i]--; c[i + 1]--; c[i + 2]--; scan(i, m + 1, t, pair); c[i]++; c[i + 1]++; c[i + 2]++ }
+      if (c[i] >= 2) {
+        c[i] -= 2
+        if (!pair) scan(i, m, t, 1)      // 這一對當眼
+        scan(i, m, t + 1, pair)          // 這一對當搭子（等第三張）
+        c[i] += 2
+      }
+      if (!honor && i <= L - 2 && c[i + 1] > 0) { c[i]--; c[i + 1]--; scan(i, m, t + 1, pair); c[i]++; c[i + 1]++ }
+      if (!honor && i <= L - 3 && c[i + 2] > 0) { c[i]--; c[i + 2]--; scan(i, m, t + 1, pair); c[i]++; c[i + 2]++ }
+      const k = c[i]; c[i] = 0; scan(i + 1, m, t, pair); c[i] = k    // 這一種剩下的都當成用不到的孤張
+    }
+    scan(0, 0, 0, 0)
+    /* 只留不會被別的組合完全比下去的（組數、搭子數、有沒有眼都不輸它的） */
+    const all = [...out].map((x) => [Math.floor(x / 100), Math.floor(x / 10) % 10, x % 10])
+    const keep = all.filter((p) => !all.some((q) => q !== p && q[0] >= p[0] && q[1] >= p[1] && q[2] >= p[2] && (q[0] > p[0] || q[1] > p[1] || q[2] > p[2])))
+    if (SUIT_MEMO.size > 20000) SUIT_MEMO.clear()
+    SUIT_MEMO.set(key, keep)
+    return keep
+  }
+  function shanten(c, n) {
+    let acc = [[0, 0, 0]]
+    for (const [from, to, honor] of [[0, 9, false], [9, 18, false], [18, 27, false], [27, 34, true]]) {
+      const part = suitCombos(c.slice(from, to), honor)
+      const next = new Map()
+      for (const [m1, t1, p1] of acc) for (const [m2, t2, p2] of part) {
+        if (p1 + p2 > 1) continue                       // 眼只有一對
+        const m = m1 + m2, t = t1 + t2, p = p1 + p2
+        next.set(m * 100 + t * 10 + p, [m, t, p])
+      }
+      acc = [...next.values()]
+    }
+    let best = 2 * n
+    for (const [m0, t, p] of acc) {
+      const m = Math.min(m0, n)
+      const v = 2 * n - 2 * m - Math.min(t, n - m) - p
+      if (v < best) best = v
+    }
+    return best
+  }
+
+  /* 電腦這一步要做什麼。v ＝ viewFor(st, 座位) 給的那一份畫面（跟真人手機拿到的一模一樣）。沒事可做回 null */
+  function botMove(v) {
+    const o = v && v.options
+    if (!o) return null
+    if (o.baozi) return { type: 'baozi', mult: 1 }
+    const me = v.players[v.seat], hand = me.hand || [], n = SETS - me.melds.length
+    /* 看得到的牌：四家的牌河、亮出來的吃碰槓、自己的手牌 ⇒ 每一種牌外面最多還剩幾張 */
+    const seen = new Array(34).fill(0)
+    const see = (t) => { if (t && !isFlower(t)) seen[kindOf(t)]++ }
+    v.players.forEach((p) => { p.discards.forEach(see); p.melds.forEach((m) => (m.tiles || []).forEach(see)) })
+    hand.forEach(see)
+    const left = (k) => Math.max(0, 4 - seen[k])
+    const c = counts(hand)
+
+    if (o.claim) {
+      if (o.claim.hu) return { type: 'hu' }
+      const now = shanten(c, n), k = kindOf(o.tile)
+      let best = null
+      const consider = (action, s, ok) => { if (ok && (!best || s < best.s)) best = { s, action } }
+      if (o.claim.kong && c[k] >= 3) { c[k] -= 3; const s = shanten(c, n - 1); c[k] += 3; consider({ type: 'kong' }, s, s <= now) }
+      if (o.claim.pong && c[k] >= 2) { c[k] -= 2; const s = shanten(c, n - 1); c[k] += 2; consider({ type: 'pong' }, s, s < now) }
+      for (const pair of (Array.isArray(o.claim.chi) ? o.claim.chi : [])) {
+        const [a, b] = pair.map(kindOf)
+        if (c[a] < 1 || c[b] < 1) continue
+        c[a]--; c[b]--; const s = shanten(c, n - 1); c[a]++; c[b]++
+        consider({ type: 'chi', tiles: pair }, s, s < now)
+      }
+      return best ? best.action : { type: 'pass' }
+    }
+
+    if (o.discard) {
+      if (o.tsumo) return { type: 'tsumo' }
+      if (o.locked) return { type: 'discard', tile: v.drawn || hand[hand.length - 1] }   // 喊過眼牌：只能摸什麼打什麼
+      const now = shanten(c, n)
+      for (const t of o.kongs || []) {
+        const k = kindOf(t)
+        if (c[k] === 4) { c[k] = 0; const s = shanten(c, n - 1); c[k] = 4; if (s <= now) return { type: 'kong', tile: t } }          // 暗槓
+        else if (c[k] >= 1) { c[k]--; const s = shanten(c, n); c[k]++; if (s <= now) return { type: 'kong', tile: t } }              // 加槓：那一張本來就用不到
+      }
+      /* 打完就聽牌：挑外面還剩最多張的那一種聽法；能喊 MIGI 的優先（MIGI 該喊就喊） */
+      const listen = o.listen ? Object.entries(o.listen) : []
+      if (listen.length) {
+        const score = ([t, ws]) => ws.reduce((a, w) => a + left(kindOf(w)), 0) + (o.migi && o.migi.includes(t) ? 1000 : 0)
+        const [tile] = listen.slice().sort((a, b) => score(b) - score(a))[0]
+        return { type: 'discard', tile, migi: !!(o.migi && o.migi.includes(tile)) }
+      }
+      /* 還沒聽：每一種牌試著打掉 */
+      let cand = [...new Set(hand)].map((t) => { const k = kindOf(t); c[k]--; const s = shanten(c, n); c[k]++; return { t, k, s } })
+      const min = Math.min(...cand.map((x) => x.s))
+      cand = cand.filter((x) => x.s === min)
+      if (cand.length > 1) {
+        for (const x of cand) {
+          c[x.k]--
+          let u = 0
+          for (let j = 0; j < 34; j++) {
+            if (left(j) === 0 || c[j] >= 4) continue
+            c[j]++; if (shanten(c, n) < min) u += left(j); c[j]--
+          }
+          c[x.k]++
+          x.u = u
+        }
+        const edge = (k) => (isHonor(k) ? 3 : rankOf(k) === 0 || rankOf(k) === 8 ? 2 : rankOf(k) === 1 || rankOf(k) === 7 ? 1 : 0)
+        cand.sort((a, b) => b.u - a.u || edge(b.k) - edge(a.k))
+      }
+      return { type: 'discard', tile: cand[0].t }
+    }
     return null
   }
 
@@ -654,12 +793,12 @@ const ENGINE = (() => {
     }
   }
 
-  return { newGame, act, viewFor, autoAction }
+  return { newGame, act, viewFor, autoAction, botMove }
 })()
 
 /* ═══════════ 流程（core.mjs）═══════════ */
 const CORE = (() => {
-  const { newGame, act, viewFor, autoAction } = ENGINE
+  const { newGame, act, viewFor, autoAction, botMove } = ENGINE
   /* ============================================================
      online-game 的流程（線上好友房，2026-11-11）
      📄 規格：docs/03-會員App與社交/線上好友房.md
@@ -709,8 +848,11 @@ const CORE = (() => {
   const playing = (ctx) => (ctx.hand && ctx.hand.status === 'playing' ? ctx.hand : null)
   /* rules：這一場開了哪幾個特殊規則（骰龜／豹子／全紅）。資料庫給陣列就照它（空陣列 ＝ 都不算）；
      沒給（這一欄出現之前的資料庫）⇒ 不傳，引擎照舊三個都算 */
+  /* 眼牌功能先隱藏（2026-11-11 使用者）：新開的每一局都不給喊。要打開時把這裡改成 true、重新部署就好（引擎與畫面都還在） */
+  const YAN_OPEN = false
   const engineArgs = (ctx) => ({ flower: !!ctx.session.flower, base: ctx.session.base, unit: ctx.session.unit, cat: ctx.cat || [],
-    rules: Array.isArray(ctx.session.special_rules) ? ctx.session.special_rules : null })
+    rules: Array.isArray(ctx.session.special_rules) ? ctx.session.special_rules : null,
+    yan: YAN_OPEN })
   const blocked = (ctx) => ctx.scored || !!ctx.bust || ctx.session.status !== 'open'
 
   /* 現在卡在哪：playing 正在打／hand_over 這一局打完等下一局／round_over 這一將打完等下一將／
@@ -808,37 +950,39 @@ const CORE = (() => {
          之後輪到他就走 autoFast（1.2 秒），不用每一手都等滿倒數。只有一個概念、一顆開關：
          他回來時自己手機左下角那顆是亮的，按一下就關掉、拿回來自己打（op auto off）。
          不另外做一套「逾時的人也加快」：那樣他回來沒有東西可以按，每一手只剩 1.2 秒搶 */
-      if (!(ctx.presence && ctx.presence[ring[i]] && ctx.presence[ring[i]].auto_on)) await db.setAuto({ p_session: ctx.session.id, p_seat: ring[i], p_on: true })
+      if (!autoSeat(ctx, ring[i])) await db.setAuto({ p_session: ctx.session.id, p_seat: ring[i], p_on: true })
       if (st.phase === 'over') break
     }
     return db.ctx(ctx.session.id)
   }
 
-  /* 自己開了「電腦代打」的人（座位上的 auto_on）：不等倒數，輪到他 AUTO_MS 之後後端就直接替他出手
-     （2026-11-11 使用者：開著代打的人手機關掉時，每一手都要等倒數跑完，另外三家會等很久 ⇒「對」，要做）。做的事跟逾時代打一樣。
+  /* 由電腦出手的座位：自己開了「電腦代打」的人（座位上的 auto_on），以及電腦對手（players 的 is_bot）。
+     2026-11-11 使用者：兩者**同一套牌理**（engine.mjs 的 botMove：會吃碰槓、能胡就胡、MIGI 該喊就喊），爆卡都**直接結束整場**。
+     · 不等倒數：輪到他 AUTO_MS 之後就出手
      · 這一步什麼時候開始：期限 − 這一種步驟給的秒數。新的一局第一步的期限多加了發牌動畫的時間，
        所以算出來的「開始」剛好落在發完牌之後，不會牌還在發就打出去
-     · 他能胡（別人放槍、或自摸）的那一步不搶著替他做：留給他自己的手機（開著 App 又開著自動胡會自己胡）；沒人理就照舊等倒數
-     · 一次只替一步出牌：下一步要重新等 AUTO_MS，不然好幾個人都開著時牌會一瞬間打完。「過」可以幾個人一起（那一步本來就在等大家回答）
-     · 誰來觸發：任何一家的手機讀畫面（view）或報時間到（tick）時順便做 —— 後端自己不會醒來 */
+     · 一次只做一步（出牌、吃碰槓、胡）：下一步要重新等 AUTO_MS，不然桌上好幾個電腦時牌會一瞬間打完。
+       「過」可以幾個人一起（那一步本來就在等大家回答）
+     · 牌理算不出東西、或引擎不接受時，退回最保守的做法（打剛摸的、過）——寧可打得笨，不可以卡住
+     · 誰來觸發：任何一家的手機讀畫面（view）或報時間到（tick）時順便做 —— 後端自己不會醒來
+     🗑 原本能胡的那一步會跳過不做（留給本人的手機）：電腦對手沒有手機，會每次白等滿倒數；現在一律能胡就胡 */
   const AUTO_MS = 1200
+  const isBot = (ctx, seat) => (ctx.players || []).some((p) => p.seat === seat && p.is_bot)
+  const autoSeat = (ctx, seat) => isBot(ctx, seat) || !!(ctx.presence && ctx.presence[seat] && ctx.presence[seat].auto_on)
   async function autoFast(db, ctx, now) {
     const h = playing(ctx)
     if (!h || !h.deadline_at || !ctx.round) return ctx
-    const pres = ctx.presence || {}, ring = ctx.round.ring
-    const on = (i) => !!(pres[ring[i]] && pres[ring[i]].auto_on)
-    if (![0, 1, 2, 3].some(on)) return ctx
+    const ring = ctx.round.ring
+    if (!ring.some((s) => autoSeat(ctx, s))) return ctx
     const span = h.state.phase === 'claim' ? CLAIM_MS : TURN_MS
     if (now < ms(h.deadline_at) - span + AUTO_MS) return ctx
     let st = h.state, ver = h.version, did = false
     for (let i = 0; i < 4; i++) {
-      if (!on(i)) continue
-      const a = autoAction(st, i)
-      if (!a) continue
-      const o = viewFor(st, i).options
-      if (o && ((o.claim && o.claim.hu) || o.tsumo)) continue
-      const r = act(st, i, a)
-      if (!r.ok) continue
+      if (!autoSeat(ctx, ring[i])) continue
+      let a = null, r = null
+      try { a = botMove(viewFor(st, i)) } catch (e) { a = null }
+      if (a) r = act(st, i, a)
+      if (!a || !r.ok) { a = autoAction(st, i); if (!a) continue; r = act(st, i, a); if (!r.ok) continue }
       const c = await db.commit({ p_hand: h.id, p_version: ver, p_state: r.st, p_phase: r.st.phase, p_deadline: deadlineFor(r.st, now), p_seat: ring[i], p_actor: 'auto', p_action: a, p_result: resultFor(r.st, ring) })
       if (!c || !c.ok) break      // 別人剛好先動了（版本對不上）⇒ 這一輪不做，重讀
       st = r.st; ver = c.version; did = true
@@ -846,6 +990,13 @@ const CORE = (() => {
     }
     return did ? db.ctx(ctx.session.id) : ctx
   }
+  /* 爆卡的是電腦對手、或開著電腦代打的人 ⇒ 不等他決定，直接結束整場（2026-11-11 使用者：「兩者爆卡都直接結束」） */
+  async function autoBust(db, ctx) {
+    if (!ctx.bust || ctx.scored || !autoSeat(ctx, ctx.bust.seat)) return ctx
+    const r = await db.bustDecide({ p_session: ctx.session.id, p_seat: ctx.bust.seat, p_amount: 0 })
+    return r && r.ok ? db.ctx(ctx.session.id) : ctx
+  }
+
 
   /* me ＝ online_me_tx 的回傳（已經用客人的登入憑證認過人）；body ＝ 手機送來的；now ＝ 毫秒；rand ＝ 0～1 的亂數 */
   async function handle(db, me, body, now, rand) {
@@ -854,9 +1005,10 @@ const CORE = (() => {
     const op = (body && body.op) || 'view'
     const out = (extra = {}) => ({ ...buildView(ctx, me.member_id, now), ...extra })
 
-    if (op === 'view') { ctx = await autoFast(db, ctx, now); ctx = await advance(db, ctx, now, rand, false); return out() }
-    if (op === 'next') { ctx = await advance(db, ctx, now, rand, true); return out() }
-    if (op === 'tick') { ctx = await timeout(db, ctx, now); ctx = await autoFast(db, ctx, now); ctx = await advance(db, ctx, now, rand, false); return out() }
+    if (op === 'view') { ctx = await autoBust(db, ctx); ctx = await autoFast(db, ctx, now); ctx = await advance(db, ctx, now, rand, false); return out() }
+    if (op === 'next') { ctx = await autoBust(db, ctx); ctx = await advance(db, ctx, now, rand, true); return out() }
+    // 先讓電腦用牌理出手，再處理逾時：反過來的話，期限過了的電腦座位會先被「逾時代打」用最笨的打法打掉
+    if (op === 'tick') { ctx = await autoBust(db, ctx); ctx = await autoFast(db, ctx, now); ctx = await timeout(db, ctx, now); ctx = await advance(db, ctx, now, rand, false); return out() }
 
     if (op === 'bust') {
       const seat = seatOf(ctx, me.member_id)

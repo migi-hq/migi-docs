@@ -288,6 +288,7 @@ select 序, 項目, 內容 from (
                      E'\n' order by created_at desc)
                      from members
                     where deleted_at is null
+                      and not is_bot      -- 電腦對手是系統帳號不是新會員（2026-11-11 建了三個：教練熊、廚師熊、商人熊）
                       and created_at > now() - interval '14 days'),
                   '✅ 近 14 天沒有新會員')
 
