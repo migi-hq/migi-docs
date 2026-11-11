@@ -1,4 +1,4 @@
-/* 牌局引擎測試（零相依）：node supabase/functions/_shared/mahjong/engine.test.mjs
+/* 牌局引擎測試（零相依）：node supabase/functions/online-game/engine.test.mjs
    CAT 是牌型主檔的測試副本（2026-11-09 線上 scoring_patterns 撈出來的台數與互斥；正式跑時引擎讀資料庫那一份） */
 import assert from 'node:assert/strict'
 import { newGame, act, canWin, waits, counts, scoreWin, viewFor, autoAction, optionsFor, KEEP, KIND_CODES } from './engine.mjs'
