@@ -69,6 +69,7 @@ const db = {
   nextHand: (a: Record<string, unknown>) => rpc('online_next_hand_tx', a),
   commit: (a: Record<string, unknown>) => rpc('online_commit_tx', a),
   bustDecide: (a: Record<string, unknown>) => rpc('online_bust_decide_tx', a),
+  setAuto: (a: Record<string, unknown>) => rpc('online_set_auto_tx', a),
 }
 
 /* 洗牌的種子與骰子用系統的亂數（不是 Math.random —— 那個猜得出來） */

@@ -26,7 +26,7 @@ export const sum = (a) => a.reduce((x, y) => x + y, 0)
 /* clock：一局結束的時間怎麼來。測試不給（固定值，結果才能重現）；本機模擬給真的時鐘（「15 秒沒人按就自動下一局」才會動） */
 export function fakeDb({ planned = 1, base = 50, unit = 20, start = 2000, flower = false, clock = null } = {}) {
   const D = {
-    session: { id: 's1', org_id: 'o1', status: 'open', flower, planned_rounds: planned, base, unit, stake_label: `${base}/${unit}`, is_hygiene: false, channel: 'ch' },
+    session: { id: 's1', org_id: 'o1', status: 'open', flower, planned_rounds: planned, base, unit, stake_label: `${base}/${unit}`, is_hygiene: false, channel: 'ch', game_type: '台麻', started_at: new Date(Date.now() - 754000).toISOString() },
     game: { id: 'g1', status: 'playing' }, scored: false, bust: null, added: { 1: 0, 2: 0, 3: 0, 4: 0 },
     players: ['m1', 'm2', 'm3', 'm4'].map((m) => ({ member_id: m, seat: null, nickname: m })),
     rounds: [], ohands: [], hands: [], actions: [], calls: { startOk: 0, nextOk: 0 },
@@ -94,13 +94,20 @@ export function fakeDb({ planned = 1, base = 50, unit = 20, start = 2000, flower
       D.calls.nextOk++
       return { ok: true }
     },
+    /* 同 online_set_auto_tx：自己開的代打記在 auto_on，跟逾時代打的 auto_since 分開；座位沒人坐就拒絕 */
+    async setAuto(a) {
+      a = json(a)
+      if (a.p_seat == null || !D.players.some((p) => p.seat === a.p_seat)) return { ok: false, reason: 'bad_seat' }
+      D.presence[a.p_seat] = { auto_since: null, ...(D.presence[a.p_seat] || {}), auto_on: !!a.p_on }
+      return { ok: true, auto_on: !!a.p_on }
+    },
     async commit(a) {
       a = json(a)
       const h = D.ohands.find((x) => x.id === a.p_hand)
       if (!h || h.status !== 'playing' || h.version !== a.p_version) return { ok: false, reason: 'stale' }
       h.state = a.p_state; h.phase = a.p_phase; h.deadline_at = a.p_deadline; h.version++
       D.actions.push({ hand: h.id, version: h.version, seat: a.p_seat, actor: a.p_actor, action: a.p_action })
-      if (a.p_seat != null) D.presence[a.p_seat] = { auto_since: a.p_actor === 'player' ? null : (D.presence[a.p_seat] && D.presence[a.p_seat].auto_since) || 'auto' }
+      if (a.p_seat != null) D.presence[a.p_seat] = { ...(D.presence[a.p_seat] || { auto_on: false }), auto_since: a.p_actor === 'player' ? null : (D.presence[a.p_seat] && D.presence[a.p_seat].auto_since) || 'auto' }
       if (!a.p_result) return { ok: true, version: h.version }
       const d = a.p_result.deltas
       assert.equal(sum([1, 2, 3, 4].map((s) => d[s])), 0, '四家增減加起來要是 0')

@@ -725,7 +725,9 @@ const CORE = (() => {
       ok: true, now: iso(now), stage: stageOf(ctx),
       me: { seat, idx },
       session: { flower: ctx.session.flower, planned_rounds: ctx.session.planned_rounds, base: ctx.session.base, unit: ctx.session.unit,
-        stake_label: ctx.session.stake_label, is_hygiene: ctx.session.is_hygiene, channel: ctx.session.channel },
+        stake_label: ctx.session.stake_label, is_hygiene: ctx.session.is_hygiene, channel: ctx.session.channel,
+        // 牌桌右下角那一行要用的：玩法、這一場幾點開始（畫面自己算已經打了多久）
+        game_type: ctx.session.game_type || null, started_at: ctx.session.started_at || null },
       game: ctx.game, scored: ctx.scored, rounds_done: ctx.rounds_done,
       round: ctx.round ? { round_no: ctx.round.round_no, ring, ...(ctx.round.state || {}) } : null,
       hand: h ? { id: h.id, version: h.version, hand_no: h.hand_no, status: h.status, deadline_at: h.deadline_at, dice: h.dice, seat_dice: h.seat_dice,
@@ -814,6 +816,15 @@ const CORE = (() => {
       return r && r.ok ? out() : out({ ok: false, reason: (r && r.reason) || 'bust_failed', message: r && r.message })
     }
 
+    /* 自己開／關「電腦代打」（牌桌左下角那顆）：記在座位上，另外三家的畫面才標得出「某某 電腦代打中」。
+       只記旗標 —— 真正替他出牌的是他自己的手機（開著時手機自動送動作）；手機沒開著就照舊等逾時由後端代打 */
+    if (op === 'auto') {
+      const seat = seatOf(ctx, me.member_id)
+      const r = await db.setAuto({ p_session: ctx.session.id, p_seat: seat, p_on: !!body.on })
+      ctx = await db.ctx(ctx.session.id)
+      return r && r.ok ? out() : out({ ok: false, reason: (r && r.reason) || 'auto_failed' })
+    }
+
     if (op === 'act') {
       const h = playing(ctx)
       const seat = seatOf(ctx, me.member_id)
@@ -871,6 +882,7 @@ const db = {
   nextHand: (a: Record<string, unknown>) => rpc('online_next_hand_tx', a),
   commit: (a: Record<string, unknown>) => rpc('online_commit_tx', a),
   bustDecide: (a: Record<string, unknown>) => rpc('online_bust_decide_tx', a),
+  setAuto: (a: Record<string, unknown>) => rpc('online_set_auto_tx', a),
 }
 
 /* 洗牌的種子與骰子用系統的亂數（不是 Math.random —— 那個猜得出來） */

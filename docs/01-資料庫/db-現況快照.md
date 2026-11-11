@@ -1,5 +1,16 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-11 增補 179（歸檔 `2026-11-11_線上好友房_自己開電腦代打.sql`）
+> **基準：`sql/applied/` 有 495 個檔案**。驗證 7/7 ＋ 行為 8/8（`sql/checks/2026-11-11_驗自己開電腦代打.sql`），提交後查過線上；行為測試回滾後沒有留下任何樣本。
+> 線上：表 85 不變、函式 459 → **460**（＋1）、policy 33 不變。
+> · `online_seats` 多一欄 **`auto_on boolean NOT NULL DEFAULT false`**：這個座位的人自己開了「電腦代打」。
+>   🔴 跟 `auto_since` 是兩件事、不要併成一欄：`auto_since` ＝ 逾時之後後端替他出手，**本人一動就清掉**；`auto_on` ＝ 他自己開的，**要自己關**
+>   （併在一起的話，開著代打的人自己的手機每送一個動作就會把標籤清掉）
+> · 🆕 `online_set_auto_tx(session, seat, on)`：寫 `auto_on` 並通知四支手機重讀。**只有 service_role 叫得動**；座位由 Edge Function 從登入身分認好傳進來，沒有會員編號參數。
+>   不是線上好友房 ⇒ `not_online`；座位沒人坐（含還沒開第一將、座位還沒排）⇒ `bad_seat`
+> · `_online_ctx(session)`：`presence` 每個座位多回 `auto_on`；`session` 多回 `game_type`、`started_at`（牌桌底部資訊列的玩法與使用時間）。其餘沒動
+> · ⚠ Edge Function `online-game` 要重新部署才有新動作 `auto`，也才會把 `game_type`、`started_at` 交給畫面（`core.mjs` 的畫面是挑欄位給的，不是整包丟）
+>
 > ### 🆕 2026-11-11 增補 178（歸檔 `2026-11-11_線上好友房_牌桌帶小熊配件.sql`）
 > **基準：`sql/applied/` 有 494 個檔案**。驗證 7/7 ＋ 行為 7/7（`sql/checks/2026-11-11_驗牌桌帶小熊配件.sql`），提交後查過線上；行為測試回滾後沒有留下任何樣本。
 > 線上：表 85 不變、函式 458 → **459**（＋1）、policy 33 不變。

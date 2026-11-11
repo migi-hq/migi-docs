@@ -169,5 +169,41 @@ await t('爆卡：只付得出剩下的、不能開下一局；別人不能替�
   assert.ok(z.stage === 'playing' || z.stage === 'game_over' || z.stage === 'round_over')
 })
 
+await t('自己開電腦代打：另外三家的畫面看得到、自己出牌不會把它清掉、關得掉；逾時代打記在另一格', async () => {
+  const { db, D } = fakeDb()
+  let now = 2_000_000
+  const v0 = await handle(db, me('m1'), { op: 'view' }, now, rand)
+  const seat = v0.me.seat
+  // 開之前：沒有人開著
+  assert.ok(!Object.values(v0.presence || {}).some((p) => p.auto_on))
+  // 開：我自己的回傳與別人讀到的畫面都看得到，而且只有我這個座位
+  const a = await handle(db, me('m1'), { op: 'auto', on: true }, now + 1, rand)
+  assert.equal(a.ok, true); assert.equal(a.presence[seat].auto_on, true)
+  const other = await handle(db, me('m2'), { op: 'view' }, now + 2, rand)
+  assert.equal(other.presence[seat].auto_on, true)
+  assert.ok(!(other.presence[other.me.seat] && other.presence[other.me.seat].auto_on), '別人的座位不該跟著變成代打中')
+  // 輪到誰就讓誰動一次；輪到我時我自己的手機送出動作（actor 是 player）⇒ auto_on 還在
+  for (let i = 0; i < 12; i++) {
+    let moved = false
+    for (const m of MEMBERS) {
+      const v = await handle(db, me(m), { op: 'view' }, now, rand); const act1 = v.stage === 'playing' ? botAction(v) : null
+      if (act1 && !moved) { await handle(db, me(m), { op: 'act', version: v.hand.version, action: act1 }, now, rand); moved = true }
+    }
+    now += 5
+  }
+  assert.ok(D.actions.some((x) => x.seat === seat && x.actor === 'player'), '這一段裡我至少要自己動過一次，這一格才有測到東西')
+  assert.equal(D.presence[seat].auto_on, true); assert.equal(D.presence[seat].auto_since, null)
+  // 正對照：放著不動讓時間到 ⇒ 被後端代打的人記的是 auto_since，不會變成 auto_on
+  const before = JSON.stringify(D.presence)
+  now += TURN_MS * 3
+  await handle(db, me('m1'), { op: 'tick' }, now, rand)
+  const timedOut = Object.entries(D.presence).filter(([, p]) => p.auto_since)
+  assert.ok(timedOut.length > 0, '時間到了應該有人被代打：' + before + ' → ' + JSON.stringify(D.presence))
+  assert.ok(timedOut.every(([s, p]) => Number(s) === seat || !p.auto_on), '被逾時代打的別人不該被標成「自己開的」')
+  // 關
+  const off = await handle(db, me('m1'), { op: 'auto', on: false }, now + 1, rand)
+  assert.equal(off.ok, true); assert.equal(off.presence[seat].auto_on, false)
+})
+
 console.log(`\n${fail ? '🔴' : '✅'} online-game 流程 ${pass} 項通過${fail ? '、' + fail + ' 項失敗' : ''}`)
 process.exit(fail ? 1 : 0)
