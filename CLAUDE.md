@@ -1591,6 +1591,7 @@ migi github/           ← Claude Code 的 project folder 選這層
 | `migi_evt_queue` | 埋點離線佇列 | — 本來就該在本機 |
 | `migi_bear_seen` | 上次打開養成小熊那一頁的時間（隔 3 天以上再打開，小熊說「好久不見！」） | — 本機（`rewards.jsx`，2026-11-08；換手機會重新算，可以接受） |
 | `migi_reload_mark` | 版本重載記號 | — 本機 |
+| `migi_chunk_reload` | 「用到才下載的那一包載不到」而重新載入的時間（60 秒內不重載第二次，防迴圈） | — 本機（`lib/lazyReload.js`，2026-11-11；牌桌 `onlineTable` 是用到才下載的，部署新版後舊版 App 會載不到） |
 | ~~`migi_pending_table_invite`~~ | 🗑 開房前先勾選要揪的牌咖，2026-10-31 拿掉（沒有程式再讀寫，手機上殘留的舊值無害） | — |
 | `migi_pending_tab` | 打開 App 要直接到哪一頁（LINE 推播帶 `?tab=match`，10 分鐘內有效、讀一次就清） | — 暫存（`lib/deeplink.js`） |
 | `migi_pending_go` | 打開 App 要直接蓋上哪一個切頁（官方 LINE 圖文選單帶 `?go=scoreboard` ＝ 手機計分板；只認白名單、10 分鐘、讀一次就清） | — 暫存（`lib/deeplink.js`，2026-10-18） |
