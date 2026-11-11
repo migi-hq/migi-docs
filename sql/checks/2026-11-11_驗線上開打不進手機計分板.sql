@@ -34,7 +34,10 @@ begin
   perform set_config('request.jwt.claims', jsonb_build_object('sub', gen_random_uuid(), 'role', 'authenticated', 'app_metadata', jsonb_build_object('line_user_id', v_l[1]))::text, true);
   r := public.create_friendly_game_tx(v_sl, now() + interval '1 hour', '台麻', '無花', '1 將', '{}', '{}', 'online');
   v_gid := (r ->> 'game_id')::uuid;
-  r := public.add_friendly_bots_tx(v_gid, 3);
+  -- 舊的「一次加幾位」那支 2026-11-11 刪掉了，改用指定哪一隻的那支加三次（最後一次湊滿、直接成桌）
+  perform public.add_friendly_bot_tx(v_gid, 'coach');
+  perform public.add_friendly_bot_tx(v_gid, 'chef');
+  r := public.add_friendly_bot_tx(v_gid, 'merchant');
   select session_id into v_sid from public.friendly_games where id = v_gid;
 
   -- ② 前提（少了它，後面幾格會因為「他根本沒坐進去」而變綠）：他真的坐在一場開著的牌局裡
