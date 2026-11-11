@@ -1,5 +1,19 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-11 增補 175（歸檔 `2026-11-11_線上好友房_資料表.sql`）
+> **基準：`sql/applied/` 有 491 個檔案**。驗證 9/9 ＋ 行為 11/11（`sql/checks/2026-11-11_驗線上好友房資料表.sql`），提交後查過線上；行為測試回滾後三張表都是 0 列。
+> 線上：表 82 → **85**、函式 450 → **451**（多一支觸發器函式）、policy 33 不變。
+> · `friendly_games.play_mode text NOT NULL DEFAULT 'scoreboard'`，CHECK ∈ `scoreboard`（實體牌、四支手機記分）／`online`（線上好友房）
+> · 🆕 `online_hands`（20 欄）：線上好友房每一局的引擎狀態。`state jsonb` 含**四家手牌與牌山**；`version`（每個動作 +1，寫回時比對）、
+>   `deadline_at`（這一步最晚幾點，過了由後端代打）、`dice`／`seat_dice`（三顆、1～6）、`hand_id` → `hands`（打完寫進去的那一筆）。
+>   `uq_online_hands_playing (session_id) WHERE status = 'playing'`：同一場同時只能一局在打
+> · 🆕 `online_actions`（8 欄）：每一個動作一筆，**只能新增**（觸發器 `trg_online_actions_no_mutate` ＋ service_role 沒有 UPDATE／DELETE）；
+>   `uq_online_actions_version (online_hand_id, version)`：兩支手機同時按只有一個算數；`actor` ∈ `player`／`auto`／`system`
+> · 🆕 `online_seats`（5 欄，主鍵 session_id ＋ seat）：每個座位的 `last_seen_at`、`auto_since`（逾時被代打）；**誰坐哪裡照舊看 `session_players.seat`**
+> · 🔴 三張表都開 RLS、**0 policy**、anon 與 authenticated 一個權限都沒有 ⇒ 只有後端（Edge Function 用 service_role）讀寫，前端一律走函式
+> · 🔴 座位一律 1～4（代表人）；引擎內部的 0～3 是這一將的出牌順序（對應 `session_rounds.seat_ring`），換算放後端程式，不進資料庫
+> · 這一批只有資料表；建局、每個動作、寫入 `hands` 是下一批
+
 > ### 🆕 2026-11-10 增補 174（歸檔 `2026-11-10_打了幾將算全部打完的將.sql`）
 > **基準：`sql/applied/` 有 490 個檔案**。驗證 6/6，提交後查過線上（只剩一個版本、函式裡已經沒有時間過濾）。
 > · `_member_round_minutes` **不再用時間長短排除任何一將**（增補 173 的「只算 10～120 分」作廢）：打完的將 ＝ `session_rounds.status = 'finished'`
