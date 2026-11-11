@@ -4,7 +4,7 @@
    ③ 每一局四家增減加起來是 0、整場積分總和不變　④ 逾時代打、版本對不上、不是你的回合都擋得住
    機器人只看「手機拿到的畫面」出牌 —— 所以也順便驗了畫面給的資訊夠不夠打完一場 */
 import assert from 'node:assert/strict'
-import { handle, stageOf, TURN_MS, NEXT_AFTER_MS } from './core.mjs'
+import { handle, stageOf, TURN_MS, NEXT_AFTER_MS, AUTO_MS } from './core.mjs'
 
 import { CAT, fakeDb, botAction as bot, json } from './testkit.mjs'
 
@@ -203,6 +203,34 @@ await t('自己開電腦代打：另外三家的畫面看得到、自己出牌�
   // 關
   const off = await handle(db, me('m1'), { op: 'auto', on: false }, now + 1, rand)
   assert.equal(off.ok, true); assert.equal(off.presence[seat].auto_on, false)
+})
+
+await t('開著電腦代打的人：不等倒數，輪到他一下子後端就替他出手；沒開的人照舊等倒數；時間還沒到不搶', async () => {
+  const { db, D } = fakeDb()
+  let now = 3_000_000
+  await handle(db, me('m1'), { op: 'view' }, now, rand)
+  // 找到現在要出手的那一位（第一步可能是出牌，也可能是莊家選豹子倍數）
+  let who = null, view = null
+  for (const m of MEMBERS) { const v = await handle(db, me(m), { op: 'view' }, now, rand); const o = v.table && v.table.options; if (o && (o.discard || o.baozi)) { who = m; view = v } }
+  assert.ok(who, '開局應該有一個人要出手')
+  const seat = view.me.seat, h = D.ohands[0]
+  const start = new Date(h.deadline_at).getTime() - TURN_MS          // 這一步「開始」的時刻（第一步的期限多加了發牌動畫，開始落在發完牌之後）
+  const ver0 = h.version
+  // 負對照：他沒開代打 ⇒ 過了 AUTO_MS、還沒到期限，後端不動
+  const other = MEMBERS.find((m) => m !== who)
+  await handle(db, me(other), { op: 'view' }, start + AUTO_MS + 50, rand)
+  assert.equal(h.version, ver0, '沒開代打的人不該被提早代打')
+  // 開了代打，但時間還沒到 AUTO_MS ⇒ 不搶
+  await handle(db, me(who), { op: 'auto', on: true }, start + 10, rand)
+  await handle(db, me(other), { op: 'view' }, start + AUTO_MS - 50, rand)
+  assert.equal(h.version, ver0, '輪到他還不到 AUTO_MS 不該出手')
+  // 到了 AUTO_MS ⇒ 別人的手機一讀畫面，後端就替他做；離期限還很遠
+  await handle(db, me(other), { op: 'view' }, start + AUTO_MS + 50, rand)
+  assert.equal(h.version, ver0 + 1, '開著代打的人應該被提早代打')
+  assert.ok(start + AUTO_MS + 50 < start + TURN_MS - 1000, '這一格要在期限之前')
+  const last = D.actions[D.actions.length - 1]
+  assert.equal(last.seat, seat); assert.equal(last.actor, 'auto')
+  assert.equal(D.presence[seat].auto_on, true, '後端替他出手不該把他自己開的旗標清掉')
 })
 
 console.log(`\n${fail ? '🔴' : '✅'} online-game 流程 ${pass} 項通過${fail ? '、' + fail + ' 項失敗' : ''}`)

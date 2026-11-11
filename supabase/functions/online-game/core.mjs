@@ -144,6 +144,39 @@ async function timeout(db, ctx, now) {
   return db.ctx(ctx.session.id)
 }
 
+/* 自己開了「電腦代打」的人（座位上的 auto_on）：不等倒數，輪到他 AUTO_MS 之後後端就直接替他出手
+   （2026-11-11 使用者：開著代打的人手機關掉時，每一手都要等倒數跑完，另外三家會等很久 ⇒「對」，要做）。做的事跟逾時代打一樣。
+   · 這一步什麼時候開始：期限 − 這一種步驟給的秒數。新的一局第一步的期限多加了發牌動畫的時間，
+     所以算出來的「開始」剛好落在發完牌之後，不會牌還在發就打出去
+   · 他能胡（別人放槍、或自摸）的那一步不搶著替他做：留給他自己的手機（開著 App 又開著自動胡會自己胡）；沒人理就照舊等倒數
+   · 一次只替一步出牌：下一步要重新等 AUTO_MS，不然好幾個人都開著時牌會一瞬間打完。「過」可以幾個人一起（那一步本來就在等大家回答）
+   · 誰來觸發：任何一家的手機讀畫面（view）或報時間到（tick）時順便做 —— 後端自己不會醒來 */
+export const AUTO_MS = 1200
+async function autoFast(db, ctx, now) {
+  const h = playing(ctx)
+  if (!h || !h.deadline_at || !ctx.round) return ctx
+  const pres = ctx.presence || {}, ring = ctx.round.ring
+  const on = (i) => !!(pres[ring[i]] && pres[ring[i]].auto_on)
+  if (![0, 1, 2, 3].some(on)) return ctx
+  const span = h.state.phase === 'claim' ? CLAIM_MS : TURN_MS
+  if (now < ms(h.deadline_at) - span + AUTO_MS) return ctx
+  let st = h.state, ver = h.version, did = false
+  for (let i = 0; i < 4; i++) {
+    if (!on(i)) continue
+    const a = autoAction(st, i)
+    if (!a) continue
+    const o = viewFor(st, i).options
+    if (o && ((o.claim && o.claim.hu) || o.tsumo)) continue
+    const r = act(st, i, a)
+    if (!r.ok) continue
+    const c = await db.commit({ p_hand: h.id, p_version: ver, p_state: r.st, p_phase: r.st.phase, p_deadline: deadlineFor(r.st, now), p_seat: ring[i], p_actor: 'auto', p_action: a, p_result: resultFor(r.st, ring) })
+    if (!c || !c.ok) break      // 別人剛好先動了（版本對不上）⇒ 這一輪不做，重讀
+    st = r.st; ver = c.version; did = true
+    if (a.type !== 'pass' || st.phase === 'over') break
+  }
+  return did ? db.ctx(ctx.session.id) : ctx
+}
+
 /* me ＝ online_me_tx 的回傳（已經用客人的登入憑證認過人）；body ＝ 手機送來的；now ＝ 毫秒；rand ＝ 0～1 的亂數 */
 export async function handle(db, me, body, now, rand) {
   let ctx = await db.ctx(me.session_id)
@@ -151,9 +184,9 @@ export async function handle(db, me, body, now, rand) {
   const op = (body && body.op) || 'view'
   const out = (extra = {}) => ({ ...buildView(ctx, me.member_id, now), ...extra })
 
-  if (op === 'view') { ctx = await advance(db, ctx, now, rand, false); return out() }
+  if (op === 'view') { ctx = await autoFast(db, ctx, now); ctx = await advance(db, ctx, now, rand, false); return out() }
   if (op === 'next') { ctx = await advance(db, ctx, now, rand, true); return out() }
-  if (op === 'tick') { ctx = await timeout(db, ctx, now); ctx = await advance(db, ctx, now, rand, false); return out() }
+  if (op === 'tick') { ctx = await timeout(db, ctx, now); ctx = await autoFast(db, ctx, now); ctx = await advance(db, ctx, now, rand, false); return out() }
 
   if (op === 'bust') {
     const seat = seatOf(ctx, me.member_id)
