@@ -167,8 +167,12 @@ const ENGINE = (() => {
      base／unit：底與每台的積分；dealer／ren：莊家座位與連莊數（上一局的 result.next）
      dice：每一局都擲一次骰子（2026-11-11 使用者：「每一局都要骰」），骰子台看這一擲。
            第一局要傳「定莊家那一擲」進來（開局擲兩次：定座位、定莊家，骰子台看定莊家那次）；
-           第二局起不傳，由 seed 自己擲 */
-  function newGame({ seed, flower = false, dealer = 0, ren = 0, base = 0, unit = 0, cat = [], dice: given = null }) {
+           第二局起不傳，由 seed 自己擲
+     rules：這一場開了哪幾個特殊規則（2026-11-11 使用者：開一場時「特殊規則」可以勾 骰龜／豹子／全紅，預設都不開）。
+           給陣列 ⇒ 只算裡面有的（例 ['shaigui']；空陣列 ＝ 三個都不算）；**不給 ⇒ 三個都算**（這個選項出現之前開的局、以及既有測試的行為） */
+  const SPECIAL_RULES = ['quanhong', 'shaigui', 'baozi']
+  const ruleOn = (st, code) => !st.rules || st.rules.includes(code)
+  function newGame({ seed, flower = false, dealer = 0, ren = 0, base = 0, unit = 0, cat = [], dice: given = null, rules = null }) {
     const r = rng(seed)
     const wall = []
     for (const c of KIND_CODES) for (let i = 0; i < 4; i++) wall.push(c)
@@ -191,6 +195,7 @@ const ENGINE = (() => {
       turns: [0, 0, 0, 0], called: false, migi: [false, false, false, false], yan: [false, false, false, false],
       claim: null, result: null, log: [{ e: 'start', dealer, ren, dice }],
       baozi: 1,   // 豹子倍數：1 ＝ 沒有或放棄、2、3（莊家開局選的）
+      rules: Array.isArray(rules) ? SPECIAL_RULES.filter((c) => rules.includes(c)) : null,   // 開了哪幾個特殊規則；null ＝ 三個都算（舊的局）
     }
     /* 發牌：每家 16 張，莊家多一張（不用摸，第一手直接打） */
     for (let i = 0; i < 16; i++) for (let k = 0; k < 4; k++) st.hands[(dealer + k) % 4].push(st.wall.shift())
@@ -210,7 +215,7 @@ const ENGINE = (() => {
     if (st.phase === 'deal') {
       st.turn = dealer; st.src = 'deal'
       /* 豹子（三顆骰子一樣）：開局先由莊家決定這一局 ×2、×3 或放棄，選完才開始打（2026-11-09 使用者） */
-      st.phase = dice[0] === dice[1] && dice[1] === dice[2] ? 'baozi' : 'discard'
+      st.phase = ruleOn(st, 'baozi') && dice[0] === dice[1] && dice[1] === dice[2] ? 'baozi' : 'discard'   // 沒開豹子這條規則 ⇒ 擲出三顆一樣也直接開打
     }
     return st
   }
@@ -487,13 +492,14 @@ const ENGINE = (() => {
       const hg = [[1, 2, 3, 4], [5, 6, 7, 8]].filter((g) => g.every((n) => fl.includes('H' + n))).length
       if (hg) flowerPats.push(['huagang', hg])
     }
-    const diceRed = st.dice.every((d) => RED_DICE.includes(d))
+    /* 三個骰子規則各自要「這一場有開」才算（沒開的話擲出來也只是骰子） */
+    const diceRed = ruleOn(st, 'quanhong') && st.dice.every((d) => RED_DICE.includes(d))
     /* 骰龜：三顆骰子是順子（1-2-3、2-3-4、3-4-5、4-5-6，順序不拘；2026-11-09 使用者） */
     const ds = [...st.dice].sort((a, b) => a - b)
-    const diceRun = ds[1] === ds[0] + 1 && ds[2] === ds[1] + 1
+    const diceRun = ruleOn(st, 'shaigui') && ds[1] === ds[0] + 1 && ds[2] === ds[1] + 1
     /* 豹子：三顆骰子一樣，莊家開局選 ×2／×3／放棄（st.baozi）⇒ 整筆乘（含底與莊家台，同計分板 rules.js）。
        主檔 baozi 的次數 ＝ 倍數 − 1（同計分板按 1 次 ×2、按 2 次 ×3）；不管誰胡都算（2026-11-09 使用者） */
-    const baoziN = (st.baozi || 1) - 1
+    const baoziN = ruleOn(st, 'baozi') ? (st.baozi || 1) - 1 : 0
     const common = (add) => {
       if (st.migi[w]) add('migi')
       if (diceRed) add('quanhong')
@@ -632,6 +638,7 @@ const ENGINE = (() => {
     const see = st.yan[s] || st.phase === 'over'
     return {
       seat: s, dealer: st.dealer, ren: st.ren, turn: st.turn, phase: st.phase, flower: st.flower, dice: st.dice, baozi: st.baozi,
+      rules: st.rules || SPECIAL_RULES,   // 這一場開了哪幾個特殊規則（畫面的骰子標籤只標有開的）
       wallLeft: Math.max(0, st.wall.length - KEEP),
       wall: st.yan[s] && st.phase !== 'over' ? st.wall.slice(0, st.wall.length - KEEP) : null,
       players: [0, 1, 2, 3].map((x) => ({
@@ -700,7 +707,10 @@ const CORE = (() => {
 
   const seatOf = (ctx, memberId) => { const p = (ctx.players || []).find((x) => x.member_id === memberId); return p ? p.seat : null }
   const playing = (ctx) => (ctx.hand && ctx.hand.status === 'playing' ? ctx.hand : null)
-  const engineArgs = (ctx) => ({ flower: !!ctx.session.flower, base: ctx.session.base, unit: ctx.session.unit, cat: ctx.cat || [] })
+  /* rules：這一場開了哪幾個特殊規則（骰龜／豹子／全紅）。資料庫給陣列就照它（空陣列 ＝ 都不算）；
+     沒給（這一欄出現之前的資料庫）⇒ 不傳，引擎照舊三個都算 */
+  const engineArgs = (ctx) => ({ flower: !!ctx.session.flower, base: ctx.session.base, unit: ctx.session.unit, cat: ctx.cat || [],
+    rules: Array.isArray(ctx.session.special_rules) ? ctx.session.special_rules : null })
   const blocked = (ctx) => ctx.scored || !!ctx.bust || ctx.session.status !== 'open'
 
   /* 現在卡在哪：playing 正在打／hand_over 這一局打完等下一局／round_over 這一將打完等下一將／
@@ -727,7 +737,8 @@ const CORE = (() => {
       session: { flower: ctx.session.flower, planned_rounds: ctx.session.planned_rounds, base: ctx.session.base, unit: ctx.session.unit,
         stake_label: ctx.session.stake_label, is_hygiene: ctx.session.is_hygiene, channel: ctx.session.channel,
         // 牌桌右下角那一行要用的：玩法、這一場幾點開始（畫面自己算已經打了多久）
-        game_type: ctx.session.game_type || null, started_at: ctx.session.started_at || null },
+        game_type: ctx.session.game_type || null, started_at: ctx.session.started_at || null,
+        special_rules: Array.isArray(ctx.session.special_rules) ? ctx.session.special_rules : null },
       game: ctx.game, scored: ctx.scored, rounds_done: ctx.rounds_done,
       round: ctx.round ? { round_no: ctx.round.round_no, ring, ...(ctx.round.state || {}) } : null,
       hand: h ? { id: h.id, version: h.version, hand_no: h.hand_no, status: h.status, deadline_at: h.deadline_at, dice: h.dice, seat_dice: h.seat_dice,
@@ -793,6 +804,11 @@ const CORE = (() => {
       const c = await db.commit({ p_hand: h.id, p_version: ver, p_state: r.st, p_phase: r.st.phase, p_deadline: deadlineFor(r.st, now), p_seat: ring[i], p_actor: 'auto', p_action: a, p_result: resultFor(r.st, ring) })
       if (!c || !c.ok) break      // 別人剛好先動了（版本對不上）⇒ 這一輪不做，重讀
       st = r.st; ver = c.version
+      /* 逾時過一次 ⇒ 替他把「電腦代打」打開（2026-11-11 使用者：逾時被接手的人也要跟著加快 ⇒「要」）。
+         之後輪到他就走 autoFast（1.2 秒），不用每一手都等滿倒數。只有一個概念、一顆開關：
+         他回來時自己手機左下角那顆是亮的，按一下就關掉、拿回來自己打（op auto off）。
+         不另外做一套「逾時的人也加快」：那樣他回來沒有東西可以按，每一手只剩 1.2 秒搶 */
+      if (!(ctx.presence && ctx.presence[ring[i]] && ctx.presence[ring[i]].auto_on)) await db.setAuto({ p_session: ctx.session.id, p_seat: ring[i], p_on: true })
       if (st.phase === 'over') break
     }
     return db.ctx(ctx.session.id)

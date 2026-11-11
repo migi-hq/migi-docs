@@ -193,16 +193,23 @@ await t('自己開電腦代打：另外三家的畫面看得到、自己出牌�
   }
   assert.ok(D.actions.some((x) => x.seat === seat && x.actor === 'player'), '這一段裡我至少要自己動過一次，這一格才有測到東西')
   assert.equal(D.presence[seat].auto_on, true); assert.equal(D.presence[seat].auto_since, null)
-  // 正對照：放著不動讓時間到 ⇒ 被後端代打的人記的是 auto_since，不會變成 auto_on
+  // 放著不動讓時間到 ⇒ 逾時被後端接手的人：記 auto_since，而且後端替他把電腦代打打開（之後不用每一手等滿倒數）
   const before = JSON.stringify(D.presence)
   now += TURN_MS * 3
   await handle(db, me('m1'), { op: 'tick' }, now, rand)
   const timedOut = Object.entries(D.presence).filter(([, p]) => p.auto_since)
   assert.ok(timedOut.length > 0, '時間到了應該有人被代打：' + before + ' → ' + JSON.stringify(D.presence))
-  assert.ok(timedOut.every(([s, p]) => Number(s) === seat || !p.auto_on), '被逾時代打的別人不該被標成「自己開的」')
-  // 關
+  assert.ok(timedOut.every(([, p]) => p.auto_on), '逾時被接手的人應該被打開電腦代打：' + JSON.stringify(D.presence))
+  // 負對照：沒逾時、也沒自己開的人，不該被順便打開
+  const untouched = Object.entries(D.presence).filter(([s, p]) => !p.auto_since && Number(s) !== seat)
+  assert.ok(untouched.every(([, p]) => !p.auto_on), '沒逾時的人不該被打開電腦代打：' + JSON.stringify(D.presence))
+  // 關：我自己關得掉；逾時被打開的那個人也關得掉（回來按一下就拿回來自己打）
   const off = await handle(db, me('m1'), { op: 'auto', on: false }, now + 1, rand)
   assert.equal(off.ok, true); assert.equal(off.presence[seat].auto_on, false)
+  const backSeat = Number(timedOut.find(([s]) => Number(s) !== seat)?.[0] ?? timedOut[0][0])
+  const backWho = D.players.find((p) => p.seat === backSeat).member_id
+  const back = await handle(db, me(backWho), { op: 'auto', on: false }, now + 2, rand)
+  assert.equal(back.ok, true); assert.equal(back.presence[backSeat].auto_on, false)
 })
 
 await t('開著電腦代打的人：不等倒數，輪到他一下子後端就替他出手；沒開的人照舊等倒數；時間還沒到不搶', async () => {

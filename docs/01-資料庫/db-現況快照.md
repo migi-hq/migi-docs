@@ -1,5 +1,17 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-11 增補 180（歸檔 `2026-11-11_好友練習賽_特殊規則.sql`）
+> **基準：`sql/applied/` 有 496 個檔案**。驗證 8/8 ＋ 行為 7/7（`sql/checks/2026-11-11_驗好友練習賽特殊規則.sql`），提交後查過線上；行為測試回滾後沒有留下任何樣本。
+> 線上：表 85、函式 460、policy 33 都不變（一支改簽名、兩支 CREATE OR REPLACE）。
+> · `friendly_games` 多一欄 **`special_rules text[] NOT NULL DEFAULT '{}'`**，CHECK `special_rules <@ {quanhong, shaigui, baozi}`：
+>   這一場開了哪幾個特殊規則（全紅／骰龜／豹子，代碼同 `scoring_patterns`）。空的 ＝ 都不開（預設）
+> · `create_friendly_game_tx` **多一個參數 `p_special_rules text[] default '{}'`**（放最後、有預設值 ⇒ 沒送的舊版 App 照樣叫得動）。
+>   改簽名 ⇒ 先 DROP 舊的再重建，GRANT 補給 authenticated（anon、PUBLIC 叫不動）。不認得的代碼直接擋；重複的收成一個、順序固定。回傳多 `special_rules`
+> · `_friendly_view(game, member)`：多回 `special_rules`（等人卡、成桌彈窗、邀請卡片讀的）
+> · `_online_ctx(session)`：`session` 多回 `special_rules`（牌桌後端照它算台）
+> · 🔴 行為變了：線上打以前三個骰子規則一律都算，**現在預設都不算**，開局的人勾了才算。
+>   Edge Function `online-game` 要重新部署才會照這一欄算（還沒部署的舊版不認得這一欄，照舊三個都算）
+>
 > ### 🆕 2026-11-11 增補 179（歸檔 `2026-11-11_線上好友房_自己開電腦代打.sql`）
 > **基準：`sql/applied/` 有 495 個檔案**。驗證 7/7 ＋ 行為 8/8（`sql/checks/2026-11-11_驗自己開電腦代打.sql`），提交後查過線上；行為測試回滾後沒有留下任何樣本。
 > 線上：表 85 不變、函式 459 → **460**（＋1）、policy 33 不變。

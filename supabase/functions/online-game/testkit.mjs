@@ -24,9 +24,10 @@ export const sum = (a) => a.reduce((x, y) => x + y, 0)
 
 /* 假的資料庫：規則照 SQL（online_start_round_tx／online_next_hand_tx／online_commit_tx／_tbl_round_state／爆卡夾帳） */
 /* clock：一局結束的時間怎麼來。測試不給（固定值，結果才能重現）；本機模擬給真的時鐘（「15 秒沒人按就自動下一局」才會動） */
-export function fakeDb({ planned = 1, base = 50, unit = 20, start = 2000, flower = false, clock = null } = {}) {
+/* special：這一場開了哪幾個特殊規則（同 friendly_games.special_rules）。不給 ＝ 資料庫還沒有這一欄的樣子（引擎照舊三個都算） */
+export function fakeDb({ planned = 1, base = 50, unit = 20, start = 2000, flower = false, clock = null, special = undefined } = {}) {
   const D = {
-    session: { id: 's1', org_id: 'o1', status: 'open', flower, planned_rounds: planned, base, unit, stake_label: `${base}/${unit}`, is_hygiene: false, channel: 'ch', game_type: '台麻', started_at: new Date(Date.now() - 754000).toISOString() },
+    session: { id: 's1', org_id: 'o1', status: 'open', flower, planned_rounds: planned, base, unit, stake_label: `${base}/${unit}`, is_hygiene: false, channel: 'ch', game_type: '台麻', started_at: new Date(Date.now() - 754000).toISOString(), ...(special ? { special_rules: special } : {}) },
     game: { id: 'g1', status: 'playing' }, scored: false, bust: null, added: { 1: 0, 2: 0, 3: 0, 4: 0 },
     players: ['m1', 'm2', 'm3', 'm4'].map((m) => ({ member_id: m, seat: null, nickname: m })),
     rounds: [], ohands: [], hands: [], actions: [], calls: { startOk: 0, nextOk: 0 },

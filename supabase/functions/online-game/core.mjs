@@ -46,7 +46,10 @@ export function resultFor(st, ring) {
 
 const seatOf = (ctx, memberId) => { const p = (ctx.players || []).find((x) => x.member_id === memberId); return p ? p.seat : null }
 const playing = (ctx) => (ctx.hand && ctx.hand.status === 'playing' ? ctx.hand : null)
-const engineArgs = (ctx) => ({ flower: !!ctx.session.flower, base: ctx.session.base, unit: ctx.session.unit, cat: ctx.cat || [] })
+/* rules：這一場開了哪幾個特殊規則（骰龜／豹子／全紅）。資料庫給陣列就照它（空陣列 ＝ 都不算）；
+   沒給（這一欄出現之前的資料庫）⇒ 不傳，引擎照舊三個都算 */
+const engineArgs = (ctx) => ({ flower: !!ctx.session.flower, base: ctx.session.base, unit: ctx.session.unit, cat: ctx.cat || [],
+  rules: Array.isArray(ctx.session.special_rules) ? ctx.session.special_rules : null })
 const blocked = (ctx) => ctx.scored || !!ctx.bust || ctx.session.status !== 'open'
 
 /* 現在卡在哪：playing 正在打／hand_over 這一局打完等下一局／round_over 這一將打完等下一將／
@@ -73,7 +76,8 @@ export function buildView(ctx, memberId, now) {
     session: { flower: ctx.session.flower, planned_rounds: ctx.session.planned_rounds, base: ctx.session.base, unit: ctx.session.unit,
       stake_label: ctx.session.stake_label, is_hygiene: ctx.session.is_hygiene, channel: ctx.session.channel,
       // 牌桌右下角那一行要用的：玩法、這一場幾點開始（畫面自己算已經打了多久）
-      game_type: ctx.session.game_type || null, started_at: ctx.session.started_at || null },
+      game_type: ctx.session.game_type || null, started_at: ctx.session.started_at || null,
+      special_rules: Array.isArray(ctx.session.special_rules) ? ctx.session.special_rules : null },
     game: ctx.game, scored: ctx.scored, rounds_done: ctx.rounds_done,
     round: ctx.round ? { round_no: ctx.round.round_no, ring, ...(ctx.round.state || {}) } : null,
     hand: h ? { id: h.id, version: h.version, hand_no: h.hand_no, status: h.status, deadline_at: h.deadline_at, dice: h.dice, seat_dice: h.seat_dice,
@@ -139,6 +143,11 @@ async function timeout(db, ctx, now) {
     const c = await db.commit({ p_hand: h.id, p_version: ver, p_state: r.st, p_phase: r.st.phase, p_deadline: deadlineFor(r.st, now), p_seat: ring[i], p_actor: 'auto', p_action: a, p_result: resultFor(r.st, ring) })
     if (!c || !c.ok) break      // 別人剛好先動了（版本對不上）⇒ 這一輪不做，重讀
     st = r.st; ver = c.version
+    /* 逾時過一次 ⇒ 替他把「電腦代打」打開（2026-11-11 使用者：逾時被接手的人也要跟著加快 ⇒「要」）。
+       之後輪到他就走 autoFast（1.2 秒），不用每一手都等滿倒數。只有一個概念、一顆開關：
+       他回來時自己手機左下角那顆是亮的，按一下就關掉、拿回來自己打（op auto off）。
+       不另外做一套「逾時的人也加快」：那樣他回來沒有東西可以按，每一手只剩 1.2 秒搶 */
+    if (!(ctx.presence && ctx.presence[ring[i]] && ctx.presence[ring[i]].auto_on)) await db.setAuto({ p_session: ctx.session.id, p_seat: ring[i], p_on: true })
     if (st.phase === 'over') break
   }
   return db.ctx(ctx.session.id)

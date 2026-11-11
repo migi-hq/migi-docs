@@ -21,8 +21,8 @@ const t = (name, fn) => { try { fn(); pass++ } catch (e) { fail++; console.log('
 const tiles = (s) => s.trim().split(/\s+/)
 
 /* 造一個「胡牌那一刻」的局面，直接算台（不經過發牌） */
-function scene({ hand, melds = [], flowers = [], win, kind = 'ron', winner = 1, dealer = 0, ren = 0, flower = false, dice = [2, 3, 5], baozi = 1, src = 'wall', last = false, migi = false, called = false, turns = [1, 1, 1, 1] }) {
-  const st = newGame({ seed: 1, cat: CAT, flower, dealer, ren, base: 50, unit: 20 })
+function scene({ hand, melds = [], flowers = [], win, kind = 'ron', winner = 1, dealer = 0, ren = 0, flower = false, dice = [2, 3, 5], baozi = 1, src = 'wall', last = false, migi = false, called = false, turns = [1, 1, 1, 1], rules = null }) {
+  const st = newGame({ seed: 1, cat: CAT, flower, dealer, ren, base: 50, unit: 20, rules })
   st.hands = [[], [], [], []]; st.melds = [[], [], [], []]; st.flowers = [[], [], [], []]
   st.hands[winner] = tiles(hand)
   st.melds[winner] = melds.map(([tt, ts]) => ({ t: tt, tiles: tiles(ts), from: tt === 'ckong' ? null : 2 }))
@@ -305,6 +305,35 @@ t('沒傳骰子：同一個 seed 每次擲出一樣的點數', () => {
 })
 t('傳入不合法的骰子要擋', () => {
   for (const d of [[0, 1, 2], [1, 2], [1, 2, 7], [1.5, 2, 3], '123']) assert.throws(() => newGame({ seed: 1, cat: CAT, dice: d }), /dice_invalid/, JSON.stringify(d))
+})
+
+t('特殊規則：這一場沒開的不算（全紅、骰龜、豹子各自獨立）；沒指定 ⇒ 三個都算（舊的局）', () => {
+  const H = { hand: '1m 2m 3m 4m 5m 6m 7m 8m 9m 2p 3p 4p 2t 3t 5t 5t', win: '4t' }
+  // 全紅：骰子 1-4-4。沒開 ⇒ 不算、台數少 1
+  assert.ok(!codes(scene({ ...H, dice: [1, 4, 4], rules: [] })).quanhong)
+  assert.equal(scene({ ...H, dice: [1, 4, 4], rules: [] }).tai, 3)
+  assert.equal(codes(scene({ ...H, dice: [1, 4, 4], rules: ['quanhong'] })).quanhong, 1)
+  assert.ok(!codes(scene({ ...H, dice: [1, 4, 4], rules: ['shaigui', 'baozi'] })).quanhong, '開了別的兩個不該讓全紅跟著算')
+  // 骰龜：骰子 1-2-3
+  assert.ok(!codes(scene({ ...H, dice: [1, 2, 3], rules: [] })).shaigui)
+  assert.equal(codes(scene({ ...H, dice: [1, 2, 3], rules: ['shaigui'] })).shaigui, 1)
+  // 豹子：就算狀態裡有倍數，沒開就不乘
+  const off = scene({ ...H, dice: [6, 6, 6], baozi: 3, rules: ['quanhong', 'shaigui'] })
+  assert.ok(!codes(off).baozi); assert.equal(off.mult, 1); assert.equal(off.tai, 3)
+  assert.equal(scene({ ...H, dice: [6, 6, 6], baozi: 3, rules: ['baozi'] }).mult, 3)
+  // 正對照：沒指定（舊的局）三個都算
+  assert.equal(codes(scene({ ...H, dice: [1, 4, 4] })).quanhong, 1)
+  // 開局：擲出三顆一樣。沒開豹子 ⇒ 直接開打，不停在莊家選倍數；有開 ⇒ 停下來
+  let seed = null
+  for (let x = 1; x < 3000 && seed == null; x++) { const g = newGame({ seed: x, cat: CAT, dealer: 1 }); if (g.phase === 'baozi') seed = x }
+  assert.ok(seed != null, '找不到會擲出豹子的種子，這一格測不了')
+  assert.equal(newGame({ seed, cat: CAT, dealer: 1, rules: [] }).phase, 'discard')
+  assert.equal(newGame({ seed, cat: CAT, dealer: 1, rules: ['baozi'] }).phase, 'baozi')
+  // 同一個種子：開不開規則洗出來的牌一樣（規則只影響算台，不影響發牌）
+  assert.deepEqual(newGame({ seed, cat: CAT, dealer: 1, rules: [] }).hands, newGame({ seed, cat: CAT, dealer: 1 }).hands)
+  // 畫面拿到的規則清單
+  assert.deepEqual(viewFor(newGame({ seed: 2, cat: CAT, rules: ['shaigui'] }), 0).rules, ['shaigui'])
+  assert.deepEqual(viewFor(newGame({ seed: 2, cat: CAT }), 0).rules, ['quanhong', 'shaigui', 'baozi'])
 })
 
 console.log(`\n${fail ? '🔴' : '✅'} 牌局引擎 ${pass} 項通過${fail ? '、' + fail + ' 項失敗' : ''}`)
