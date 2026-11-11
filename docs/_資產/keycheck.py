@@ -114,7 +114,8 @@ def walk(target):
         yield target
         return
     for root, dirs, files in os.walk(target):
-        dirs[:] = [d for d in dirs if d not in ('node_modules', '.git', 'dist')]
+        # `_preview`：migi-web 本機試畫面用的頁，沒進版控、不在正式打包的入口裡（2026-11-11，同 tokencheck.py 的說明）
+        dirs[:] = [d for d in dirs if d not in ('node_modules', '.git', 'dist', '_preview')]
         for f in files:
             if f.endswith(('.jsx', '.tsx')):
                 yield os.path.join(root, f)

@@ -83,7 +83,10 @@ LOOSE = [
     ('zIndex',       re.compile(r'zIndex:\s*(\d+)\b'),            ZINDEX, int),
 ]
 
-SKIP_DIR = {'node_modules', 'dist', 'assets', '.git', 'public'}
+# 🆕 2026-11-11 加 `_preview`：migi-web/src/_preview/ 是本機試畫面用的頁（各自一個 .html 入口，沒進版控、
+#   不在正式打包的入口裡 ⇒ 上不了正式站）。線上好友房的預覽稿一支就 195 處，掃它會讓棘輪 29 → 263 永遠是紅的。
+#   判準同下面那段：看「會不會被部署」。
+SKIP_DIR = {'node_modules', 'dist', 'assets', '.git', 'public', '_preview'}
 # ⚠ tokens 的定義檔本身當然全是數字與色碼，不要掃它
 #
 # 🔴 preview.jsx 是 **dev-only 的假後端與版型預覽**（migi-table），
