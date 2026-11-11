@@ -30,6 +30,7 @@ export function fakeDb({ planned = 1, base = 50, unit = 20, start = 2000, flower
     game: { id: 'g1', status: 'playing' }, scored: false, bust: null, added: { 1: 0, 2: 0, 3: 0, 4: 0 },
     players: ['m1', 'm2', 'm3', 'm4'].map((m) => ({ member_id: m, seat: null, nickname: m })),
     rounds: [], ohands: [], hands: [], actions: [], calls: { startOk: 0, nextOk: 0 },
+    presence: {},   // 同 online_seats：座位號 → { auto_since }；電腦代打時記下來，本人自己動作就清掉（畫面的「斷線 · 代打中」看它）
   }
   const roundState = (r) => {
     let dealer = r.first, wind = 1, ren = 0, pass = 0, n = 0, fin = false
@@ -60,7 +61,7 @@ export function fakeDb({ planned = 1, base = 50, unit = 20, start = 2000, flower
         ok: true, session: D.session, game: D.game, scored: D.scored, rounds_done: D.rounds.filter((x) => x.status === 'finished').length,
         round: r ? { id: r.id, round_no: r.no, status: r.status, ring: r.ring, state: roundState(r) } : null,
         hand: h ? { ...h, applied: h.hand_ref != null ? D.hands[h.hand_ref].delta : null } : null,
-        players: D.players, balances: balances(), bust: D.bust, cat: CAT, presence: {},
+        players: D.players, balances: balances(), bust: D.bust, cat: CAT, presence: D.presence,
       })
     },
     async startRound(a) {
@@ -99,6 +100,7 @@ export function fakeDb({ planned = 1, base = 50, unit = 20, start = 2000, flower
       if (!h || h.status !== 'playing' || h.version !== a.p_version) return { ok: false, reason: 'stale' }
       h.state = a.p_state; h.phase = a.p_phase; h.deadline_at = a.p_deadline; h.version++
       D.actions.push({ hand: h.id, version: h.version, seat: a.p_seat, actor: a.p_actor, action: a.p_action })
+      if (a.p_seat != null) D.presence[a.p_seat] = { auto_since: a.p_actor === 'player' ? null : (D.presence[a.p_seat] && D.presence[a.p_seat].auto_since) || 'auto' }
       if (!a.p_result) return { ok: true, version: h.version }
       const d = a.p_result.deltas
       assert.equal(sum([1, 2, 3, 4].map((s) => d[s])), 0, '四家增減加起來要是 0')
