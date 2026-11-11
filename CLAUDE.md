@@ -1597,7 +1597,7 @@ migi github/           ← Claude Code 的 project folder 選這層
 | `migi_pending_go` | 打開 App 要直接蓋上哪一個切頁（官方 LINE 圖文選單帶 `?go=scoreboard` ＝ 手機計分板；只認白名單、10 分鐘、讀一次就清） | — 暫存（`lib/deeplink.js`，2026-10-18） |
 | `migi_noti_*` | 通知開關 | ⚠ 只在本機，換裝置會回預設（可接受，但要知道） |
 | `migi_pending_acq` | 網址帶的會員來源（店員碼、管道、活動），等身分確定後送後端；7 天後作廢 | — 暫存（`lib/acquisition.js`，2026-11-02；後端只認註冊 1 小時內） |
-| `migi_online_prefs` | 線上好友房牌桌的設定：音效與震動、自動胡、要不要顯示小熊 | — 本機（`lib/onlineTable.jsx`，2026-11-11；換手機回預設，可以接受） |
+| `migi_online_prefs` | 線上好友房牌桌的設定：音效與震動、背景音樂（2026-11-11 加）、自動胡、要不要顯示小熊 | — 本機（`lib/onlineTable.jsx`，2026-11-11；換手機回預設，可以接受） |
 | `migi_login_via` | 這台是用手機簡訊登入的（`phone`）⇒ 開機問 LINE 問不到時**不導去 LINE 登入** | — 本機（`lib/line.js`，2026-10-21；LINE 登入成功或登出就清掉） |
 
 ✅ **已搬進後端**：小熊名字 → `member_app_state.bear.name`（2026-08-30，零 SQL）。
