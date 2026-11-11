@@ -1,5 +1,16 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-11 增補 177（歸檔 `2026-11-11_線上好友房_開一場選線上打.sql`）
+> **基準：`sql/applied/` 有 493 個檔案**。驗證 7/7 ＋ 行為 12/12（`sql/checks/2026-11-11_驗開一場選線上打.sql`），提交後查過線上；行為測試回滾後沒有留下任何樣本。
+> 線上：表 85、函式 458、policy 33 都不變（一支改簽名、兩支 CREATE OR REPLACE）。
+> · `create_friendly_game_tx` **多一個參數 `p_play_mode text default 'scoreboard'`**（放最後、有預設值 ⇒ 沒送的舊版 App 照樣叫得動）。
+>   改簽名 ⇒ 先 DROP 舊的再重建，GRANT 補給 authenticated（anon、PUBLIC 叫不動）。只收 `scoreboard`／`online`；**線上打只有台麻**。回傳多 `play_mode`
+> · `_friendly_view` 多回 `play_mode`（等人卡、進行中要知道去計分板還是去牌桌）
+> · `_friendly_start`：成桌通知（`friendly_ok`）的文字照打法分，線上打 ⇒「好友練習賽成桌了！打開牌桌開始線上打牌」；payload 多帶 `play_mode`。
+>   座位照舊留空：計分板的由四支手機定座位，線上打的由 `online_start_round_tx` 擲骰子排
+> · 📌 行為測試的做法值得沿用：在交易裡換 `request.jwt.claims`（`app_metadata.line_user_id`）讓四個測試帳號輪流「登入」，
+>   走真的 `current_member_id()` 那條路 —— 開一場 → 邀請連結加入 ×3 → 成桌 → `online_me_tx` → 開第一將，一次驗完
+
 > ### 🆕 2026-11-11 增補 176（歸檔 `2026-11-11_線上好友房_建局與動作.sql`）
 > **基準：`sql/applied/` 有 492 個檔案**。驗證 8/8 ＋ 行為 20/20（`sql/checks/2026-11-11_驗線上好友房建局與動作.sql`），提交後查過線上；行為測試回滾後沒有留下任何樣本。
 > 線上：表 85 不變、函式 451 → **458**（＋7）、policy 33 不變。牌局規則不在資料庫，在 `supabase/functions/online-game/engine.mjs`。
