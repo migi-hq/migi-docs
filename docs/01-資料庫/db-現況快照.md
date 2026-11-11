@@ -1,5 +1,19 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-11 增補 176（歸檔 `2026-11-11_線上好友房_建局與動作.sql`）
+> **基準：`sql/applied/` 有 492 個檔案**。驗證 8/8 ＋ 行為 20/20（`sql/checks/2026-11-11_驗線上好友房建局與動作.sql`），提交後查過線上；行為測試回滾後沒有留下任何樣本。
+> 線上：表 85 不變、函式 451 → **458**（＋7）、policy 33 不變。牌局規則不在資料庫，在 `supabase/functions/online-game/engine.mjs`。
+> · `online_me_tx()`：**唯一開給 authenticated 的一支**。我在哪一場線上牌局、坐幾號、頻道；身分只認 `current_member_id()`，沒有任何會員 id 參數
+> · `_online_ctx(session)`：這一場的整包資料 —— **含四家手牌與牌山**（`online_hands.state`）⇒ 🔴 只有 service_role 叫得動，永遠不要開給前端
+> · `_online_block(session)`：這一場還能不能繼續寫（回原因或 null）：場次沒開著／不是線上好友房／已結算／有人爆卡還沒決定
+> · `online_start_round_tx(...)`：開一將。鎖住場次（四支手機同時叫只開出一將）；座位號 1～4 還沒排才隨機排；
+>   定座位那一擲從 1 號數到誰誰是東，定莊家那一擲從東家數到誰誰當莊；`seat_ring` 從莊家排起；同時建第一局（`state.dealer` 必須是 0、骰子必須等於定莊家那一擲）
+> · `online_next_hand_tx(...)`：同一將的下一局。局號、莊家、連莊一律以 `_tbl_round_state` 為準，後端送的對不上回 `out_of_sync`
+> · `online_commit_tx(...)`：寫回一個動作，**比對版本**（對不上回 `stale`）；記上線時間與代打。這一局打完 ⇒ 往 `hands` **先寫 pending 再改 confirmed**
+>   （爆卡夾帳、爆卡偵測、碎片的觸發器才會動），四家增減加起來不是 0 就整筆退回；這一將四圈打完 ⇒ `session_rounds` 標 finished（最後一將由既有觸發器自動結算）
+> · `online_bust_decide_tx(session, seat, amount)`：同計分板 `tbl_bust_decide_tx`，差別只在座位由後端認好傳進來
+> · 🔴 改「一局打完怎麼入帳」要跟計分板 `tbl_confirm_hand_tx` 一起看 —— 兩條路寫進同一張 `hands`
+
 > ### 🆕 2026-11-11 增補 175（歸檔 `2026-11-11_線上好友房_資料表.sql`）
 > **基準：`sql/applied/` 有 491 個檔案**。驗證 9/9 ＋ 行為 11/11（`sql/checks/2026-11-11_驗線上好友房資料表.sql`），提交後查過線上；行為測試回滾後三張表都是 0 列。
 > 線上：表 82 → **85**、函式 450 → **451**（多一支觸發器函式）、policy 33 不變。
