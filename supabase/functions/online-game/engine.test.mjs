@@ -197,6 +197,45 @@ t('順位胡：兩家都能胡，離打牌的人近的那家胡', () => {
   assert.equal(st.result.winner, 2); assert.equal(st.result.from, 0)
   assert.equal(st.result.payments.reduce((a, b) => a + b, 0), 0)
 })
+/* 2026-11-12 使用者：「不能槓上家」—— 0 號打牌，1 號是他的下家（0 號是 1 號的上家）⇒ 1 號只能碰不能槓；2 號（對家）照樣能槓 */
+const LOOSE = 'S0 W0 N0 C0 F0 B0'
+t('上家打的牌不能明槓（碰照舊）', () => {
+  let st = newGame({ seed: 5, cat: CAT, dealer: 0 })
+  st.hands[0] = tiles('5m 1p 4p 7p 2t 5t 8t 1m 9m 9p E0 ' + LOOSE)
+  st.hands[1] = tiles('5m 5m 5m 1p 4p 7p 2t 5t 8t E0 ' + LOOSE)
+  st.hands[2] = tiles('2p 6p 3t 7t 2m 8m 3p 5p 1t 9t ' + LOOSE)
+  st.hands[3] = tiles('3p 8p 4t 9t 1m 7m E0 2p 6t 6p ' + LOOSE)
+  st = act(st, 0, { type: 'discard', tile: '5m' }).st
+  assert.equal(st.phase, 'claim')
+  assert.ok(st.claim.options[1].pong, '上家打的牌要能碰')
+  assert.ok(!st.claim.options[1].kong, '上家打的牌不該能槓')
+  assert.equal(act(st, 1, { type: 'kong' }).ok, false)
+})
+t('對家打的牌照樣能明槓', () => {
+  let st = newGame({ seed: 5, cat: CAT, dealer: 0 })
+  st.hands[0] = tiles('5m 1p 4p 7p 2t 5t 8t 1m 9m 9p E0 ' + LOOSE)
+  st.hands[1] = tiles('2p 6p 3t 7t 2m 8m 3p 5p 1t 9t ' + LOOSE)
+  st.hands[2] = tiles('5m 5m 5m 1p 4p 7p 2t 5t 8t E0 ' + LOOSE)
+  st.hands[3] = tiles('3p 8p 4t 9t 1m 7m E0 2p 6t 6p ' + LOOSE)
+  st = act(st, 0, { type: 'discard', tile: '5m' }).st
+  assert.ok(st.claim.options[2].kong)
+  for (const o of Object.keys(st.claim.options)) if (+o !== 2) st = act(st, +o, { type: 'pass' }).st
+  st = act(st, 2, { type: 'kong' }).st
+  assert.equal(st.melds[2][0].t, 'mkong')
+})
+t('吃：那一組記得吃來的是哪一張（畫面排中間），tiles 照舊排好序', () => {
+  let st = newGame({ seed: 5, cat: CAT, dealer: 0 })
+  st.hands[0] = tiles('3m 1p 4p 7p 2t 5t 8t 1m 9m 9p E0 ' + LOOSE)
+  st.hands[1] = tiles('4m 5m 1p 4p 7p 2t 5t 8t 9p E0 ' + LOOSE)
+  st.hands[2] = tiles('2p 6p 3t 7t 2m 8m 3p 5p 1t 9t ' + LOOSE)
+  st.hands[3] = tiles('3p 8p 4t 9t 1m 7m E0 2p 6t 6p ' + LOOSE)
+  st = act(st, 0, { type: 'discard', tile: '3m' }).st
+  assert.deepEqual(st.claim.options[1].chi, [['4m', '5m']])
+  for (const o of Object.keys(st.claim.options)) if (+o !== 1) st = act(st, +o, { type: 'pass' }).st
+  st = act(st, 1, { type: 'chi', tiles: ['4m', '5m'] }).st
+  assert.deepEqual(st.melds[1][0].tiles, ['3m', '4m', '5m'])
+  assert.equal(st.melds[1][0].take, '3m')
+})
 t('MIGI：只有自己前兩手、沒人鳴牌、打完要聽', () => {
   let st = newGame({ seed: 5, cat: CAT, dealer: 0 })
   st.hands[0] = tiles('1m 2m 3m 4m 5m 6m 7m 8m 9m 1p 1p 1p 2t 3t 4t E0 9p')
@@ -283,7 +322,9 @@ t('亂打 600 局', () => {
       const res = act(st, s, a)
       if (!res.ok) throw new Error(`第 ${g} 局 ${s} 號 ${JSON.stringify(a)} 被拒：${res.error}`)
       st = res.st
+      /* 加槓等別人決定要不要搶槓胡時，那一張暫時在 claim 裡（不在手上、也還沒疊上那一組）—— 2026-11-12 亂打第一次走到這一步 */
       const n = st.wall.length + st.hands.flat().length + st.melds.flat().reduce((x, m) => x + m.tiles.length, 0) + st.flowers.flat().length + st.discards.flat().length
+        + (st.phase === 'claim' && st.claim && st.claim.kind === 'rob' ? 1 : 0)
       if (n !== total) throw new Error(`第 ${g} 局牌數 ${n} ≠ ${total}`)
     }
     ends[st.result.type]++

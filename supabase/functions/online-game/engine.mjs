@@ -331,7 +331,8 @@ function doDiscard(st, s, tile, a) {
   openClaim(st, s, tile, 'discard')
 }
 
-/* 別家能不能要這張：胡（任何一家）、碰／明槓（任何一家）、吃（只有下家）。眼牌的人只能胡、而且自動胡 */
+/* 別家能不能要這張：胡（任何一家）、碰（任何一家）、明槓（上家打的不行）、吃（只有下家）。眼牌的人只能胡、而且自動胡
+   🆕 2026-11-12 使用者：「不能槓上家」—— d === 1 的那一家就是打牌那一家的下家，也就是說打牌的人是他的上家 ⇒ 不給槓（碰照舊） */
 function openClaim(st, from, tile, kind) {
   const options = {}
   const resp = {}
@@ -346,7 +347,7 @@ function openClaim(st, from, tile, kind) {
     c[k]--
     if (kind === 'discard' && !st.yan[o]) {
       if (c[k] >= 2) op.pong = true
-      if (c[k] >= 3 && st.wall.length > KEEP) op.kong = true
+      if (d !== 1 && c[k] >= 3 && st.wall.length > KEEP) op.kong = true
       if (d === 1 && !isHonor(k)) {
         const chi = []
         const r = rankOf(k)
@@ -404,7 +405,8 @@ function resolveClaim(st) {
   if (ch !== undefined) {
     const two = cl.resp[ch].tiles
     for (const t of two) removeN(st.hands[ch], t, 1)
-    st.melds[ch].push({ t: 'chi', tiles: sortTiles([...two, cl.tile]), from: cl.from })
+    /* tiles 照舊排好序（算台看 tiles[0] 是哪一順）；take ＝ 吃來的那一張，畫面用它把那張排在中間（2026-11-12 使用者） */
+    st.melds[ch].push({ t: 'chi', tiles: sortTiles([...two, cl.tile]), take: cl.tile, from: cl.from })
     st.log.push({ e: 'chi', s: ch, tiles: [...two], tile: cl.tile, from: cl.from })
     take(ch)
     st.phase = 'discard'
