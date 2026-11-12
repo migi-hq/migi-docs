@@ -1,5 +1,23 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-12 增補 186（歸檔 `2026-11-12_好友練習賽公開佇列.sql`）
+> **基準：`sql/applied/` 有 503 個檔案**。驗證 8/8 ＋ 行為 9/9（`sql/checks/2026-11-12_驗好友練習賽公開佇列.sql`），提交後查過線上；行為測試回滾後沒有留下任何樣本。線上：表 85、policy 33 不變，函式 464 → **467**（+3）。
+> · 🆕 `friendly_games.is_public`（預設 false）＋ 約束 `friendly_games_public_online_check`（公開的一定是線上開打）；
+>   `friendly_game_players.join_source` 多一個值 `queue`（從佇列加入，跟邀請連結的 `link` 分開）
+> · 🆕 `_friendly_join(game, source)`：加入的本體（原本寫在 `join_friendly_game_tx` 裡，一字不改搬過來）；從佇列加入時那一場不是公開的 ⇒ 回 `not_found`。前端叫不到
+>   ✏️ `join_friendly_game_tx(token)` 改成找到那一場就交給本體（簽名不變）。🔴 **以後改「加入好友練習賽」的規則改 `_friendly_join`**
+> · 🆕 `join_public_friendly_tx(game)` 從佇列加入；`list_friendly_queue_tx()` 佇列清單（公開、線上、等人中、沒過開打時間、我不在裡面、沒封鎖、未滿；欄位照配桌清單取名）。兩支開給 authenticated
+> · ✏️ `create_friendly_game_tx` 多一個參數 `p_public boolean default false`（放最後；DROP 重建、GRANT 補回）；`_friendly_view` 多回 `is_public`
+>
+
+> ### 🆕 2026-11-12 增補 185（歸檔 `2026-11-12_線上開打30分鐘沒動作就收掉.sql`）
+> **基準：`sql/applied/` 有 502 個檔案**。驗證 9/9（含拿卡住的那一場做正負對照，測完退回），提交後查過線上。線上：表 85、policy 33 不變，函式 462 → **464**（+2）。
+> · 🆕 `_friendly_last_active(game)`：一場好友練習賽最後一次有動靜的時間 ＝ 開打時間、計分板的局、線上的動作（`online_hands.updated_at`，電腦代打也算）取最晚。
+>   🆕 `_friendly_idle_limit(mode)`：`online` 30 分鐘、其餘 6 小時。兩支都只給內部用（前端叫不到）
+> · ✏️ `sweep_friendly_tx` 第 ③ 段改用上面兩支：線上開打 30 分鐘沒動作就收（計分板維持 6 小時，算法逐場比對跟原本一樣）；
+>   作廢時的通知字依玩法不同。簽名不變，授權沒動
+>
+
 > ### 🆕 2026-11-11 增補 184（歸檔 `2026-11-11_刪掉舊的加電腦對手函式.sql`）
 > **基準：`sql/applied/` 有 501 個檔案**。驗證 4/4，提交後查過線上。線上：表 85、policy 33 不變，函式 463 → **462**（−1）。
 > · 🗑 `add_friendly_bots_tx(game, count)` 刪掉了（一次加幾位、照固定順序加）。加電腦對手只剩 `add_friendly_bot_tx(game, bear)`（指定哪一隻）一支。
