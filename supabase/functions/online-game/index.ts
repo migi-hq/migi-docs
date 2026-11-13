@@ -18,6 +18,7 @@
      { "op": "tick" }                                   時間到了請後端處理（逾時代打、自動開下一局）
      { "op": "next" }                                   現在就開下一局／下一將
      { "op": "bust", "amount": 500 }                    爆卡的人決定：> 0 追加積分，0 結束整場
+     { "op": "emote", "code": "nice" }                  送一個小熊表情（另外三家在那一家名牌下面看到）
 
    ── 部署 ────────────────────────────────────────────
    原始碼是三支（為了能各自測試）：index.ts（這一支）、core.mjs（流程）、engine.mjs（牌局規則）。
@@ -70,6 +71,7 @@ const db = {
   commit: (a: Record<string, unknown>) => rpc('online_commit_tx', a),
   bustDecide: (a: Record<string, unknown>) => rpc('online_bust_decide_tx', a),
   setAuto: (a: Record<string, unknown>) => rpc('online_set_auto_tx', a),
+  emote: (a: Record<string, unknown>) => rpc('online_emote_tx', a),
 }
 
 /* 洗牌的種子與骰子用系統的亂數（不是 Math.random —— 那個猜得出來） */

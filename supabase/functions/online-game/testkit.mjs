@@ -103,6 +103,16 @@ export function fakeDb({ planned = 1, base = 50, unit = 20, start = 2000, flower
       D.presence[a.p_seat] = { auto_since: null, ...(D.presence[a.p_seat] || {}), auto_on: !!a.p_on }
       return { ok: true, auto_on: !!a.p_on }
     },
+    /* 同 online_emote_tx：座位要有人、代碼格式、同一個座位 2 秒內只能送一次；只記最後一個與時間 */
+    async emote(a) {
+      a = json(a)
+      if (a.p_seat == null || !D.players.some((p) => p.seat === a.p_seat)) return { ok: false, reason: 'bad_seat' }
+      if (!/^[a-z]{2,16}$/.test(a.p_code || '')) return { ok: false, reason: 'bad_emote' }
+      const at = clock ? clock() : '2026-01-01T00:00:00.000Z', last = D.presence[a.p_seat] && D.presence[a.p_seat].emote_at
+      if (last && Date.parse(at) - Date.parse(last) < 2000) return { ok: false, reason: 'too_fast' }
+      D.presence[a.p_seat] = { auto_on: false, auto_since: null, ...(D.presence[a.p_seat] || {}), emote: a.p_code, emote_at: at }
+      return { ok: true, emote: a.p_code }
+    },
     async commit(a) {
       a = json(a)
       const h = D.ohands.find((x) => x.id === a.p_hand)

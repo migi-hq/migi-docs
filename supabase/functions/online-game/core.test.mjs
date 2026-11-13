@@ -169,6 +169,25 @@ await t('爆卡：只付得出剩下的、不能開下一局；別人不能替�
   assert.ok(z.stage === 'playing' || z.stage === 'game_over' || z.stage === 'round_over')
 })
 
+await t('小熊表情：別家讀得到、只收白名單、2 秒內不能連送', async () => {
+  let clk = Date.parse('2026-11-13T00:00:00Z')
+  const { db } = fakeDb({ clock: () => new Date(clk).toISOString() })
+  const now = 3_000_000
+  const v0 = await handle(db, me('m1'), { op: 'view' }, now, rand)
+  const seat = v0.me.seat
+  const a = await handle(db, me('m1'), { op: 'emote', code: 'nice' }, now, rand)
+  assert.equal(a.ok, true); assert.equal(a.presence[seat].emote, 'nice')
+  const other = await handle(db, me('m3'), { op: 'view' }, now, rand)
+  assert.equal(other.presence[seat].emote, 'nice', '別家讀得到我的表情')
+  assert.ok(other.presence[seat].emote_at, '要帶送出時間，畫面才知道是不是新的')
+  assert.equal((await handle(db, me('m1'), { op: 'emote', code: 'hack' }, now, rand)).reason, 'bad_emote')   // 格式對但不在白名單
+  clk += 1000
+  assert.equal((await handle(db, me('m1'), { op: 'emote', code: 'thanks' }, now, rand)).reason, 'too_fast')
+  clk += 1500
+  const b = await handle(db, me('m1'), { op: 'emote', code: 'thanks' }, now, rand)
+  assert.equal(b.ok, true); assert.equal(b.presence[seat].emote, 'thanks')   // 正對照：過了 2 秒照樣送得出去
+})
+
 await t('自己開電腦代打：另外三家的畫面看得到、自己出牌不會把它清掉、關得掉；逾時代打記在另一格', async () => {
   const { db, D } = fakeDb()
   let now = 2_000_000

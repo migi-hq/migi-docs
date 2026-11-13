@@ -13,6 +13,7 @@
      tick  時間到了請後端處理：逾時的人由電腦代打；一局打完超過一段時間自動開下一局
      next  不等了，現在就開下一局／下一將（任何一家按都可以）
      bust  爆卡的人決定：{ amount }（> 0 追加積分，0 結束整場）
+     emote 送一個小熊表情：{ code }（只收 EMOTES 裡的）
    ============================================================ */
 import { newGame, act, viewFor, autoAction, botMove } from './engine.mjs'
 
@@ -21,6 +22,8 @@ export const CLAIM_MS = 5000        // 別人打牌後要不要吃碰槓胡 5 �
 export const DEAL_MS = 7000         // 發牌動畫的時間：新的一局第一步多給這麼久
 export const ROUND_MS = 9000        // 開一將還要演兩次擲骰子：再多給這麼久
 export const NEXT_AFTER_MS = 15000  // 一局打完沒人按「下一局」，過這麼久自動開
+/* 小熊表情的代碼（2026-11-13）：讚啦、加油、快一點、好險、謝謝、拍謝。句子與小熊動作寫在 App 那一層；要加一個就兩邊一起加 */
+export const EMOTES = ['nice', 'cheer', 'hurry', 'close', 'thanks', 'sorry']
 
 const ms = (t) => (t ? new Date(t).getTime() : null)
 const iso = (n) => (n == null ? null : new Date(n).toISOString())
@@ -224,6 +227,18 @@ export async function handle(db, me, body, now, rand) {
     const r = await db.setAuto({ p_session: ctx.session.id, p_seat: seat, p_on: !!body.on })
     ctx = await db.ctx(ctx.session.id)
     return r && r.ok ? out() : out({ ok: false, reason: (r && r.reason) || 'auto_failed' })
+  }
+
+  /* 小熊表情（2026-11-13 使用者）：記在座位上（同電腦代打），另外三家重讀時在那一家名牌下面冒泡泡。
+     只收 EMOTES 裡的代碼；句子寫在 App（onlineTable.jsx 的 EMOTE_TEXT），這裡只管「是不是合法的那幾個」。
+     同一個座位 2 秒內只能送一次 —— 資料庫那支（online_emote_tx）自己擋 */
+  if (op === 'emote') {
+    const seat = seatOf(ctx, me.member_id)
+    const code = body && body.code
+    if (!EMOTES.includes(code)) return out({ ok: false, reason: 'bad_emote' })
+    const r = await db.emote({ p_session: ctx.session.id, p_seat: seat, p_code: code })
+    ctx = await db.ctx(ctx.session.id)
+    return r && r.ok ? out() : out({ ok: false, reason: (r && r.reason) || 'emote_failed' })
   }
 
   if (op === 'act') {
