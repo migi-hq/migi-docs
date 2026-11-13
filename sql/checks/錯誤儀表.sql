@@ -833,6 +833,20 @@ select 序, 項目, 內容 from (
            where ts.mode = 'friendly')
 
   union all
+  /* ㉓ 線上牌局的即時通話連得上嗎（2026-11-13 加）。
+        通話是手機直接互連，沒有開 Cloudflare 轉送（使用者 11-13 暫緩，怕被濫用刷卡）⇒ 部分行動網路／公共 Wi-Fi 的人之間會連不上。
+        每一對第一次連上或判定連不上，發起的那一方記一筆 voice_link（ok／ms／state）。
+        ⚠ 這一格是給「要不要開轉送」的數據，不是告警：失敗比例長期偏高（例如超過 15%）就該回頭評估開轉送（防線先做，見線上好友房.md） */
+  select 23, '㉓ 即時通話連線（近 7 天；失敗多就該評估開 Cloudflare 轉送）',
+         (select case when count(*) = 0 then '⚪ 近 7 天沒有人用過即時通話'
+                      else '連上 ' || count(*) filter (where props->>'ok' = 'true') || '　連不上 ' || count(*) filter (where props->>'ok' = 'false')
+                           || '（' || round(100.0 * count(*) filter (where props->>'ok' = 'false') / count(*)) || '%）'
+                           || coalesce('　連上平均 ' || round(avg((props->>'ms')::numeric) filter (where props->>'ok' = 'true') / 1000, 1) || ' 秒', '')
+                           || case when count(*) >= 10 and count(*) filter (where props->>'ok' = 'false') * 100 > count(*) * 15
+                                   then E'\n  ⚠ 連不上超過 15% —— 評估開 Cloudflare 轉送（開之前先做防線）' else '' end end
+            from app_events where event = 'voice_link' and created_at > now() - interval '7 days')
+
+  union all
   select 5, '⑤ 測試標記（修好前的歷史資料仍標成營運）',
          (select 'is_test=true ' || count(*) filter (where is_test)::text ||
                  '　is_test=false ' || count(*) filter (where not is_test)::text ||
