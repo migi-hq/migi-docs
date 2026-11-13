@@ -847,6 +847,19 @@ select 序, 項目, 內容 from (
             from app_events where event = 'voice_link' and created_at > now() - interval '7 days')
 
   union all
+  /* ㉔ 即時通話的轉送憑證發了多少（2026-11-14 加，Cloudflare 轉送開通前先做的防線）。
+        online_ice_log：每次 Edge Function 要發轉送憑證就記一筆（有沒有資格、為什麼沒有）。
+        ⚠ 轉送還沒開通時這一格只是用量參考（有資格也只拿到公開位址）；開通之後，單人次數暴增或被限次擋很多 ⇒ 有人在挖憑證，
+          緊急處理：到 Cloudflare 後台刪掉那把 TURN 金鑰（發出去的憑證立刻失效） */
+  select 24, '㉔ 即時通話轉送憑證（近 24 小時；開通轉送後單人暴增 ⇒ 可能有人在挖憑證）',
+         (select case when count(*) = 0 then '⚪ 近 24 小時沒有人要過轉送憑證'
+                 else '近 24 小時 ' || count(*) || ' 次（有資格 ' || count(*) filter (where eligible) || '）'
+                      || coalesce('　被限次擋 ' || nullif(count(*) filter (where reason = 'daily_limit'), 0), '')
+                      || '　單人最多 ' || (select max(n) from (select count(*) n from online_ice_log where created_at > now() - interval '24 hours' group by member_id) x) || ' 次'
+                      || case when count(*) filter (where reason = 'daily_limit') > 0 then E'\n  ⚠ 有人被限次擋下 —— 看是誰、是不是正常重新整理太多次' else '' end end
+            from online_ice_log where created_at > now() - interval '24 hours')
+
+  union all
   select 5, '⑤ 測試標記（修好前的歷史資料仍標成營運）',
          (select 'is_test=true ' || count(*) filter (where is_test)::text ||
                  '　is_test=false ' || count(*) filter (where not is_test)::text ||

@@ -1,5 +1,11 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-14 增補 188（歸檔 `2026-11-14_即時通話轉送憑證的防線.sql`）
+> **基準：`sql/applied/` 有 505 個檔案**。驗證 5/5 ＋ 行為 6/6（`sql/checks/2026-11-14_驗轉送憑證的防線.sql`），提交後查過線上；行為測試回滾後沒留下任何紀錄。線上：表 85 → **86**、函式 468 → **469**、policy 33 不變。
+> · 🆕 `online_ice_log`（每次 Edge Function 要發即時通話的轉送憑證就記一筆：org／session／member／eligible／reason）；RLS 開、0 policy ⇒ 前端讀寫不了
+> · 🆕 `online_ice_issue_tx(session, member)`：有資格 ＝ 進行中的線上牌局、自己坐著、同桌至少一個別的真人、24 小時內有資格不超過 30 次；不合格回原因（not_open／not_seated／no_humans／daily_limit），不是線上牌局回 not_online 且不記。只有 service_role 叫得動
+> · Cloudflare 轉送還沒開通（使用者暫緩）；這是開通前先做的防線，錯誤儀表 ㉔ 看發放量
+>
 > ### 🆕 2026-11-13 增補 187（歸檔 `2026-11-13_線上好友房_小熊表情.sql`）
 > **基準：`sql/applied/` 有 504 個檔案**。驗證 6/6，提交後查過線上。線上：表 85、policy 33 不變，函式 467 → **468**（+1）。
 > · 🆕 `online_seats.emote`（文字，最後一個表情的代碼）、`online_seats.emote_at`（送出時間）—— 只記最後一個，不留歷史
