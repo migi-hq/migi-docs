@@ -188,6 +188,16 @@ await t('小熊表情：別家讀得到、只收白名單、2 秒內不能連送
   assert.equal(b.ok, true); assert.equal(b.presence[seat].emote, 'thanks')   // 正對照：過了 2 秒照樣送得出去
 })
 
+await t('即時通話的連線資料：沒有轉送金鑰時退回公開位址', async () => {
+  const { db } = fakeDb()
+  await handle(db, me('m1'), { op: 'view' }, 4_000_000, rand)
+  const r = await handle(db, me('m1'), { op: 'ice' }, 4_000_000, rand)
+  assert.equal(r.ok, true)
+  assert.ok(Array.isArray(r.iceServers) && r.iceServers.length > 0)
+  assert.ok(JSON.stringify(r.iceServers).includes('stun:'))
+  assert.ok(!('table' in r), 'ice 只回連線資料，不帶牌桌畫面')
+})
+
 await t('自己開電腦代打：另外三家的畫面看得到、自己出牌不會把它清掉、關得掉；逾時代打記在另一格', async () => {
   const { db, D } = fakeDb()
   let now = 2_000_000

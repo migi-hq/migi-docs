@@ -113,6 +113,7 @@ export function fakeDb({ planned = 1, base = 50, unit = 20, start = 2000, flower
       D.presence[a.p_seat] = { auto_on: false, auto_since: null, ...(D.presence[a.p_seat] || {}), emote: a.p_code, emote_at: at }
       return { ok: true, emote: a.p_code }
     },
+    async iceServers() { return null },   // 假資料庫沒有 Cloudflare 金鑰 ⇒ 流程退回公開位址
     async commit(a) {
       a = json(a)
       const h = D.ohands.find((x) => x.id === a.p_hand)

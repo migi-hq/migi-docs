@@ -14,6 +14,7 @@
      next  不等了，現在就開下一局／下一將（任何一家按都可以）
      bust  爆卡的人決定：{ amount }（> 0 追加積分，0 結束整場）
      emote 送一個小熊表情：{ code }（只收 EMOTES 裡的）
+     ice   即時通話用的連線伺服器資料（回 { iceServers }；有設 Cloudflare 轉送金鑰才含轉送）
    ============================================================ */
 import { newGame, act, viewFor, autoAction, botMove } from './engine.mjs'
 
@@ -24,6 +25,8 @@ export const ROUND_MS = 9000        // 開一將還要演兩次擲骰子：再�
 export const NEXT_AFTER_MS = 15000  // 一局打完沒人按「下一局」，過這麼久自動開
 /* 小熊表情的代碼（2026-11-13）：讚啦、加油、快一點、好險、謝謝、拍謝。句子與小熊動作寫在 App 那一層；要加一個就兩邊一起加 */
 export const EMOTES = ['nice', 'cheer', 'hurry', 'close', 'thanks', 'sorry']
+/* 即時通話的公開位址伺服器（STUN，免費、不用帳號）：轉送金鑰還沒設、或 Cloudflare 那邊拿不到時用這份 ⇒ 大部分網路照樣直接互連 */
+export const FALLBACK_ICE = [{ urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.l.google.com:19302'] }]
 
 const ms = (t) => (t ? new Date(t).getTime() : null)
 const iso = (n) => (n == null ? null : new Date(n).toISOString())
@@ -239,6 +242,14 @@ export async function handle(db, me, body, now, rand) {
     const r = await db.emote({ p_session: ctx.session.id, p_seat: seat, p_code: code })
     ctx = await db.ctx(ctx.session.id)
     return r && r.ok ? out() : out({ ok: false, reason: (r && r.reason) || 'emote_failed' })
+  }
+
+  /* 即時通話（2026-11-13 使用者選 A：四支手機直接互連傳聲音，不經過收費的語音公司）。
+     這一支只發「連線用的伺服器資料」（ICE servers）：直接連不上時改走 Cloudflare 的轉送（TURN），轉送要短期憑證，金鑰只放在後端。
+     配對（誰跟誰連、交換連線位址）走牌桌本來就有的即時頻道，聲音本身不經過我們的伺服器，也不錄、不存 */
+  if (op === 'ice') {
+    const servers = await db.iceServers()
+    return { ok: true, iceServers: Array.isArray(servers) && servers.length ? servers : FALLBACK_ICE }
   }
 
   if (op === 'act') {

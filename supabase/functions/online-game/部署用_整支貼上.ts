@@ -23,6 +23,7 @@
      { "op": "next" }                                   現在就開下一局／下一將
      { "op": "bust", "amount": 500 }                    爆卡的人決定：> 0 追加積分，0 結束整場
      { "op": "emote", "code": "nice" }                  送一個小熊表情（另外三家在那一家名牌下面看到）
+     { "op": "ice" }                                    即時通話用的連線伺服器資料（有設 CF_TURN_KEY_ID／CF_TURN_KEY_TOKEN 才含轉送）
 
    ── 部署 ────────────────────────────────────────────
    原始碼是三支（為了能各自測試）：index.ts（這一支）、core.mjs（流程）、engine.mjs（牌局規則）。
@@ -818,6 +819,7 @@ const CORE = (() => {
        next  不等了，現在就開下一局／下一將（任何一家按都可以）
        bust  爆卡的人決定：{ amount }（> 0 追加積分，0 結束整場）
        emote 送一個小熊表情：{ code }（只收 EMOTES 裡的）
+       ice   即時通話用的連線伺服器資料（回 { iceServers }；有設 Cloudflare 轉送金鑰才含轉送）
      ============================================================ */
 
   const TURN_MS = 15000        // 出牌 15 秒（含莊家選豹子倍數）
@@ -827,6 +829,8 @@ const CORE = (() => {
   const NEXT_AFTER_MS = 15000  // 一局打完沒人按「下一局」，過這麼久自動開
   /* 小熊表情的代碼（2026-11-13）：讚啦、加油、快一點、好險、謝謝、拍謝。句子與小熊動作寫在 App 那一層；要加一個就兩邊一起加 */
   const EMOTES = ['nice', 'cheer', 'hurry', 'close', 'thanks', 'sorry']
+  /* 即時通話的公開位址伺服器（STUN，免費、不用帳號）：轉送金鑰還沒設、或 Cloudflare 那邊拿不到時用這份 ⇒ 大部分網路照樣直接互連 */
+  const FALLBACK_ICE = [{ urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.l.google.com:19302'] }]
 
   const ms = (t) => (t ? new Date(t).getTime() : null)
   const iso = (n) => (n == null ? null : new Date(n).toISOString())
@@ -1044,6 +1048,14 @@ const CORE = (() => {
       return r && r.ok ? out() : out({ ok: false, reason: (r && r.reason) || 'emote_failed' })
     }
 
+    /* 即時通話（2026-11-13 使用者選 A：四支手機直接互連傳聲音，不經過收費的語音公司）。
+       這一支只發「連線用的伺服器資料」（ICE servers）：直接連不上時改走 Cloudflare 的轉送（TURN），轉送要短期憑證，金鑰只放在後端。
+       配對（誰跟誰連、交換連線位址）走牌桌本來就有的即時頻道，聲音本身不經過我們的伺服器，也不錄、不存 */
+    if (op === 'ice') {
+      const servers = await db.iceServers()
+      return { ok: true, iceServers: Array.isArray(servers) && servers.length ? servers : FALLBACK_ICE }
+    }
+
     if (op === 'act') {
       const h = playing(ctx)
       const seat = seatOf(ctx, me.member_id)
@@ -1103,6 +1115,25 @@ const db = {
   bustDecide: (a: Record<string, unknown>) => rpc('online_bust_decide_tx', a),
   setAuto: (a: Record<string, unknown>) => rpc('online_set_auto_tx', a),
   emote: (a: Record<string, unknown>) => rpc('online_emote_tx', a),
+  iceServers,
+}
+
+/* 即時通話的轉送伺服器（Cloudflare Realtime TURN）：拿後端的金鑰換一份 24 小時有效的短期憑證給手機。
+   Secrets：CF_TURN_KEY_ID、CF_TURN_KEY_TOKEN（Cloudflare 後台 → Realtime → TURN Server 建一把 key 拿到的兩個值）。
+   沒設、或 Cloudflare 回錯 ⇒ 回 null，流程改用免費的公開位址（core.mjs 的 FALLBACK_ICE），大部分網路照樣通 */
+async function iceServers(): Promise<unknown[] | null> {
+  const id = Deno.env.get('CF_TURN_KEY_ID'), token = Deno.env.get('CF_TURN_KEY_TOKEN')
+  if (!id || !token) return null
+  try {
+    const r = await fetch(`https://rtc.live.cloudflare.com/v1/turn/keys/${id}/credentials/generate-ice-servers`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ ttl: 86400 }),
+    })
+    const j: any = await r.json().catch(() => null)
+    if (!r.ok || !j || !j.iceServers) { console.error('turn', r.status, JSON.stringify(j).slice(0, 200)); return null }
+    return Array.isArray(j.iceServers) ? j.iceServers : [j.iceServers]
+  } catch (e) {
+    console.error('turn', String(e)); return null
+  }
 }
 
 /* 洗牌的種子與骰子用系統的亂數（不是 Math.random —— 那個猜得出來） */

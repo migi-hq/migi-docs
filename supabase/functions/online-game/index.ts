@@ -19,6 +19,7 @@
      { "op": "next" }                                   現在就開下一局／下一將
      { "op": "bust", "amount": 500 }                    爆卡的人決定：> 0 追加積分，0 結束整場
      { "op": "emote", "code": "nice" }                  送一個小熊表情（另外三家在那一家名牌下面看到）
+     { "op": "ice" }                                    即時通話用的連線伺服器資料（有設 CF_TURN_KEY_ID／CF_TURN_KEY_TOKEN 才含轉送）
 
    ── 部署 ────────────────────────────────────────────
    原始碼是三支（為了能各自測試）：index.ts（這一支）、core.mjs（流程）、engine.mjs（牌局規則）。
@@ -72,6 +73,25 @@ const db = {
   bustDecide: (a: Record<string, unknown>) => rpc('online_bust_decide_tx', a),
   setAuto: (a: Record<string, unknown>) => rpc('online_set_auto_tx', a),
   emote: (a: Record<string, unknown>) => rpc('online_emote_tx', a),
+  iceServers,
+}
+
+/* 即時通話的轉送伺服器（Cloudflare Realtime TURN）：拿後端的金鑰換一份 24 小時有效的短期憑證給手機。
+   Secrets：CF_TURN_KEY_ID、CF_TURN_KEY_TOKEN（Cloudflare 後台 → Realtime → TURN Server 建一把 key 拿到的兩個值）。
+   沒設、或 Cloudflare 回錯 ⇒ 回 null，流程改用免費的公開位址（core.mjs 的 FALLBACK_ICE），大部分網路照樣通 */
+async function iceServers(): Promise<unknown[] | null> {
+  const id = Deno.env.get('CF_TURN_KEY_ID'), token = Deno.env.get('CF_TURN_KEY_TOKEN')
+  if (!id || !token) return null
+  try {
+    const r = await fetch(`https://rtc.live.cloudflare.com/v1/turn/keys/${id}/credentials/generate-ice-servers`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ ttl: 86400 }),
+    })
+    const j: any = await r.json().catch(() => null)
+    if (!r.ok || !j || !j.iceServers) { console.error('turn', r.status, JSON.stringify(j).slice(0, 200)); return null }
+    return Array.isArray(j.iceServers) ? j.iceServers : [j.iceServers]
+  } catch (e) {
+    console.error('turn', String(e)); return null
+  }
 }
 
 /* 洗牌的種子與骰子用系統的亂數（不是 Math.random —— 那個猜得出來） */
