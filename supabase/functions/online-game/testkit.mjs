@@ -113,7 +113,21 @@ export function fakeDb({ planned = 1, base = 50, unit = 20, start = 2000, flower
       D.presence[a.p_seat] = { auto_on: false, auto_since: null, ...(D.presence[a.p_seat] || {}), emote: a.p_code, emote_at: at }
       return { ok: true, emote: a.p_code }
     },
-    async iceServers() { return null },   // 假資料庫沒有 Cloudflare 金鑰 ⇒ 流程退回公開位址
+    iceTurn: null,                        // 測試要模擬「有 Cloudflare 金鑰」就設成一份假的轉送伺服器清單
+    async iceServers() { return db.iceTurn },   // 預設沒有金鑰 ⇒ 流程退回公開位址
+    /* 同 online_ice_issue_tx：要坐著、同桌有別的真人、24 小時內有資格不超過 30 次；每次都記（D.iceLog） */
+    async iceIssue(a) {
+      a = json(a)
+      D.iceLog = D.iceLog || []
+      const meP = D.players.find((p) => p.member_id === a.p_member)
+      let why = null
+      if (D.session.status !== 'open') why = 'not_open'
+      else if (!meP || meP.seat == null) why = 'not_seated'
+      else if (!D.players.some((p) => p.member_id !== a.p_member && !p.is_bot)) why = 'no_humans'
+      else if (D.iceLog.filter((x) => x.member === a.p_member && x.eligible).length >= 30) why = 'daily_limit'
+      D.iceLog.push({ member: a.p_member, eligible: !why, reason: why })
+      return { ok: true, eligible: !why, reason: why }
+    },
     async commit(a) {
       a = json(a)
       const h = D.ohands.find((x) => x.id === a.p_hand)

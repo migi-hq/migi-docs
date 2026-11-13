@@ -248,8 +248,12 @@ export async function handle(db, me, body, now, rand) {
      這一支只發「連線用的伺服器資料」（ICE servers）：直接連不上時改走 Cloudflare 的轉送（TURN），轉送要短期憑證，金鑰只放在後端。
      配對（誰跟誰連、交換連線位址）走牌桌本來就有的即時頻道，聲音本身不經過我們的伺服器，也不錄、不存 */
   if (op === 'ice') {
-    const servers = await db.iceServers()
-    return { ok: true, iceServers: Array.isArray(servers) && servers.length ? servers : FALLBACK_ICE }
+    /* 🔴 防線（2026-11-14）：轉送憑證只發給「坐在進行中的線上牌局、同桌有別的真人、24 小時內不超過 30 次」的人，
+       每一次都記一筆（online_ice_issue_tx）。不合格只給公開位址 —— 直接互連照樣能通，只是少數網路連不上 */
+    const r = await db.iceIssue({ p_session: ctx.session.id, p_member: me.member_id })
+    const servers = r && r.eligible ? await db.iceServers() : null
+    const turn = Array.isArray(servers) && servers.length > 0
+    return { ok: true, iceServers: turn ? servers : FALLBACK_ICE, turn, reason: (r && r.reason) || null }
   }
 
   if (op === 'act') {

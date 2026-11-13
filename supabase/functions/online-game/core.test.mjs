@@ -198,6 +198,26 @@ await t('即時通話的連線資料：沒有轉送金鑰時退回公開位址',
   assert.ok(!('table' in r), 'ice 只回連線資料，不帶牌桌畫面')
 })
 
+await t('轉送憑證的防線：有資格才給轉送；只有電腦對手不給；24 小時超過 30 次不給；每次都記', async () => {
+  const TURN = [{ urls: ['turn:turn.example:3478'], username: 'u', credential: 'c' }]
+  const { db, D } = fakeDb()                       // 四個都是真人
+  db.iceTurn = TURN
+  await handle(db, me('m1'), { op: 'view' }, 4_000_000, rand)
+  const a = await handle(db, me('m1'), { op: 'ice' }, 4_000_000, rand)
+  assert.equal(a.turn, true); assert.deepEqual(a.iceServers, TURN)
+  for (let i = 0; i < 29; i++) await handle(db, me('m1'), { op: 'ice' }, 4_000_000, rand)
+  const over = await handle(db, me('m1'), { op: 'ice' }, 4_000_000, rand)   // 第 31 次
+  assert.equal(over.turn, false); assert.equal(over.reason, 'daily_limit'); assert.ok(JSON.stringify(over.iceServers).includes('stun:'))
+  const other = await handle(db, me('m2'), { op: 'ice' }, 4_000_000, rand)   // 別人不受影響（限次是每個人各算）
+  assert.equal(other.turn, true)
+  assert.equal(D.iceLog.length, 32, '每一次都記一筆')
+  const b = fakeDb({ bots: 3 })                    // 只有我一個真人
+  b.db.iceTurn = TURN
+  await handle(b.db, me('m1'), { op: 'view' }, 4_000_000, rand)
+  const solo = await handle(b.db, me('m1'), { op: 'ice' }, 4_000_000, rand)
+  assert.equal(solo.turn, false); assert.equal(solo.reason, 'no_humans')
+})
+
 await t('自己開電腦代打：另外三家的畫面看得到、自己出牌不會把它清掉、關得掉；逾時代打記在另一格', async () => {
   const { db, D } = fakeDb()
   let now = 2_000_000

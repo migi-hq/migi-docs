@@ -74,9 +74,11 @@ const db = {
   setAuto: (a: Record<string, unknown>) => rpc('online_set_auto_tx', a),
   emote: (a: Record<string, unknown>) => rpc('online_emote_tx', a),
   iceServers,
+  iceIssue: (a: Record<string, unknown>) => rpc('online_ice_issue_tx', a),
 }
 
-/* 即時通話的轉送伺服器（Cloudflare Realtime TURN）：拿後端的金鑰換一份 24 小時有效的短期憑證給手機。
+/* 即時通話的轉送伺服器（Cloudflare Realtime TURN）：拿後端的金鑰換一份 3 小時有效的短期憑證給手機
+   （2026-11-14 從 24 小時縮短：大約一場牌局的長度，憑證被挖出來能濫用的時間也跟著縮短；誰拿得到由 online_ice_issue_tx 決定）。
    Secrets：CF_TURN_KEY_ID、CF_TURN_KEY_TOKEN（Cloudflare 後台 → Realtime → TURN Server 建一把 key 拿到的兩個值）。
    沒設、或 Cloudflare 回錯 ⇒ 回 null，流程改用免費的公開位址（core.mjs 的 FALLBACK_ICE），大部分網路照樣通 */
 async function iceServers(): Promise<unknown[] | null> {
@@ -84,7 +86,7 @@ async function iceServers(): Promise<unknown[] | null> {
   if (!id || !token) return null
   try {
     const r = await fetch(`https://rtc.live.cloudflare.com/v1/turn/keys/${id}/credentials/generate-ice-servers`, {
-      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ ttl: 86400 }),
+      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ ttl: 10800 }),
     })
     const j: any = await r.json().catch(() => null)
     if (!r.ok || !j || !j.iceServers) { console.error('turn', r.status, JSON.stringify(j).slice(0, 200)); return null }
