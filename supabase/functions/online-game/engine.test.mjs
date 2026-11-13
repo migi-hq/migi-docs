@@ -223,6 +223,23 @@ t('對家打的牌照樣能明槓', () => {
   st = act(st, 2, { type: 'kong' }).st
   assert.equal(st.melds[2][0].t, 'mkong')
 })
+/* 2026-11-13 使用者：「在牌桌區 3 張（碰下來的那一組），摸牌可以槓，但不能槓別家」 */
+t('碰下來的那一組：自己摸到第四張可以加槓', () => {
+  let st = newGame({ seed: 5, cat: CAT, dealer: 0 })
+  st.hands[0] = tiles('5m 9m 1p 4p 7p 2t 5t 8t 1m 9p 3p S0 W0 N0')   // 一組碰 9 萬 ＋ 14 張（第四張 9 萬在手上）
+  st.melds[0] = [{ t: 'pong', tiles: ['9m', '9m', '9m'], from: 2 }]
+  assert.deepEqual(optionsFor(st, 0).kongs, ['9m'])
+  assert.ok(act(st, 0, { type: 'kong', tile: '9m' }).ok)
+})
+t('碰下來的那一組：別家打出第四張不能拿來槓（也不能再碰）', () => {
+  let st = newGame({ seed: 5, cat: CAT, dealer: 0 })
+  st.hands[0] = tiles('9m 1p 4p 7p 2t 5t 8t 1m 9p 3p E0 ' + LOOSE)
+  st.hands[2] = tiles('2p 6p 3t 7t 2m 8m 3p 5p 1t 9t ' + 'S0 W0 N0')   // 對家：手上沒有 9 萬
+  st.melds[2] = [{ t: 'pong', tiles: ['9m', '9m', '9m'], from: 1 }]
+  st = act(st, 0, { type: 'discard', tile: '9m' }).st
+  const o2 = st.claim ? st.claim.options[2] : null
+  assert.ok(!(o2 && (o2.kong || o2.pong)), '碰下來的那組不能拿別家打的第四張來槓：' + JSON.stringify(o2))
+})
 t('吃：那一組記得吃來的是哪一張（畫面排中間），tiles 照舊排好序', () => {
   let st = newGame({ seed: 5, cat: CAT, dealer: 0 })
   st.hands[0] = tiles('3m 1p 4p 7p 2t 5t 8t 1m 9m 9p E0 ' + LOOSE)
