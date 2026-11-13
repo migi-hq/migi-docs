@@ -2329,7 +2329,13 @@ settled_at 09-03 15:18   ← 8 場全部同一個時間點
    最後一項最深：`revenue_type` 分桶 → 券只吃 `rem_fee` →
    等級折扣吃券折後的 `rem_fee`（150 → 券 −15 → 等級 −14 → 應付 201）。
 
-0.8 **`coupons.applies_to` 改成 `coupon_scope` 表**。
+0.8 ✅ **`coupons.applies_to` 改成規則表 —— 2026-10-01 就做完了**（2026-11-14 查證才發現這一條沒標）。
+   表名是 **`coupon_scopes`**（複數），`scope_type ∈ revenue_type | subcategory | product`，
+   計價核心 `_cart_pricing` 照它算；`applies_to` 由 `trg_coupons_applies_to_frozen` 凍結（寫入就報錯）。
+   📄 `sql/applied/2026-10-01_優惠券適用範圍改成規則表.sql`
+   ⏳ 只剩 contract：`pos_member_detail_tx` 還有兩處讀 `applies_to`，改讀 `_coupon_scope_label` 之後才能刪欄位。
+   ⇒ **發券後台可以直接開工**（後台「優惠券」那一頁仍是 `ready: false`）。
+   （以下為原始規劃，保留供對照。）
    促銷適用範圍不該是型別欄位而是規則：行銷每發明一種新範圍
    （聯名商品專用、週二飲料、段位解鎖限定品）就要改 CHECK、跑 migration、
    改 `checkout_tx` —— 等於「一個活動企劃 = 一次金流函式改版」。
