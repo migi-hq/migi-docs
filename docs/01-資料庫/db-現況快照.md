@@ -1,5 +1,14 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-13 增補 187（歸檔 `2026-11-13_線上好友房_小熊表情.sql`）
+> **基準：`sql/applied/` 有 504 個檔案**。驗證 6/6，提交後查過線上。線上：表 85、policy 33 不變，函式 467 → **468**（+1）。
+> · 🆕 `online_seats.emote`（文字，最後一個表情的代碼）、`online_seats.emote_at`（送出時間）—— 只記最後一個，不留歷史
+> · 🆕 `online_emote_tx(session, seat, code)`：座位要有人坐著、代碼格式 `^[a-z]{2,16}$`、同一個座位 2 秒內只能送一次（`too_fast`）；寫完 `_tbl_ping` 通知四支手機。只有 service_role（Edge Function `online-game`）叫得動
+>   合法代碼的白名單在 `core.mjs` 的 `EMOTES`（nice／cheer／hurry／close／thanks／sorry），句子在 App
+> · ✏️ `_online_ctx` 的 `presence` 每個座位多帶 `emote`、`emote_at`（其餘一字不改）
+> ⏳ 行為測試 `sql/checks/2026-11-13_驗小熊表情.sql` 會寫入再回滾，唯讀 MCP 跑不了，要在 Dashboard 跑
+>
+
 > ### 🆕 2026-11-12 增補 186（歸檔 `2026-11-12_好友練習賽公開佇列.sql`）
 > **基準：`sql/applied/` 有 503 個檔案**。驗證 8/8 ＋ 行為 9/9（`sql/checks/2026-11-12_驗好友練習賽公開佇列.sql`），提交後查過線上；行為測試回滾後沒有留下任何樣本。線上：表 85、policy 33 不變，函式 464 → **467**（+3）。
 > · 🆕 `friendly_games.is_public`（預設 false）＋ 約束 `friendly_games_public_online_check`（公開的一定是線上開打）；
