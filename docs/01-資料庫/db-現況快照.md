@@ -1,5 +1,12 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-14 增補 190（歸檔 `2026-11-14_發券後台.sql`）
+> **基準：`sql/applied/` 有 507 個檔案**。驗證 5/5，提交後查過線上（函式 472 → **477**、表 86 不變）；行為測試 `sql/checks/2026-11-14_驗發券後台.sql`。
+> · 🆕 `member_coupons.granted_by_staff_id`（誰發的，後端從登入身分填）、`grant_note`（發券備註，只有後台看得到）；11-14 之前發的 7 張是 null
+> · 🆕 `admin_list_coupons_tx()`（含發出／未使用／已用／過期張數、適用範圍）、`admin_upsert_coupon_tx(...)`（新增與編輯共用；🔴 已發出的券不能改折扣內容；舊分類 kind 由適用範圍推出來）、
+>   `admin_set_coupon_active_tx`（停用＝不能再發，已發出的照樣能用）、`admin_grant_coupon_tx(coupon, members[], qty, note)`（最多 200 位、每人 1～10 張；到期日在發券那一刻算好寫進每一張）、
+>   `admin_list_member_coupons_tx(coupon, status, limit)`；權限碼 `coupon.write`，全部只給 authenticated
+>
 > ### 🆕 2026-11-14 增補 189（歸檔 `2026-11-14_門市照片與地圖位置.sql`）
 > **基準：`sql/applied/` 有 506 個檔案**。驗證 5/5 ＋ 行為 12/12（`sql/checks/2026-11-14_驗門市照片與地圖位置.sql`），提交後查過線上；行為測試回滾後 Storage 0 個檔案、S01 沒被改到。線上：表 86 不變、函式 469 → **472**、public policy 33 不變、**storage policy 0 → 2**。
 > · 🆕 `_store_photo_writable(name)`：`can('store.write')` ＋ 路徑第一層是本機構某間門市的 id（Storage 規則用，authenticated 叫得動）
