@@ -582,8 +582,8 @@ select 序, 項目, 內容 from (
         ⚠ 判準刻意**不是「孤兒 > 0 就紅」** —— 換一次頭像就會留一個，
           那種檢查會永遠紅，而永遠紅的檢查會讓人學會忽略紅色
           （這個專案記過四次的症狀）。所以少量算正常累積。
-        ⚠ `store-photos` 目前**沒有寫入端**（全庫只有 `get_store_detail_tx`
-          讀 `stores.photos`），所以它的檔案一律不判孤兒，只印數量。 */
+        🆕 2026-11-14 `store-photos` 有寫入端了（管理後台「門市」頁）：沒有任何門市的 photos 指向它就算孤兒
+          （縮圖 `.s.` 照樣算在原圖身上）。後台拿掉照片時會順手刪檔，刪不掉的才會留在這裡。 */
   select 14, '⑭ Storage 用量與孤兒檔（換一次就留一個，沒有人在收）',
          case when (select count(*) from storage.objects) = 0
            then '⚪ 三個 bucket 全空（0 個檔案）—— 孤兒清理今天零成本，不要先做'
@@ -608,6 +608,9 @@ select 序, 項目, 內容 from (
                         when 'achievement-badges'
                           then not exists (select 1 from achievements a
                                             where a.badge_path = o.name and a.deleted_at is null)
+                        when 'store-photos'
+                          then not exists (select 1 from stores s
+                                            where s.photos ? regexp_replace(o.name, '\.s(\.(webp|jpg))$', '\1'))
                         else false end) as orphan
                  from storage.objects o
                 group by o.bucket_id)
