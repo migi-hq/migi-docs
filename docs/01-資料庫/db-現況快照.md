@@ -1,5 +1,10 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-14 增補 191（歸檔 `2026-11-14_收掉優惠券舊欄位applies_to.sql`）
+> **基準：`sql/applied/` 有 508 個檔案**。驗證 5/5，提交後查過線上（函式 477 → **476**）。待辦 0.8 到這裡全部收完。
+> · 🗑 `coupons.applies_to`（連同 `coupons_applies_to_check`）、觸發器 `trg_coupons_applies_to_frozen` 與它的函式 —— 適用範圍只剩規則表 `coupon_scopes`
+> · 改 `pos_member_detail_tx`：券不再回 `applies_to`（POS 從來沒讀它），其餘照舊；簽名不變、店員照樣叫得動
+>
 > ### 🆕 2026-11-14 增補 190（歸檔 `2026-11-14_發券後台.sql`）
 > **基準：`sql/applied/` 有 507 個檔案**。驗證 5/5，提交後查過線上（函式 472 → **477**、表 86 不變）；行為 14/14（`sql/checks/2026-11-14_驗發券後台.sql`，含「後台發的券在結帳計價真的折得到」正對照），回滾後券 5 張、發出 7 張，沒留下測試券。
 > · 🆕 `member_coupons.granted_by_staff_id`（誰發的，後端從登入身分填）、`grant_note`（發券備註，只有後台看得到）；11-14 之前發的 7 張是 null

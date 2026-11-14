@@ -2333,8 +2333,11 @@ settled_at 09-03 15:18   ← 8 場全部同一個時間點
    表名是 **`coupon_scopes`**（複數），`scope_type ∈ revenue_type | subcategory | product`，
    計價核心 `_cart_pricing` 照它算；`applies_to` 由 `trg_coupons_applies_to_frozen` 凍結（寫入就報錯）。
    📄 `sql/applied/2026-10-01_優惠券適用範圍改成規則表.sql`
-   ⏳ 只剩 contract：`pos_member_detail_tx` 還有兩處讀 `applies_to`，改讀 `_coupon_scope_label` 之後才能刪欄位。
-   ⇒ **發券後台可以直接開工**（後台「優惠券」那一頁仍是 `ready: false`）。
+   ✅ **2026-11-14 contract 也做完**：`applies_to` 欄位、凍結觸發器刪掉，`pos_member_detail_tx` 不再回傳它
+     （`sql/applied/2026-11-14_收掉優惠券舊欄位applies_to.sql`）。適用範圍只剩 `coupon_scopes` 一個答案。
+   ✅ **發券後台 2026-11-14 上線**（`sql/applied/2026-11-14_發券後台.sql` 5/5 ＋ 行為 14/14，`migi-admin` 優惠券頁）：
+     建券／發給會員／看發出去的；🔴 已發出的券不能改折扣內容（後端擋）；停用＝不能再發、已發出的照樣能用；
+     `member_coupons.granted_by_staff_id` 記誰發的。⏸ 自動發券（生日、每週）刻意還沒做，先手動發一陣子再定。
    （以下為原始規劃，保留供對照。）
    促銷適用範圍不該是型別欄位而是規則：行銷每發明一種新範圍
    （聯名商品專用、週二飲料、段位解鎖限定品）就要改 CHECK、跑 migration、
