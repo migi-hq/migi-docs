@@ -1,5 +1,14 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-14 增補 189（歸檔 `2026-11-14_門市照片與地圖位置.sql`）
+> **基準：`sql/applied/` 有 506 個檔案**。驗證 5/5 ＋ 行為 12/12（`sql/checks/2026-11-14_驗門市照片與地圖位置.sql`），提交後查過線上；行為測試回滾後 Storage 0 個檔案、S01 沒被改到。線上：表 86 不變、函式 469 → **472**、public policy 33 不變、**storage policy 0 → 2**。
+> · 🆕 `_store_photo_writable(name)`：`can('store.write')` ＋ 路徑第一層是本機構某間門市的 id（Storage 規則用，authenticated 叫得動）
+> · 🆕 storage 規則 `store_photos_insert`／`store_photos_delete`（bucket store-photos，只給 authenticated、只認上面那支）；不給 select／update（公開 bucket 走公開網址，改圖換新檔名）
+> · 🆕 `admin_set_store_photos_tx(id, photos jsonb)`：換整份照片清單（最多 8 張、路徑必須是 `<門市 id>/<uuid>.webp|jpg`、要真的已上傳），回傳 `removed` 讓後台刪檔
+> · 🆕 `admin_set_store_location_tx(id, lat, lng)`：兩個都空＝清掉；範圍限台灣（緯度 21～27、經度 118～123），四捨五入到 6 位
+> · 改 `admin_list_stores_tx` 多回 lat／lng／photos；`list_stores_tx` 多回 parking／photos（會員 App 門市抽屜用，anon 照舊叫得動）
+> · 錯誤儀表 ⑭：store-photos 開始算孤兒檔（沒有任何門市的 photos 指向它）
+>
 > ### 🆕 2026-11-14 增補 188（歸檔 `2026-11-14_即時通話轉送憑證的防線.sql`）
 > **基準：`sql/applied/` 有 505 個檔案**。驗證 5/5 ＋ 行為 6/6（`sql/checks/2026-11-14_驗轉送憑證的防線.sql`），提交後查過線上；行為測試回滾後沒留下任何紀錄。線上：表 85 → **86**、函式 468 → **469**、policy 33 不變。
 > · 🆕 `online_ice_log`（每次 Edge Function 要發即時通話的轉送憑證就記一筆：org／session／member／eligible／reason）；RLS 開、0 policy ⇒ 前端讀寫不了
