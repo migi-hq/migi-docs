@@ -1,5 +1,27 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-14 增補 193（歸檔 `2026-11-14_生日券發放與生日鎖.sql` ＋ `…_發券函式修正變數撞名.sql`）
+> **基準：`sql/applied/` 有 512 個檔案**。驗證 5/5 ＋ 修正 4/4，兩份都提交後查過線上。函式 476 → **477**（多 `pos_set_member_birthday_tx`）。
+> · 改 `admin_upsert_coupon_tx`：「免費 ＋ 指定當日暢打（`SVC-TBL-DAY`）」＝ 生日券（kind `birthday`），效期欄位不存；其他不參與折扣的商品照舊不准做免費券。回傳多 `kind`
+> · 改 `admin_grant_coupon_tx`：生日券逐人算效期（生日前後各 15 天，台北日期；過了生日 ＋15 天看明年；2/29 平年當 2/28）、逐人檢查資格
+>   （有生日／註冊滿 30 天／來店過＝有付款訂單或坐過非好友練習賽的場次／可用日在 60 天內／那一年沒發過），不符合的放 `skipped` 並寫原因；生日券每人一張。一般券回傳多 `skipped: []`
+> · 改 `set_my_birthday_tx`：生日填過就不能自己改（`birthday_locked`），填一樣的照回成功
+> · 🆕 `pos_set_member_birthday_tx(member, birthday)`：只有店員能叫，每次改寫一列 🆕 `member_birthday_changes`（RLS 開、0 policy）。⏳ POS 畫面還沒做
+> · 改 `admin_list_coupons_tx`（多回 `kind`）、`admin_list_member_coupons_tx`（多回 `valid_from`）
+> · 🔴 第一份讓發券函式多了 record 變數 `m`，跟「名單都存在嗎」那一句的表格別名 `m` 撞名 ⇒ **所有券都發不出去**，修正檔改名 `bm`。
+>   中間沒有人發券，沒有損失。驗證段只看「新版內容在不在」所以沒抓到 —— 修正檔的驗證段改成真的發一次
+>
+> ### 🆕 2026-11-14 增補 192（歸檔 `2026-11-14_檯費優惠擇優與生日券計價.sql` ＋ `…_修正鎖住檯費那一輪.sql`）
+> **基準：`sql/applied/` 有 510 個檔案**。驗證 7/7 ＋ 修正 3/3，兩份都提交後查過線上；行為 13/13（`sql/checks/2026-11-14_驗檯費優惠擇優與生日券計價.sql`）。函式數 476 不變。
+> · 🔴 **檯費只用一種優惠**：`_cart_pricing` 在券／牌咖團優惠（商人熊）／會員折扣三個裡挑折最多的；一樣大時用會員折扣，券要「嚴格比較多」才用。
+>   券只折檯費又沒比較多 ⇒ 結帳失敗並說明（券不會被用掉）；同時涵蓋餐飲的券 ⇒ 鎖住檯費重算一次、改折餐飲。
+>   餐飲券、商品券不再讓商人熊消失（推翻 11-01「選了券就走正常結帳」）。回傳多 `fee_choice`、`fee_options`
+> · 🆕 `coupons.kind` 可以是 `birthday`：免費送一份指定商品（當日暢打），那個商品不參與折扣也照送、只送一份，不算檯費優惠（不跟商人熊搶）
+> · 🆕 `member_coupons.valid_from`（幾時起能用，`_cart_pricing` 會擋）、`birthday_year` ＋ 唯一索引 `uq_member_coupons_birthday_year`（每人每年一張生日券）
+> · 改 `pos_quote_tx`：多回 `coupon_options`（每一張券這次單獨用能不能用、省多少、不能用的原因），報價失敗時也回；簽名不變
+> · 改 `pos_member_detail_tx`（券多回 `valid_from`、`kind`）、`get_wallet_tx`（券多回 `valid_from`）
+> · ⚠ 第一份**不能重跑**：它用字串取代替兩支清單函式加欄位，重跑會加第二次
+>
 > ### 🆕 2026-11-14 增補 191（歸檔 `2026-11-14_收掉優惠券舊欄位applies_to.sql`）
 > **基準：`sql/applied/` 有 508 個檔案**。驗證 5/5，提交後查過線上（函式 477 → **476**）。待辦 0.8 到這裡全部收完。
 > · 🗑 `coupons.applies_to`（連同 `coupons_applies_to_check`）、觸發器 `trg_coupons_applies_to_frozen` 與它的函式 —— 適用範圍只剩規則表 `coupon_scopes`
