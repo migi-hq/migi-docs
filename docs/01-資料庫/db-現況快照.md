@@ -1,5 +1,15 @@
 # MIGI 資料庫現況快照
 
+> ### 🆕 2026-11-18 增補 195（歸檔 `2026-11-18_同桌文字評價.sql`、`2026-11-18_萱設成名人玩家.sql`）
+> **基準：`sql/applied/` 有 515 個檔案**。驗證 8/8，提交後查過線上。函式 477 → **484**，表 87 → **88**。
+> · 新表 `member_reviews`（同桌文字評價）：`session_id`／`rater_id`／`target_id`／`good`／`body`（1～30 字）／`reported_at`／`removed_at`／`removed_by_staff_id`；
+>   唯一 `(session_id, rater_id, target_id)`；RLS 開、0 policy，前端與 anon 都碰不到表
+> · 新函式：會員 `set_review_tx(target, session, body)`（好評負評看讚／倒讚，空字串＝刪掉）、`list_member_reviews_tx(target, filter, before, limit)`（不回寫的人與門市）、
+>   `report_review_tx(review)`（只有被評的人）；後台 `admin_list_reviews_tx`、`admin_review_action_tx(review, remove|restore|dismiss)`（`can('review.write')`）；
+>   內部 `_review_text_problem`（禁字）、`_trg_vote_removed_drop_review`（讚／倒讚收回時刪留言，掛在 `member_likes`、`member_dislikes` 的 after delete）
+> · ⚠ 線上的檢字規則是舊版，修正版在 `pending/2026-11-18_評價檢字修正.sql`
+> · 資料：萱（11/17 加入那位）`legend_title = '名人玩家'`
+>
 > ### 🆕 2026-11-14 增補 194（歸檔 `2026-11-14_桌況回傳在座客人名字.sql`）
 > **基準：`sql/applied/` 有 513 個檔案**。驗證 4/4，提交後查過線上；函式數 477 不變。
 > · 改 `list_tables_tx`：每張桌多回 `player_names`（在座、沒離座的人，照座位再照入座時間；被隱藏的會員本來就是「隱藏的會員」）。
