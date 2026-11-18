@@ -7,7 +7,8 @@
 > · 新函式：會員 `set_review_tx(target, session, body)`（好評負評看讚／倒讚，空字串＝刪掉）、`list_member_reviews_tx(target, filter, before, limit)`（不回寫的人與門市）、
 >   `report_review_tx(review)`（只有被評的人）；後台 `admin_list_reviews_tx`、`admin_review_action_tx(review, remove|restore|dismiss)`（`can('review.write')`）；
 >   內部 `_review_text_problem`（禁字）、`_trg_vote_removed_drop_review`（讚／倒讚收回時刪留言，掛在 `member_likes`、`member_dislikes` 的 after delete）
-> · ⚠ 線上的檢字規則是舊版，修正版在 `pending/2026-11-18_評價檢字修正.sql`
+> · ✅ 檢字規則修正 `2026-11-18_評價檢字修正.sql` 已跑（10/10，提交後查過線上；基準 516 個檔案）——
+>   不再誤擋「值得信賴」「online」
 > · 資料：萱（11/17 加入那位）`legend_title = '名人玩家'`
 >
 > ### 🆕 2026-11-14 增補 194（歸檔 `2026-11-14_桌況回傳在座客人名字.sql`）
