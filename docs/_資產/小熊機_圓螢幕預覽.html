@@ -1,0 +1,344 @@
+<title>小熊機圓螢幕預覽</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* 版面：左邊一顆實體機（鋁殼、掛環、側鍵、466×466 圓螢幕），右邊是切換畫面與動作的控制區；窄螢幕時上下排。
+   螢幕本身永遠是黑底（AMOLED 黑色不發光、不耗電），外面的頁面才跟著淺色／深色主題。 */
+:root{
+  --bg:#FBF6F5; --fg:#2E2B2C; --muted:#726D69; --card:#FFFFFF; --line:#EADEDC;
+  --accent:#974B5F; --chip:#F5ECEA; --chip-on:#2E2B2C; --chip-on-fg:#FFFFFF;
+  --metal-1:#E9E6E4; --metal-2:#B9B4B1; --metal-3:#8E8986;
+  /* 螢幕裡的顏色：固定，不跟主題 */
+  /* 背蓋的顏色：固定（那是產品本身的顏色） */
+  --resin:#FAD6DC; --resin-2:#F3C3CC; --resin-ink:#2E2B2C; --resin-dim:#7A5560; --resin-line:rgba(46,43,44,.3);
+  --scr:#000000; --scr-fg:#FFF4F1; --scr-dim:#B9A9A6; --scr-pink:#FAD6DC; --scr-rose:#C2607A; --scr-ink:#2E2B2C; --scr-gold:#E8B89B;
+  --font: "Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --num: "SF Pro Rounded","Nunito","Noto Sans TC",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#1A1718; --fg:#F4ECEB; --muted:#A99F9C; --card:#242021; --line:#3A3334;
+  --accent:#F0A9B8; --chip:#2E292A; --chip-on:#F4ECEB; --chip-on-fg:#1A1718;
+  --metal-1:#8D8885; --metal-2:#5E5A58; --metal-3:#3F3C3B; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#1A1718; --fg:#F4ECEB; --muted:#A99F9C; --card:#242021; --line:#3A3334;
+  --accent:#F0A9B8; --chip:#2E292A; --chip-on:#F4ECEB; --chip-on-fg:#1A1718;
+  --metal-1:#8D8885; --metal-2:#5E5A58; --metal-3:#3F3C3B; color-scheme:dark }
+
+body{ background:var(--bg); color:var(--fg); font-family:var(--font); line-height:1.6;
+  padding-block:28px 48px; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); }
+.wrap{ max-width:980px; margin:0 auto; display:flex; flex-direction:column; gap:28px; }
+h1{ font-size:26px; line-height:1.25; margin:0; letter-spacing:.01em; text-wrap:balance; }
+.lead{ color:var(--muted); margin:6px 0 0; max-width:60ch; font-size:15px; }
+.main{ display:flex; gap:36px; align-items:flex-start; flex-wrap:wrap; }
+.devcol{ flex:0 0 auto; display:flex; flex-direction:column; align-items:center; gap:14px; margin:0 auto; }
+.ctl{ flex:1 1 320px; min-width:0; display:flex; flex-direction:column; gap:22px; }
+
+/* ── 實體機 ── */
+.device{ --d:340px; position:relative; width:calc(var(--d) + 44px); padding-top:46px; }
+.ring{ position:absolute; top:0; left:50%; width:44px; height:58px; margin-left:-22px; border-radius:22px;
+  border:7px solid var(--metal-2); box-sizing:border-box; }
+.lug{ position:absolute; top:34px; left:50%; width:34px; height:22px; margin-left:-17px; border-radius:8px 8px 0 0;
+  background:linear-gradient(var(--metal-1),var(--metal-2)); }
+.case{ position:relative; width:calc(var(--d) + 44px); height:calc(var(--d) + 44px); border-radius:50%;
+  background:conic-gradient(from 210deg, var(--metal-1), var(--metal-3), var(--metal-1), var(--metal-2), var(--metal-1));
+  box-shadow:0 18px 40px rgba(0,0,0,.22), inset 0 0 0 1px rgba(255,255,255,.25); display:grid; place-items:center; }
+.case::before{ content:""; position:absolute; inset:14px; border-radius:50%; background:#0b0a0a; }
+.btn-side{ position:absolute; right:-9px; width:13px; height:40px; border:0; padding:0; border-radius:4px; cursor:pointer;
+  background:linear-gradient(90deg,var(--metal-2),var(--metal-1)); }
+.btn-side:focus-visible, .chip:focus-visible, .act:focus-visible, .screen:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; }
+.btn-side.b1{ top:34%; } .btn-side.b2{ top:52%; }
+.screen{ position:relative; width:var(--d); height:var(--d); border-radius:50%; overflow:hidden; background:var(--scr);
+  cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.stage{ position:absolute; left:0; top:0; width:466px; height:466px; transform-origin:0 0; color:var(--scr-fg); font-family:var(--font); }
+.device.shake{ animation:shake .7s ease-in-out; }
+@keyframes shake{ 0%,100%{transform:rotate(0)} 15%{transform:rotate(-9deg)} 35%{transform:rotate(8deg)} 55%{transform:rotate(-6deg)} 75%{transform:rotate(4deg)} }
+.cap{ font-size:13px; color:var(--muted); text-align:center; max-width:340px; }
+
+/* ── 背面：非金屬背蓋，晶片封在裡面 ── */
+.case{ transition:transform .22s ease-in; }
+.device.turn .case{ transform:scaleX(0); }
+.back{ position:absolute; inset:14px; border-radius:50%; display:none; color:var(--resin-ink);
+  background:radial-gradient(circle at 35% 28%, var(--resin), var(--resin-2)); box-shadow:inset 0 0 0 2px rgba(255,255,255,.35), inset 0 -10px 24px rgba(151,75,95,.18); }
+.device.flip .back{ display:block; }
+.device.flip .screen{ visibility:hidden; }
+.device.flip .btn-side{ right:auto; left:-9px; background:linear-gradient(270deg,var(--metal-2),var(--metal-1)); }
+.back .brand{ position:absolute; left:0; right:0; top:11%; text-align:center; font-family:var(--num); font-weight:800; letter-spacing:.32em; font-size:15px; padding-left:.32em; }
+.back .zone{ position:absolute; left:50%; top:24%; width:46%; aspect-ratio:1; transform:translateX(-50%); border-radius:50%; border:2px dashed var(--resin-line);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; text-align:center; }
+.back .zone svg{ width:34%; height:auto; }
+.back .zone b{ font-size:14px; line-height:1.2; } .back .zone span{ font-size:11px; color:var(--resin-dim); line-height:1.3; }
+.back .tag{ position:absolute; left:50%; top:73%; transform:translateX(-50%); display:flex; align-items:center; gap:8px; white-space:nowrap; font-size:12px; color:var(--resin-dim); }
+.back .tag i{ width:22px; height:22px; border-radius:50%; border:2px dashed var(--resin-line); display:block; flex:0 0 auto; }
+.back .tag b{ color:var(--resin-ink); font-weight:700; }
+.back .no{ position:absolute; left:0; right:0; bottom:9%; text-align:center; font-family:var(--num); font-size:11px; letter-spacing:.14em; color:var(--resin-dim); font-variant-numeric:tabular-nums; }
+.usb{ position:absolute; left:50%; bottom:3px; width:30px; height:8px; margin-left:-15px; border-radius:4px; background:#2b2828; display:none; }
+.device.flip .usb{ display:block; }
+
+/* ── 螢幕內容（座標都是 466×466） ── */
+.glow{ position:absolute; left:83px; top:300px; width:300px; height:70px; border-radius:50%;
+  background:radial-gradient(closest-side, rgba(250,214,220,.34), rgba(250,214,220,0)); transition:opacity .4s; }
+.bear{ position:absolute; left:83px; top:92px; width:300px; height:300px; transform-origin:50% 88%; animation:breathe 3.2s ease-in-out infinite; transition:opacity .4s, filter .4s; }
+.bear img{ width:100%; height:100%; display:block; pointer-events:none; }
+@keyframes breathe{ 0%,100%{transform:scale(1,1)} 50%{transform:scale(1.025,.975)} }
+.bear.hop{ animation:hop .7s cubic-bezier(.3,1.6,.5,1); }
+@keyframes hop{ 0%{transform:translateY(0) scale(1,1)} 30%{transform:translateY(-46px) scale(.97,1.04)} 60%{transform:translateY(0) scale(1.06,.93)} 100%{transform:translateY(0) scale(1,1)} }
+.bear.dizzy{ animation:dizzy 1.4s ease-in-out; }
+@keyframes dizzy{ 0%,100%{transform:rotate(0)} 20%{transform:rotate(-14deg)} 45%{transform:rotate(12deg)} 70%{transform:rotate(-7deg)} }
+.bear.wave{ animation:wave 1.1s ease-in-out infinite; }
+@keyframes wave{ 0%,100%{transform:rotate(-4deg)} 50%{transform:rotate(4deg)} }
+.bear.nap{ animation:nap 4.5s ease-in-out infinite; filter:brightness(.72); }
+@keyframes nap{ 0%,100%{transform:scale(1,1) rotate(-3deg)} 50%{transform:scale(1.03,.96) rotate(-3deg)} }
+
+.arc{ position:absolute; inset:0; transform:rotate(-90deg); transition:opacity .4s; }
+.arc circle{ fill:none; stroke-width:8; stroke-linecap:round; }
+.arc .trk{ stroke:rgba(255,244,241,.12); } .arc .val{ stroke:var(--scr-pink); transition:stroke-dashoffset .8s ease; }
+
+.top{ position:absolute; left:0; right:0; top:44px; text-align:center; transition:opacity .4s; }
+.clock{ font-family:var(--num); font-size:40px; font-weight:700; letter-spacing:.02em; font-variant-numeric:tabular-nums; line-height:1; }
+.sub{ font-size:17px; color:var(--scr-dim); margin-top:6px; }
+.bot{ position:absolute; left:0; right:0; bottom:44px; display:flex; justify-content:center; gap:10px; transition:opacity .4s; }
+.pill{ display:inline-flex; align-items:center; gap:6px; height:38px; padding:0 14px; border-radius:19px; font-size:18px; font-weight:600;
+  background:rgba(250,214,220,.16); color:var(--scr-fg); white-space:nowrap; }
+.pill img{ width:24px; height:24px; }
+.pill.solid{ background:var(--scr-pink); color:var(--scr-ink); }
+
+.msg{ position:absolute; left:58px; right:58px; top:52px; text-align:center; opacity:0; transform:translateY(-8px); transition:opacity .35s, transform .35s; pointer-events:none; }
+.msg.on{ opacity:1; transform:none; }
+.msg b{ display:block; font-size:30px; font-weight:800; line-height:1.2; }
+.msg span{ display:block; font-size:18px; color:var(--scr-dim); margin-top:6px; }
+.bubble{ position:absolute; left:50%; top:86px; transform:translateX(-50%) scale(.6); opacity:0; background:var(--scr-fg); color:var(--scr-ink);
+  font-size:20px; font-weight:700; padding:6px 16px; border-radius:18px; white-space:nowrap; transition:opacity .2s, transform .25s cubic-bezier(.3,1.6,.5,1); pointer-events:none; }
+.bubble.on{ opacity:1; transform:translateX(-50%) scale(1); }
+.fly{ position:absolute; width:64px; height:64px; left:201px; top:380px; opacity:0; pointer-events:none; }
+.fly.go{ animation:fly .75s cubic-bezier(.3,.1,.3,1) forwards; }
+@keyframes fly{ 0%{opacity:1; transform:translate(0,0) scale(1) rotate(0)} 70%{opacity:1; transform:translate(0,-150px) scale(.8) rotate(200deg)} 100%{opacity:0; transform:translate(0,-170px) scale(.2) rotate(260deg)} }
+.heart{ position:absolute; font-size:30px; color:var(--scr-pink); pointer-events:none; animation:rise 1s ease-out forwards; }
+@keyframes rise{ 0%{opacity:0; transform:translateY(0) scale(.5)} 20%{opacity:1} 100%{opacity:0; transform:translateY(-90px) scale(1.2)} }
+.zzz{ position:absolute; left:300px; top:120px; font-family:var(--num); font-weight:800; font-size:28px; color:var(--scr-dim); opacity:0; }
+.zzz.on{ animation:zzz 3s ease-in-out infinite; }
+@keyframes zzz{ 0%{opacity:0; transform:translate(0,0) scale(.7)} 30%{opacity:.9} 100%{opacity:0; transform:translate(26px,-50px) scale(1.2)} }
+
+/* 另一顆小熊機（碰一下加牌咖用） */
+.peer{ position:absolute; right:-8px; bottom:-14px; width:118px; height:118px; border-radius:50%; display:grid; place-items:center; opacity:0; pointer-events:none;
+  transform:translate(70px,50px); box-shadow:0 10px 24px rgba(0,0,0,.25);
+  background:conic-gradient(from 210deg, var(--metal-1), var(--metal-3), var(--metal-1), var(--metal-2), var(--metal-1)); }
+.peer::before{ content:""; position:absolute; inset:6px; border-radius:50%; background:#000; }
+.peer img{ position:relative; width:74%; }
+.peer.in{ animation:bump 1.5s ease-in-out forwards; }
+@keyframes bump{ 0%{opacity:0; transform:translate(70px,50px)} 35%{opacity:1; transform:translate(0,0)} 48%{transform:translate(-14px,-10px)} 60%{transform:translate(0,0)} 100%{opacity:1; transform:translate(0,0)} }
+.ripple{ position:absolute; inset:0; border-radius:50%; border:6px solid var(--scr-pink); opacity:0; pointer-events:none; }
+.ripple.go{ animation:ripple .9s ease-out; }
+@keyframes ripple{ 0%{opacity:.9; transform:scale(.3)} 100%{opacity:0; transform:scale(1)} }
+.prize{ position:absolute; left:163px; top:150px; width:140px; height:140px; border-radius:50%; overflow:hidden; opacity:0; transform:scale(.2); pointer-events:none;
+  box-shadow:0 0 0 6px var(--scr-pink), 0 0 50px rgba(250,214,220,.6); transition:opacity .25s, transform .45s cubic-bezier(.3,1.6,.5,1); }
+.prize.on{ opacity:1; transform:scale(1); }
+.prize img{ width:100%; height:100%; object-fit:cover; display:block; }
+.stage.up .arc .val{ stroke:var(--scr-gold); }
+.stage.up .pill.solid{ background:var(--scr-gold); }
+@media (max-width:440px){ .device{ --d:270px; } }
+
+/* 熄屏：只留時間，其餘全黑 */
+.stage.aod .bear, .stage.aod .glow, .stage.aod .bot, .stage.aod .arc, .stage.aod .sub{ opacity:0; }
+.stage.aod .top{ top:196px; } .stage.aod .clock{ color:#6f6563; font-weight:500; font-size:54px; }
+
+/* ── 控制區 ── */
+.grp h2{ font-size:13px; font-weight:700; letter-spacing:.08em; color:var(--muted); margin:0 0 10px; }
+.chips{ display:flex; flex-wrap:wrap; gap:8px; }
+.chip{ border:1px solid var(--line); background:var(--chip); color:var(--fg); font:inherit; font-size:15px; padding:8px 14px; border-radius:999px; cursor:pointer; }
+.chip[aria-pressed="true"]{ background:var(--chip-on); color:var(--chip-on-fg); border-color:var(--chip-on); }
+.acts{ display:flex; flex-wrap:wrap; gap:10px; }
+.act{ display:inline-flex; align-items:center; gap:8px; border:1px solid var(--line); background:var(--card); color:var(--fg); font:inherit; font-size:15px; font-weight:600;
+  padding:10px 16px; border-radius:14px; cursor:pointer; }
+.act img{ width:26px; height:26px; border-radius:50%; }
+.note{ background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px; }
+.note p{ margin:0; font-size:15px; } .note p + p{ margin-top:8px; }
+.note .k{ color:var(--accent); font-weight:700; }
+.facts{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px 24px; margin:0; padding:0; list-style:none; font-size:14px; color:var(--muted); }
+.facts b{ color:var(--fg); font-weight:600; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>小熊住進圓螢幕會長什麼樣子</h1>
+    <p class="lead">這是用 1.75 吋圓形螢幕（466 × 466）的比例畫的示意。螢幕上的小熊、餅乾都是現有 App 的圖；文字、數字是示範資料，不是任何會員的真實紀錄。</p>
+  </header>
+
+  <div class="main">
+    <div class="devcol">
+      <div class="device" id="device">
+        <div class="ring"></div><div class="lug"></div>
+        <div class="case">
+          <div class="screen" id="screen" role="button" tabindex="0" aria-label="小熊機螢幕，點一下摸摸小熊">
+            <div class="stage" id="stage">
+              <svg class="arc" viewBox="0 0 466 466" aria-hidden="true">
+                <circle class="trk" cx="233" cy="233" r="221"></circle>
+                <circle class="val" id="arc" cx="233" cy="233" r="221"></circle>
+              </svg>
+              <div class="top"><div class="clock" id="clock">21:07</div><div class="sub" id="sub">麻糬 · 第 12 天</div></div>
+              <div class="glow"></div>
+              <div class="bear" id="bear"><img src="bearkey/bear.webp" alt="MIGI 小熊"></div>
+              <div class="zzz" id="zzz">z z</div>
+              <div class="bubble" id="bubble"></div>
+              <img class="fly" id="fly" src="bearkey/cookie.webp" alt="">
+              <div class="prize" id="prize"><img src="bearkey/donut.webp" alt="甜甜圈"></div>
+              <div class="ripple" id="ripple"></div>
+              <div class="msg" id="msg"><b></b><span></span></div>
+              <div class="bot" id="bot"></div>
+            </div>
+          </div>
+          <div class="back" aria-hidden="true">
+            <div class="brand">MIGI</div>
+            <div class="zone">
+              <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M15 31a10 10 0 0 0 0-14"/><path d="M22 36a17 17 0 0 0 0-24"/><path d="M29 41a24 24 0 0 0 0-34"/></svg>
+              <b>感應付款區</b><span>一卡通或悠遊卡晶片<br>沒電也能刷</span>
+            </div>
+            <div class="tag"><i></i><span><b>手機碰這裡</b>　開會員 App</span></div>
+            <div class="no">NO. 0001</div>
+          </div>
+          <div class="usb" aria-hidden="true"></div>
+          <button class="btn-side b1" id="b1" aria-label="上側鍵：換下一個畫面"></button>
+          <button class="btn-side b2" id="b2" aria-label="下側鍵：熄屏或喚醒"></button>
+        </div>
+        <div class="peer" id="peer" aria-hidden="true"><img src="bearkey/bear.webp" alt=""></div>
+      </div>
+      <p class="cap">點螢幕摸摸小熊。右邊兩顆是實體側鍵：上面換畫面，下面熄屏。</p>
+    </div>
+
+    <div class="ctl">
+      <div class="grp">
+        <h2>畫面</h2>
+        <div class="chips" id="scenes"></div>
+      </div>
+      <div class="grp">
+        <h2>動作</h2>
+        <div class="acts">
+          <button class="act" id="feed"><img src="bearkey/cookie.webp" alt="">餵一個餅乾</button>
+          <button class="act" id="shake">搖一搖</button>
+          <button class="act" id="flip">翻到背面</button>
+        </div>
+      </div>
+      <div class="note" id="note"></div>
+      <ul class="facts">
+        <li><b>黑底不是為了好看。</b>這種螢幕黑色的地方不發光，底越黑越省電。</li>
+        <li><b>外圈那一圈是進度。</b>圓螢幕的邊剛好拿來畫「離下一階段還差多少」。</li>
+        <li><b>不顯示積分。</b>只顯示名次、場數、胡牌次數這類事件。</li>
+        <li><b>大小還沒確定。</b>外殼的直徑與厚度要等店家回覆，這裡不是實際尺寸。</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id) }
+  var stage = $('stage'), screen = $('screen'), device = $('device'), bear = $('bear'), bot = $('bot')
+  var msg = $('msg'), bubble = $('bubble'), fly = $('fly'), zzz = $('zzz'), arc = $('arc'), sub = $('sub'), note = $('note')
+  var peer = $('peer'), ripple = $('ripple'), prize = $('prize'), draws = 1
+  var C = 2 * Math.PI * 221, cookies = 12, cur = 'idle', aod = false, timers = []
+
+  function fit(){ stage.style.transform = 'scale(' + (screen.clientWidth / 466) + ')' }
+  window.addEventListener('resize', fit); fit()
+
+  function later(fn, ms){ timers.push(setTimeout(fn, ms)) }
+  function clearTimers(){ timers.forEach(clearTimeout); timers = [] }
+  function setArc(p){ arc.style.strokeDasharray = C; arc.style.strokeDashoffset = C * (1 - p) }
+  function pills(list){
+    bot.innerHTML = list.map(function(p){
+      return '<span class="pill' + (p.solid ? ' solid' : '') + '">' + (p.img ? '<img src="bearkey/' + p.img + '.webp" alt="">' : '') + p.t + '</span>'
+    }).join('')
+  }
+  function say(t, ms){ bubble.textContent = t; bubble.classList.add('on'); later(function(){ bubble.classList.remove('on') }, ms || 1400) }
+  function anim(cls, ms){ bear.classList.remove('hop','dizzy'); void bear.offsetWidth; bear.classList.add(cls); later(function(){ bear.classList.remove(cls) }, ms) }
+  function hearts(n){
+    for (var i = 0; i < n; i++) (function(i){
+      later(function(){
+        var h = document.createElement('div'); h.className = 'heart'; h.textContent = '♥'
+        h.style.left = (170 + Math.random() * 120) + 'px'; h.style.top = (150 + Math.random() * 40) + 'px'
+        stage.appendChild(h); setTimeout(function(){ h.remove() }, 1000)
+      }, i * 130)
+    })(i)
+  }
+  function showMsg(b, s){ msg.querySelector('b').textContent = b; msg.querySelector('span').textContent = s; msg.classList.add('on'); document.querySelector('.top').style.opacity = 0 }
+  function hideMsg(){ msg.classList.remove('on'); document.querySelector('.top').style.opacity = '' }
+
+  var SCENES = {
+    idle: { name: '平常', note: '<p><span class="k">平常的樣子。</span>小熊坐著呼吸，上面是時間與牠的名字，下面是段位與餅乾數。</p><p>外圈的粉色弧線是成長進度，示範的是「再打 3 場就長大一階」。</p>',
+      run: function(){ setArc(.8); sub.textContent = '麻糬 · 第 12 天'; pills([{ t: '銅牌熊 III' }, { t: String(cookies), img: 'cookie' }]) } },
+    game: { name: '剛打完一場', note: '<p><span class="k">店裡收桌的那一刻。</span>名次寫進系統，小熊機下次連上網就會跳出這個畫面，小熊跳一下，餅乾加一個。</p><p>這就是「小熊吃的是打牌紀錄」：不用另外按餵食，打牌本身就在養牠。</p>',
+      run: function(){ setArc(.8); showMsg('打完一場！', '第 2 名 · 自摸 3 次'); pills([{ t: '餅乾 +1', img: 'cookie', solid: true }])
+        later(function(){ anim('hop', 700); hearts(4) }, 350); later(function(){ setArc(.87); cookies++ }, 900) } },
+    match: { name: '配桌湊滿', note: '<p><span class="k">在家裡連著 Wi-Fi 時。</span>配桌湊滿了，小熊搖晃著提醒你。正式的通知仍然走 LINE，這顆是多一個看得到的地方。</p><p>出門在外沒有 Wi-Fi 時收不到，這一點要讓客人知道。</p>',
+      run: function(){ setArc(.8); showMsg('湊滿了！', '今晚 21:00 · 高雄自由店'); bear.classList.add('wave'); pills([{ t: '還有 2 小時', solid: true }]) } },
+    away: { name: '好久不見', note: '<p><span class="k">幾天沒來店裡。</span>小熊在打瞌睡，畫面暗一點，但牠不會生病也不會消失。</p><p>原版電子雞「不照顧就死掉」的做法不搬過來。客人一週來一兩次，懲罰只會讓人乾脆不養。</p>',
+      run: function(){ setArc(.8); showMsg('好久不見', '4 天沒一起打牌了'); bear.classList.add('nap'); zzz.classList.add('on'); pills([{ t: '點一下叫醒牠' }]) } },
+    grow: { name: '快長大了', note: '<p><span class="k">外圈快滿的時候。</span>這是讓人想再來一場的畫面：差一點點，而且看得到。</p><p>長成什麼樣子可以看這段時間怎麼打，例如常自摸、很少放槍、常跟新朋友配桌，各自養出不同的熊。這部分的規則還沒定。</p>',
+      run: function(){ setArc(.8); showMsg('就快長大了', '再打 1 場'); pills([{ t: '銅牌熊 III' }, { t: String(cookies), img: 'cookie' }]); later(function(){ setArc(.96) }, 300) } }
+  }
+  SCENES.buddy = { name: '碰一下加牌咖', note: '<p><span class="k">兩顆機器靠近，碰一下就成為牌咖。</span>不用開手機、不用在 App 裡找人。同桌打完互碰一下就好。</p><p>這是只有實體機做得到的事，而且要兩個人都有一顆才能玩。機器之間只交換「我是誰」，不轉移點數、餅乾或任何東西。</p>',
+    run: function(){ setArc(.8); showMsg('靠近另一顆', '碰一下就加牌咖'); pills([{ t: '尋找附近的小熊…' }])
+      later(function(){ peer.classList.add('in') }, 500)
+      later(function(){ ripple.classList.remove('go'); void ripple.offsetWidth; ripple.classList.add('go') }, 1150)
+      later(function(){ showMsg('成為牌咖了！', '阿凱 · 銅牌熊 II'); anim('hop', 700); hearts(5); pills([{ t: '牌咖 +1', solid: true }]) }, 1300) } }
+  SCENES.plate = { name: '桌上名牌與升段', note: '<p><span class="k">打牌時立在桌上當名牌。</span>名字、稱號、段位朝著同桌三個人，把 App 裡才看得到的身分搬到桌面上。</p><p>段位分跨過門檻的那一刻，外圈跑滿變成金色，小熊跳起來。示範會自動播一次升段。</p><p>只顯示段位，不顯示桌上的積分。</p>',
+    run: function(){ setArc(.92); showMsg('阿澤', '「新手上路」'); pills([{ t: '銅牌熊 I' }])
+      later(function(){ setArc(1) }, 1700)
+      later(function(){ stage.classList.add('up'); showMsg('升段了！', '銅牌熊 I → 銀牌熊 III'); anim('hop', 700); hearts(6); pills([{ t: '銀牌熊 III', solid: true }]) }, 2600) } }
+  SCENES.gacha = { name: '搖一搖抽獎', note: '<p><span class="k">拿起來用力搖就是抽獎。</span>板子裡有動作感測，搖的手感是手機 App 給不了的。按「搖一搖」試試。</p><p>抽到什麼由後端決定，機器只負責搖與顯示，所以改機器也改不了中獎結果。示範每天一次。</p>',
+    run: function(){ draws = 1; setArc(.8); showMsg('搖一搖抽獎', '今天還有 1 次'); pills([{ t: '用力搖', solid: true }]) } }
+  var ORDER = ['idle','game','match','away','grow','buddy','plate','gacha']
+
+  var BACK_NOTE = '<p><span class="k">背面。</span>背蓋改用不是金屬的材質，裡面封兩樣東西：上面大的是一卡通或悠遊卡晶片，搭捷運、刷超商、在 MIGI 櫃檯付款；下面小的是 MIGI 自己的感應貼片，手機碰一下就開會員 App。</p><p>兩片都不用電，小熊機沒電時照樣能刷。它們跟螢幕那一面互不相通，所以刷卡時小熊不會知道。</p><p>現在選的開發板是整顆鋁殼，金屬會擋感應，所以樣品階段做不成這個樣子，要等量產重新設計外殼。這裡沒有放卡片公司的商標，實際外觀要經過他們審核。</p>'
+  function setFlip(on, quick){
+    var was = device.classList.contains('flip'); if (was === on) return
+    function apply(){ device.classList.toggle('flip', on); $('flip').textContent = on ? '翻回正面' : '翻到背面'; note.innerHTML = on ? BACK_NOTE : SCENES[cur].note }
+    if (quick){ apply(); return }
+    device.classList.add('turn'); setTimeout(function(){ apply(); device.classList.remove('turn') }, 230)
+  }
+  function go(k){
+    setFlip(false, true)
+    clearTimers(); cur = k; aod = false; stage.classList.remove('aod')
+    hideMsg(); bubble.classList.remove('on'); zzz.classList.remove('on'); bear.classList.remove('wave','nap','hop','dizzy')
+    peer.classList.remove('in'); ripple.classList.remove('go'); prize.classList.remove('on'); stage.classList.remove('up'); bear.style.opacity = ''
+    SCENES[k].run(); note.innerHTML = SCENES[k].note
+    Array.prototype.forEach.call(document.querySelectorAll('#scenes .chip'), function(c){ c.setAttribute('aria-pressed', c.dataset.k === k ? 'true' : 'false') })
+  }
+  $('scenes').innerHTML = ORDER.map(function(k){ return '<button class="chip" data-k="' + k + '" aria-pressed="false">' + SCENES[k].name + '</button>' }).join('')
+  $('scenes').addEventListener('click', function(e){ var c = e.target.closest('.chip'); if (c) go(c.dataset.k) })
+
+  function wake(){ if (aod){ aod = false; stage.classList.remove('aod'); return true } return false }
+  function pet(){
+    if (wake()) return
+    if (cur === 'away'){ go('idle'); say('你來啦！', 1500); anim('hop', 700); hearts(3); return }
+    anim('hop', 700); hearts(2); say(['嘿嘿', '好癢', '再摸一下'][Math.floor(Math.random() * 3)])
+  }
+  screen.addEventListener('click', pet)
+  screen.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); pet() } })
+
+  $('flip').addEventListener('click', function(){ setFlip(!device.classList.contains('flip')) })
+  $('feed').addEventListener('click', function(){
+    setFlip(false, true); wake(); if (cur !== 'idle') go('idle')
+    if (cookies <= 0){ say('餅乾吃完了'); return }
+    fly.classList.remove('go'); void fly.offsetWidth; fly.classList.add('go')
+    later(function(){ cookies--; pills([{ t: '銅牌熊 III' }, { t: String(cookies), img: 'cookie' }]); anim('hop', 700); hearts(3); say('好吃！') }, 600)
+  })
+  $('shake').addEventListener('click', function(){
+    setFlip(false, true); wake(); device.classList.remove('shake'); void device.offsetWidth; device.classList.add('shake')
+    if (cur === 'gacha'){
+      if (draws <= 0){ later(function(){ say('明天再來', 1500) }, 500); return }
+      draws = 0
+      later(function(){ bear.style.opacity = .22; prize.classList.add('on'); showMsg('抽到了！', '甜甜圈 × 1'); hearts(5); pills([{ t: '明天再來' }]) }, 750)
+      return
+    }
+    later(function(){ anim('dizzy', 1400); say('頭好暈～', 1500) }, 250)
+  })
+  $('b1').addEventListener('click', function(){ go(ORDER[(ORDER.indexOf(cur) + 1) % ORDER.length]) })
+  $('b2').addEventListener('click', function(){
+    if (device.classList.contains('flip')) return
+    aod = !aod; stage.classList.toggle('aod', aod)
+    note.innerHTML = aod ? '<p><span class="k">熄屏。</span>只留一個暗暗的時間，其餘全黑。隨身的東西大部分時間都是這個狀態，電池才撐得久。點螢幕或再按一次側鍵就醒來。</p>' : SCENES[cur].note
+  })
+
+  function tick(){ var d = new Date(); $('clock').textContent = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) }
+  tick(); setInterval(tick, 20000)
+  go('idle')
+})()
+</script>
