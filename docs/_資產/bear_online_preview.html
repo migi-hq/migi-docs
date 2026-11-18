@@ -1,0 +1,509 @@
+<title>小熊吃餅乾</title>
+<style>
+:root{ --brand:#FAD6DC; --brand-tint:#FFF6F8; --accent:#E4879A; --ink:#2E2B2C; --gray-1:#5C5754; --gray-2:#726D69; --gray-4:#F2F0EE; --page:#FFFFFF; }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ color-scheme:dark; --ink:#F4F1EF; --gray-1:#C9C4C1; --gray-2:#A39E9B; --gray-4:#2B2829; --page:#161415; } }
+:root[data-theme="dark"]{ color-scheme:dark; --ink:#F4F1EF; --gray-1:#C9C4C1; --gray-2:#A39E9B; --gray-4:#2B2829; --page:#161415; }
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font-family:"Noto Sans TC",system-ui,sans-serif}
+.wrap{max-width:420px;margin:0 auto;padding-block:24px 48px;padding-inline:16px;display:grid;gap:14px}
+h1{font-size:20px;margin:0;font-weight:800}
+p{margin:0;color:var(--gray-1);font-size:14px;line-height:1.7}
+.card{background:var(--brand);border-radius:20px;padding:4px 16px 16px;text-align:center}
+.stage{position:relative;width:220px;height:220px;margin:0 auto;touch-action:pan-y;cursor:grab}
+.name{font-size:18px;font-weight:700;color:#2E2B2C;margin-top:4px}
+.btns{display:flex;gap:10px}
+button{flex:1;font:inherit;font-size:16px;font-weight:700;border:0;border-radius:999px;padding:13px 0;background:var(--ink);color:var(--page);cursor:pointer}
+button.ghost{flex:0 0 auto;padding:13px 18px;background:transparent;color:var(--ink);box-shadow:inset 0 0 0 2px var(--ink)}
+.b3-heart{position:absolute;top:34%;font-size:22px;line-height:1;color:var(--accent);opacity:0;animation:b3Heart 1.5s ease-out both;pointer-events:none}
+@keyframes b3Heart{0%{opacity:0;transform:translate(-50%,0) scale(.4)}20%{opacity:1;transform:translate(-50%,-14px) scale(1.15)}100%{opacity:0;transform:translate(-50%,-78px) scale(.9)}}
+ul{margin:0;padding-left:20px;color:var(--gray-1);font-size:14px;line-height:1.8}
+</style>
+<div class="wrap">
+  <h1>小熊吃餅乾（線上版本 72baade）</h1>
+  <p>按「餵一片」看吃東西的動作；點小熊的頭會跳、點身體會怕癢（雙手抱胸）、左右拖曳可以轉著看。</p>
+  <div class="card">
+    <div class="stage" id="stage"></div>
+    <div class="name">小熊</div>
+  </div>
+  <div class="btns">
+    <button id="feed">餵一片小熊餅乾</button>
+    <button class="ghost" id="again">再一次</button>
+  </div>
+  <ul>
+    <li>餅乾從前面飛進嘴巴（0.4 秒）</li>
+    <li>咬一口：頭點一下、臉頰鼓、瞇眼、噴幾顆餅乾屑</li>
+    <li>接著開心：跳一下、瞇眼笑、頭歪一下，冒一顆愛心</li>
+  </ul>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// 預覽頁專用：窗格隱藏時瀏覽器會暫停動畫，改用計時器推動，截圖才拍得到動作
+if (location.hash === '#timer') window.requestAnimationFrame = (cb) => setTimeout(() => cb(performance.now()), 16)
+/* 3D 養成小熊 Lv1（2026-11-06 使用者：「可以把他轉成 3D 且會動嗎」→ 選 A 程式蓋 →「接到養成小熊主頁」選 B）
+   用 three.js 的球體與曲面照 bear-lv1.webp 拼出來，沒有外部模型檔。
+   · 只由 lib/Bear3D.jsx 動態 import ⇒ three（壓縮後約 150 KB）只在打開養成小熊那一頁才下載
+   · three 鎖 0.128.0（package.json 寫死）：新版改了顏色管理與光的單位，畫出來的顏色會跑掉
+   · 預覽與調整紀錄：https://claude.ai/artifact/BXRZp6ksadUMTZcZbHp73t（同日依使用者意見改了十幾輪）
+   · 它是內容美術（只有會員 App 用）⇒ 顏色寫在這裡，不進 @migi/assets（硬規則 13）
+   ⚠ 只有 Lv1 有 3D；Lv10、Lv20 還是 2D 圖（rewards.jsx 的 BearStageImg） */
+
+// 顏色取自預設頭像（使用者 11-06 給的）：耳朵內側 #F6D8CB、眼睛鼻子 #593E33
+// 毛：頭像是 #FEF2EA → 使用者「太深」#FFF7F2 →「再肉一點」#FFEFE6 →「稍微白一點」#FFF2EB
+const FUR = 0xfff2eb, EAR = 0xf6d8cb, PINK = 0xe9a2a5, DARK = 0x593e33, PAD = 0xf6d8cb
+
+/* el：放畫布的容器（正方形）。回傳 { act(種類), dispose() }；不支援 WebGL 時丟錯，由呼叫端退回 2D 圖。
+   act：'jump' 跳一下｜'happy' 開心（餵食）｜'tickle' 怕癢（點身體）｜'wave' 揮手 */
+async function createBear3D(el, { font = 'system-ui, sans-serif' } = {}) {
+  /* ⚠ 不等字型（2026-11-06 使用者：「小熊讀取很慢」）：MIGI 先用現有字型畫，字型載好再重畫一次（見 bodyTex 底下） */
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })   // 不支援 WebGL 會在這裡丟錯
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
+  const cv = renderer.domElement
+  cv.style.display = 'block'; cv.style.width = '100%'; cv.style.height = '100%'
+  el.appendChild(cv)
+
+  const scene = new THREE.Scene()
+  const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 100)
+  camera.position.set(0, 2.15, 8.8)
+  camera.lookAt(0, 1.62, 0)
+
+  // 光的總量要讓正面剛好等於原色（量過：0.45 ＋ 0.45 暗 2%，0.5 ＋ 0.5 過曝成全白）
+  scene.add(new THREE.AmbientLight(0xffffff, 0.462))
+  const key = new THREE.DirectionalLight(0xffffff, 0.462); key.position.set(-1.5, 3, 8); scene.add(key)
+  const rim = new THREE.DirectionalLight(0xffe4ea, 0.12); rim.position.set(4, 2, -4); scene.add(rim)
+
+  // 三階平塗：亮面等於原色，側邊與背光只暗一點（使用者嫌膚色深，暗面從 185 提到 205）
+  const grad = new THREE.DataTexture(new Uint8Array([205, 236, 255]), 3, 1, THREE.LuminanceFormat)
+  grad.minFilter = grad.magFilter = THREE.NearestFilter; grad.needsUpdate = true
+  const disposables = [grad]
+  const toon = (c, map) => { const m = new THREE.MeshToonMaterial({ color: c, gradientMap: grad, map: map || null }); disposables.push(m); return m }
+
+  // 身體貼圖：毛色 ＋ 吊帶褲 ＋ MIGI（球面貼圖，正面在 u = 0.25）
+  const bodyTex = (() => {
+    const W = 1024, H = 512, c = document.createElement('canvas'); c.width = W; c.height = H
+    const x = c.getContext('2d')
+    const hex = (n) => '#' + n.toString(16).padStart(6, '0')
+    const draw = () => {
+    x.fillStyle = hex(FUR); x.fillRect(0, 0, W, H)
+    x.fillStyle = hex(PINK)
+    x.fillRect(0, H * 0.5, W, H * 0.5)                         // 褲子（下半身一圈）
+    const cx = W * 0.25
+    const r = 22, bx = cx - 100, by = H * 0.25, bw = 200, bh = H * 0.27
+    x.beginPath(); x.moveTo(bx, by + bh); x.lineTo(bx, by + r); x.quadraticCurveTo(bx, by, bx + r, by)
+    x.lineTo(bx + bw - r, by); x.quadraticCurveTo(bx + bw, by, bx + bw, by + r); x.lineTo(bx + bw, by + bh); x.fill()   // 胸前吊帶片
+    for (const s of [-1, 1]) {                                   // 前後吊帶
+      x.fillRect(cx + s * 78 - 14, 0, 28, by + 4)
+      x.fillRect(W * 0.75 + s * 70 - 14, 0, 28, H * 0.52)
+    }
+    x.fillStyle = hex(0xffffff); x.textAlign = 'center'; x.textBaseline = 'middle'
+    x.font = '700 50px ' + font
+    if ('letterSpacing' in x) x.letterSpacing = '5px'
+    x.fillText('MIGI', cx + 3, H * 0.405)
+    }
+    draw()
+    const t = new THREE.CanvasTexture(c); t.anisotropy = 4
+    disposables.push(t)
+    // 字型還在載的話，載好之後重畫一次 MIGI（不擋小熊出現）
+    try { if (document.fonts && document.fonts.status !== 'loaded') document.fonts.ready.then(() => { draw(); t.needsUpdate = true }) } catch { /* 讀不到就維持備用字 */ }
+    return t
+  })()
+
+  const ball = (r, mat, sx = 1, sy = 1, sz = 1, seg = 40) => {
+    const g = new THREE.SphereGeometry(r, seg, Math.round(seg * 0.75)); disposables.push(g)
+    const m = new THREE.Mesh(g, mat)
+    m.scale.set(sx, sy, sz); return m
+  }
+
+  const bodyParts = []   // 點到這些 ⇒ 怕癢；點到頭 ⇒ 跳一下
+  const root = new THREE.Group(); scene.add(root)     // 拖曳轉動
+  const bear = new THREE.Group(); root.add(bear)      // 跳、搖擺
+
+  // 身體
+  // 11-07 使用者：「身體稍微縮小」⇒ 0.86／0.74／0.78 先縮 6%（使用者：「怎麼感覺身體沒變」）→ 改縮 12%，
+  //   中心 0.72 → 0.65 讓屁股照樣坐在地上（底 ≈ 0）→ 使用者：「身體大一點」⇒ 改回縮約 6%（0.81／0.69／0.73，中心 0.69）
+  const body = new THREE.Group(); body.position.set(0, 0.69, 0); bear.add(body)
+  const torso = ball(1, toon(0xffffff, bodyTex), 0.81, 0.69, 0.73, 56); body.add(torso)
+  const tail = ball(0.17, toon(FUR)); tail.position.set(0, -0.24, -0.71); body.add(tail)
+  bodyParts.push(torso, tail)
+
+  // 腳（坐姿往前伸）
+  for (const s of [-1, 1]) {
+    const leg = new THREE.Group(); leg.position.set(s * 0.46, 0.3, 0.42); bear.add(leg)
+    const thigh = ball(0.3, toon(PINK), 1, 0.9, 1.15); thigh.position.set(0, 0.02, -0.08); leg.add(thigh)
+    const foot = ball(0.3, toon(FUR), 1.02, 0.98, 1.08); foot.position.set(0, -0.02, 0.22); leg.add(foot)
+    const pad = ball(0.13, toon(PAD), 1, 1.1, 0.35); pad.position.set(0, -0.04, 0.53); leg.add(pad)
+    bodyParts.push(thigh, foot, pad)
+  }
+
+  // 手（掛在肩膀，揮手時轉肩膀；貼著身體垂下來）。肩膀 1.12 → 1.24（使用者：「手臂要往上一點」）→ 1.34（11-07：「小熊肩膀再往上」）
+  const arms = []
+  /* 手臂由細到粗（11-07 使用者：「肩膀到手掌應該由細到粗，而不是一樣圓」）：
+     原本是一顆拉長的橢圓球，上下一樣粗 ⇒ 肩膀那頭看起來像跟臉黏在一起。
+     改成輪廓轉一圈（Lathe）：上端圓（肩膀）→ 外切線 → 下端大圓（手掌），兩個圓用公切線接起來，斜率連續所以沒有折痕。
+     ⚠ 第一版肩膀半徑 0.12、樞紐在身體外緣 ⇒ 使用者：「做壞了，仔細看原圖，肩膀到手臂很自然的曲線」——
+       原圖的肩膀藏在身體裡、手臂從身體上側順著輪廓往外往下長出來。
+       ⇒ 肩膀收進身體裡（樞紐 x 0.4），肩膀那頭不要太細（0.17），整隻往外斜（0.38）讓手掌落在身體外側 */
+  /* 手臂有弧度（11-07 使用者：「手臂太直了，可以有弧度嗎」）：整根彎成香蕉形 ——
+     肩膀往外斜出去（SH_TILT），手掌那頭再往身體收回來，順著肚子的弧度。
+     做法：每個頂點依「離肩膀多遠」t（0 肩膀 → 1 手掌）往內推 B·t²；法向量照推的斜率修正，光影才跟著彎。
+     左右手彎的方向相反 ⇒ 各做一份（不用負的縮放鏡射，那會把面翻過來） */
+  // 0.24、t² → 0.42、t^1.6（使用者：「手臂不夠彎」）—— 次方小一點，彎從手臂中段就開始，不是只有手掌那頭
+  const ARM_BEND = 0.42, ARM_POW = 1.6
+  const armGeo = (s) => {
+    const r1 = 0.17, y1 = -0.04, r2 = 0.24, y2 = -0.46
+    const a = Math.asin((r2 - r1) / (y1 - y2)), pts = []
+    for (let i = 0; i <= 10; i++) { const t = Math.PI / 2 - (Math.PI / 2 - a) * i / 10; pts.push(new THREE.Vector2(r1 * Math.cos(t), y1 + r1 * Math.sin(t))) }
+    for (let i = 1; i <= 16; i++) { const t = a - (a + Math.PI / 2) * i / 16; pts.push(new THREE.Vector2(r2 * Math.cos(t), y2 + r2 * Math.sin(t))) }
+    pts[0].x = 0; pts[pts.length - 1].x = 0
+    // 🔴 LatheGeometry 的點要「由下往上」排，面才朝外；上面是由上往下算的 ⇒ 反過來。
+    //   排反了面會朝內，從外面看只看到背面（不畫）⇒ 使用者：「手臂變透明的」
+    pts.reverse()
+    const g = new THREE.LatheGeometry(pts, 40); disposables.push(g)
+    const top = y1 + r1, L = top - (y2 - r2)
+    const pos = g.attributes.position, nor = g.attributes.normal
+    for (let i = 0; i < pos.count; i++) {
+      const y = pos.getY(i), t = Math.min(1, Math.max(0, (top - y) / L))
+      pos.setX(i, pos.getX(i) - s * ARM_BEND * Math.pow(t, ARM_POW))
+      // 往內推的量對 y 的斜率：d(−s·B·t^p)/dy ＝ s·B·p·t^(p−1) / L ⇒ 法向量 (nx, ny − nx·斜率) 再正規化
+      const k = s * ARM_BEND * ARM_POW * Math.pow(t, ARM_POW - 1) / L, nx = nor.getX(i), ny = nor.getY(i) - nx * k, nz = nor.getZ(i)
+      const m = Math.hypot(nx, ny, nz) || 1
+      nor.setXYZ(i, nx / m, ny / m, nz / m)
+    }
+    pos.needsUpdate = true; nor.needsUpdate = true
+    return g
+  }
+  // SH_Z：肩膀前後位置。收進身體之後抱胸（往前抬）的手會埋進肚子 ⇒ 往前移，手才抱得出來
+  // 11-07 使用者：「身體大一點，手往後一點」⇒ x 0.42 → 0.45、y 1.12 → 1.18（跟著身體變大），z 0.3 → 0.18
+  // SH_TILT 0.48 → 0.66：手臂彎回來之後手掌會往內縮，斜出去多一點，手掌才落在原本的位置
+  //   → 0.84（彎得更多之後手掌又往內縮，再斜出去一點）
+  const SH_X = 0.45, SH_Y = 1.18, SH_Z = 0.18, SH_TILT = 0.84  // 肩膀樞紐（身體裡）與手臂往外斜的角度
+  for (const s of [-1, 1]) {
+    const sh = new THREE.Group(); sh.position.set(s * SH_X, SH_Y, SH_Z); bear.add(sh)
+    // 身體縮小後肩膀跟著改（使用者：「肩膀跟臉黏在一起了」）—— 肩膀要在身體頂端底下、收在身體裡，寫死高度的話身體一縮就跑到臉上
+    const arm = new THREE.Mesh(armGeo(s), toon(FUR)); arm.scale.set(1, 1, 1.05); sh.add(arm)
+    bodyParts.push(arm)
+    sh.rotation.order = 'YXZ'   // 先往前抬（x）再往中間收（y）—— 抱胸要用；預設的 XYZ 會讓往中間收對垂著的手沒作用
+    sh.rotation.z = s * SH_TILT
+    sh.userData = { s, base: s * SH_TILT }
+    arms.push(sh)
+  }
+
+  // 頭（樞紐在脖子）：放大、往下壓到蓋住脖子；下半部往外鼓出臉頰（直接改球面頂點，不另外黏球 ⇒ 沒有接縫）
+  const neck = new THREE.Group(); neck.position.set(0, 1.42, 0); bear.add(neck)
+  const HC = new THREE.Vector3(0, 0.62, 0), HR = [1.07, 0.9, 0.96]   // 寬 1.16 → 1.1 → 1.07（使用者兩次說臉太寬）
+  // 臉頰：ny -1 下巴 ～ 1 頭頂。0.13 → 0.06（太寬）→ 再瘦、往下垂：鼓起的中心從 -0.32 移到 -0.58、範圍收窄
+  const cheek = (ny) => 1 + 0.05 * Math.exp(-(((ny + 0.58) / 0.36) ** 2))
+  const headGeo = new THREE.SphereGeometry(1, 64, 48); disposables.push(headGeo)
+  { const p = headGeo.attributes.position
+    for (let i = 0; i < p.count; i++) { const f = cheek(p.getY(i)); p.setX(i, p.getX(i) * f); p.setZ(i, p.getZ(i) * (1 + (f - 1) * 0.6)) }
+    headGeo.computeVertexNormals() }
+  const head = new THREE.Mesh(headGeo, toon(FUR)); head.scale.set(...HR); head.position.copy(HC); neck.add(head)
+  const onHead = (x, y, push = 0) => {
+    const ny = (y - HC.y) / HR[1], f = cheek(ny), xu = x / (HR[0] * f)
+    return new THREE.Vector3(x, y, HR[2] * (1 + (f - 1) * 0.6) * Math.sqrt(Math.max(1 - xu * xu - ny * ny, 0)) + push)
+  }
+  const ears = []
+  for (const s of [-1, 1]) {
+    const e = new THREE.Group(); e.position.set(s * 0.67, HC.y + 0.47, -0.12); neck.add(e)   // 樞紐在耳根
+    e.rotation.z = -s * 0.25
+    const outer = ball(0.32, toon(FUR), 1, 1, 0.62); outer.position.y = 0.18; e.add(outer)
+    const inner = ball(0.19, toon(EAR), 1, 1, 0.4); inner.position.set(-s * 0.03, 0.15, 0.17); e.add(inner)
+    e.userData = { s, base: -s * 0.25 }
+    ears.push(e)
+  }
+  const eyes = []
+  for (const s of [-1, 1]) {
+    // 正圓、往中間：扁圓片面向正前方。⚠ 不要用 lookAt —— 它吃世界座標，傳頭裡的座標會把眼睛轉成朝斜下看（從正面看變扁）
+    const e = ball(0.072, toon(DARK), 1, 1, 0.45, 28); neck.add(e)
+    e.position.copy(onHead(s * 0.34, HC.y - 0.12)).add(new THREE.Vector3(0, 0, 0.005))
+    e.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(s * 0.12, -0.05, 1).normalize())
+    eyes.push(e)
+  }
+  // 鼻子：圓潤的扁倒三角（四段平滑曲線，左右對稱：上緣微拱 → 圓肩 → 收到圓圓的下尖），壓出一點厚度、邊緣倒圓
+  // 🗑 試過「三角形 ＋ 圓角 ＋ 每條邊外鼓」：接縫處起伏，邊緣凹凸像一朵雲
+  {
+    const W = 0.118, sh = new THREE.Shape()
+    sh.moveTo(-W * 0.7, 0.05)
+    sh.bezierCurveTo(-W * 0.3, 0.07, W * 0.3, 0.07, W * 0.7, 0.05)
+    sh.bezierCurveTo(W * 1.08, 0.033, W * 1.02, -0.012, W * 0.62, -0.042)
+    sh.bezierCurveTo(W * 0.34, -0.064, W * 0.17, -0.072, 0, -0.072)
+    sh.bezierCurveTo(-W * 0.17, -0.072, -W * 0.34, -0.064, -W * 0.62, -0.042)
+    sh.bezierCurveTo(-W * 1.02, -0.012, -W * 1.08, 0.033, -W * 0.7, 0.05)
+    const geo = new THREE.ExtrudeGeometry(sh, { depth: 0.01, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.02, bevelSegments: 6, curveSegments: 16 })
+    disposables.push(geo)
+    const nose = new THREE.Mesh(geo, toon(DARK))
+    nose.scale.setScalar(0.82)
+    nose.position.copy(onHead(0, HC.y - 0.25, -0.012))
+    nose.rotation.x = 0.3   // 順著臉的斜度：上緣要往前（反過來會讓上緣埋進臉裡）
+    neck.add(nose)
+  }
+
+  // 吃東西用的小熊餅乾（平常藏著）：圓餅 ＋ 兩隻耳朵 ＋ 幾顆深色的點，面向鏡頭；顏色同頂條飛餅乾的餅乾屑
+  const COOKIE = 0xe9c49a, COOKIE_DK = 0xc98f5a
+  const snack = new THREE.Group(); snack.visible = false; bear.add(snack)
+  {
+    const disc = (r, h, c) => { const g = new THREE.CylinderGeometry(r, r, h, 36); disposables.push(g); const m = new THREE.Mesh(g, toon(c)); m.rotation.x = Math.PI / 2; return m }
+    snack.add(disc(0.2, 0.07, COOKIE))
+    for (const s of [-1, 1]) { const e = disc(0.075, 0.07, COOKIE); e.position.set(s * 0.15, 0.15, 0); snack.add(e) }
+    for (const [x, y] of [[-0.07, 0.05], [0.07, 0.05], [0, -0.06]]) { const d = ball(0.025, toon(COOKIE_DK), 1, 1, 0.5, 12); d.position.set(x, y, 0.04); snack.add(d) }
+  }
+  // 餅乾屑：咬一口噴幾顆，往下掉、淡出
+  const crumbs = []
+  for (let i = 0; i < 12; i++) {
+    const m = ball(0.03, toon(i % 3 ? COOKIE : COOKIE_DK), 1, 1, 1, 8); m.visible = false; bear.add(m)
+    crumbs.push({ m, v: new THREE.Vector3(), life: 0 })
+  }
+  let crumbNext = 0
+  const spray = (at) => {
+    for (let k = 0; k < 4; k++) {
+      const c = crumbs[crumbNext++ % crumbs.length]
+      c.m.position.copy(at); c.m.visible = true; c.life = 0.8
+      c.v.set((Math.random() - 0.5) * 1.6, 0.4 + Math.random() * 0.6, 0.3 + Math.random() * 0.5)
+    }
+  }
+
+  // 地上的影子
+  const shCanvas = document.createElement('canvas'); shCanvas.width = shCanvas.height = 128
+  { const x = shCanvas.getContext('2d'), gr = x.createRadialGradient(64, 64, 0, 64, 64, 64)
+    gr.addColorStop(0, 'rgba(120,70,80,0.22)'); gr.addColorStop(1, 'rgba(120,70,80,0)'); x.fillStyle = gr; x.fillRect(0, 0, 128, 128) }
+  const shTex = new THREE.CanvasTexture(shCanvas), shGeo = new THREE.PlaneGeometry(3.2, 2.2)
+  const shMat = new THREE.MeshBasicMaterial({ map: shTex, transparent: true, depthWrite: false })
+  disposables.push(shTex, shGeo, shMat)
+  const shadow = new THREE.Mesh(shGeo, shMat)
+  shadow.rotation.x = -Math.PI / 2; scene.add(shadow)
+
+  // ── 尺寸 ──
+  let size = 0
+  const fit = () => {
+    const w = el.clientWidth, h = el.clientHeight
+    if (!w || !h || w * 10000 + h === size) return
+    size = w * 10000 + h
+    renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix()
+  }
+  fit()
+
+  // ── 互動：左右拖曳轉著看（上下滑照常捲頁面），點一下跳 ──
+  let rotY = 0, vY = 0, dragging = false, lastX = 0, downX = 0, downY = 0, lastTouch = -9
+  const onDown = (e) => { dragging = true; lastX = downX = e.clientX; downY = e.clientY; vY = 0 }
+  const onMove = (e) => {
+    if (!dragging) return
+    const dx = e.clientX - lastX; lastX = e.clientX
+    rotY += dx * 0.014; vY = Math.max(-0.12, Math.min(0.12, dx * 0.014))
+    lastTouch = clock
+  }
+  /* 點一下：點到身體（肚子、手、腳、尾巴）⇒ 怕癢；點到頭或沒點到 ⇒ 跳一下（使用者 11-06：「手指按了身體要有怕癢的反應」） */
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2()
+  const tapAt = (e) => {
+    const r = el.getBoundingClientRect()
+    ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1)
+    ray.setFromCamera(ndc, camera)
+    const hit = ray.intersectObjects(scene.children, true)[0]
+    act(hit && bodyParts.includes(hit.object) ? 'tickle' : 'jump')
+  }
+  const onUp = (e) => {
+    if (!dragging) return
+    dragging = false; lastTouch = clock
+    if (e.type === 'pointerup' && Math.hypot(e.clientX - downX, e.clientY - downY) < 6) tapAt(e)
+  }
+  el.addEventListener('pointerdown', onDown)
+  el.addEventListener('pointermove', onMove)
+  el.addEventListener('pointerup', onUp)
+  el.addEventListener('pointercancel', onUp)
+  el.addEventListener('pointerleave', onUp)
+
+  // ── 動畫 ──
+  const acts = { jump: -9, wave: -9, happy: -9, tickle: -9, eat: -9 }
+  let clock = 0, nextBlink = 1.5, blinkAt = -9, earFlick = -9, earWhich = 1, nextEar = 3
+  let happyAfterEat = false, bitesDone = 0
+  function act(k) {
+    acts[k] = clock
+    if (k === 'jump') { earFlick = clock + 0.7; earWhich = 0 }
+    if (k === 'tickle' || k === 'happy') { earFlick = clock + 0.05; earWhich = 0 }
+    if (k === 'eat') { happyAfterEat = true; bitesDone = 0 }
+  }
+  /* 吃東西（餵食，2026-11-06 使用者：「模擬一下吃東西的動畫」→「不用太複雜，簡單表達高興就好」）時間軸，單位秒：
+       0 ～ 0.38   餅乾從前面飛進嘴巴
+       0.4         咬一口：頭點一下、臉頰鼓、瞇眼、噴幾顆餅乾屑，餅乾不見
+       0.75        接開心（跳一下、瞇眼笑、頭歪一下；愛心由 Bear3D.jsx 冒一顆）
+       0.34 ～ 1.95  兩手舉高（咬下去那一刻舉起來，開心結束時放下）
+     🗑 試過「兩手捧著、咬三口」，使用者嫌太複雜 */
+  const BITES = [0.4], EAT_END = 0.75
+  const HOLD = new THREE.Vector3(0, 1.6, 1.0), FROM = new THREE.Vector3(0.35, 0.25, 2.6)
+  const ease = (p) => p < 0 ? 0 : p > 1 ? 1 : p * p * (3 - 2 * p)
+  function frame(dt) {
+    clock += dt
+    const t = clock
+    // 轉動：慣性 → 放開 2 秒後轉回正面
+    if (!dragging) {
+      rotY += vY; vY *= 0.92
+      if (t - lastTouch > 2) rotY += (Math.round(rotY / (Math.PI * 2)) * Math.PI * 2 - rotY) * 0.06
+    }
+    root.rotation.y = rotY + ((t - lastTouch > 2.5 && !dragging) ? Math.sin(t * 0.55) * 0.18 : 0)
+    // 呼吸
+    const br = Math.sin(t * 2.3)
+    body.scale.set(1 - br * 0.008, 1 + br * 0.022, 1 - br * 0.008)
+    neck.position.y = 1.42 + br * 0.018
+    // 頭輕輕歪
+    neck.rotation.z = Math.sin(t * 0.8) * 0.07
+    neck.rotation.x = Math.sin(t * 1.1 + 1) * 0.035
+    neck.rotation.y = Math.sin(t * 0.6 + 2) * 0.08
+    // 眨眼
+    if (t > nextBlink) { blinkAt = t; nextBlink = t + 2.2 + Math.random() * 3 }
+    const bp = (t - blinkAt) / 0.16
+    const lid = bp >= 0 && bp <= 1 ? 1 - Math.sin(bp * Math.PI) * 0.92 : 1
+    // 開心（餵食，2.4 秒）與怕癢（點身體，1.4 秒）：fade 是那段動作的強度，開頭很快到 1、最後 0.4 秒收掉
+    // 吃東西：吃完那一刻接開心
+    const ea = t - acts.eat
+    if (happyAfterEat && ea >= EAT_END) { happyAfterEat = false; acts.happy = t; earFlick = t; earWhich = 0 }
+    const hp = t - acts.happy, tk = t - acts.tickle
+    const fH = hp >= 0 && hp < 1.2 ? ease(hp / 0.1) * (1 - ease((hp - 0.9) / 0.3)) : 0   // 開心 1.2 秒
+    const fT = tk >= 0 && tk < 1.4 ? ease(tk / 0.08) * (1 - ease((tk - 1.0) / 0.4)) : 0
+    const fChew = ea >= 0.34 && ea < EAT_END + 0.15 ? ease((ea - 0.34) / 0.08) * (1 - ease((ea - EAT_END) / 0.15)) : 0  // 咬一口
+    const squint = 1 - 0.62 * Math.max(fH, fT, fChew * 0.85)   // 瞇眼笑
+    for (const e of eyes) e.scale.y = lid * squint
+    // 耳朵抖一下
+    if (t > nextEar) { earFlick = t; earWhich = Math.random() < 0.5 ? -1 : 1; nextEar = t + 3 + Math.random() * 4 }
+    const ep = t - earFlick
+    for (const e of ears) {
+      const on = earWhich === 0 || e.userData.s === earWhich      // 0 ＝ 兩隻一起（跳的時候）
+      e.rotation.z = e.userData.base + (ep >= 0 && ep < 0.5 && on ? Math.sin(ep * 30) * (0.5 - ep) * 0.7 * e.userData.s : 0)
+    }
+    // 跳一下（蹲 → 跳 → 落地壓扁）
+    let y = 0, sq = 1
+    const jp = t - acts.jump
+    if (jp >= 0 && jp < 0.95) {
+      if (jp < 0.15) sq = 1 - Math.sin(jp / 0.15 * Math.PI / 2) * 0.1
+      else if (jp < 0.7) { const p = (jp - 0.15) / 0.55; y = Math.sin(p * Math.PI) * 0.45; sq = 1 + Math.sin(p * Math.PI) * 0.06 }
+      else { const p = (jp - 0.7) / 0.25; sq = 1 - Math.sin(p * Math.PI) * 0.08 }
+    }
+    // 開心（吃完餅乾）：跳一下、頭輕輕歪一下、瞇眼笑（squint 在上面）
+    // 使用者：「這段簡單就好」—— 🗑 連跳、左右晃、兩手舉高揮
+    let roll = 0
+    if (fH > 0) {
+      if (hp < 0.5) y += Math.sin(hp / 0.5 * Math.PI) * 0.22
+      neck.rotation.z += Math.sin(Math.min(hp / 0.9, 1) * Math.PI) * 0.12 * fH
+    }
+    // 怕癢（點身體）：縮起來、快速扭來扭去、小跳
+    if (fT > 0) {
+      roll += Math.sin(tk * 38) * 0.07 * fT
+      y += Math.abs(Math.sin(tk * 19)) * 0.06 * fT
+      sq *= 1 - 0.05 * fT
+      neck.rotation.z += Math.sin(tk * 21) * 0.09 * fT
+      neck.rotation.x += 0.12 * fT   // 低頭笑
+    }
+    // 吃東西：餅乾飛進嘴巴 → 咬一口不見；頭點一下、臉頰鼓、噴餅乾屑
+    if (ea >= 0 && ea < EAT_END + 0.3) {
+      while (bitesDone < BITES.length && ea >= BITES[bitesDone]) {
+        bitesDone++
+        spray(new THREE.Vector3(0, neck.position.y + 0.1, 1.05))
+      }
+      snack.visible = ea < BITES[0]
+      const p = ease(ea / 0.38)
+      snack.position.lerpVectors(FROM, HOLD, p); snack.position.y += Math.sin(p * Math.PI) * 0.5
+      snack.rotation.z = (1 - p) * 4
+      snack.scale.setScalar(0.45 + 0.55 * p)
+      // 咬下去那一下頭往前點、臉頰鼓
+      let nod = 0
+      for (const b of BITES) { const d = ea - b; if (d > -0.06 && d < 0.24) nod += Math.sin((d + 0.06) / 0.3 * Math.PI) }
+      neck.rotation.x += nod * 0.16 * fChew
+      head.scale.x = HR[0] * (1 + 0.04 * fChew)
+    } else {
+      snack.visible = false
+      head.scale.x = HR[0]
+    }
+    for (const c of crumbs) {
+      if (!c.m.visible) continue
+      c.life -= dt
+      c.v.y -= 4.5 * dt
+      c.m.position.addScaledVector(c.v, dt)
+      c.m.scale.setScalar(Math.max(0.01, c.life / 0.8))
+      if (c.life <= 0 || c.m.position.y < 0.05) c.m.visible = false
+    }
+    bear.position.y = y
+    bear.scale.set(2 - sq, sq, 2 - sq)
+    bear.rotation.z = roll
+    shadow.scale.setScalar(1 - y * 0.35)
+    shMat.opacity = 1 - y * 0.6
+    // 揮手（右手舉起來搖 2 秒）；開心時兩手一起擺
+    const wp = t - acts.wave
+    for (const a of arms) {
+      let r = a.userData.base + Math.sin(t * 2.3) * 0.02 * a.userData.s
+      if (a.userData.s === 1 && wp >= 0 && wp < 2.2) {
+        const up = ease(wp / 0.3) * (1 - ease((wp - 1.9) / 0.3))
+        r = a.userData.base + up * (2.3 + Math.sin(wp * 14) * 0.28)
+      }
+      const s = a.userData.s
+      // 怕癢：雙手抱胸（使用者：「搔癢應該是雙手抱胸」）—— 往前抬到胸口、往中間收到兩手交會，一邊抱一邊抖
+      a.rotation.x = -1.2 * fT
+      // 往中間收 0.95 → 0.6：肩膀收進身體之後離中間比較近，收 0.95 的話手會轉進肚子裡看不到
+      a.rotation.y = -s * (0.6 + Math.sin(tk * 30) * 0.08) * fT
+      if (fT > 0) r = r * (1 - fT) + s * 0.05 * fT
+      // 吃餅乾：從咬下去到開心跳完，兩手舉高（使用者 11-06：「餵餅乾可以雙手舉起來」）
+      const fUp = Math.max(fChew, fH)
+      if (fUp > 0) r += s * 2.3 * fUp
+      a.rotation.z = r
+    }
+    fit()
+    renderer.render(scene, camera)
+  }
+
+  // 看不到就不畫（切到別頁、捲出畫面、App 切到背景）—— 省手機電量
+  let visible = true, raf = 0, prev = 0
+  const loop = (now) => {
+    raf = 0
+    frame(prev ? Math.min(0.05, (now - prev) / 1000) : 0); prev = now
+    if (visible && !document.hidden) raf = requestAnimationFrame(loop)
+  }
+  const start = () => { if (!raf && visible && !document.hidden) { prev = 0; raf = requestAnimationFrame(loop) } }
+  const io = 'IntersectionObserver' in window ? new IntersectionObserver(([e]) => { visible = e.isIntersecting; start() }) : null
+  if (io) io.observe(el)
+  const onVis = () => start()
+  document.addEventListener('visibilitychange', onVis)
+  frame(0)
+  start()
+
+  return {
+    act,
+    /* 拍一張現在的畫面（透明底）—— Bear3D.jsx 拿它當下次載入中的佔位圖：跟 3D 是同一隻熊，換過去看不出接縫。
+       ⚠ 沒開 preserveDrawingBuffer ⇒ 一定要在同一個步驟裡先畫再讀，不然讀到的是空白 */
+    snapshot() {
+      fit(); renderer.render(scene, camera)
+      return cv.toDataURL('image/webp', 0.9)
+    },
+    dispose() {
+      if (raf) cancelAnimationFrame(raf)
+      raf = 0; visible = false
+      if (io) io.disconnect()
+      document.removeEventListener('visibilitychange', onVis)
+      el.removeEventListener('pointerdown', onDown)
+      el.removeEventListener('pointermove', onMove)
+      el.removeEventListener('pointerup', onUp)
+      el.removeEventListener('pointercancel', onUp)
+      el.removeEventListener('pointerleave', onUp)
+      for (const d of disposables) d.dispose()
+      renderer.dispose()
+      cv.remove()
+    },
+  }
+}
+
+(async () => {
+  const stage = document.getElementById('stage')
+  const bear = await createBear3D(stage, { font: getComputedStyle(document.body).fontFamily })
+  window.__bear = bear   // 給我驗證時直接叫動作
+  const feed = () => {
+    bear.act('eat')
+    // 愛心跟 App 一樣，吃完（0.75 秒）才冒
+    setTimeout(() => {
+      const box = document.createElement('div'); box.style.cssText = 'position:absolute;inset:0;pointer-events:none'
+      for (const [dx, dl] of [[0, 0]]) {   // 一顆就好（使用者）
+        const h = document.createElement('span'); h.className = 'b3-heart'; h.textContent = '♥'
+        h.style.left = `calc(50% + ${dx}px)`; h.style.animationDelay = dl + 's'; box.appendChild(h)
+      }
+      stage.appendChild(box); setTimeout(() => box.remove(), 2200)
+    }, 750)
+  }
+  document.getElementById('feed').onclick = feed
+  document.getElementById('again').onclick = feed
+  window.__bear = bear
+})()
+</script>

@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>小熊養成三種玩法</title>
+<style>
+:root{--brand:#FAD6DC;--brand-light:#FFE7EE;--brand-tint:#FFECF1;--accent:#C2607A;--accent-deep:#974B5F;--ink:#2E2B2C;--gray-1:#5C5754;--gray-2:#726D69;--gray-4:#F2F0EE;--field-bg:#F8F7F6;--field-bd:#ECE7E4;--page:#EFECEA}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;color:var(--ink);padding-block:24px 48px;padding-inline:16px;-webkit-user-select:none;user-select:none}
+.top{max-width:1180px;margin:0 auto 18px}.top h1{font-size:20px;margin:0 0 4px}.top p{margin:0;color:var(--gray-1);font-size:14px;line-height:1.6}
+.row{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:22px;align-items:start}
+.col h2{font-size:16px;margin:0 0 2px}.col .why{font-size:13px;color:var(--gray-1);margin:0 0 10px;line-height:1.6;min-height:62px}
+.phone{background:#fff;border-radius:26px;overflow:hidden;box-shadow:0 0 0 1px var(--field-bd);padding-bottom:18px;position:relative}
+.stage{margin:14px 16px 0;background:var(--brand);border-radius:20px;position:relative;padding:10px 12px 12px;text-align:center}
+.bear{width:220px;height:220px;margin:0 auto;position:relative;touch-action:pan-y}
+.name{font-size:16px;font-weight:700;margin-top:-4px}
+.lvrow{display:flex;align-items:center;gap:8px}
+.lv{background:#fff;border-radius:99px;padding:3px 10px;font-size:13px;font-weight:800;white-space:nowrap}
+.bar{flex:1;height:10px;background:rgba(255,255,255,.75);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .45s ease}
+.pct{font-size:12px;color:var(--gray-1);white-space:nowrap;font-variant-numeric:tabular-nums}
+.snk{border-radius:50%;overflow:hidden;background:#fff;display:block}.snk img{width:100%;height:100%;display:block;pointer-events:none}
+.off{opacity:.38;filter:grayscale(1)}
+.btn{border:0;border-radius:99px;font:inherit;font-weight:700;cursor:pointer;background:var(--ink);color:#fff}
+.btn.ghost{background:#fff;color:var(--ink);box-shadow:inset 0 0 0 2px var(--ink)}
+.toast{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);background:var(--ink);color:#fff;font-size:13px;font-weight:700;padding:8px 14px;border-radius:99px;opacity:0;pointer-events:none;transition:opacity .2s;white-space:nowrap;z-index:5}
+.toast.on{opacity:1}
+.heart{position:absolute;left:50%;top:30%;font-size:24px;color:var(--accent);pointer-events:none;animation:hp 1.4s ease-out .75s both}
+@keyframes hp{0%{opacity:0;transform:translate(-50%,0) scale(.4)}20%{opacity:1;transform:translate(-50%,-14px) scale(1.15)}100%{opacity:0;transform:translate(-50%,-80px) scale(.9)}}
+.lvup{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:6}
+.lvup b{background:var(--accent-deep);color:#fff;font-size:20px;padding:10px 20px;border-radius:99px;animation:lu 1.6s ease-out both}
+@keyframes lu{0%{opacity:0;transform:scale(.5)}15%{opacity:1;transform:scale(1.12)}25%{transform:scale(1)}80%{opacity:1}100%{opacity:0;transform:translateY(-30px)}}
+.cnt{position:absolute;right:-3px;bottom:-3px;background:var(--accent-deep);color:#fff;font-size:11px;font-weight:800;border-radius:99px;padding:1px 6px;border:2px solid #fff}
+/* 1 拖曳 */
+.tray{margin:14px 16px 0;background:var(--field-bg);border-radius:18px;padding:12px 10px 10px}
+.tray .t{font-size:12px;color:var(--gray-1);text-align:center;margin-bottom:8px}
+.tray .items{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.it{text-align:center;cursor:grab;touch-action:none}
+.it .w{position:relative;width:58px;height:58px;margin:0 auto}
+.it .snk{width:58px;height:58px;box-shadow:0 0 0 2px var(--field-bd)}
+.it p{margin:5px 0 0;font-size:11px;font-weight:700;color:var(--gray-1)}
+.ghostfood{position:fixed;width:64px;height:64px;pointer-events:none;z-index:50;transform:translate(-50%,-50%) scale(1.1);filter:drop-shadow(0 6px 10px rgba(0,0,0,.18))}
+.stage.drop{box-shadow:inset 0 0 0 3px var(--accent)}
+/* 2 轉盤 */
+.wheel{margin:14px 16px 0;display:flex;align-items:center;gap:8px}
+.wheel .arr{width:40px;height:40px;border-radius:50%;background:var(--field-bg);border:0;font-size:22px;color:var(--ink);cursor:pointer;flex:0 0 40px}
+.wheel .card{flex:1;background:var(--field-bg);border-radius:20px;padding:12px 8px 10px;text-align:center;cursor:pointer;position:relative}
+.wheel .card .snk{width:86px;height:86px;margin:0 auto;transition:transform .15s}
+.wheel .card:active .snk{transform:scale(.92)}
+.wheel .card b{display:block;font-size:15px;margin-top:6px}.wheel .card span{font-size:12px;color:var(--gray-1)}
+.dots{display:flex;justify-content:center;gap:6px;margin-top:8px}.dots i{width:6px;height:6px;border-radius:50%;background:var(--field-bd)}.dots i.on{background:var(--ink)}
+.allbtn{display:block;width:calc(100% - 32px);margin:12px 16px 0;padding:11px 0;font-size:15px}.allbtn:disabled{background:#fff;color:var(--hint,#B4AEA9);box-shadow:inset 0 0 0 2px var(--field-bd);cursor:default}
+/* 3 儀表 */
+.meters{margin:14px 16px 0;display:grid;gap:9px}
+.m{display:flex;align-items:center;gap:10px}
+.m .ic{width:30px;height:30px;border-radius:10px;background:var(--brand);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex:0 0 30px}
+.m .l{font-size:13px;font-weight:700;width:30px}
+.m .bar{background:var(--gray-4)}
+.m .v{font-size:12px;color:var(--gray-1);width:34px;text-align:right;font-variant-numeric:tabular-nums}
+.acts{margin:16px 16px 0;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.act{background:var(--field-bg);border:0;border-radius:18px;padding:12px 0 10px;font:inherit;cursor:pointer;color:var(--ink)}
+.act .o{width:42px;height:42px;border-radius:50%;background:var(--ink);color:#fff;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px}
+.act b{font-size:13px}
+.act.on{background:var(--brand-tint);box-shadow:inset 0 0 0 2px var(--accent)}
+.feedrow{margin:10px 16px 0;display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.feedrow .f{background:var(--field-bg);border-radius:14px;padding:8px 2px 6px;text-align:center;cursor:pointer}
+.feedrow .f .snk{width:44px;height:44px;margin:0 auto}
+.feedrow .f b{display:block;font-size:11px;margin-top:3px}.feedrow .f span{font-size:11px;color:var(--gray-1)}
+.note{font-size:12px;color:var(--gray-2);margin:12px 16px 0;line-height:1.6}
+</style></head><body>
+<div class="top"><h1>小熊養成：參考世界級養成遊戲的三種玩法</h1>
+<p>三隻都是真的 3D 小熊，資料一樣（Lv.2、成長 60%、餅乾 ×12、奶茶 ×2）。每片餅乾成長 +10%，滿 100% 升一級。左右拖曳小熊可以轉著看。</p></div>
+<div class="row">
+
+<div class="col" id="v1"><h2>1　拖曳餵食（參考《湯姆貓》《寶可夢》）</h2>
+<p class="why">點心排在下面的餐盤裡，用手指把點心拖到小熊身上放開，小熊就吃下去。最像真的在餵牠，互動感最強。</p>
+<div class="phone">
+<div class="stage" data-drop>
+<div class="lvrow"><span class="lv">Lv.<b data-lv>2</b></span><div class="bar"><i data-bar style="width:60%"></i></div><span class="pct" data-pct>60%</span></div>
+<div class="bear" data-bear></div><div class="name">小熊</div>
+</div>
+<div class="tray"><div class="t">把點心拖到小熊身上</div><div class="items" data-items></div></div>
+<button class="btn ghost allbtn" data-all>全部餵（餅乾 ×12）</button>
+<p class="note">要教一次「拖」這個動作，之後就很直覺。點一下點心不會餵，只會提示要拖。</p>
+<div class="toast" data-toast></div>
+</div></div>
+
+<div class="col" id="v2"><h2>2　點心轉盤（參考《Pou》的廚房）</h2>
+<p class="why">下面一次只秀一樣點心，左右切換。點一下大大的點心就餵一個，下面一行「全部餵」。點心種類變多也不會擠。</p>
+<div class="phone">
+<div class="stage">
+<div class="bear" data-bear></div><div class="name">小熊</div>
+<div class="lvrow" style="margin-top:8px"><span class="lv">Lv.<b data-lv>2</b></span><div class="bar"><i data-bar style="width:60%"></i></div><span class="pct" data-pct>60%</span></div>
+</div>
+<div class="wheel"><button class="arr" data-prev aria-label="上一樣">‹</button><div class="card" data-card></div><button class="arr" data-next aria-label="下一樣">›</button></div>
+<div class="dots" data-dots></div>
+<button class="btn ghost allbtn" data-all>全部餵（餅乾 ×12）</button>
+<p class="note">一次只看一樣，每一樣都可以放大、寫清楚效果。</p>
+<div class="toast" data-toast></div>
+</div></div>
+
+<div class="col" id="v3"><h2>3　狀態儀表 ＋ 動作列（參考《電子雞》《Finch》）</h2>
+<p class="why">上面三條：肚子、心情、成長。下面三個動作：餵食會補肚子和成長，摸摸會補心情，跳一下純好玩。肚子跟心情會隨時間慢慢下降。</p>
+<div class="phone">
+<div class="stage" style="padding-bottom:6px"><div class="bear" data-bear></div><div class="name">小熊　<span class="lv" style="font-size:12px">Lv.<b data-lv>2</b></span></div></div>
+<div class="meters">
+<div class="m"><span class="ic">飽</span><span class="l">肚子</span><div class="bar"><i data-hunger style="width:40%"></i></div><span class="v" data-hv>40%</span></div>
+<div class="m"><span class="ic">心</span><span class="l">心情</span><div class="bar"><i data-mood style="width:55%"></i></div><span class="v" data-mv>55%</span></div>
+<div class="m"><span class="ic">長</span><span class="l">成長</span><div class="bar"><i data-bar style="width:60%"></i></div><span class="v" data-pct>60%</span></div>
+</div>
+<div class="acts"><button class="act" data-a="feed"><span class="o">餵</span><b>餵食</b></button><button class="act" data-a="pet"><span class="o">摸</span><b>摸摸</b></button><button class="act" data-a="jump"><span class="o">跳</span><b>跳一下</b></button></div>
+<div data-feedwrap hidden><div class="feedrow" data-feedrow></div><button class="btn ghost allbtn" data-all>全部餵（餅乾 ×12）</button></div>
+<p class="note">玩法最豐富，每天回來看狀態有理由。要注意「心情下降」不能變成壓力（不會懲罰）。</p>
+<div class="toast" data-toast></div>
+</div></div>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* 3D 養成小熊 Lv1（2026-11-06 使用者：「可以把他轉成 3D 且會動嗎」→ 選 A 程式蓋 →「接到養成小熊主頁」選 B）
+   用 three.js 的球體與曲面照 bear-lv1.webp 拼出來，沒有外部模型檔。
+   · 只由 lib/Bear3D.jsx 動態 import ⇒ three（壓縮後約 150 KB）只在打開養成小熊那一頁才下載
+   · three 鎖 0.128.0（package.json 寫死）：新版改了顏色管理與光的單位，畫出來的顏色會跑掉
+   · 預覽與調整紀錄：https://claude.ai/artifact/BXRZp6ksadUMTZcZbHp73t（同日依使用者意見改了十幾輪）
+   · 它是內容美術（只有會員 App 用）⇒ 顏色寫在這裡，不進 @migi/assets（硬規則 13）
+   ⚠ 只有 Lv1 有 3D；Lv10、Lv20 還是 2D 圖（rewards.jsx 的 BearStageImg） */
+
+// 顏色取自預設頭像（使用者 11-06 給的）：耳朵內側 #F6D8CB、眼睛鼻子 #593E33
+// 毛：頭像是 #FEF2EA → 使用者「太深」#FFF7F2 →「再肉一點」#FFEFE6 →「稍微白一點」#FFF2EB
+const FUR = 0xfff2eb, EAR = 0xf6d8cb, PINK = 0xe9a2a5, DARK = 0x593e33, PAD = 0xf6d8cb
+
+/* el：放畫布的容器（正方形）。回傳 { act(種類), dispose() }；不支援 WebGL 時丟錯，由呼叫端退回 2D 圖。
+   act：'jump' 跳一下｜'happy' 開心（餵食）｜'tickle' 怕癢（點身體）｜'wave' 揮手 */
+async function createBear3D(el, { font = 'system-ui, sans-serif' } = {}) {
+  /* ⚠ 不等字型（2026-11-06 使用者：「小熊讀取很慢」）：MIGI 先用現有字型畫，字型載好再重畫一次（見 bodyTex 底下） */
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })   // 不支援 WebGL 會在這裡丟錯
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
+  const cv = renderer.domElement
+  cv.style.display = 'block'; cv.style.width = '100%'; cv.style.height = '100%'
+  el.appendChild(cv)
+
+  const scene = new THREE.Scene()
+  const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 100)
+  camera.position.set(0, 2.15, 8.8)
+  camera.lookAt(0, 1.62, 0)
+
+  // 光的總量要讓正面剛好等於原色（量過：0.45 ＋ 0.45 暗 2%，0.5 ＋ 0.5 過曝成全白）
+  scene.add(new THREE.AmbientLight(0xffffff, 0.462))
+  const key = new THREE.DirectionalLight(0xffffff, 0.462); key.position.set(-1.5, 3, 8); scene.add(key)
+  const rim = new THREE.DirectionalLight(0xffe4ea, 0.12); rim.position.set(4, 2, -4); scene.add(rim)
+
+  // 三階平塗：亮面等於原色，側邊與背光只暗一點（使用者嫌膚色深，暗面從 185 提到 205）
+  const grad = new THREE.DataTexture(new Uint8Array([205, 236, 255]), 3, 1, THREE.LuminanceFormat)
+  grad.minFilter = grad.magFilter = THREE.NearestFilter; grad.needsUpdate = true
+  const disposables = [grad]
+  const toon = (c, map) => { const m = new THREE.MeshToonMaterial({ color: c, gradientMap: grad, map: map || null }); disposables.push(m); return m }
+
+  // 身體貼圖：毛色 ＋ 吊帶褲 ＋ MIGI（球面貼圖，正面在 u = 0.25）
+  const bodyTex = (() => {
+    const W = 1024, H = 512, c = document.createElement('canvas'); c.width = W; c.height = H
+    const x = c.getContext('2d')
+    const hex = (n) => '#' + n.toString(16).padStart(6, '0')
+    const draw = () => {
+    x.fillStyle = hex(FUR); x.fillRect(0, 0, W, H)
+    x.fillStyle = hex(PINK)
+    x.fillRect(0, H * 0.5, W, H * 0.5)                         // 褲子（下半身一圈）
+    const cx = W * 0.25
+    const r = 22, bx = cx - 100, by = H * 0.25, bw = 200, bh = H * 0.27
+    x.beginPath(); x.moveTo(bx, by + bh); x.lineTo(bx, by + r); x.quadraticCurveTo(bx, by, bx + r, by)
+    x.lineTo(bx + bw - r, by); x.quadraticCurveTo(bx + bw, by, bx + bw, by + r); x.lineTo(bx + bw, by + bh); x.fill()   // 胸前吊帶片
+    for (const s of [-1, 1]) {                                   // 前後吊帶
+      x.fillRect(cx + s * 78 - 14, 0, 28, by + 4)
+      x.fillRect(W * 0.75 + s * 70 - 14, 0, 28, H * 0.52)
+    }
+    x.fillStyle = hex(0xffffff); x.textAlign = 'center'; x.textBaseline = 'middle'
+    x.font = '700 50px ' + font
+    if ('letterSpacing' in x) x.letterSpacing = '5px'
+    x.fillText('MIGI', cx + 3, H * 0.405)
+    }
+    draw()
+    const t = new THREE.CanvasTexture(c); t.anisotropy = 4
+    disposables.push(t)
+    // 字型還在載的話，載好之後重畫一次 MIGI（不擋小熊出現）
+    try { if (document.fonts && document.fonts.status !== 'loaded') document.fonts.ready.then(() => { draw(); t.needsUpdate = true }) } catch { /* 讀不到就維持備用字 */ }
+    return t
+  })()
+
+  const ball = (r, mat, sx = 1, sy = 1, sz = 1, seg = 40) => {
+    const g = new THREE.SphereGeometry(r, seg, Math.round(seg * 0.75)); disposables.push(g)
+    const m = new THREE.Mesh(g, mat)
+    m.scale.set(sx, sy, sz); return m
+  }
+
+  const bodyParts = []   // 點到這些 ⇒ 怕癢；點到頭 ⇒ 跳一下
+  const root = new THREE.Group(); scene.add(root)     // 拖曳轉動
+  const bear = new THREE.Group(); root.add(bear)      // 跳、搖擺
+
+  // 身體
+  // 11-07 使用者：「身體稍微縮小」⇒ 0.86／0.74／0.78 先縮 6%（使用者：「怎麼感覺身體沒變」）→ 改縮 12%，
+  //   中心 0.72 → 0.65 讓屁股照樣坐在地上（底 ≈ 0）→ 使用者：「身體大一點」⇒ 改回縮約 6%（0.81／0.69／0.73，中心 0.69）
+  const body = new THREE.Group(); body.position.set(0, 0.69, 0); bear.add(body)
+  const torso = ball(1, toon(0xffffff, bodyTex), 0.81, 0.69, 0.73, 56); body.add(torso)
+  const tail = ball(0.17, toon(FUR)); tail.position.set(0, -0.24, -0.71); body.add(tail)
+  bodyParts.push(torso, tail)
+
+  // 腳（坐姿往前伸）
+  for (const s of [-1, 1]) {
+    const leg = new THREE.Group(); leg.position.set(s * 0.46, 0.3, 0.42); bear.add(leg)
+    const thigh = ball(0.3, toon(PINK), 1, 0.9, 1.15); thigh.position.set(0, 0.02, -0.08); leg.add(thigh)
+    const foot = ball(0.3, toon(FUR), 1.02, 0.98, 1.08); foot.position.set(0, -0.02, 0.22); leg.add(foot)
+    const pad = ball(0.13, toon(PAD), 1, 1.1, 0.35); pad.position.set(0, -0.04, 0.53); leg.add(pad)
+    bodyParts.push(thigh, foot, pad)
+  }
+
+  // 手（掛在肩膀，揮手時轉肩膀；貼著身體垂下來）。肩膀 1.12 → 1.24（使用者：「手臂要往上一點」）→ 1.34（11-07：「小熊肩膀再往上」）
+  const arms = []
+  /* 手臂由細到粗（11-07 使用者：「肩膀到手掌應該由細到粗，而不是一樣圓」）：
+     原本是一顆拉長的橢圓球，上下一樣粗 ⇒ 肩膀那頭看起來像跟臉黏在一起。
+     改成輪廓轉一圈（Lathe）：上端圓（肩膀）→ 外切線 → 下端大圓（手掌），兩個圓用公切線接起來，斜率連續所以沒有折痕。
+     ⚠ 第一版肩膀半徑 0.12、樞紐在身體外緣 ⇒ 使用者：「做壞了，仔細看原圖，肩膀到手臂很自然的曲線」——
+       原圖的肩膀藏在身體裡、手臂從身體上側順著輪廓往外往下長出來。
+       ⇒ 肩膀收進身體裡（樞紐 x 0.4），肩膀那頭不要太細（0.17），整隻往外斜（0.38）讓手掌落在身體外側 */
+  /* 手臂有弧度（11-07 使用者：「手臂太直了，可以有弧度嗎」）：整根彎成香蕉形 ——
+     肩膀往外斜出去（SH_TILT），手掌那頭再往身體收回來，順著肚子的弧度。
+     做法：每個頂點依「離肩膀多遠」t（0 肩膀 → 1 手掌）往內推 B·t²；法向量照推的斜率修正，光影才跟著彎。
+     左右手彎的方向相反 ⇒ 各做一份（不用負的縮放鏡射，那會把面翻過來） */
+  // 0.24、t² → 0.42、t^1.6（使用者：「手臂不夠彎」）—— 次方小一點，彎從手臂中段就開始，不是只有手掌那頭
+  //   → 使用者：「手臂做壞了」—— 只往內彎 0.42，手掌整個埋進肚子裡，只剩肩膀一坨露在外面。
+  //   ⇒ 往內少一點（0.3）、同時往前彎（ARM_FWD）：手掌落在肚子前面兩側、貼著肚子表面，看得到
+  //   → 使用者：「手太長了」⇒ 手掌那頭往上收 0.1（y2 −0.46 → −0.36），彎度跟著縮小一點
+  //   → 使用者：「手臂再短一點」⇒ y2 −0.36 → −0.28，彎度 0.24／0.26 → 0.2／0.22
+  //   → 使用者：「然後手臂往後」⇒ 往前彎 0.22 → 0.1（肩膀也往後，見 SH_Z）
+  const ARM_BEND = 0.2, ARM_FWD = 0.1, ARM_POW = 1.6
+  const armGeo = (s) => {
+    const r1 = 0.17, y1 = -0.04, r2 = 0.24, y2 = -0.34   // −0.28 → −0.34（使用者：「手加長一點」）
+    const a = Math.asin((r2 - r1) / (y1 - y2)), pts = []
+    for (let i = 0; i <= 10; i++) { const t = Math.PI / 2 - (Math.PI / 2 - a) * i / 10; pts.push(new THREE.Vector2(r1 * Math.cos(t), y1 + r1 * Math.sin(t))) }
+    for (let i = 1; i <= 16; i++) { const t = a - (a + Math.PI / 2) * i / 16; pts.push(new THREE.Vector2(r2 * Math.cos(t), y2 + r2 * Math.sin(t))) }
+    pts[0].x = 0; pts[pts.length - 1].x = 0
+    // 🔴 LatheGeometry 的點要「由下往上」排，面才朝外；上面是由上往下算的 ⇒ 反過來。
+    //   排反了面會朝內，從外面看只看到背面（不畫）⇒ 使用者：「手臂變透明的」
+    pts.reverse()
+    const g = new THREE.LatheGeometry(pts, 40); disposables.push(g)
+    const top = y1 + r1, L = top - (y2 - r2)
+    const pos = g.attributes.position, nor = g.attributes.normal
+    for (let i = 0; i < pos.count; i++) {
+      const y = pos.getY(i), t = Math.min(1, Math.max(0, (top - y) / L))
+      const tp = Math.pow(t, ARM_POW)
+      pos.setX(i, pos.getX(i) - s * ARM_BEND * tp)
+      pos.setZ(i, pos.getZ(i) + ARM_FWD * tp)
+      // 推的量對 y 的斜率：d(c·t^p)/dy ＝ −c·p·t^(p−1) / L ⇒ 法向量 (nx, ny + nx·斜率x + nz·斜率z, nz) 再正規化
+      const d = ARM_POW * Math.pow(t, ARM_POW - 1) / L
+      const nx = nor.getX(i), nz = nor.getZ(i), ny = nor.getY(i) - nx * (s * ARM_BEND * d) + nz * (ARM_FWD * d)
+      const m = Math.hypot(nx, ny, nz) || 1
+      nor.setXYZ(i, nx / m, ny / m, nz / m)
+    }
+    pos.needsUpdate = true; nor.needsUpdate = true
+    return g
+  }
+  // SH_Z：肩膀前後位置。收進身體之後抱胸（往前抬）的手會埋進肚子 ⇒ 往前移，手才抱得出來
+  // 11-07 使用者：「身體大一點，手往後一點」⇒ x 0.42 → 0.45、y 1.12 → 1.18（跟著身體變大），z 0.3 → 0.18
+  // SH_TILT 0.48 → 0.66：手臂彎回來之後手掌會往內縮，斜出去多一點，手掌才落在原本的位置
+  //   → 0.84（彎得更多之後手掌又往內縮，再斜出去一點）
+  //   → 0.72（往內彎改小之後）
+  //   → 使用者：「手臂往後」⇒ SH_Z 0.18 → 0.06
+  //   → 使用者：「手臂整個不見了」—— 0.06 太後面，短手臂整隻埋進身體 ⇒ x 0.45 → 0.52、z 0.06 → 0.12、斜 0.72 → 0.8
+  const SH_X = 0.52, SH_Y = 1.18, SH_Z = 0.12, SH_TILT = 0.8   // 肩膀樞紐（身體裡）與手臂往外斜的角度
+  for (const s of [-1, 1]) {
+    const sh = new THREE.Group(); sh.position.set(s * SH_X, SH_Y, SH_Z); bear.add(sh)
+    // 身體縮小後肩膀跟著改（使用者：「肩膀跟臉黏在一起了」）—— 肩膀要在身體頂端底下、收在身體裡，寫死高度的話身體一縮就跑到臉上
+    const arm = new THREE.Mesh(armGeo(s), toon(FUR)); arm.scale.set(1, 1, 1.05); sh.add(arm)
+    bodyParts.push(arm)
+    sh.rotation.order = 'YXZ'   // 先往前抬（x）再往中間收（y）—— 抱胸要用；預設的 XYZ 會讓往中間收對垂著的手沒作用
+    sh.rotation.z = s * SH_TILT
+    sh.userData = { s, base: s * SH_TILT }
+    arms.push(sh)
+  }
+
+  // 頭（樞紐在脖子）：放大、往下壓到蓋住脖子；下半部往外鼓出臉頰（直接改球面頂點，不另外黏球 ⇒ 沒有接縫）
+  const neck = new THREE.Group(); neck.position.set(0, 1.42, 0); bear.add(neck)
+  const HC = new THREE.Vector3(0, 0.62, 0), HR = [1.07, 0.9, 0.96]   // 寬 1.16 → 1.1 → 1.07（使用者兩次說臉太寬）
+  // 臉頰：ny -1 下巴 ～ 1 頭頂。0.13 → 0.06（太寬）→ 再瘦、往下垂：鼓起的中心從 -0.32 移到 -0.58、範圍收窄
+  const cheek = (ny) => 1 + 0.05 * Math.exp(-(((ny + 0.58) / 0.36) ** 2))
+  const headGeo = new THREE.SphereGeometry(1, 64, 48); disposables.push(headGeo)
+  { const p = headGeo.attributes.position
+    for (let i = 0; i < p.count; i++) { const f = cheek(p.getY(i)); p.setX(i, p.getX(i) * f); p.setZ(i, p.getZ(i) * (1 + (f - 1) * 0.6)) }
+    headGeo.computeVertexNormals() }
+  const head = new THREE.Mesh(headGeo, toon(FUR)); head.scale.set(...HR); head.position.copy(HC); neck.add(head)
+  const onHead = (x, y, push = 0) => {
+    const ny = (y - HC.y) / HR[1], f = cheek(ny), xu = x / (HR[0] * f)
+    return new THREE.Vector3(x, y, HR[2] * (1 + (f - 1) * 0.6) * Math.sqrt(Math.max(1 - xu * xu - ny * ny, 0)) + push)
+  }
+  const ears = []
+  for (const s of [-1, 1]) {
+    const e = new THREE.Group(); e.position.set(s * 0.67, HC.y + 0.47, -0.12); neck.add(e)   // 樞紐在耳根
+    e.rotation.z = -s * 0.25
+    const outer = ball(0.32, toon(FUR), 1, 1, 0.62); outer.position.y = 0.18; e.add(outer)
+    const inner = ball(0.19, toon(EAR), 1, 1, 0.4); inner.position.set(-s * 0.03, 0.15, 0.17); e.add(inner)
+    e.userData = { s, base: -s * 0.25 }
+    ears.push(e)
+  }
+  const eyes = []
+  for (const s of [-1, 1]) {
+    // 正圓、往中間：扁圓片面向正前方。⚠ 不要用 lookAt —— 它吃世界座標，傳頭裡的座標會把眼睛轉成朝斜下看（從正面看變扁）
+    const e = ball(0.072, toon(DARK), 1, 1, 0.45, 28); neck.add(e)
+    e.position.copy(onHead(s * 0.34, HC.y - 0.12)).add(new THREE.Vector3(0, 0, 0.005))
+    e.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(s * 0.12, -0.05, 1).normalize())
+    eyes.push(e)
+  }
+  // 鼻子：圓潤的扁倒三角（四段平滑曲線，左右對稱：上緣微拱 → 圓肩 → 收到圓圓的下尖），壓出一點厚度、邊緣倒圓
+  // 🗑 試過「三角形 ＋ 圓角 ＋ 每條邊外鼓」：接縫處起伏，邊緣凹凸像一朵雲
+  {
+    const W = 0.118, sh = new THREE.Shape()
+    sh.moveTo(-W * 0.7, 0.05)
+    sh.bezierCurveTo(-W * 0.3, 0.07, W * 0.3, 0.07, W * 0.7, 0.05)
+    sh.bezierCurveTo(W * 1.08, 0.033, W * 1.02, -0.012, W * 0.62, -0.042)
+    sh.bezierCurveTo(W * 0.34, -0.064, W * 0.17, -0.072, 0, -0.072)
+    sh.bezierCurveTo(-W * 0.17, -0.072, -W * 0.34, -0.064, -W * 0.62, -0.042)
+    sh.bezierCurveTo(-W * 1.02, -0.012, -W * 1.08, 0.033, -W * 0.7, 0.05)
+    const geo = new THREE.ExtrudeGeometry(sh, { depth: 0.01, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.02, bevelSegments: 6, curveSegments: 16 })
+    disposables.push(geo)
+    const nose = new THREE.Mesh(geo, toon(DARK))
+    nose.scale.setScalar(0.82)
+    nose.position.copy(onHead(0, HC.y - 0.25, -0.012))
+    nose.rotation.x = 0.3   // 順著臉的斜度：上緣要往前（反過來會讓上緣埋進臉裡）
+    neck.add(nose)
+  }
+
+  // 吃東西用的小熊餅乾（平常藏著）：圓餅 ＋ 兩隻耳朵 ＋ 幾顆深色的點，面向鏡頭；顏色同頂條飛餅乾的餅乾屑
+  const COOKIE = 0xe9c49a, COOKIE_DK = 0xc98f5a
+  const snack = new THREE.Group(); snack.visible = false; bear.add(snack)
+  {
+    const disc = (r, h, c) => { const g = new THREE.CylinderGeometry(r, r, h, 36); disposables.push(g); const m = new THREE.Mesh(g, toon(c)); m.rotation.x = Math.PI / 2; return m }
+    snack.add(disc(0.2, 0.07, COOKIE))
+    for (const s of [-1, 1]) { const e = disc(0.075, 0.07, COOKIE); e.position.set(s * 0.15, 0.15, 0); snack.add(e) }
+    for (const [x, y] of [[-0.07, 0.05], [0.07, 0.05], [0, -0.06]]) { const d = ball(0.025, toon(COOKIE_DK), 1, 1, 0.5, 12); d.position.set(x, y, 0.04); snack.add(d) }
+  }
+  // 餅乾屑：咬一口噴幾顆，往下掉、淡出
+  const crumbs = []
+  for (let i = 0; i < 12; i++) {
+    const m = ball(0.03, toon(i % 3 ? COOKIE : COOKIE_DK), 1, 1, 1, 8); m.visible = false; bear.add(m)
+    crumbs.push({ m, v: new THREE.Vector3(), life: 0 })
+  }
+  let crumbNext = 0
+  const spray = (at) => {
+    for (let k = 0; k < 4; k++) {
+      const c = crumbs[crumbNext++ % crumbs.length]
+      c.m.position.copy(at); c.m.visible = true; c.life = 0.8
+      c.v.set((Math.random() - 0.5) * 1.6, 0.4 + Math.random() * 0.6, 0.3 + Math.random() * 0.5)
+    }
+  }
+
+  // 地上的影子
+  const shCanvas = document.createElement('canvas'); shCanvas.width = shCanvas.height = 128
+  { const x = shCanvas.getContext('2d'), gr = x.createRadialGradient(64, 64, 0, 64, 64, 64)
+    gr.addColorStop(0, 'rgba(120,70,80,0.22)'); gr.addColorStop(1, 'rgba(120,70,80,0)'); x.fillStyle = gr; x.fillRect(0, 0, 128, 128) }
+  const shTex = new THREE.CanvasTexture(shCanvas), shGeo = new THREE.PlaneGeometry(3.2, 2.2)
+  const shMat = new THREE.MeshBasicMaterial({ map: shTex, transparent: true, depthWrite: false })
+  disposables.push(shTex, shGeo, shMat)
+  const shadow = new THREE.Mesh(shGeo, shMat)
+  shadow.rotation.x = -Math.PI / 2; scene.add(shadow)
+
+  // ── 尺寸 ──
+  let size = 0
+  const fit = () => {
+    const w = el.clientWidth, h = el.clientHeight
+    if (!w || !h || w * 10000 + h === size) return
+    size = w * 10000 + h
+    renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix()
+  }
+  fit()
+
+  // ── 互動：左右拖曳轉著看（上下滑照常捲頁面），點一下跳 ──
+  let rotY = 0, vY = 0, dragging = false, lastX = 0, downX = 0, downY = 0, lastTouch = -9
+  const onDown = (e) => { dragging = true; lastX = downX = e.clientX; downY = e.clientY; vY = 0 }
+  const onMove = (e) => {
+    if (!dragging) return
+    const dx = e.clientX - lastX; lastX = e.clientX
+    rotY += dx * 0.014; vY = Math.max(-0.12, Math.min(0.12, dx * 0.014))
+    lastTouch = clock
+  }
+  /* 點一下：點到身體（肚子、手、腳、尾巴）⇒ 怕癢；點到頭或沒點到 ⇒ 跳一下（使用者 11-06：「手指按了身體要有怕癢的反應」） */
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2()
+  const tapAt = (e) => {
+    const r = el.getBoundingClientRect()
+    ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1)
+    ray.setFromCamera(ndc, camera)
+    const hit = ray.intersectObjects(scene.children, true)[0]
+    act(hit && bodyParts.includes(hit.object) ? 'tickle' : 'jump')
+  }
+  const onUp = (e) => {
+    if (!dragging) return
+    dragging = false; lastTouch = clock
+    if (e.type === 'pointerup' && Math.hypot(e.clientX - downX, e.clientY - downY) < 6) tapAt(e)
+  }
+  el.addEventListener('pointerdown', onDown)
+  el.addEventListener('pointermove', onMove)
+  el.addEventListener('pointerup', onUp)
+  el.addEventListener('pointercancel', onUp)
+  el.addEventListener('pointerleave', onUp)
+
+  // ── 動畫 ──
+  const acts = { jump: -9, wave: -9, happy: -9, tickle: -9, eat: -9 }
+  let clock = 0, nextBlink = 1.5, blinkAt = -9, earFlick = -9, earWhich = 1, nextEar = 3
+  let happyAfterEat = false, bitesDone = 0
+  function act(k) {
+    acts[k] = clock
+    if (k === 'jump') { earFlick = clock + 0.7; earWhich = 0 }
+    if (k === 'tickle' || k === 'happy') { earFlick = clock + 0.05; earWhich = 0 }
+    if (k === 'eat') { happyAfterEat = true; bitesDone = 0 }
+  }
+  /* 吃東西（餵食，2026-11-06 使用者：「模擬一下吃東西的動畫」→「不用太複雜，簡單表達高興就好」）時間軸，單位秒：
+       0 ～ 0.38   餅乾從前面飛進嘴巴
+       0.4         咬一口：頭點一下、臉頰鼓、瞇眼、噴幾顆餅乾屑，餅乾不見
+       0.75        接開心（跳一下、瞇眼笑、頭歪一下；愛心由 Bear3D.jsx 冒一顆）
+       0.34 ～ 1.95  兩手舉高（咬下去那一刻舉起來，開心結束時放下）
+     🗑 試過「兩手捧著、咬三口」，使用者嫌太複雜 */
+  const BITES = [0.4], EAT_END = 0.75
+  const HOLD = new THREE.Vector3(0, 1.6, 1.0), FROM = new THREE.Vector3(0.35, 0.25, 2.6)
+  const ease = (p) => p < 0 ? 0 : p > 1 ? 1 : p * p * (3 - 2 * p)
+  function frame(dt) {
+    clock += dt
+    const t = clock
+    // 轉動：慣性 → 放開 2 秒後轉回正面
+    if (!dragging) {
+      rotY += vY; vY *= 0.92
+      if (t - lastTouch > 2) rotY += (Math.round(rotY / (Math.PI * 2)) * Math.PI * 2 - rotY) * 0.06
+    }
+    root.rotation.y = rotY + ((t - lastTouch > 2.5 && !dragging) ? Math.sin(t * 0.55) * 0.18 : 0)
+    // 呼吸
+    const br = Math.sin(t * 2.3)
+    body.scale.set(1 - br * 0.008, 1 + br * 0.022, 1 - br * 0.008)
+    neck.position.y = 1.42 + br * 0.018
+    // 頭輕輕歪
+    neck.rotation.z = Math.sin(t * 0.8) * 0.07
+    neck.rotation.x = Math.sin(t * 1.1 + 1) * 0.035
+    neck.rotation.y = Math.sin(t * 0.6 + 2) * 0.08
+    // 眨眼
+    if (t > nextBlink) { blinkAt = t; nextBlink = t + 2.2 + Math.random() * 3 }
+    const bp = (t - blinkAt) / 0.16
+    const lid = bp >= 0 && bp <= 1 ? 1 - Math.sin(bp * Math.PI) * 0.92 : 1
+    // 開心（餵食，2.4 秒）與怕癢（點身體，1.4 秒）：fade 是那段動作的強度，開頭很快到 1、最後 0.4 秒收掉
+    // 吃東西：吃完那一刻接開心
+    const ea = t - acts.eat
+    if (happyAfterEat && ea >= EAT_END) { happyAfterEat = false; acts.happy = t; earFlick = t; earWhich = 0 }
+    const hp = t - acts.happy, tk = t - acts.tickle
+    const fH = hp >= 0 && hp < 1.2 ? ease(hp / 0.1) * (1 - ease((hp - 0.9) / 0.3)) : 0   // 開心 1.2 秒
+    const fT = tk >= 0 && tk < 1.4 ? ease(tk / 0.08) * (1 - ease((tk - 1.0) / 0.4)) : 0
+    const fChew = ea >= 0.34 && ea < EAT_END + 0.15 ? ease((ea - 0.34) / 0.08) * (1 - ease((ea - EAT_END) / 0.15)) : 0  // 咬一口
+    const squint = 1 - 0.62 * Math.max(fH, fT, fChew * 0.85)   // 瞇眼笑
+    for (const e of eyes) e.scale.y = lid * squint
+    // 耳朵抖一下
+    if (t > nextEar) { earFlick = t; earWhich = Math.random() < 0.5 ? -1 : 1; nextEar = t + 3 + Math.random() * 4 }
+    const ep = t - earFlick
+    for (const e of ears) {
+      const on = earWhich === 0 || e.userData.s === earWhich      // 0 ＝ 兩隻一起（跳的時候）
+      e.rotation.z = e.userData.base + (ep >= 0 && ep < 0.5 && on ? Math.sin(ep * 30) * (0.5 - ep) * 0.7 * e.userData.s : 0)
+    }
+    // 跳一下（蹲 → 跳 → 落地壓扁）
+    let y = 0, sq = 1
+    const jp = t - acts.jump
+    if (jp >= 0 && jp < 0.95) {
+      if (jp < 0.15) sq = 1 - Math.sin(jp / 0.15 * Math.PI / 2) * 0.1
+      else if (jp < 0.7) { const p = (jp - 0.15) / 0.55; y = Math.sin(p * Math.PI) * 0.45; sq = 1 + Math.sin(p * Math.PI) * 0.06 }
+      else { const p = (jp - 0.7) / 0.25; sq = 1 - Math.sin(p * Math.PI) * 0.08 }
+    }
+    // 開心（吃完餅乾）：跳一下、頭輕輕歪一下、瞇眼笑（squint 在上面）
+    // 使用者：「這段簡單就好」—— 🗑 連跳、左右晃、兩手舉高揮
+    let roll = 0
+    if (fH > 0) {
+      if (hp < 0.5) y += Math.sin(hp / 0.5 * Math.PI) * 0.22
+      neck.rotation.z += Math.sin(Math.min(hp / 0.9, 1) * Math.PI) * 0.12 * fH
+    }
+    // 怕癢（點身體）：縮起來、快速扭來扭去、小跳
+    if (fT > 0) {
+      roll += Math.sin(tk * 38) * 0.07 * fT
+      y += Math.abs(Math.sin(tk * 19)) * 0.06 * fT
+      sq *= 1 - 0.05 * fT
+      neck.rotation.z += Math.sin(tk * 21) * 0.09 * fT
+      neck.rotation.x += 0.12 * fT   // 低頭笑
+    }
+    // 吃東西：餅乾飛進嘴巴 → 咬一口不見；頭點一下、臉頰鼓、噴餅乾屑
+    if (ea >= 0 && ea < EAT_END + 0.3) {
+      while (bitesDone < BITES.length && ea >= BITES[bitesDone]) {
+        bitesDone++
+        spray(new THREE.Vector3(0, neck.position.y + 0.1, 1.05))
+      }
+      snack.visible = ea < BITES[0]
+      const p = ease(ea / 0.38)
+      snack.position.lerpVectors(FROM, HOLD, p); snack.position.y += Math.sin(p * Math.PI) * 0.5
+      snack.rotation.z = (1 - p) * 4
+      snack.scale.setScalar(0.45 + 0.55 * p)
+      // 咬下去那一下頭往前點、臉頰鼓
+      let nod = 0
+      for (const b of BITES) { const d = ea - b; if (d > -0.06 && d < 0.24) nod += Math.sin((d + 0.06) / 0.3 * Math.PI) }
+      neck.rotation.x += nod * 0.16 * fChew
+      head.scale.x = HR[0] * (1 + 0.04 * fChew)
+    } else {
+      snack.visible = false
+      head.scale.x = HR[0]
+    }
+    for (const c of crumbs) {
+      if (!c.m.visible) continue
+      c.life -= dt
+      c.v.y -= 4.5 * dt
+      c.m.position.addScaledVector(c.v, dt)
+      c.m.scale.setScalar(Math.max(0.01, c.life / 0.8))
+      if (c.life <= 0 || c.m.position.y < 0.05) c.m.visible = false
+    }
+    bear.position.y = y
+    bear.scale.set(2 - sq, sq, 2 - sq)
+    bear.rotation.z = roll
+    shadow.scale.setScalar(1 - y * 0.35)
+    shMat.opacity = 1 - y * 0.6
+    // 揮手（右手舉起來搖 2 秒）；開心時兩手一起擺
+    const wp = t - acts.wave
+    for (const a of arms) {
+      let r = a.userData.base + Math.sin(t * 2.3) * 0.02 * a.userData.s
+      if (a.userData.s === 1 && wp >= 0 && wp < 2.2) {
+        const up = ease(wp / 0.3) * (1 - ease((wp - 1.9) / 0.3))
+        r = a.userData.base + up * (2.3 + Math.sin(wp * 14) * 0.28)
+      }
+      const s = a.userData.s
+      // 怕癢：雙手上下擺動（11-07 使用者：「搔癢改成雙手上下擺動」）—— 兩手往外張開，一起快速上下拍
+      //   🗑 之前是雙手抱胸（往前抬、往中間收），手臂改短改後之後常常抱進肚子裡看不到
+      //   左右手一上一下（使用者：「搔癢時左右手要一上一下」）：擺動乘上 s ⇒ 兩邊相位相反
+      if (fT > 0) r += s * (0.75 + s * Math.sin(tk * 22) * 0.5) * fT
+      // 吃餅乾：從咬下去到開心跳完，兩手舉高（使用者 11-06：「餵餅乾可以雙手舉起來」）
+      const fUp = Math.max(fChew, fH)
+      if (fUp > 0) r += s * 2.3 * fUp
+      a.rotation.z = r
+    }
+    fit()
+    renderer.render(scene, camera)
+  }
+
+  // 看不到就不畫（切到別頁、捲出畫面、App 切到背景）—— 省手機電量
+  let visible = true, raf = 0, prev = 0
+  const loop = (now) => {
+    raf = 0
+    frame(prev ? Math.min(0.05, (now - prev) / 1000) : 0); prev = now
+    if (visible && !document.hidden) raf = requestAnimationFrame(loop)
+  }
+  const start = () => { if (!raf && visible && !document.hidden) { prev = 0; raf = requestAnimationFrame(loop) } }
+  const io = 'IntersectionObserver' in window ? new IntersectionObserver(([e]) => { visible = e.isIntersecting; start() }) : null
+  if (io) io.observe(el)
+  const onVis = () => start()
+  document.addEventListener('visibilitychange', onVis)
+  frame(0)
+  start()
+
+  return {
+    act,
+    /* 拍一張現在的畫面（透明底）—— Bear3D.jsx 拿它當下次載入中的佔位圖：跟 3D 是同一隻熊，換過去看不出接縫。
+       ⚠ 沒開 preserveDrawingBuffer ⇒ 一定要在同一個步驟裡先畫再讀，不然讀到的是空白 */
+    snapshot() {
+      fit(); renderer.render(scene, camera)
+      return cv.toDataURL('image/webp', 0.9)
+    },
+    dispose() {
+      if (raf) cancelAnimationFrame(raf)
+      raf = 0; visible = false
+      if (io) io.disconnect()
+      document.removeEventListener('visibilitychange', onVis)
+      el.removeEventListener('pointerdown', onDown)
+      el.removeEventListener('pointermove', onMove)
+      el.removeEventListener('pointerup', onUp)
+      el.removeEventListener('pointercancel', onUp)
+      el.removeEventListener('pointerleave', onUp)
+      for (const d of disposables) d.dispose()
+      renderer.dispose()
+      cv.remove()
+    },
+  }
+}
+
+const IMG = { cookie: 'data:image/webp;base64,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', milktea: 'data:image/webp;base64,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', pudding: 'data:image/webp;base64,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', tiramisu: 'data:image/webp;base64,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' }
+const NAMES = { cookie: '小熊餅乾', milktea: '珍珠奶茶', pudding: '焦糖布丁', tiramisu: '提拉米蘇' }
+const KEYS = ['cookie', 'milktea', 'pudding', 'tiramisu']
+
+function makePet(root) {
+  const st = { lv: 2, grow: 60, bag: { cookie: 12, milktea: 2, pudding: 0, tiramisu: 0 }, bear: null }
+  const $ = (s) => root.querySelector(s), $$ = (s) => root.querySelectorAll(s)
+  const toastEl = $('[data-toast]'); let tt = 0
+  st.toast = (m) => { toastEl.textContent = m; toastEl.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => toastEl.classList.remove('on'), 1500) }
+  st.paint = () => {
+    $$('[data-lv]').forEach((e) => e.textContent = st.lv)
+    $$('[data-bar]').forEach((e) => e.style.width = st.grow + '%')
+    $$('[data-pct]').forEach((e) => e.textContent = st.grow + '%')
+    root.querySelectorAll('[data-all]').forEach((b) => { b.textContent = '全部餵（餅乾 ×' + st.bag.cookie + '）'; b.disabled = st.bag.cookie <= 0 })
+    st.onPaint && st.onPaint()
+  }
+  st.feed = (k, n = 1) => {
+    if (k !== 'cookie') { st.toast('目前只有小熊餅乾能餵'); return false }
+    if (st.bag.cookie <= 0) { st.toast('餅乾吃完了'); return false }
+    n = Math.min(n, st.bag.cookie)
+    st.bag.cookie -= n
+    st.bear && st.bear.act('eat')
+    const stage = $('.stage'), h = document.createElement('span'); h.className = 'heart'; h.textContent = '♥'; stage.appendChild(h); setTimeout(() => h.remove(), 2400)
+    let g = st.grow + 10 * n, up = 0
+    while (g >= 100) { g -= 100; up++ }
+    setTimeout(() => {
+      st.grow = g; st.lv += up; st.paint()
+      if (up) { const o = document.createElement('div'); o.className = 'lvup'; o.innerHTML = '<b>升級！Lv.' + st.lv + '</b>'; root.querySelector('.phone').appendChild(o); setTimeout(() => o.remove(), 1700) }
+    }, 750)
+    st.onFed && st.onFed(n)
+    st.paint()
+    return true
+  }
+  root.querySelectorAll('[data-all]').forEach((b) => b.onclick = () => st.feed('cookie', st.bag.cookie))
+  createBear3D($('[data-bear]'), {}).then((b) => { st.bear = b })
+  return st
+}
+const snk = (k, size) => '<span class="snk" style="width:' + size + 'px;height:' + size + 'px"><img src="' + IMG[k] + '" alt=""></span>'
+
+/* 1 拖曳 */
+{
+  const root = document.getElementById('v1'), st = makePet(root), items = root.querySelector('[data-items]'), stage = root.querySelector('[data-drop]')
+  st.onPaint = () => {
+    items.innerHTML = KEYS.map((k) => '<div class="it' + (st.bag[k] ? '' : ' off') + '" data-k="' + k + '"><div class="w">' + snk(k, 58) + (st.bag[k] ? '<span class="cnt">×' + st.bag[k] + '</span>' : '') + '</div><p>' + NAMES[k] + '</p></div>').join('')
+  }
+  st.paint()
+  let drag = null
+  items.addEventListener('pointerdown', (e) => {
+    const it = e.target.closest('.it'); if (!it) return
+    const k = it.dataset.k
+    if (!st.bag[k]) { st.toast('還沒有' + NAMES[k]); return }
+    e.preventDefault()
+    const g = document.createElement('img'); g.src = IMG[k]; g.className = 'ghostfood snk'; g.style.borderRadius = '50%'
+    g.style.left = e.clientX + 'px'; g.style.top = e.clientY + 'px'; document.body.appendChild(g)
+    drag = { k, g, x0: e.clientX, y0: e.clientY }
+  })
+  const over = (e) => { const r = stage.getBoundingClientRect(); return e.clientX > r.left && e.clientX < r.right && e.clientY > r.top && e.clientY < r.bottom }
+  window.addEventListener('pointermove', (e) => { if (!drag) return; drag.g.style.left = e.clientX + 'px'; drag.g.style.top = e.clientY + 'px'; stage.classList.toggle('drop', over(e)) })
+  window.addEventListener('pointerup', (e) => {
+    if (!drag) return
+    const moved = Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) > 8
+    if (over(e)) st.feed(drag.k)
+    else if (!moved) st.toast('把點心拖到小熊身上')
+    drag.g.remove(); drag = null; stage.classList.remove('drop')
+  })
+}
+
+/* 2 轉盤 */
+{
+  const root = document.getElementById('v2'), st = makePet(root), card = root.querySelector('[data-card]'), dots = root.querySelector('[data-dots]')
+  let i = 0
+  st.onPaint = () => {
+    const k = KEYS[i], n = st.bag[k]
+    card.className = 'card' + (n ? '' : ' off')
+    card.innerHTML = snk(k, 86) + '<b>' + NAMES[k] + '</b><span>' + (k === 'cookie' ? '點一下餵一片・成長 +10%' : n ? '收藏（之後可以餵）' : '還沒有') + '　×' + n + '</span>'
+    dots.innerHTML = KEYS.map((_, j) => '<i class="' + (j === i ? 'on' : '') + '"></i>').join('')
+  }
+  st.paint()
+  root.querySelector('[data-prev]').onclick = () => { i = (i + 3) % 4; st.paint() }
+  root.querySelector('[data-next]').onclick = () => { i = (i + 1) % 4; st.paint() }
+  card.onclick = () => st.feed(KEYS[i])
+}
+
+/* 3 儀表 */
+{
+  const root = document.getElementById('v3'), st = makePet(root), row = root.querySelector('[data-feedrow]'), wrap = root.querySelector('[data-feedwrap]')
+  let hunger = 40, mood = 55
+  const meter = () => {
+    root.querySelector('[data-hunger]').style.width = hunger + '%'; root.querySelector('[data-hv]').textContent = Math.round(hunger) + '%'
+    root.querySelector('[data-mood]').style.width = mood + '%'; root.querySelector('[data-mv]').textContent = Math.round(mood) + '%'
+  }
+  st.onPaint = () => {
+    row.innerHTML = KEYS.map((k) => '<div class="f' + (st.bag[k] ? '' : ' off') + '" data-k="' + k + '">' + snk(k, 44) + '<b>' + NAMES[k] + '</b><span>×' + st.bag[k] + '</span></div>').join('')
+    meter()
+  }
+  st.onFed = (n) => { hunger = Math.min(100, hunger + 20 * n); mood = Math.min(100, mood + 5); meter() }
+  st.paint()
+  const btns = root.querySelectorAll('.act')
+  root.querySelector('.acts').onclick = (e) => {
+    const b = e.target.closest('.act'); if (!b) return
+    const a = b.dataset.a
+    if (a === 'feed') { const open = wrap.hidden; wrap.hidden = !open; b.classList.toggle('on', open); return }
+    btns[0].classList.remove('on'); wrap.hidden = true
+    if (a === 'pet') { st.bear && st.bear.act('tickle'); mood = Math.min(100, mood + 12); meter(); st.toast('心情 +12') }
+    if (a === 'jump') { st.bear && st.bear.act('jump') }
+  }
+  row.onclick = (e) => { const f = e.target.closest('.f'); if (f) st.feed(f.dataset.k) }
+  setInterval(() => { hunger = Math.max(0, hunger - 1); mood = Math.max(0, mood - 0.5); meter() }, 2000)
+}
+</script></body></html>

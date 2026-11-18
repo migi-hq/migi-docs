@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>麻將桌影像辨識設備清單</title>
+<style>
+  @page { size: 338.67mm 190.5mm; margin: 0; }
+  :root { --ink:#2B2B2B; --brand:#FAD6DC; --tint:#FFF6F8; --gray:#F2F0EE; --line:#DED9D5; --sub:#77706B; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; color: var(--ink); }
+  .s { width: 338.67mm; height: 190.5mm; padding: 15mm 20mm 14mm; position: relative; overflow: hidden; page-break-after: always; background: #fff; display: flex; flex-direction: column; }
+  .s:last-child { page-break-after: auto; }
+  .s::before { content: ""; position: absolute; left: 0; top: 0; width: 100%; height: 5mm; background: var(--brand); }
+  body { counter-reset: pg; }
+  .s { counter-increment: pg; }
+  .pg { position: absolute; right: 20mm; bottom: 7mm; font-size: 0; color: var(--sub); }
+  .pg::after { content: counter(pg); font-size: 10pt; }
+  .brand { position: absolute; left: 20mm; bottom: 7mm; font-size: 10pt; color: var(--sub); }
+  h1 { font-size: 44pt; margin: 0; line-height: 1.25; }
+  h2 { font-size: 27pt; margin: 0 0 3mm; }
+  .lead { font-size: 15pt; color: var(--sub); margin: 0 0 7mm; }
+  .body { flex: 1; display: flex; gap: 10mm; align-items: stretch; }
+  .col { flex: 1; display: flex; flex-direction: column; }
+  .card { background: var(--gray); border-radius: 4mm; padding: 6mm 7mm; }
+  .pink { background: var(--tint); border: 1px solid var(--brand); }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5pt; }
+  th, td { padding: 3mm 4mm; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+  th { background: var(--ink); color: #fff; font-weight: 700; }
+  th:first-child { border-radius: 2mm 0 0 0; } th:last-child { border-radius: 0 2mm 0 0; }
+  .model { font-weight: 700; font-size: 15pt; }
+  .small { font-size: 11.5pt; color: var(--sub); line-height: 1.5; }
+  .num { display: inline-flex; width: 10mm; height: 10mm; border-radius: 50%; background: var(--ink); color: #fff; align-items: center; justify-content: center; font-weight: 700; font-size: 14pt; flex: none; }
+  .row { display: flex; gap: 4mm; align-items: flex-start; margin-bottom: 4.5mm; font-size: 15pt; line-height: 1.5; }
+  .row b { display: block; }
+  .tag { display: inline-block; background: var(--brand); border-radius: 10mm; padding: 0.6mm 4mm; font-size: 12pt; font-weight: 700; margin-bottom: 2mm; }
+  .cover { justify-content: center; }
+  .cover .tag { font-size: 14pt; margin-bottom: 6mm; align-self: flex-start; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm; flex: 1; }
+  .grid3 .card h3 { margin: 0 0 2mm; font-size: 17pt; }
+  .grid3 .card p { margin: 0; font-size: 13pt; line-height: 1.6; color: #4a4541; }
+  svg text { font-family: "Microsoft JhengHei", sans-serif; }
+</style>
+</head>
+<body>
+
+<!-- 1 封面 -->
+<section class="s cover">
+  <span class="tag">MIGI 咪吉麻將</span>
+  <h1>麻將桌影像辨識<br>設備清單</h1>
+  <p class="lead" style="margin-top:6mm">讓麻將計分全自動，淘汰傳統紙本</p>
+  <span class="brand">2026 年 5 月</span>
+</section>
+
+<!-- 最終目的 -->
+<section class="s">
+  <h2>最終目的</h2>
+  <p class="lead">影像辨識不是目的，它是手段</p>
+  <div class="card pink" style="padding:8mm 10mm; margin-bottom:7mm">
+    <div style="font-size:30pt; font-weight:700; line-height:1.35">讓計分自動化，淘汰傳統紙本</div>
+    <div style="font-size:15pt; line-height:1.6; margin-top:2mm; color:#4a4541">玩家胡牌、攤牌，分數就記好了。不用紙筆，不用按任何東西。</div>
+  </div>
+  <div class="body" style="gap:4mm; align-items:stretch">
+    <div class="col card">
+      <span class="tag" style="align-self:flex-start; background:#fff">過去</span>
+      <div style="font-size:19pt; font-weight:700; margin-bottom:2mm">紙本記分</div>
+      <div style="font-size:13.5pt; line-height:1.65; color:#4a4541">人工算台數、手寫記錄。容易算錯，事後查不到，也留不下紀錄。</div>
+    </div>
+    <div style="display:flex; align-items:center; font-size:26pt; color:var(--sub)">›</div>
+    <div class="col card">
+      <span class="tag" style="align-self:flex-start; background:#fff">現在</span>
+      <div style="font-size:19pt; font-weight:700; margin-bottom:2mm">智慧計分板</div>
+      <div style="font-size:13.5pt; line-height:1.65; color:#4a4541">玩家在麻將桌上或手機、平板上選牌型，系統算台數並記錄。已經不用紙，但還要手動輸入。</div>
+    </div>
+    <div style="display:flex; align-items:center; font-size:26pt; color:var(--sub)">›</div>
+    <div class="col card" style="background:var(--ink); color:#fff">
+      <span class="tag" style="align-self:flex-start; color:var(--ink)">目標</span>
+      <div style="font-size:19pt; font-weight:700; margin-bottom:2mm">影像辨識自動計分</div>
+      <div style="font-size:13.5pt; line-height:1.65; color:#E8E4E0">攝影機看到攤牌，主機讀出牌、算出台數，計分板自動更新。全程不碰設備。</div>
+    </div>
+  </div>
+  <span class="brand">MIGI 咪吉麻將</span><span class="pg"></span>
+</section>
+
+<!-- 2 安裝示意 -->
+<section class="s">
+  <h2>系統示意</h2>
+  <p class="lead">在麻將桌正上方裝一支攝影機，由店內的主機辨識桌面上的牌</p>
+  <div class="body">
+    <div class="col" style="flex:1.05">
+      <svg viewBox="0 0 520 330" width="100%" height="100%">
+        <rect x="20" y="14" width="480" height="12" fill="#2B2B2B"/>
+        <text x="260" y="10" font-size="13" text-anchor="middle" fill="#77706B">天花板</text>
+        <rect x="255" y="26" width="10" height="46" fill="#77706B"/>
+        <path d="M232 72 h56 a28 28 0 0 1 -56 0 z" fill="#2B2B2B"/>
+        <text x="300" y="78" font-size="15" font-weight="700">攝影機</text>
+        <polygon points="260,100 110,262 410,262" fill="#FAD6DC" opacity="0.65"/>
+        <line x1="150" y1="100" x2="150" y2="262" stroke="#77706B" stroke-dasharray="5 4"/>
+        <text x="142" y="186" font-size="13" text-anchor="end" fill="#77706B">110–130 公分</text>
+        <rect x="120" y="262" width="280" height="16" rx="3" fill="#2B2B2B"/>
+        <rect x="150" y="278" width="14" height="44" fill="#77706B"/><rect x="356" y="278" width="14" height="44" fill="#77706B"/>
+        <text x="412" y="275" font-size="15" font-weight="700">麻將桌</text>
+      </svg>
+    </div>
+    <div class="col" style="justify-content:center">
+      <div class="row"><span class="num">1</span><div><b>拍</b>攝影機垂直往下，拍整張桌面</div></div>
+      <div class="row"><span class="num">2</span><div><b>傳</b>一條網路線把影像送到店內的辨識主機</div></div>
+      <div class="row"><span class="num">3</span><div><b>辨識</b>主機用顯示卡做影像辨識，讀出桌面上的牌</div></div>
+      <div class="card pink" style="margin-top:3mm; font-size:13.5pt; line-height:1.65">
+        每張牌寬約 2.6 公分，畫面要看得清楚牌面。<br>影像只在店內處理，不上傳雲端。
+      </div>
+    </div>
+  </div>
+  <span class="brand">MIGI 咪吉麻將</span><span class="pg">2</span>
+</section>
+
+<!-- 用途 -->
+<section class="s">
+  <h2>自動計分怎麼運作</h2>
+  <p class="lead">胡牌攤牌後，系統自動算出台數，送到 MIGI 智慧計分板</p>
+  <div style="display:flex; gap:3mm; align-items:stretch; margin-bottom:6mm">
+    <div class="card" style="flex:1; padding:5mm"><span class="tag">1 攤牌</span><div style="font-size:12.5pt; line-height:1.55">玩家胡牌，把手牌攤開在桌面上</div></div>
+    <div class="card" style="flex:1; padding:5mm"><span class="tag">2 辨識</span><div style="font-size:12.5pt; line-height:1.55">主機讀出手牌、碰槓吃與花牌</div></div>
+    <div class="card pink" style="flex:1; padding:5mm"><span class="tag">3 計算</span><div style="font-size:12.5pt; line-height:1.55">判斷牌型，算出這一局的台數與積分</div></div>
+    <div class="card" style="flex:1; padding:5mm"><span class="tag">4 傳送</span><div style="font-size:12.5pt; line-height:1.55">只把結果（幾行文字）送到計分板系統</div></div>
+    <div class="card" style="flex:1; padding:5mm"><span class="tag">5 入帳</span><div style="font-size:12.5pt; line-height:1.55">四家的手機或平板顯示結果，確認後記入積分</div></div>
+  </div>
+  <div class="body" style="gap:6mm">
+    <div class="col card pink">
+      <span class="tag" style="align-self:flex-start">不用動手</span>
+      <div style="font-size:14pt; line-height:1.65">玩家只要攤牌。不用紙筆，也不用在手機或平板上輸入。</div>
+    </div>
+    <div class="col card">
+      <span class="tag" style="align-self:flex-start">減少算錯</span>
+      <div style="font-size:14pt; line-height:1.65">台數由系統依同一套規則計算，減少人工算錯與事後爭議。</div>
+    </div>
+    <div class="col card">
+      <span class="tag" style="align-self:flex-start">紀錄完整</span>
+      <div style="font-size:14pt; line-height:1.65">每一局自動留下紀錄，可以回頭查。畫面讀不到的項目（例如暗槓）由玩家補按。</div>
+    </div>
+  </div>
+  <span class="brand">MIGI 咪吉麻將</span><span class="pg"></span>
+</section>
+
+<!-- 3 設備清單 -->
+<section class="s">
+  <h2>設備清單</h2>
+  <p class="lead">一張桌，共五項設備</p>
+  <table>
+    <tr><th style="width:9%">項次</th><th style="width:21%">品項</th><th style="width:30%">型號</th><th style="width:9%">數量</th><th>重點規格</th></tr>
+    <tr>
+      <td>1</td><td>俯視網路攝影機</td>
+      <td><span class="model">陞泰 AVTECH<br>DGM5446SVAT</span></td>
+      <td>1 支</td>
+      <td class="small">500 萬畫素、電動變焦 2.8–12mm、半球型<br>網路線供電、支援 RTSP 影像串流</td>
+    </tr>
+    <tr>
+      <td>2</td><td>網路供電交換器</td>
+      <td><span class="model">合勤 Zyxel<br>GS1008HP</span></td>
+      <td>1 台</td>
+      <td class="small">8 埠全部可供電、總供電 60 瓦<br>無風扇、免設定</td>
+    </tr>
+    <tr>
+      <td>3</td><td>辨識主機</td>
+      <td><span class="model">桌上型主機<br>含獨立顯示卡</span></td>
+      <td>1 台</td>
+      <td class="small">顯示卡 NVIDIA RTX 5060 8GB 等級<br>詳細規格見「辨識主機」一頁</td>
+    </tr>
+    <tr>
+      <td>4</td><td>網路線</td>
+      <td><span class="model">Cat6 成品線</span></td>
+      <td>2 條</td>
+      <td class="small">攝影機到交換器、交換器到主機各一條<br>長度依現場丈量</td>
+    </tr>
+    <tr>
+      <td>5</td><td>吊掛支架或吊桿</td>
+      <td><span class="model">依現場選用</span></td>
+      <td>1 組</td>
+      <td class="small">讓鏡頭離桌面 110–130 公分<br>固定後不晃動</td>
+    </tr>
+  </table>
+  <span class="brand">MIGI 咪吉麻將</span><span class="pg">3</span>
+</section>
+
+<!-- 4 接線 -->
+<section class="s">
+  <h2>接線方式</h2>
+  <p class="lead">攝影機只接一條網路線，影像與電力共用</p>
+  <div class="body" style="align-items:center">
+    <svg viewBox="0 0 900 250" width="100%">
+      <g font-size="19" font-weight="700" text-anchor="middle">
+        <rect x="20" y="70" width="200" height="110" rx="14" fill="#2B2B2B"/><text x="120" y="120" fill="#fff">攝影機</text><text x="120" y="148" fill="#fff" font-size="14" font-weight="400">天花板</text>
+        <rect x="350" y="70" width="200" height="110" rx="14" fill="#FAD6DC"/><text x="450" y="120">供電交換器</text><text x="450" y="148" font-size="14" font-weight="400">櫃檯或機櫃</text>
+        <rect x="680" y="70" width="200" height="110" rx="14" fill="#F2F0EE"/><text x="780" y="120">辨識主機</text><text x="780" y="148" font-size="14" font-weight="400">含獨立顯示卡</text>
+      </g>
+      <g stroke="#2B2B2B" stroke-width="4"><line x1="220" y1="125" x2="350" y2="125"/><line x1="550" y1="125" x2="680" y2="125"/><line x1="450" y1="180" x2="450" y2="225"/></g>
+      <g font-size="15" text-anchor="middle" fill="#77706B">
+        <text x="285" y="110">網路線</text><text x="285" y="150">影像＋電力</text>
+        <text x="615" y="110">網路線</text><text x="615" y="150">影像</text>
+        <text x="450" y="245">插座</text>
+      </g>
+    </svg>
+  </div>
+  <div class="card pink" style="font-size:14pt; line-height:1.6">
+    攝影機那一端不需要插座，天花板上只有一條線。交換器與主機放在有插座的地方即可。
+  </div>
+  <span class="brand">MIGI 咪吉麻將</span><span class="pg">4</span>
+</section>
+
+<!-- 4b 辨識主機 -->
+<section class="s">
+  <h2>辨識主機</h2>
+  <p class="lead">放在店內，接收攝影機影像並做影像辨識</p>
+  <div class="body">
+    <div class="col" style="flex:1.25">
+      <table>
+        <tr><th style="width:32%">項目</th><th>規格</th></tr>
+        <tr><td>顯示卡</td><td class="model">NVIDIA RTX 5060 8GB</td></tr>
+        <tr><td>處理器</td><td class="model">Intel Core i5-14400F</td></tr>
+        <tr><td>主機板</td><td class="model">B760 晶片組</td></tr>
+        <tr><td>記憶體</td><td class="model">16GB</td></tr>
+        <tr><td>儲存</td><td class="model">1TB 固態硬碟</td></tr>
+        <tr><td>網路</td><td class="model">有線網路，接供電交換器</td></tr>
+      </table>
+    </div>
+    <div class="col" style="justify-content:flex-start; gap:5mm">
+      <div class="card"><span class="tag">工作</span><div style="font-size:13.5pt; line-height:1.6">訓練模型與即時辨識都在這一台。只把辨識結果送出去。</div></div>
+      <div class="card"><span class="tag">位置</span><div style="font-size:13.5pt; line-height:1.6">放在櫃檯或機櫃內，靠近供電交換器，通風、不會碰到水。</div></div>
+      <div class="card pink"><span class="tag">重點</span><div style="font-size:13.5pt; line-height:1.6">辨識靠顯示卡運算，顯示卡是這台主機最重要的零件。</div></div>
+    </div>
+  </div>
+  <span class="brand">MIGI 咪吉麻將</span><span class="pg">5</span>
+</section>
+
+<!-- 4c 辨識模型 -->
+<section class="s">
+  <h2>辨識模型：YOLO 訓練</h2>
+  <p class="lead">用 YOLO 物件偵測模型，訓練它認得每一種麻將牌</p>
+  <div style="display:flex; gap:3mm; align-items:stretch; margin-bottom:6mm">
+    <div class="card" style="flex:1; padding:5mm"><span class="tag">1 錄影</span><div style="font-size:12.5pt; line-height:1.55">用裝好的攝影機，錄下實際打牌的畫面</div></div>
+    <div class="card" style="flex:1; padding:5mm"><span class="tag">2 抽圖</span><div style="font-size:12.5pt; line-height:1.55">從影片每隔幾秒取出一張圖片</div></div>
+    <div class="card" style="flex:1; padding:5mm"><span class="tag">3 標註</span><div style="font-size:12.5pt; line-height:1.55">在圖片上框出每一張牌，標明是哪一種</div></div>
+    <div class="card pink" style="flex:1; padding:5mm"><span class="tag">4 訓練</span><div style="font-size:12.5pt; line-height:1.55">在辨識主機上，把標好的圖片交給 YOLO 學習</div></div>
+    <div class="card" style="flex:1; padding:5mm"><span class="tag">5 上線</span><div style="font-size:12.5pt; line-height:1.55">模型檔放進辨識主機，即時辨識攝影機畫面</div></div>
+  </div>
+  <div class="body" style="gap:8mm">
+    <div class="col" style="flex:0.95">
+      <svg id="yolo" viewBox="0 0 560 330" width="100%" style="border-radius:3mm; display:block"></svg>
+    </div>
+    <div class="col">
+      <table style="font-size:12pt">
+        <tr><th style="width:30%">項目</th><th>內容</th></tr>
+        <tr><td>模型</td><td>YOLO11（Ultralytics），物件偵測</td></tr>
+        <tr><td>辨識類別</td><td>萬、筒、條、字牌共 34 種，加上花牌</td></tr>
+        <tr><td>訓練資料</td><td>自己店內拍的畫面約 300 到 500 張，訓練時隨機旋轉</td></tr>
+        <tr><td>訓練</td><td>店內的辨識主機，用同一張顯示卡訓練</td></tr>
+        <tr><td>辨識</td><td>同一台主機。訓練與辨識的影像都不離開店內</td></tr>
+      </table>
+      <div class="small" style="margin-top:3mm">左圖為模擬畫面：每張牌一個方框，標出牌名與把握程度。</div>
+    </div>
+  </div>
+  <script>
+  (function () {
+    var NS = 'http://www.w3.org/2000/svg', svg = document.getElementById('yolo');
+    function el(tag, attrs, text) {
+      var e = document.createElementNS(NS, tag);
+      for (var k in attrs) e.setAttribute(k, attrs[k]);
+      if (text != null) e.textContent = text;
+      svg.appendChild(e); return e;
+    }
+    var W = 30, H = 40, BOX = '#E8386D';
+    var COLOR = { m: '#C0392B', p: '#1F5FA8', s: '#1E7F4F', g: '#1E7F4F', r: '#C0392B', k: '#2B2B2B' };
+    /* 桌布 */
+    el('rect', { x: 0, y: 0, width: 560, height: 330, fill: '#8C897F' });
+    el('rect', { x: 14, y: 14, width: 532, height: 302, rx: 10, fill: '#9A978C' });
+    /* 牌背（不標框） */
+    for (var b = 0; b < 9; b++) el('rect', { x: 150 + b * 31, y: 28, width: 28, height: 20, rx: 3, fill: '#D9C9A8', stroke: '#B9A888' });
+    for (var c = 0; c < 6; c++) el('rect', { x: 500, y: 80 + c * 31, width: 20, height: 28, rx: 3, fill: '#D9C9A8', stroke: '#B9A888' });
+    function tile(cx, cy, rot, a, b2, kind, name, conf, up) {
+      var g = document.createElementNS(NS, 'g');
+      g.setAttribute('transform', 'translate(' + cx + ',' + cy + ') rotate(' + rot + ')');
+      svg.appendChild(g);
+      function add(tag, attrs, text) { var e = document.createElementNS(NS, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; g.appendChild(e); }
+      add('rect', { x: -W / 2, y: -H / 2, width: W, height: H, rx: 4, fill: '#FFFDF8', stroke: '#C9C3B8' });
+      if (b2) {
+        add('text', { x: 0, y: -3, 'font-size': 14, 'font-weight': 700, 'text-anchor': 'middle', fill: '#2B2B2B' }, a);
+        add('text', { x: 0, y: 14, 'font-size': 14, 'font-weight': 700, 'text-anchor': 'middle', fill: COLOR[kind] }, b2);
+      } else {
+        add('text', { x: 0, y: 8, 'font-size': 22, 'font-weight': 700, 'text-anchor': 'middle', fill: COLOR[kind] }, a);
+      }
+      var r = rot * Math.PI / 180, bw = Math.abs(W * Math.cos(r)) + Math.abs(H * Math.sin(r)) + 6, bh = Math.abs(W * Math.sin(r)) + Math.abs(H * Math.cos(r)) + 6;
+      el('rect', { x: cx - bw / 2, y: cy - bh / 2, width: bw, height: bh, fill: 'none', stroke: BOX, 'stroke-width': 2 });
+      var label = name + ' ' + conf + '%', lw = label.length * 6.4 + 6, ly = cy - bh / 2 - (up ? 26 : 13);
+      el('rect', { x: cx - bw / 2 - 1, y: ly, width: lw, height: 13, fill: BOX });
+      el('text', { x: cx - bw / 2 + 2, y: ly + 10, 'font-size': 9.5, 'font-weight': 700, fill: '#fff' }, label);
+    }
+    /* 攤開的手牌 */
+    var hand = [['一', '萬', 'm', '一萬', 98], ['二', '萬', 'm', '二萬', 97], ['三', '萬', 'm', '三萬', 98], ['四', '筒', 'p', '四筒', 96], ['五', '筒', 'p', '五筒', 95], ['六', '筒', 'p', '六筒', 96], ['發', '', 'g', '發', 99], ['發', '', 'g', '發', 99], ['發', '', 'g', '發', 98], ['中', '', 'r', '中', 99], ['中', '', 'r', '中', 99]];
+    hand.forEach(function (t, i) { tile(108 + i * 36, 276, 0, t[0], t[1], t[2], t[3], t[4], i % 2 === 1); });
+    /* 碰出來的牌（橫放） */
+    for (var m = 0; m < 3; m++) tile(54, 84 + m * 52, 90, '七', '萬', 'm', '七萬', 97 - m, false);
+    /* 打出去的牌（各種角度） */
+    tile(200, 122, 14, '東', '', 'k', '東', 96, false);
+    tile(268, 168, -24, '八', '萬', 'm', '八萬', 94, false);
+    tile(338, 116, 38, '三', '條', 's', '三條', 91, false);
+    tile(404, 174, 6, '北', '', 'k', '北', 97, false);
+    tile(170, 196, -8, '九', '筒', 'p', '九筒', 95, false);
+  })();
+  </script>
+  <span class="brand">MIGI 咪吉麻將</span><span class="pg">6</span>
+</section>
+
+<!-- 5 安裝重點 -->
+<section class="s">
+  <h2>安裝重點</h2>
+  <p class="lead">位置、高度與固定方式</p>
+  <div class="grid3">
+    <div class="card"><span class="tag">位置</span><h3>桌面正中央的正上方</h3><p>鏡頭垂直朝下。桌邊與畫面邊平行，桌面看起來是正方形。</p></div>
+    <div class="card"><span class="tag">高度</span><h3>離桌面 110–130 公分</h3><p>天花板太高就加吊桿降下來。</p></div>
+    <div class="card"><span class="tag">範圍</span><h3>四邊各多留 10 公分</h3><p>整張桌面都在畫面內，再往外留一圈。</p></div>
+    <div class="card pink"><span class="tag">順序</span><h3>先看畫面，再鎖死</h3><p>臨時固定、接上電腦確認畫面，位置確定後才正式鎖上去。</p></div>
+    <div class="card"><span class="tag">固定</span><h3>鎖在骨架或結構層</h3><p>不可只鎖在天花板面板上。</p></div>
+    <div class="card"><span class="tag">配線</span><h3>走天花板內或線槽</h3><p>不可垂掛在座位上方。單條不超過 100 公尺。</p></div>
+  </div>
+  <span class="brand">MIGI 咪吉麻將</span><span class="pg">7</span>
+</section>
+
+<!-- 6 攝影機設定 -->
+<section class="s">
+  <h2>攝影機設定</h2>
+  <p class="lead">畫面要固定不變，所以自動功能大多要關掉</p>
+  <table>
+    <tr><th style="width:24%">設定項目</th><th style="width:28%">設成</th><th>原因</th></tr>
+    <tr><td>日夜模式</td><td class="model">固定彩色</td><td class="small">不讓畫面自動變成黑白</td></tr>
+    <tr><td>快門</td><td class="model">固定 1/120 秒</td><td class="small">移動的物體不會糊，也避開燈光閃爍</td></tr>
+    <tr><td>白平衡</td><td class="model">手動</td><td class="small">畫面顏色不會忽冷忽暖</td></tr>
+    <tr><td>對焦</td><td class="model">對準桌面後改手動</td><td class="small">有東西經過鏡頭前時不會亂對焦</td></tr>
+    <tr><td>解析度</td><td class="model">最高（500 萬畫素）</td><td class="small">畫面細節最清楚</td></tr>
+    <tr><td>麥克風</td><td class="model">關閉</td><td class="small">不錄下客人的談話</td></tr>
+  </table>
+  <span class="brand">MIGI 咪吉麻將</span><span class="pg">8</span>
+</section>
+
+<!-- 後續擴充 -->
+<section class="s">
+  <h2>後續擴充</h2>
+  <p class="lead">第一張桌可行之後的方向，配線與設備選型時一併考慮</p>
+  <table>
+    <tr><th style="width:24%">擴充方向</th><th style="width:42%">增加的設備</th><th>說明</th></tr>
+    <tr><td>其他桌也安裝</td><td class="small">每桌增加俯視攝影機 1 支</td><td class="small">GS1008HP 交換器可帶到約 4 支</td></tr>
+    <tr><td>同桌加四支側面攝影機</td><td class="small">晶睿 VIVOTEK FD9187-HT-V3 或 FD9189-HT-V2，每桌 4 支<br>合勤 GS1350-18HP 交換器（16 埠供電）</td><td class="small">拍四家的手牌，可做完整牌譜與重播。<br>吊架位置在桌面四邊中點上方</td></tr>
+    <tr><td>桌面補光</td><td class="small">柔光燈，色溫固定、不閃爍、不造成牌面反光</td><td class="small">讓各時段的畫面亮度一致</td></tr>
+    <tr><td>不斷電系統</td><td class="small">碩天 CyberPower CP1000AVRLCDa 或同等級</td><td class="small">交換器與主機共用，跳電時不中斷</td></tr>
+    <tr><td>多桌共用主機</td><td class="small">視桌數增加顯示卡等級或主機數量</td><td class="small">一台主機可同時處理多支攝影機</td></tr>
+  </table>
+  <span class="brand">MIGI 咪吉麻將</span><span class="pg"></span>
+</section>
+
+</body>
+</html>
