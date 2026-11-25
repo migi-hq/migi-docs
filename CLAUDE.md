@@ -17,6 +17,10 @@ migi github/           ← Claude Code 的 project folder 選這層
 │                        身分是 device_token 不是會員 —— 系統的第三種身分
 │                        🔴 平板的配對／停用／看狀態**只在管理後台**「智慧計分板」頁，
 │                          **POS 不可以有平板管理**（2026-09-25 使用者拍板，後端停用也收成 device.write）
+├─ migi-table-esp32/   ← 🆕 2026-11-25 智慧計分板的 ESP32-P4 版（C＋LVGL，微雪 7 吋板；migi-hq/migi-table-esp32 私有），還沒實機跑過
+│                        ⚠ migi-hq 是**個人帳號**不是組織：用 API 開 repo 要打 /user/repos，打 /orgs/… 會 404
+│                        後端共用 tbl_*；🔴 **畫面是另一份**：網頁版改畫面要搬過去。
+│                        推 migi-table 時 precheck.py ⑨ 會把改到畫面的提交自動記進它的「待同步.md」（只記不擋）
 ├─ migi-assets/        ← 🔴 三端共用的設計 token 與品牌美術（migi-hq/migi-assets）
 │                        **這是唯一一個公開 repo**（其餘三個私有）。詳見硬規則 13
 ├─ sql/                ← 所有 Supabase SQL（非 repo，手動保存）

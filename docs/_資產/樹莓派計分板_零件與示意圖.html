@@ -1,0 +1,177 @@
+<title>樹莓派計分板零件</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap">
+<style>
+/* 一欄：零件表 → 接線圖 → 桌面俯視 → 嵌入剖面。圖是比例示意，不是施工圖；尺寸以實物為準。 */
+:root{
+  --bg:#FFFFFF; --fg:#2E2B2C; --sub:#5C5754; --line:#DED9D5; --soft:#F8F7F6;
+  --brand:#FAD6DC; --brand-deep:#974B5F; --tint:#FFECF1; --wood:#EFE3DA; --wood-ink:#7A5C42;
+  --dev:#2E2B2C; --dev-fg:#FFFFFF; --glass:#CFE3EE;
+  --font:'Noto Sans TC',"PingFang TC","Microsoft JhengHei",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#221F20;--fg:#FFFFFF;--sub:#C9C4C1;--line:#524D4E;--soft:#2B2829;--tint:#3A3133;--brand-deep:#FAD6DC;--wood:#4A3F38;--wood-ink:#E8D9CC;--dev:#0F0E0E;--glass:#3E5563;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#221F20;--fg:#FFFFFF;--sub:#C9C4C1;--line:#524D4E;--soft:#2B2829;--tint:#3A3133;--brand-deep:#FAD6DC;--wood:#4A3F38;--wood-ink:#E8D9CC;--dev:#0F0E0E;--glass:#3E5563;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);line-height:1.7;font-size:16px;
+  padding-block:24px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:36px}
+h1{font-size:28px;margin:0;line-height:1.3;text-wrap:balance}
+h2{font-size:21px;margin:0 0 4px}
+.lead,.cap{color:var(--sub);margin:6px 0 0}
+.cap{font-size:14px}
+section{display:flex;flex-direction:column;gap:10px}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:13px;color:var(--sub);font-weight:700;white-space:nowrap}
+td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.sum td{font-weight:700;border-bottom:2px solid var(--fg)}
+a{color:var(--brand-deep);text-underline-offset:3px;font-weight:700}
+.note{background:var(--tint);border:1px solid var(--brand);border-radius:12px;padding:12px 16px;font-size:15px}
+figure{margin:0;display:flex;flex-direction:column;gap:8px}
+.svgbox{overflow-x:auto;background:var(--soft);border-radius:14px;padding:12px}
+svg{display:block;width:100%;height:auto;min-width:560px}
+svg text{font-family:var(--font);fill:var(--fg)}
+svg .sub{fill:var(--sub)}
+svg .on-dev{fill:var(--dev-fg)}
+svg .ink{fill:var(--wood-ink)}
+</style>
+
+<main>
+  <header>
+    <h1>樹莓派計分板 · 零件與示意圖</h1>
+    <p class="lead">一個座位一套：樹莓派 5 ＋ 官方 7 吋觸控螢幕，開機自動打開 table.migi.tw。價格是 2026-11-25 在 iCShop 查到的，以頁面當下為準。</p>
+  </header>
+
+  <section>
+    <h2>零件（一個座位）</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>零件</th><th>iCShop 商品</th><th>價格</th></tr></thead>
+      <tbody>
+        <tr><td>主板</td><td><a href="https://www.icshop.com.tw/products/368030502034">Raspberry Pi 5（選 4GB）</a></td><td class="n">NT$4,450</td></tr>
+        <tr><td>觸控螢幕</td><td><a href="https://www.icshop.com.tw/products/368030101176">樹莓派官方 7 吋觸控螢幕 2（720×1280）</a></td><td class="n">NT$2,890</td></tr>
+        <tr><td>散熱</td><td><a href="https://www.icshop.com.tw/products/368020200053">Pi 5 官方主動散熱風扇</a></td><td class="n">NT$250</td></tr>
+        <tr><td>電源</td><td><a href="https://www.icshop.com.tw/products/388400800025">Waveshare 27W USB-C 電源（台灣插頭）</a></td><td class="n">NT$339</td></tr>
+        <tr><td>記憶卡</td><td><a href="https://www.icshop.com.tw/products/368030501136">SanDisk Ultra microSD 32GB</a></td><td class="n">NT$490</td></tr>
+        <tr class="sum"><td colspan="2">一個座位小計</td><td class="n">NT$8,419</td></tr>
+        <tr><td colspan="2">一桌四個座位</td><td class="n">NT$33,676</td></tr>
+      </tbody>
+    </table></div>
+    <p class="cap">選購：螢幕要拉到比較遠的主板時，可以加 <a href="https://www.icshop.com.tw/products/388390600005">Pi 5 顯示器排線 300mm</a>（NT$119，購買前確認接頭跟螢幕相容）。設定時要一組 USB 鍵盤滑鼠，設定完就拔掉，可以共用。</p>
+    <p class="note">想先試又不想一樣一樣買，可以參考 <a href="https://www.icshop.com.tw/products/388330200055">Waveshare 樹莓派 5 基礎套件 4GB</a>（主板＋散熱＋電源＋64GB 卡＋外殼，NT$9,819），再另外買螢幕。單買零件比較便宜。</p>
+  </section>
+
+  <section>
+    <h2>接線</h2>
+    <figure>
+      <div class="svgbox">
+        <svg viewBox="0 0 760 330" role="img" aria-label="接線圖：電源接樹莓派，樹莓派用排線與 5V 線接螢幕，Wi-Fi 連到店裡路由器">
+          <!-- 插座與電源 -->
+          <rect x="20" y="40" width="120" height="70" rx="10" fill="var(--line)"/>
+          <text x="80" y="70" text-anchor="middle" font-size="15" font-weight="700">27W 電源</text>
+          <text x="80" y="92" text-anchor="middle" font-size="12" class="sub">插桌子內部的插座</text>
+          <path d="M140 75 H 250" stroke="var(--fg)" stroke-width="3" fill="none"/>
+          <text x="195" y="66" text-anchor="middle" font-size="12" class="sub">USB-C</text>
+          <!-- 樹莓派 -->
+          <rect x="250" y="30" width="200" height="130" rx="12" fill="var(--dev)"/>
+          <text x="350" y="70" text-anchor="middle" font-size="17" font-weight="700" class="on-dev">樹莓派 5</text>
+          <text x="350" y="92" text-anchor="middle" font-size="12" class="on-dev">＋主動散熱風扇</text>
+          <rect x="268" y="112" width="70" height="30" rx="6" fill="var(--brand)"/>
+          <text x="303" y="132" text-anchor="middle" font-size="12" style="fill:#2E2B2C">microSD</text>
+          <rect x="350" y="112" width="84" height="30" rx="6" fill="var(--glass)"/>
+          <text x="392" y="132" text-anchor="middle" font-size="12" style="fill:#2E2B2C">DSI 接頭</text>
+          <!-- Wi-Fi -->
+          <path d="M350 30 V 0" stroke="none"/>
+          <rect x="560" y="20" width="170" height="60" rx="10" fill="var(--line)"/>
+          <text x="645" y="46" text-anchor="middle" font-size="14" font-weight="700">店裡的 Wi-Fi</text>
+          <text x="645" y="66" text-anchor="middle" font-size="12" class="sub">或預留網路線</text>
+          <path d="M450 60 H 560" stroke="var(--fg)" stroke-width="2.5" stroke-dasharray="6 6" fill="none"/>
+          <text x="505" y="52" text-anchor="middle" font-size="12" class="sub">無線</text>
+          <!-- 螢幕 -->
+          <rect x="250" y="220" width="460" height="96" rx="12" fill="var(--dev)"/>
+          <rect x="266" y="232" width="428" height="72" rx="4" fill="var(--glass)"/>
+          <text x="480" y="266" text-anchor="middle" font-size="16" font-weight="700" style="fill:#2E2B2C">官方 7 吋觸控螢幕 2（橫放）</text>
+          <text x="480" y="288" text-anchor="middle" font-size="12" style="fill:#2E2B2C">開機自動全螢幕：table.migi.tw</text>
+          <path d="M392 142 V 220" stroke="var(--brand-deep)" stroke-width="5" fill="none"/>
+          <text x="400" y="190" font-size="12" class="sub">排線（畫面＋觸控）</text>
+          <path d="M290 160 V 220" stroke="var(--fg)" stroke-width="2" fill="none"/>
+          <text x="140" y="196" font-size="12" class="sub">5V（第 2 腳）＋ GND（第 6 腳）</text>
+          <path d="M282 192 H 290" stroke="var(--fg)" stroke-width="1" fill="none"/>
+        </svg>
+      </div>
+      <figcaption class="cap">螢幕的電從樹莓派的針腳拿（附的杜邦線），整套只要插一個電源。</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>桌面俯視（一桌四套）</h2>
+    <figure>
+      <div class="svgbox">
+        <svg viewBox="0 0 760 560" role="img" aria-label="桌面俯視圖：方桌四邊各一個螢幕，正對坐在那一邊的人；中間是洗牌區">
+          <rect x="130" y="30" width="500" height="500" rx="18" fill="var(--wood)"/>
+          <rect x="255" y="155" width="250" height="250" rx="10" fill="none" stroke="var(--wood-ink)" stroke-width="2" stroke-dasharray="8 6"/>
+          <text x="380" y="275" text-anchor="middle" font-size="15" class="ink">洗牌機構</text>
+          <text x="380" y="297" text-anchor="middle" font-size="12" class="ink">桌面下空間被佔掉</text>
+          <!-- 四個螢幕：外框 18.9×12.0 公分，桌面約 90 公分見方 ⇒ 比例約 105×67 -->
+          <g>
+            <rect x="327" y="456" width="106" height="67" rx="6" fill="var(--dev)"/>
+            <rect x="335" y="463" width="90" height="51" rx="2" fill="var(--glass)"/>
+            <text x="380" y="550" text-anchor="middle" font-size="13" font-weight="700">我（南）</text>
+          </g>
+          <g transform="rotate(180 380 70)">
+            <rect x="327" y="37" width="106" height="67" rx="6" fill="var(--dev)"/>
+            <rect x="335" y="44" width="90" height="51" rx="2" fill="var(--glass)"/>
+          </g>
+          <text x="380" y="22" text-anchor="middle" font-size="13" font-weight="700">對家（北）</text>
+          <g transform="rotate(90 170 280)">
+            <rect x="117" y="247" width="106" height="67" rx="6" fill="var(--dev)"/>
+            <rect x="125" y="254" width="90" height="51" rx="2" fill="var(--glass)"/>
+          </g>
+          <text x="96" y="285" text-anchor="middle" font-size="13" font-weight="700">上家</text>
+          <g transform="rotate(-90 590 280)">
+            <rect x="537" y="247" width="106" height="67" rx="6" fill="var(--dev)"/>
+            <rect x="545" y="254" width="90" height="51" rx="2" fill="var(--glass)"/>
+          </g>
+          <text x="664" y="285" text-anchor="middle" font-size="13" font-weight="700">下家</text>
+          <!-- 尺寸標註 -->
+          <path d="M327 445 H 433" stroke="var(--brand-deep)" stroke-width="1.5"/>
+          <text x="380" y="440" text-anchor="middle" font-size="12" style="fill:var(--brand-deep)">外框約 18.9 公分</text>
+        </svg>
+      </div>
+      <figcaption class="cap">每個螢幕放在那個人前方的桌緣、正對著他。桌面以 90 公分見方畫比例；實際桌面尺寸、洗牌區範圍要跟長勝確認。</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>嵌入剖面（一個座位）</h2>
+    <figure>
+      <div class="svgbox">
+        <svg viewBox="0 0 760 300" role="img" aria-label="剖面圖：螢幕與桌面齊平，上面蓋強化玻璃；樹莓派裝在桌面下方，旁邊有通風口與走線">
+          <!-- 桌面 -->
+          <rect x="20" y="80" width="720" height="40" fill="var(--wood)"/>
+          <text x="60" y="105" font-size="13" class="ink">桌面</text>
+          <!-- 開孔與螢幕 -->
+          <rect x="280" y="80" width="230" height="40" fill="var(--bg)"/>
+          <rect x="286" y="84" width="218" height="30" rx="3" fill="var(--dev)"/>
+          <rect x="270" y="72" width="250" height="8" rx="2" fill="var(--glass)" stroke="var(--fg)" stroke-width="1"/>
+          <text x="395" y="62" text-anchor="middle" font-size="13" font-weight="700">強化玻璃（與桌面齊平、邊緣防水）</text>
+          <text x="395" y="104" text-anchor="middle" font-size="12" class="on-dev">7 吋觸控螢幕</text>
+          <!-- 桌面下 -->
+          <rect x="330" y="190" width="150" height="70" rx="10" fill="var(--dev)"/>
+          <text x="405" y="222" text-anchor="middle" font-size="14" font-weight="700" class="on-dev">樹莓派 5</text>
+          <text x="405" y="242" text-anchor="middle" font-size="11" class="on-dev">可拆的固定座</text>
+          <path d="M395 114 V 190" stroke="var(--brand-deep)" stroke-width="5"/>
+          <text x="404" y="160" font-size="12" class="sub">排線</text>
+          <rect x="560" y="200" width="110" height="50" rx="8" fill="var(--line)"/>
+          <text x="615" y="230" text-anchor="middle" font-size="13">電源</text>
+          <path d="M480 225 H 560" stroke="var(--fg)" stroke-width="2.5"/>
+          <!-- 通風 -->
+          <path d="M150 260 q 15 -20 0 -40 q -15 -20 0 -40" stroke="var(--sub)" stroke-width="2" fill="none"/>
+          <path d="M190 260 q 15 -20 0 -40 q -15 -20 0 -40" stroke="var(--sub)" stroke-width="2" fill="none"/>
+          <text x="170" y="285" text-anchor="middle" font-size="12" class="sub">通風口</text>
+          <text x="20" y="160" font-size="13" class="sub">桌面下</text>
+        </svg>
+      </div>
+      <figcaption class="cap">要跟長勝確認：開孔尺寸（以實物量）、桌面下有沒有放主板的位置、走線通道、通風、從哪裡取電、主板能不能不拆桌子就換。</figcaption>
+    </figure>
+  </section>
+</main>

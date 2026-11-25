@@ -1,0 +1,276 @@
+<title>ESP32 計分板畫面</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap">
+<style>
+/* 示意圖：照 migi-table-esp32/main/board.c、ui.c 裡的位置（1280×720）、字級與顏色畫的，不是韌體真的渲染出來的 */
+:root{
+  --dk-bg:#221F20; --dk-bar:#191718; --dk-raised:#2B2829; --dk-tile:#343132; --dk-line:#524D4E;
+  --dk-text:#FFFFFF; --dk-text-2:#C9C4C1; --dk-text-3:#A39E9B;
+  --brand:#FAD6DC; --ink:#2E2B2C;
+  --page:#F6F5F4; --page-ink:#2E2B2C; --page-sub:#5C5754; --page-line:#DED9D5;
+  --font:'Noto Sans TC',"PingFang TC","Microsoft JhengHei",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--page:#191718;--page-ink:#FFFFFF;--page-sub:#C9C4C1;--page-line:#524D4E;color-scheme:dark}}
+:root[data-theme="dark"]{--page:#191718;--page-ink:#FFFFFF;--page-sub:#C9C4C1;--page-line:#524D4E;color-scheme:dark}
+body{background:var(--page);color:var(--page-ink);font-family:var(--font);padding-block:28px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1{font-size:26px;margin:0;text-wrap:balance}
+.lead{color:var(--page-sub);margin:6px 0 0;line-height:1.7;max-width:62ch}
+figure{margin:0;display:flex;flex-direction:column;gap:10px}
+figcaption{font-weight:700;font-size:17px}
+figcaption span{display:block;font-weight:400;font-size:14px;color:var(--page-sub);margin-top:2px}
+.frame{width:100%;aspect-ratio:1280/720;max-width:100%;position:relative;overflow:hidden;border-radius:14px;border:6px solid #111;background:var(--dk-bg)}
+.stage{position:absolute;left:0;top:0;width:1280px;height:720px;transform-origin:0 0;background:var(--dk-bg);color:var(--dk-text);font-family:var(--font)}
+.a{position:absolute}
+.top{left:0;top:0;width:1280px;height:48px;background:var(--dk-bar)}
+.logo{left:20px;top:7px;font-size:26px;font-weight:700;color:var(--brand)}
+.tbl{left:110px;top:9px;font-size:24px;font-weight:700}
+.use{left:0;width:1280px;top:11px;text-align:center;font-size:22px;color:var(--dk-text-2)}
+.card{background:var(--dk-raised);border:1px solid var(--dk-line);border-radius:20px}
+.card.dl{border:3px solid var(--brand)}
+.pill{display:inline-block;border-radius:999px;padding:3px 13px;background:var(--dk-tile);color:var(--dk-text-2);font-size:18px;white-space:nowrap}
+.pill.br{background:var(--brand);color:var(--ink)}
+.av{border-radius:50%;background:var(--dk-tile);border:2px solid var(--dk-line);display:flex;align-items:center;justify-content:center;font-weight:700;box-sizing:border-box}
+.btn{border-radius:14px;display:flex;align-items:center;justify-content:center;font-weight:700;box-sizing:border-box}
+.pri{background:var(--brand);color:var(--ink)}
+.dark{background:var(--dk-tile);color:var(--dk-text)}
+.gho{border:2px solid var(--dk-line);color:var(--dk-text)}
+.line{border:2px solid var(--dk-text-2);color:var(--dk-text)}
+.scrim{left:0;top:0;width:1280px;height:720px;background:rgba(20,18,19,.82)}
+.sheet{background:var(--dk-raised);border:1px solid var(--dk-line);border-radius:24px;padding:32px;display:flex;flex-direction:column;align-items:center;gap:14px;box-sizing:border-box}
+.money{font-size:72px;font-weight:700;color:var(--brand);line-height:1}
+.tile{border-radius:14px;background:var(--dk-tile);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.tile b{font-size:26px}.tile i{font-style:normal;font-size:18px;color:var(--dk-text-2)}
+.tile.on{background:var(--brand);color:var(--ink)}.tile.on i{color:var(--ink)}
+.note{font-size:14px;color:var(--page-sub);line-height:1.7;max-width:62ch}
+
+.frame{container-type:inline-size}
+.stage{transform:scale(.25)}
+@container (min-width:320px){.stage{transform:scale(0.2406)}}
+@container (min-width:340px){.stage{transform:scale(0.2562)}}
+@container (min-width:360px){.stage{transform:scale(0.2719)}}
+@container (min-width:380px){.stage{transform:scale(0.2875)}}
+@container (min-width:400px){.stage{transform:scale(0.3031)}}
+@container (min-width:420px){.stage{transform:scale(0.3187)}}
+@container (min-width:440px){.stage{transform:scale(0.3344)}}
+@container (min-width:460px){.stage{transform:scale(0.3500)}}
+@container (min-width:480px){.stage{transform:scale(0.3656)}}
+@container (min-width:500px){.stage{transform:scale(0.3812)}}
+@container (min-width:520px){.stage{transform:scale(0.3969)}}
+@container (min-width:540px){.stage{transform:scale(0.4125)}}
+@container (min-width:560px){.stage{transform:scale(0.4281)}}
+@container (min-width:580px){.stage{transform:scale(0.4437)}}
+@container (min-width:600px){.stage{transform:scale(0.4594)}}
+@container (min-width:620px){.stage{transform:scale(0.4750)}}
+@container (min-width:640px){.stage{transform:scale(0.4906)}}
+@container (min-width:660px){.stage{transform:scale(0.5062)}}
+@container (min-width:680px){.stage{transform:scale(0.5219)}}
+@container (min-width:700px){.stage{transform:scale(0.5375)}}
+@container (min-width:720px){.stage{transform:scale(0.5531)}}
+@container (min-width:740px){.stage{transform:scale(0.5687)}}
+@container (min-width:760px){.stage{transform:scale(0.5844)}}
+@container (min-width:780px){.stage{transform:scale(0.6000)}}
+@container (min-width:800px){.stage{transform:scale(0.6156)}}
+@container (min-width:820px){.stage{transform:scale(0.6312)}}
+@container (min-width:840px){.stage{transform:scale(0.6469)}}
+@container (min-width:860px){.stage{transform:scale(0.6625)}}
+@container (min-width:880px){.stage{transform:scale(0.6781)}}
+@container (min-width:900px){.stage{transform:scale(0.6937)}}
+@container (min-width:920px){.stage{transform:scale(0.7094)}}
+@container (min-width:940px){.stage{transform:scale(0.7250)}}
+@container (min-width:960px){.stage{transform:scale(0.7406)}}
+@container (min-width:980px){.stage{transform:scale(0.7562)}}
+@container (min-width:1000px){.stage{transform:scale(0.7719)}}
+@container (min-width:1020px){.stage{transform:scale(0.7875)}}
+@container (min-width:1040px){.stage{transform:scale(0.8031)}}
+@container (min-width:1060px){.stage{transform:scale(0.8187)}}
+@container (min-width:1080px){.stage{transform:scale(0.8344)}}
+@container (min-width:1100px){.stage{transform:scale(0.8500)}}
+@container (min-width:1120px){.stage{transform:scale(0.8656)}}
+@container (min-width:1140px){.stage{transform:scale(0.8812)}}
+@container (min-width:1160px){.stage{transform:scale(0.8969)}}
+@container (min-width:1180px){.stage{transform:scale(0.9125)}}
+@container (min-width:1200px){.stage{transform:scale(0.9281)}}
+@container (min-width:1220px){.stage{transform:scale(0.9437)}}
+@container (min-width:1240px){.stage{transform:scale(0.9594)}}
+@container (min-width:1260px){.stage{transform:scale(0.9750)}}
+@container (min-width:1280px){.stage{transform:scale(0.9906)}}
+@container (min-width:1300px){.stage{transform:scale(1.0063)}}
+@container (min-width:1320px){.stage{transform:scale(1.0219)}}
+@container (min-width:1340px){.stage{transform:scale(1.0375)}}
+@container (min-width:1360px){.stage{transform:scale(1.0531)}}
+@container (min-width:1380px){.stage{transform:scale(1.0688)}}
+@container (min-width:1400px){.stage{transform:scale(1.0844)}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>ESP32 計分板 · 畫面示意</h1>
+    <p class="lead">照韌體程式裡的位置、字級與顏色畫成網頁，給沒有板子時先看版面。這不是韌體真的渲染出來的畫面：字的粗細、行距、頭像在實機上會有差異。螢幕是 7 吋橫放 1280×720。</p>
+  </header>
+
+  <figure>
+    <figcaption>主畫面<span>三家卡圍著桌面、最下面是我的卡。我是莊家（連 1），粉框是莊家。</span></figcaption>
+    <div class="frame"><div class="stage" id="s-main"><div class="a top"></div><div class="a logo">MIGI</div><div class="a tbl">A1</div><div class="a use">使用時間 1:12</div><div class="a card" style="left:450px;top:56px;width:380px;height:196px">
+    <span class="a pill" style="left:12px;top:10px">對家</span>
+    <div class="a av" style="left:16px;top:52px;width:60px;height:60px;font-size:27px">阿</div>
+    <div class="a" style="left:90px;top:48px;font-size:26px;font-weight:700">阿凱</div>
+    <span class="a pill" style="left:90px;top:88px">段位: 銀牌熊 I</span>
+    <div class="a btn pri" style="left:12px;top:128px;width:356px;height:56px;font-size:26px">放槍</div></div><div class="a card" style="left:16px;top:254px;width:380px;height:196px">
+    <span class="a pill" style="left:12px;top:10px">上家</span>
+    <div class="a av" style="left:16px;top:52px;width:60px;height:60px;font-size:27px">L</div>
+    <div class="a" style="left:90px;top:48px;font-size:26px;font-weight:700">Lisa</div>
+    <span class="a pill" style="left:90px;top:88px">段位: 銅牌熊 III</span>
+    <div class="a btn pri" style="left:12px;top:128px;width:356px;height:56px;font-size:26px">放槍</div></div><div class="a card" style="left:884px;top:254px;width:380px;height:196px">
+    <span class="a pill" style="left:12px;top:10px">下家</span>
+    <div class="a av" style="left:16px;top:52px;width:60px;height:60px;font-size:27px">大</div>
+    <div class="a" style="left:90px;top:48px;font-size:26px;font-weight:700">大熊哥</div>
+    <span class="a pill" style="left:90px;top:88px">尚未取得段位</span>
+    <div class="a btn pri" style="left:12px;top:128px;width:356px;height:56px;font-size:26px">放槍</div></div><div class="a" style="right:16px;top:60px;display:flex;gap:12px"><div class="btn line" style="width:180px;height:56px;font-size:22px">查看紀錄 ›</div><div class="btn gho" style="width:150px;height:56px;font-size:22px">重新整理</div></div>
+   <div class="a" style="left:410px;top:300px;width:460px;display:flex;flex-direction:column;align-items:center;gap:12px">
+     <div style="font-size:36px;font-weight:700">第 1 將 · 第 6 局</div>
+     <div style="font-size:26px;color:var(--dk-text-2)">南風圈</div>
+     <div style="display:flex;gap:14px"><div class="btn gho" style="width:190px;height:64px;font-size:24px;opacity:.4">流局回溯</div><div class="btn dark" style="width:190px;height:64px;font-size:24px">本局流局</div></div></div><div class="a card dl" style="left:16px;top:470px;width:1248px;height:238px">
+    <div class="a av" style="left:24px;top:28px;width:96px;height:96px;font-size:43px">小</div>
+    <div class="a" style="left:136px;top:18px;display:flex;flex-direction:column;gap:6px">
+      <span style="font-size:20px;color:var(--dk-text-2)">「新手上路」</span>
+      <span style="font-size:34px;font-weight:700;line-height:1.1">小美</span>
+      <span class="pill" style="font-size:20px;align-self:flex-start">段位: 金牌熊 II</span>
+      <span class="pill br" style="font-size:20px;align-self:flex-start">莊家 · 連 1</span></div>
+    <div class="a" style="left:500px;top:30px;font-size:24px;color:var(--dk-text-2)">我的積分</div>
+    <div class="a btn dark" style="left:650px;top:22px;width:130px;height:44px;font-size:20px">隱藏積分</div>
+    <div class="a" style="left:500px;top:74px;font-size:84px;font-weight:700">12,480</div>
+    <div class="a btn pri" style="left:830px;top:20px;width:370px;height:104px;font-size:38px">我自摸</div>
+    <div class="a btn dark" style="left:830px;top:136px;width:116px;height:80px;font-size:24px">我包牌</div><div class="a btn dark" style="left:957px;top:136px;width:116px;height:80px;font-size:24px">咔啦碰</div><div class="a btn dark" style="left:1084px;top:136px;width:116px;height:80px;font-size:24px">分紅</div>
+  </div></div></div>
+  </figure>
+
+  <figure>
+    <figcaption>選牌型<span>按了對家的「放槍」之後。選了門清、東南西北 ×2，最下面計算列先算預覽積分。</span></figcaption>
+    <div class="frame"><div class="stage" id="s-pat"><div class="a top"></div><div class="a logo">MIGI</div><div class="a tbl">A1</div><div class="a use">使用時間 1:12</div><div class="a" style="left:16px;top:58px;display:flex"><div class="btn pri" style="width:170px;height:56px;font-size:24px;border-radius:0">選牌型</div><div class="btn dark" style="width:170px;height:56px;font-size:24px;border-radius:0">數字鍵</div></div>
+  <div class="a" style="left:0;width:1280px;top:70px;text-align:center;font-size:24px;font-weight:700;color:var(--dk-text-2)">胡對家的牌（阿凱放槍）</div>
+  <div class="a btn line" style="right:16px;top:58px;width:220px;height:56px;font-size:22px">‹ 回到上一步</div>
+  <div class="a" style="left:16px;top:126px;width:1248px;display:flex;flex-wrap:wrap;gap:10px">
+   <div class="tile" style="width:199.66666666666666px;height:89.6px;position:relative"><b style="">沒台</b><i>0 台</i></div><div class="tile on" style="width:199.66666666666666px;height:89.6px;position:relative"><b style="">東南西北</b><i>2 台</i><span class="pill" style="position:absolute;right:6px;top:6px;background:var(--ink);color:var(--brand);padding:1px 9px">2</span></div><div class="tile" style="width:199.66666666666666px;height:89.6px;position:relative"><b style="">中發白</b><i>1 台</i></div><div class="tile" style="width:199.66666666666666px;height:89.6px;position:relative"><b style="font-size:20px">邊張單吊中洞</b><i>1 台</i></div><div class="tile" style="width:199.66666666666666px;height:89.6px;position:relative"><b style="">搶槓</b><i>1 台</i></div><div class="tile on" style="width:199.66666666666666px;height:89.6px;position:relative"><b style="">門清</b><i>1 台</i></div><div class="tile" style="width:199.66666666666666px;height:89.6px;position:relative"><b style="">槓上開花</b><i>1 台</i></div><div class="tile" style="width:199.66666666666666px;height:89.6px;position:relative"><b style="">海底撈月</b><i>1 台</i></div><div class="tile" style="width:199.66666666666666px;height:89.6px;position:relative"><b style="">平胡</b><i>2 台</i></div><div class="tile" style="width:199.66666666666666px;height:89.6px;position:relative"><b style="">全求</b><i>2 台</i></div><div class="tile" style="width:199.66666666666666px;height:89.6px;position:relative"><b style="">碰碰胡</b><i>4 台</i></div><div class="tile" style="width:199.66666666666666px;height:89.6px;position:relative"><b style="">三暗刻</b><i>2 台</i></div><div class="tile" style="width:199.66666666666666px;height:89.6px;position:relative"><b style="">四暗刻</b><i>5 台</i></div><div class="tile" style="width:199.66666666666666px;height:89.6px;position:relative"><b style="">五暗刻</b><i>8 台</i></div><div class="tile" style="width:199.66666666666666px;height:89.6px;position:relative"><b style="">小三元</b><i>4 台</i></div><div class="tile" style="width:199.66666666666666px;height:89.6px;position:relative"><b style="">大三元</b><i>8 台</i></div><div class="tile" style="width:199.66666666666666px;height:89.6px;position:relative"><b style="">小四喜</b><i>8 台</i></div><div class="tile" style="width:199.66666666666666px;height:89.6px;position:relative"><b style="">大四喜</b><i>16 台</i></div><div class="tile" style="width:199.66666666666666px;height:89.6px;position:relative"><b style="">混一色</b><i>4 台</i></div><div class="tile" style="width:199.66666666666666px;height:89.6px;position:relative"><b style="">清一色</b><i>8 台</i></div><div class="tile" style="width:199.66666666666666px;height:89.6px;position:relative"><b style="">字一色</b><i>16 台</i></div><div class="tile" style="width:199.66666666666666px;height:89.6px;position:relative"><b style="">全紅</b><i>8 台</i></div><div class="tile" style="width:199.66666666666666px;height:89.6px;position:relative"><b style="">骰龜</b><i>2 台</i></div><div class="tile" style="width:199.66666666666666px;height:89.6px;position:relative"><b style="">豹子</b><i>總積分 ×2 倍</i></div><div class="tile" style="width:199.66666666666666px;height:89.6px;position:relative"><b style="">MIGI</b><i>8 台</i></div></div>
+  <div class="a" style="left:16px;top:628px;width:1248px;height:80px;background:var(--dk-bar);border:2px solid var(--brand);border-radius:18px;box-sizing:border-box">
+    <div class="a" style="left:24px;top:14px;font-size:30px;font-weight:700">1 底　3 台　莊 3 台　＝　<span style="font-size:36px;color:var(--brand)">170 積分</span></div>
+    <div class="a btn pri" style="right:8px;top:6px;width:250px;height:64px;font-size:30px">送出</div></div></div></div>
+  </figure>
+
+  <figure>
+    <figcaption>確認卡（要我付的那一台）<span>大數字讀後端送來的金額，取消與確認一樣寬。</span></figcaption>
+    <div class="frame"><div class="stage" id="s-confirm"><div class="a top"></div><div class="a logo">MIGI</div><div class="a tbl">A1</div><div class="a use">使用時間 1:12</div><div class="a card" style="left:450px;top:56px;width:380px;height:196px">
+    <span class="a pill" style="left:12px;top:10px">對家</span>
+    <div class="a av" style="left:16px;top:52px;width:60px;height:60px;font-size:27px">阿</div>
+    <div class="a" style="left:90px;top:48px;font-size:26px;font-weight:700">阿凱</div>
+    <span class="a pill" style="left:90px;top:88px">段位: 銀牌熊 I</span>
+    <div class="a btn pri" style="left:12px;top:128px;width:356px;height:56px;font-size:26px">放槍</div></div><div class="a card" style="left:16px;top:254px;width:380px;height:196px">
+    <span class="a pill" style="left:12px;top:10px">上家</span>
+    <div class="a av" style="left:16px;top:52px;width:60px;height:60px;font-size:27px">L</div>
+    <div class="a" style="left:90px;top:48px;font-size:26px;font-weight:700">Lisa</div>
+    <span class="a pill" style="left:90px;top:88px">段位: 銅牌熊 III</span>
+    <div class="a btn pri" style="left:12px;top:128px;width:356px;height:56px;font-size:26px">放槍</div></div><div class="a card" style="left:884px;top:254px;width:380px;height:196px">
+    <span class="a pill" style="left:12px;top:10px">下家</span>
+    <div class="a av" style="left:16px;top:52px;width:60px;height:60px;font-size:27px">大</div>
+    <div class="a" style="left:90px;top:48px;font-size:26px;font-weight:700">大熊哥</div>
+    <span class="a pill" style="left:90px;top:88px">尚未取得段位</span>
+    <div class="a btn pri" style="left:12px;top:128px;width:356px;height:56px;font-size:26px">放槍</div></div><div class="a" style="right:16px;top:60px;display:flex;gap:12px"><div class="btn line" style="width:180px;height:56px;font-size:22px">查看紀錄 ›</div><div class="btn gho" style="width:150px;height:56px;font-size:22px">重新整理</div></div>
+   <div class="a" style="left:410px;top:300px;width:460px;display:flex;flex-direction:column;align-items:center;gap:12px">
+     <div style="font-size:36px;font-weight:700">第 1 將 · 第 6 局</div>
+     <div style="font-size:26px;color:var(--dk-text-2)">南風圈</div>
+     <div style="display:flex;gap:14px"><div class="btn gho" style="width:190px;height:64px;font-size:24px;opacity:.4">流局回溯</div><div class="btn dark" style="width:190px;height:64px;font-size:24px">本局流局</div></div></div><div class="a card dl" style="left:16px;top:470px;width:1248px;height:238px">
+    <div class="a av" style="left:24px;top:28px;width:96px;height:96px;font-size:43px">小</div>
+    <div class="a" style="left:136px;top:18px;display:flex;flex-direction:column;gap:6px">
+      <span style="font-size:20px;color:var(--dk-text-2)">「新手上路」</span>
+      <span style="font-size:34px;font-weight:700;line-height:1.1">小美</span>
+      <span class="pill" style="font-size:20px;align-self:flex-start">段位: 金牌熊 II</span>
+      <span class="pill br" style="font-size:20px;align-self:flex-start">莊家 · 連 1</span></div>
+    <div class="a" style="left:500px;top:30px;font-size:24px;color:var(--dk-text-2)">我的積分</div>
+    <div class="a btn dark" style="left:650px;top:22px;width:130px;height:44px;font-size:20px">隱藏積分</div>
+    <div class="a" style="left:500px;top:74px;font-size:84px;font-weight:700">12,480</div>
+    <div class="a btn pri" style="left:830px;top:20px;width:370px;height:104px;font-size:38px">我自摸</div>
+    <div class="a btn dark" style="left:830px;top:136px;width:116px;height:80px;font-size:24px">我包牌</div><div class="a btn dark" style="left:957px;top:136px;width:116px;height:80px;font-size:24px">咔啦碰</div><div class="a btn dark" style="left:1084px;top:136px;width:116px;height:80px;font-size:24px">分紅</div>
+  </div><div class="a scrim"></div><div class="a sheet" style="left:280px;top:110px;width:720px">
+   <div><span style="font-size:28px;color:var(--dk-text-2)">支付給</span> <b style="font-size:34px">上家</b></div>
+   <div style="font-size:32px;font-weight:700">門清、中發白　1 底 2 台</div>
+   <div class="money">−90</div>
+   <div style="font-size:26px">確認支付 90 積分？</div>
+   <div style="display:flex;gap:16px"><div class="btn gho" style="width:300px;height:72px;font-size:28px">取消</div><div class="btn pri" style="width:300px;height:72px;font-size:28px">確認</div></div></div></div></div>
+  </figure>
+
+  <figure>
+    <figcaption>等確認時整台鎖住<span>我自摸送出後，另外三家還沒按確認。</span></figcaption>
+    <div class="frame"><div class="stage" id="s-wait"><div class="a top"></div><div class="a logo">MIGI</div><div class="a tbl">A1</div><div class="a use">使用時間 1:12</div><div class="a card" style="left:450px;top:56px;width:380px;height:196px">
+    <span class="a pill" style="left:12px;top:10px">對家</span>
+    <div class="a av" style="left:16px;top:52px;width:60px;height:60px;font-size:27px">阿</div>
+    <div class="a" style="left:90px;top:48px;font-size:26px;font-weight:700">阿凱</div>
+    <span class="a pill" style="left:90px;top:88px">段位: 銀牌熊 I</span>
+    <div class="a btn pri" style="left:12px;top:128px;width:356px;height:56px;font-size:26px">放槍</div></div><div class="a card" style="left:16px;top:254px;width:380px;height:196px">
+    <span class="a pill" style="left:12px;top:10px">上家</span>
+    <div class="a av" style="left:16px;top:52px;width:60px;height:60px;font-size:27px">L</div>
+    <div class="a" style="left:90px;top:48px;font-size:26px;font-weight:700">Lisa</div>
+    <span class="a pill" style="left:90px;top:88px">段位: 銅牌熊 III</span>
+    <div class="a btn pri" style="left:12px;top:128px;width:356px;height:56px;font-size:26px">放槍</div></div><div class="a card" style="left:884px;top:254px;width:380px;height:196px">
+    <span class="a pill" style="left:12px;top:10px">下家</span>
+    <div class="a av" style="left:16px;top:52px;width:60px;height:60px;font-size:27px">大</div>
+    <div class="a" style="left:90px;top:48px;font-size:26px;font-weight:700">大熊哥</div>
+    <span class="a pill" style="left:90px;top:88px">尚未取得段位</span>
+    <div class="a btn pri" style="left:12px;top:128px;width:356px;height:56px;font-size:26px">放槍</div></div><div class="a" style="right:16px;top:60px;display:flex;gap:12px"><div class="btn line" style="width:180px;height:56px;font-size:22px">查看紀錄 ›</div><div class="btn gho" style="width:150px;height:56px;font-size:22px">重新整理</div></div>
+   <div class="a" style="left:410px;top:300px;width:460px;display:flex;flex-direction:column;align-items:center;gap:12px">
+     <div style="font-size:36px;font-weight:700">第 1 將 · 第 6 局</div>
+     <div style="font-size:26px;color:var(--dk-text-2)">南風圈</div>
+     <div style="display:flex;gap:14px"><div class="btn gho" style="width:190px;height:64px;font-size:24px;opacity:.4">流局回溯</div><div class="btn dark" style="width:190px;height:64px;font-size:24px">本局流局</div></div></div><div class="a card dl" style="left:16px;top:470px;width:1248px;height:238px">
+    <div class="a av" style="left:24px;top:28px;width:96px;height:96px;font-size:43px">小</div>
+    <div class="a" style="left:136px;top:18px;display:flex;flex-direction:column;gap:6px">
+      <span style="font-size:20px;color:var(--dk-text-2)">「新手上路」</span>
+      <span style="font-size:34px;font-weight:700;line-height:1.1">小美</span>
+      <span class="pill" style="font-size:20px;align-self:flex-start">段位: 金牌熊 II</span>
+      <span class="pill br" style="font-size:20px;align-self:flex-start">莊家 · 連 1</span></div>
+    <div class="a" style="left:500px;top:30px;font-size:24px;color:var(--dk-text-2)">我的積分</div>
+    <div class="a btn dark" style="left:650px;top:22px;width:130px;height:44px;font-size:20px">隱藏積分</div>
+    <div class="a" style="left:500px;top:74px;font-size:84px;font-weight:700">12,480</div>
+    <div class="a btn pri" style="left:830px;top:20px;width:370px;height:104px;font-size:38px">我自摸</div>
+    <div class="a btn dark" style="left:830px;top:136px;width:116px;height:80px;font-size:24px">我包牌</div><div class="a btn dark" style="left:957px;top:136px;width:116px;height:80px;font-size:24px">咔啦碰</div><div class="a btn dark" style="left:1084px;top:136px;width:116px;height:80px;font-size:24px">分紅</div>
+  </div><div class="a scrim"></div><div class="a" style="left:330px;top:200px;width:620px;background:var(--dk-raised);border:2px solid var(--brand);border-radius:20px;padding:28px;display:flex;flex-direction:column;gap:16px;box-sizing:border-box">
+   <div style="display:flex;align-items:center;gap:16px"><div class="av" style="width:56px;height:56px;font-size:25px">大</div><b style="font-size:30px">大熊哥 確認中…</b><b style="font-size:28px">−150 積分</b></div><div style="display:flex;align-items:center;gap:16px"><div class="av" style="width:56px;height:56px;font-size:25px">阿</div><b style="font-size:30px">阿凱 確認中…</b><b style="font-size:28px">−150 積分</b></div><div style="display:flex;align-items:center;gap:16px"><div class="av" style="width:56px;height:56px;font-size:25px">L</div><b style="font-size:30px">Lisa 確認中…</b><b style="font-size:28px">−150 積分</b></div></div></div></div>
+  </figure>
+
+  <figure>
+    <figcaption>牌局紀錄<span>可以篩選第幾將、哪一圈；新的在上面。</span></figcaption>
+    <div class="frame"><div class="stage" id="s-log"><div class="a top"></div><div class="a logo">MIGI</div><div class="a tbl">A1</div><div class="a use">使用時間 1:12</div><div class="a" style="left:24px;top:64px;font-size:34px;font-weight:700">牌局紀錄</div>
+   <div class="a btn line" style="right:16px;top:58px;width:160px;height:56px;font-size:24px">‹ 返回</div>
+   <div class="a" style="left:24px;top:128px;display:flex;gap:10px"><div class="btn pri" style="width:110px;height:48px;font-size:20px">全部</div><div class="btn dark" style="width:120px;height:48px;font-size:20px">第 1 將</div><div class="btn dark" style="width:120px;height:48px;font-size:20px">第 2 將</div><div class="btn dark" style="width:120px;height:48px;font-size:20px">第 3 將</div></div>
+   <div class="a" style="left:24px;top:184px;display:flex;gap:10px"><div class="btn pri" style="width:110px;height:48px;font-size:20px">全部</div><div class="btn dark" style="width:120px;height:48px;font-size:20px">東風圈</div><div class="btn dark" style="width:120px;height:48px;font-size:20px">南風圈</div><div class="btn dark" style="width:120px;height:48px;font-size:20px">西風圈</div><div class="btn dark" style="width:120px;height:48px;font-size:20px">北風圈</div></div>
+   <div class="a" style="left:24px;top:244px;width:1232px;display:flex;flex-direction:column;gap:12px">
+    <div style="background:var(--dk-raised);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:8px">
+    <div style="display:flex;gap:18px;align-items:center"><b style="font-size:26px">第 5 局</b><span style="font-size:22px;color:var(--dk-text-2)">南風圈 · 第 1 將　21:42</span><span class="pill" style="font-size:20px">已結算</span></div>
+    <div style="display:flex;gap:16px;align-items:center"><b style="font-size:26px">自摸 · 小美</b><span style="font-size:24px;color:var(--brand)">門清、中發白</span><span class="pill" style="font-size:20px">1 底 3 台</span><b style="font-size:30px;color:var(--brand)">＋450</b></div>
+    <div style="display:flex;gap:22px;font-size:22px;color:var(--dk-text-2)"><span>阿凱 −150 已支付</span><span>Lisa −150 已支付</span><span>大熊哥 −150 已支付</span></div></div>
+    <div style="background:var(--dk-raised);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:8px">
+    <div style="display:flex;gap:18px;align-items:center"><b style="font-size:26px">第 4 局</b><span style="font-size:22px;color:var(--dk-text-2)">南風圈 · 第 1 將　21:31</span><span class="pill" style="font-size:20px">已結算</span></div>
+    <div style="display:flex;gap:16px;align-items:center"><b style="font-size:26px">胡牌 · Lisa</b><span style="font-size:24px;color:var(--brand)">碰碰胡</span><span class="pill" style="font-size:20px">1 底 4 台</span><b style="font-size:30px;color:var(--brand)">＋130</b></div>
+    <div style="display:flex;gap:22px;font-size:22px;color:var(--dk-text-2)"><span>大熊哥 −130 已支付</span></div></div>
+   </div></div></div>
+  </figure>
+
+  <figure>
+    <figcaption>配對<span>連上 Wi-Fi 之後、還沒配對時。手機掃 QR 打開配對網頁，貼上後台給的配對連結。</span></figcaption>
+    <div class="frame"><div class="stage" id="s-pair"><div class="a top"></div><div class="a logo">MIGI</div><div class="a tbl">A1</div><div class="a use">使用時間 1:12</div><div class="a" style="left:90px;top:168px;width:300px;height:300px;background:#fff;border:14px solid #fff;box-sizing:content-box"><svg viewBox="0 0 25 25" width="300" height="300" fill="#2E2B2C" shape-rendering="crispEdges"><rect x="0" y="0" width="1" height="1"/><rect x="1" y="0" width="1" height="1"/><rect x="2" y="0" width="1" height="1"/><rect x="3" y="0" width="1" height="1"/><rect x="4" y="0" width="1" height="1"/><rect x="5" y="0" width="1" height="1"/><rect x="6" y="0" width="1" height="1"/><rect x="8" y="0" width="1" height="1"/><rect x="10" y="0" width="1" height="1"/><rect x="13" y="0" width="1" height="1"/><rect x="15" y="0" width="1" height="1"/><rect x="18" y="0" width="1" height="1"/><rect x="19" y="0" width="1" height="1"/><rect x="20" y="0" width="1" height="1"/><rect x="21" y="0" width="1" height="1"/><rect x="22" y="0" width="1" height="1"/><rect x="23" y="0" width="1" height="1"/><rect x="24" y="0" width="1" height="1"/><rect x="0" y="1" width="1" height="1"/><rect x="6" y="1" width="1" height="1"/><rect x="9" y="1" width="1" height="1"/><rect x="11" y="1" width="1" height="1"/><rect x="14" y="1" width="1" height="1"/><rect x="16" y="1" width="1" height="1"/><rect x="18" y="1" width="1" height="1"/><rect x="24" y="1" width="1" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="2" y="2" width="1" height="1"/><rect x="3" y="2" width="1" height="1"/><rect x="4" y="2" width="1" height="1"/><rect x="6" y="2" width="1" height="1"/><rect x="10" y="2" width="1" height="1"/><rect x="11" y="2" width="1" height="1"/><rect x="15" y="2" width="1" height="1"/><rect x="16" y="2" width="1" height="1"/><rect x="18" y="2" width="1" height="1"/><rect x="20" y="2" width="1" height="1"/><rect x="21" y="2" width="1" height="1"/><rect x="22" y="2" width="1" height="1"/><rect x="24" y="2" width="1" height="1"/><rect x="0" y="3" width="1" height="1"/><rect x="2" y="3" width="1" height="1"/><rect x="3" y="3" width="1" height="1"/><rect x="4" y="3" width="1" height="1"/><rect x="6" y="3" width="1" height="1"/><rect x="18" y="3" width="1" height="1"/><rect x="20" y="3" width="1" height="1"/><rect x="21" y="3" width="1" height="1"/><rect x="22" y="3" width="1" height="1"/><rect x="24" y="3" width="1" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="2" y="4" width="1" height="1"/><rect x="3" y="4" width="1" height="1"/><rect x="4" y="4" width="1" height="1"/><rect x="6" y="4" width="1" height="1"/><rect x="8" y="4" width="1" height="1"/><rect x="9" y="4" width="1" height="1"/><rect x="13" y="4" width="1" height="1"/><rect x="14" y="4" width="1" height="1"/><rect x="18" y="4" width="1" height="1"/><rect x="20" y="4" width="1" height="1"/><rect x="21" y="4" width="1" height="1"/><rect x="22" y="4" width="1" height="1"/><rect x="24" y="4" width="1" height="1"/><rect x="0" y="5" width="1" height="1"/><rect x="6" y="5" width="1" height="1"/><rect x="8" y="5" width="1" height="1"/><rect x="10" y="5" width="1" height="1"/><rect x="13" y="5" width="1" height="1"/><rect x="15" y="5" width="1" height="1"/><rect x="18" y="5" width="1" height="1"/><rect x="24" y="5" width="1" height="1"/><rect x="0" y="6" width="1" height="1"/><rect x="1" y="6" width="1" height="1"/><rect x="2" y="6" width="1" height="1"/><rect x="3" y="6" width="1" height="1"/><rect x="4" y="6" width="1" height="1"/><rect x="5" y="6" width="1" height="1"/><rect x="6" y="6" width="1" height="1"/><rect x="9" y="6" width="1" height="1"/><rect x="11" y="6" width="1" height="1"/><rect x="14" y="6" width="1" height="1"/><rect x="16" y="6" width="1" height="1"/><rect x="18" y="6" width="1" height="1"/><rect x="19" y="6" width="1" height="1"/><rect x="20" y="6" width="1" height="1"/><rect x="21" y="6" width="1" height="1"/><rect x="22" y="6" width="1" height="1"/><rect x="23" y="6" width="1" height="1"/><rect x="24" y="6" width="1" height="1"/><rect x="0" y="7" width="1" height="1"/><rect x="1" y="7" width="1" height="1"/><rect x="5" y="7" width="1" height="1"/><rect x="6" y="7" width="1" height="1"/><rect x="10" y="7" width="1" height="1"/><rect x="11" y="7" width="1" height="1"/><rect x="15" y="7" width="1" height="1"/><rect x="16" y="7" width="1" height="1"/><rect x="20" y="7" width="1" height="1"/><rect x="21" y="7" width="1" height="1"/><rect x="3" y="9" width="1" height="1"/><rect x="4" y="9" width="1" height="1"/><rect x="8" y="9" width="1" height="1"/><rect x="9" y="9" width="1" height="1"/><rect x="13" y="9" width="1" height="1"/><rect x="14" y="9" width="1" height="1"/><rect x="18" y="9" width="1" height="1"/><rect x="19" y="9" width="1" height="1"/><rect x="23" y="9" width="1" height="1"/><rect x="24" y="9" width="1" height="1"/><rect x="0" y="10" width="1" height="1"/><rect x="3" y="10" width="1" height="1"/><rect x="5" y="10" width="1" height="1"/><rect x="8" y="10" width="1" height="1"/><rect x="10" y="10" width="1" height="1"/><rect x="13" y="10" width="1" height="1"/><rect x="15" y="10" width="1" height="1"/><rect x="18" y="10" width="1" height="1"/><rect x="20" y="10" width="1" height="1"/><rect x="23" y="10" width="1" height="1"/><rect x="1" y="11" width="1" height="1"/><rect x="4" y="11" width="1" height="1"/><rect x="6" y="11" width="1" height="1"/><rect x="9" y="11" width="1" height="1"/><rect x="11" y="11" width="1" height="1"/><rect x="14" y="11" width="1" height="1"/><rect x="16" y="11" width="1" height="1"/><rect x="19" y="11" width="1" height="1"/><rect x="21" y="11" width="1" height="1"/><rect x="24" y="11" width="1" height="1"/><rect x="0" y="12" width="1" height="1"/><rect x="1" y="12" width="1" height="1"/><rect x="5" y="12" width="1" height="1"/><rect x="6" y="12" width="1" height="1"/><rect x="10" y="12" width="1" height="1"/><rect x="11" y="12" width="1" height="1"/><rect x="15" y="12" width="1" height="1"/><rect x="16" y="12" width="1" height="1"/><rect x="20" y="12" width="1" height="1"/><rect x="21" y="12" width="1" height="1"/><rect x="3" y="14" width="1" height="1"/><rect x="4" y="14" width="1" height="1"/><rect x="8" y="14" width="1" height="1"/><rect x="9" y="14" width="1" height="1"/><rect x="13" y="14" width="1" height="1"/><rect x="14" y="14" width="1" height="1"/><rect x="18" y="14" width="1" height="1"/><rect x="19" y="14" width="1" height="1"/><rect x="23" y="14" width="1" height="1"/><rect x="24" y="14" width="1" height="1"/><rect x="0" y="15" width="1" height="1"/><rect x="3" y="15" width="1" height="1"/><rect x="5" y="15" width="1" height="1"/><rect x="8" y="15" width="1" height="1"/><rect x="10" y="15" width="1" height="1"/><rect x="13" y="15" width="1" height="1"/><rect x="15" y="15" width="1" height="1"/><rect x="18" y="15" width="1" height="1"/><rect x="20" y="15" width="1" height="1"/><rect x="23" y="15" width="1" height="1"/><rect x="1" y="16" width="1" height="1"/><rect x="4" y="16" width="1" height="1"/><rect x="6" y="16" width="1" height="1"/><rect x="9" y="16" width="1" height="1"/><rect x="11" y="16" width="1" height="1"/><rect x="14" y="16" width="1" height="1"/><rect x="16" y="16" width="1" height="1"/><rect x="19" y="16" width="1" height="1"/><rect x="21" y="16" width="1" height="1"/><rect x="24" y="16" width="1" height="1"/><rect x="0" y="17" width="1" height="1"/><rect x="1" y="17" width="1" height="1"/><rect x="5" y="17" width="1" height="1"/><rect x="6" y="17" width="1" height="1"/><rect x="10" y="17" width="1" height="1"/><rect x="11" y="17" width="1" height="1"/><rect x="15" y="17" width="1" height="1"/><rect x="16" y="17" width="1" height="1"/><rect x="20" y="17" width="1" height="1"/><rect x="21" y="17" width="1" height="1"/><rect x="0" y="18" width="1" height="1"/><rect x="1" y="18" width="1" height="1"/><rect x="2" y="18" width="1" height="1"/><rect x="3" y="18" width="1" height="1"/><rect x="4" y="18" width="1" height="1"/><rect x="5" y="18" width="1" height="1"/><rect x="6" y="18" width="1" height="1"/><rect x="0" y="19" width="1" height="1"/><rect x="6" y="19" width="1" height="1"/><rect x="8" y="19" width="1" height="1"/><rect x="9" y="19" width="1" height="1"/><rect x="13" y="19" width="1" height="1"/><rect x="14" y="19" width="1" height="1"/><rect x="18" y="19" width="1" height="1"/><rect x="19" y="19" width="1" height="1"/><rect x="23" y="19" width="1" height="1"/><rect x="24" y="19" width="1" height="1"/><rect x="0" y="20" width="1" height="1"/><rect x="2" y="20" width="1" height="1"/><rect x="3" y="20" width="1" height="1"/><rect x="4" y="20" width="1" height="1"/><rect x="6" y="20" width="1" height="1"/><rect x="8" y="20" width="1" height="1"/><rect x="10" y="20" width="1" height="1"/><rect x="13" y="20" width="1" height="1"/><rect x="15" y="20" width="1" height="1"/><rect x="18" y="20" width="1" height="1"/><rect x="20" y="20" width="1" height="1"/><rect x="23" y="20" width="1" height="1"/><rect x="0" y="21" width="1" height="1"/><rect x="2" y="21" width="1" height="1"/><rect x="3" y="21" width="1" height="1"/><rect x="4" y="21" width="1" height="1"/><rect x="6" y="21" width="1" height="1"/><rect x="9" y="21" width="1" height="1"/><rect x="11" y="21" width="1" height="1"/><rect x="14" y="21" width="1" height="1"/><rect x="16" y="21" width="1" height="1"/><rect x="19" y="21" width="1" height="1"/><rect x="21" y="21" width="1" height="1"/><rect x="24" y="21" width="1" height="1"/><rect x="0" y="22" width="1" height="1"/><rect x="2" y="22" width="1" height="1"/><rect x="3" y="22" width="1" height="1"/><rect x="4" y="22" width="1" height="1"/><rect x="6" y="22" width="1" height="1"/><rect x="10" y="22" width="1" height="1"/><rect x="11" y="22" width="1" height="1"/><rect x="15" y="22" width="1" height="1"/><rect x="16" y="22" width="1" height="1"/><rect x="20" y="22" width="1" height="1"/><rect x="21" y="22" width="1" height="1"/><rect x="0" y="23" width="1" height="1"/><rect x="6" y="23" width="1" height="1"/><rect x="0" y="24" width="1" height="1"/><rect x="1" y="24" width="1" height="1"/><rect x="2" y="24" width="1" height="1"/><rect x="3" y="24" width="1" height="1"/><rect x="4" y="24" width="1" height="1"/><rect x="5" y="24" width="1" height="1"/><rect x="6" y="24" width="1" height="1"/><rect x="8" y="24" width="1" height="1"/><rect x="9" y="24" width="1" height="1"/><rect x="13" y="24" width="1" height="1"/><rect x="14" y="24" width="1" height="1"/><rect x="18" y="24" width="1" height="1"/><rect x="19" y="24" width="1" height="1"/><rect x="23" y="24" width="1" height="1"/><rect x="24" y="24" width="1" height="1"/></svg></div>
+   <div class="a" style="left:500px;top:118px;display:flex;flex-direction:column;gap:14px">
+    <b style="font-size:38px">這台計分板還沒配對</b>
+    <span style="font-size:24px;color:var(--dk-text-2)">1. 手機連上同一個 Wi-Fi（MIGI-Store）</span>
+    <span style="font-size:24px;color:var(--dk-text-2)">2. 用手機掃左邊的 QR</span>
+    <span style="font-size:24px;color:var(--dk-text-2)">3. 管理後台「智慧計分板」頁替這台產生配對碼，</span>
+    <span style="font-size:24px;color:var(--dk-text-2)">&nbsp;&nbsp;&nbsp;&nbsp;把配對連結貼進手機打開的那一頁</span>
+    <span style="font-size:22px;color:var(--dk-text-3)">網址 http://192.168.1.57/</span>
+    <div style="display:flex;align-items:center;gap:16px"><span style="font-size:28px;color:var(--dk-text-2)">驗證碼</span><b style="font-size:64px;color:var(--brand)">4827</b></div></div>
+   <div class="a btn gho" style="right:36px;bottom:24px;width:180px;height:52px;font-size:22px">換 Wi-Fi</div></div></div>
+  </figure>
+
+  <p class="note">玩家名字與積分是示範資料。平板有、ESP32 版還沒有的：教學模式、選位置時其他台即時看到誰在點、頭像圖片（目前畫名字第一個字）、背景皮膚、全國第一登場、換手機。</p>
+</div>
+
+

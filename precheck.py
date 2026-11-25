@@ -271,6 +271,11 @@ def main():
         print('\n⑦ pillcheck.py（⚪ 只印給人看，不擋 push）')
         run([sys.executable, os.path.join(ASSETS, 'pillcheck.py')])
 
+    # ── ⑨ 計分板改畫面 → 記到 ESP32 版的待同步（只記錄，不擋）──────
+    #   🆕 2026-11-25：ESP32 版的畫面是 C 另外寫的一份，網頁版改了它不會跟著變、也不會報錯
+    if name == 'migi-table':
+        run([sys.executable, os.path.join(ASSETS, 'esp32sync.py')])
+
     print('\n' + '=' * 62)
     if fails:
         print('🔴 擋下這次 push：%s' % '　'.join(fails))

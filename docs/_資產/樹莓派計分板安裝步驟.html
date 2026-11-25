@@ -1,0 +1,138 @@
+<title>樹莓派計分板安裝</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap">
+<style>
+/* 正本是 docs/09-環境流程/樹莓派計分板安裝步驟.md；這一頁給現場用手機看。一欄由上往下照步驟走。 */
+:root{
+  --bg:#FFFFFF; --fg:#2E2B2C; --sub:#5C5754; --line:#DED9D5; --soft:#F8F7F6;
+  --brand:#FAD6DC; --brand-tint:#FFECF1; --code-bg:#2B2829; --code-fg:#FFFFFF;
+  --font:'Noto Sans TC',"PingFang TC","Microsoft JhengHei",sans-serif;
+  --mono:ui-monospace,Consolas,"Cascadia Mono",monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#221F20;--fg:#FFFFFF;--sub:#C9C4C1;--line:#524D4E;--soft:#2B2829;--brand-tint:#3A3133;--code-bg:#191718;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#221F20;--fg:#FFFFFF;--sub:#C9C4C1;--line:#524D4E;--soft:#2B2829;--brand-tint:#3A3133;--code-bg:#191718;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);line-height:1.75;font-size:16px;
+  padding-block:24px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1{font-size:28px;margin:0;line-height:1.3;text-wrap:balance}
+.lead{color:var(--sub);margin:8px 0 0}
+.warn{background:var(--brand-tint);border:1px solid var(--brand);border-radius:12px;padding:12px 16px;font-size:15px}
+section{display:flex;flex-direction:column;gap:10px}
+h2{font-size:20px;margin:0;display:flex;gap:10px;align-items:baseline}
+h2 b{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:30px;border-radius:50%;background:var(--brand);color:#2E2B2C;font-size:16px}
+ol,ul{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:6px}
+p{margin:0}
+pre{margin:0;background:var(--code-bg);color:var(--code-fg);border-radius:10px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:14px;line-height:1.6}
+code{font-family:var(--mono);background:var(--soft);border-radius:5px;padding:1px 5px;font-size:.92em}
+pre code{background:none;padding:0;color:inherit}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{white-space:nowrap}
+.red{font-weight:700}
+a{color:inherit;text-underline-offset:3px}
+</style>
+
+<main>
+  <header>
+    <h1>樹莓派計分板安裝步驟</h1>
+    <p class="lead">樹莓派 5 ＋ 7 吋觸控螢幕，開機自動全螢幕打開 table.migi.tw。跟平板是同一份計分板，配對、教學模式、自動更新都照用。</p>
+  </header>
+
+  <p class="warn">這份還沒在實機走過。「轉成橫的」與觸控方向那一步最可能要調，走到那裡把實際情況告訴 Claude。</p>
+
+  <section>
+    <h2><b>0</b>要準備的東西</h2>
+    <div class="tbl"><table>
+      <tr><th>樹莓派 5（4GB）</th><td>2GB 也開得動，4GB 比較從容</td></tr>
+      <tr><th>官方 27W USB-C 電源</th><td class="red">用手機充電器會跳低電壓、畫面當掉</td></tr>
+      <tr><th>microSD 32GB 以上</th><td>A2 等級比較快</td></tr>
+      <tr><th>官方主動散熱器</th><td>整晚開著要散熱</td></tr>
+      <tr><th>7 吋觸控螢幕</th><td>官方 Touch Display 2，或 Waveshare 7-DSI-TOUCH-A</td></tr>
+      <tr><th>USB 鍵盤、滑鼠</th><td>只有設定時用</td></tr>
+    </table></div>
+  </section>
+
+  <section>
+    <h2><b>1</b>把系統燒進 SD 卡（在電腦上）</h2>
+    <ol>
+      <li>安裝 Raspberry Pi Imager（raspberrypi.com/software）</li>
+      <li>裝置選 Raspberry Pi 5 → 作業系統選 Raspberry Pi OS (64-bit)（有桌面的）→ 選 SD 卡</li>
+      <li>選「編輯設定」：主機名稱 <code>migi-a1</code>（照桌號）；使用者名稱與密碼自己設、記在帳密本；店裡的 Wi-Fi、國家 TW；時區 Asia/Taipei</li>
+      <li>寫入，等驗證完再拔卡</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2><b>2</b>接螢幕與電源</h2>
+    <ol>
+      <li>螢幕排線接樹莓派的 DSI 接頭（兩個窄扁接頭任一個），方向照螢幕說明</li>
+      <li>螢幕供電：杜邦線接 5V（第 2 腳）與 GND（第 6 腳）</li>
+      <li>插 SD 卡、接鍵盤滑鼠，最後才插電</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2><b>3</b>第一次開機、更新</h2>
+    <p>左上選單 → 附屬應用 → 終端機，輸入（在樹莓派上）：</p>
+    <pre><code>sudo apt update &amp;&amp; sudo apt full-upgrade -y</code></pre>
+    <p>跑完重開機：</p>
+    <pre><code>sudo reboot</code></pre>
+  </section>
+
+  <section>
+    <h2><b>4</b>螢幕設定</h2>
+    <ul>
+      <li><b>不要自動關螢幕</b>：終端機輸入 <code>sudo raspi-config</code> → Display Options → Screen Blanking → No</li>
+      <li><b>轉成橫的</b>：左上選單 → 偏好設定 → Screen Configuration → 對 <code>DSI-1</code> 按右鍵 → Orientation 選 90 或 270 → 套用</li>
+      <li>轉完用手指點點看：位置對不上就是觸控沒跟著轉，先記下來</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><b>5</b>配對到某一桌</h2>
+    <ol>
+      <li>在樹莓派打開 Chromium，網址打 <code>hq.migi.tw</code></li>
+      <li>LINE 登入（用手機 LINE 掃螢幕上的 QR）</li>
+      <li>「智慧計分板」頁替這一桌產生配對碼</li>
+      <li>複製「網址（可複製）」，開新分頁貼上、按 Enter</li>
+      <li>出現計分板畫面就配好了</li>
+      <li class="red">回後台登出、關掉那個分頁</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2><b>6</b>開機自動全螢幕</h2>
+    <p>先查 Chromium 的指令名稱（印出哪個就用哪個）：</p>
+    <pre><code>which chromium chromium-browser</code></pre>
+    <p>建立自動啟動檔：</p>
+    <pre><code>mkdir -p ~/.config/labwc &amp;&amp; nano ~/.config/labwc/autostart</code></pre>
+    <p>貼上這兩行，<code>Ctrl+O</code>、<code>Enter</code> 存檔，<code>Ctrl+X</code> 離開：</p>
+    <pre><code>sleep 5
+chromium --kiosk --noerrdialogs --disable-infobars --disable-session-crashed-bubble --password-store=basic https://table.migi.tw/ &amp;</code></pre>
+    <p class="red">不可以加 --incognito：無痕模式每次開機都會把配對清掉。</p>
+    <pre><code>sudo reboot</code></pre>
+    <p>開機直接是全螢幕計分板就完成了，拔掉鍵盤滑鼠。</p>
+  </section>
+
+  <section>
+    <h2><b>7</b>平常使用</h2>
+    <ul>
+      <li>插電就好，約 30～60 秒出現計分板</li>
+      <li>計分板改版不用動樹莓派，閒置時會自己重新整理</li>
+      <li>要退出全螢幕：接鍵盤按 <code>Alt+F4</code></li>
+      <li>一兩個月做一次第 3 步的更新</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><b>8</b>遇到問題</h2>
+    <div class="tbl"><table>
+      <tr><th>畫面閃、出現閃電圖示</th><td>電源不夠力，換官方 27W</td></tr>
+      <tr><th>開機沒出現計分板</th><td>接鍵盤檢查第 6 步的檔案與指令名稱</td></tr>
+      <tr><th>每次都要重新配對</th><td>第 6 步誤加了 --incognito</td></tr>
+      <tr><th>點的位置對不上</th><td>第 4 步換 90／270 試</td></tr>
+      <tr><th>螢幕會變黑</th><td>第 4 步 Screen Blanking 選 No</td></tr>
+    </table></div>
+  </section>
+</main>
